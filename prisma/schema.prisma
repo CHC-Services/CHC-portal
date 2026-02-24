@@ -1,0 +1,92 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  nurse
+  admin
+}
+
+enum ClaimStatus {
+  drafted
+  submitted
+  pending
+  paid
+  denied
+  appealed
+  voided
+}
+
+model User {
+  id         String   @id @default(uuid())
+  email      String   @unique
+  password   String
+  role       Role     @default(nurse)
+
+  // Admin-only MFA
+  mfaSecret  String?
+  mfaEnabled Boolean  @default(false)
+
+  nurseProfile NurseProfile?
+  createdAt  DateTime @default(now())
+}
+
+model NurseProfile {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  displayName String
+
+  user      User     @relation(fields: [userId], references: [id])
+  timeEntries TimeEntry[]
+  claims     Claim[]
+}
+
+model TimeEntry {
+  id        String   @id @default(uuid())
+  nurseId   String
+  workDate  DateTime
+  hours     Float
+  notes     String?
+  createdAt DateTime @default(now())
+
+  nurse     NurseProfile @relation(fields: [nurseId], references: [id])
+
+  @@unique([nurseId, workDate])
+}
+
+model Claim {
+  id              String      @id @default(uuid())
+  nurseId          String
+  internalClaimId  String      @unique
+
+  periodStart      DateTime
+  periodEnd        DateTime
+
+  status           ClaimStatus @default(drafted)
+
+  hoursBilled       Float?
+  chargeAmount      Float?
+  allowedAmount     Float?
+  paidAmount        Float?
+
+  carcCodes         String?   // store as "CO-45, PR-1" etc
+  statusNote        String?
+
+  submittedAt       DateTime?
+  paidAt            DateTime?
+
+  createdAt         DateTime @default(now())
+
+  nurse            NurseProfile @relation(fields: [nurseId], references: [id])
+}

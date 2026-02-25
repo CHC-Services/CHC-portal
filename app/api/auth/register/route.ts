@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcrypt'
 import { prisma } from '../../../../lib/prisma'
-import { verifySession } from '../../../../lib/auth'
+import { verifyToken } from '../../../../lib/auth'
 
 export async function POST(req: Request) {
   const { email, password, role, displayName } = await req.json()
@@ -11,7 +11,7 @@ export async function POST(req: Request) {
   if (userCount > 0) {
     const cookie = req.headers.get('cookie') || ''
     const token = cookie.split('session=').pop()?.split(';')[0]
-    const session = token ? verifySession(token) : null
+    const session = token ? verifyToken(token) : null
 
     if (!session || session.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

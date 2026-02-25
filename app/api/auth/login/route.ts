@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcrypt'
 import { prisma } from '../../../../lib/prisma'
-import { signSession } from '../../../../lib/auth'
+import { signToken } from '../../../../lib/auth'
 
 export async function POST(req: Request) {
   const { email, password } = await req.json()
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
   }
 
-  const token = signSession({
+  const token = signToken({
     id: user.id,
     role: user.role,
     nurseProfileId: user.nurseProfile?.id

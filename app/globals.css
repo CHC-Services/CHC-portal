@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap');
 @import "tailwindcss";
 
 :root {
@@ -20,13 +22,23 @@
 }
 
 body {
-  background: var(--background);
+  /* dark gutter color outside the page wrapper */
+  background: #2F3E4E;
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
 /* Body default */
 body {
   font-family: var(--font-lato), sans-serif;
+}
+
+/* constrain main container width globally */
+.page-wrap {
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+  /* keep the previous light background inside */
+  background: #D9E1E8;
 }
 
 /* Headings */

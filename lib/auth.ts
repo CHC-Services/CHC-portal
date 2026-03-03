@@ -10,10 +10,14 @@ type TokenPayload = {
   id: string;
   role: string;
   nurseProfileId?: string;
+  name: string;            // internal/admin name
+  displayName?: string;   // nurse-chosen name
 };
 
 export function signToken(payload: TokenPayload) {
-  return jwt.sign(payload, JWT_SECRET, {
+  // JWT.sign complains if payload already contains exp/iat, so strip them
+  const { exp, iat, ...clean } = payload as any;
+  return jwt.sign(clean, JWT_SECRET, {
     expiresIn: "7d",
   });
 }

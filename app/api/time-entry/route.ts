@@ -4,7 +4,7 @@ import { verifyToken } from '../../../lib/auth'
 
 export async function POST(req: Request) {
   const cookie = req.headers.get('cookie') || ''
-  const token = cookie.split('session=').pop()?.split(';')[0]
+  const token = cookie.split('auth_token=').pop()?.split(';')[0]
   const session = token ? verifyToken(token) : null
 
   if (!session || session.role !== 'nurse') {

@@ -17,6 +17,7 @@ export default function SetupPage() {
         email,
         password,
         role: 'admin',
+        name: 'Administrator',
         displayName: 'Administrator'
       })
     })

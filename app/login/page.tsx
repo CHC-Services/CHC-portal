@@ -20,6 +20,7 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ email, password })
       })
 
@@ -31,9 +32,11 @@ export default function LoginPage() {
         return
       }
 
-      // Login successful — cookie already set by server
-      router.push('/')
-      router.refresh()
+      // Login successful — cookie should have been set by server
+      // For reliability we'll do a full redirect so the browser sends the cookie on
+      // the next request (and avoids any caching issues).
+      console.log('login response cookies:', document.cookie)
+      window.location.href = '/'
 
     } catch (err) {
       setError('Something went wrong. Please try again.')

@@ -32,6 +32,8 @@ model User {
   id         String   @id @default(uuid())
   email      String   @unique
   password   String
+  // internal name shown to admin; set during account creation
+  name       String
   role       Role     @default(nurse)
 
   // Admin-only MFA
@@ -40,12 +42,22 @@ model User {
 
   nurseProfile NurseProfile?
   createdAt  DateTime @default(now())
-}
+}    
+
 
 model NurseProfile {
-  id        String   @id @default(uuid())
-  userId    String   @unique
-  displayName String
+  id         String   @id @default(uuid())
+  userId     String   @unique
+  displayName String  // name the nurse chooses for themselves
+
+  // optional profile information nurses can edit
+  address      String?
+  city         String?
+  state        String?
+  zip          String?
+  npiNumber    String?
+  medicaidNumber String?
+  billingInfo  String?
 
   user      User     @relation(fields: [userId], references: [id])
   timeEntries TimeEntry[]

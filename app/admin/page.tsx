@@ -5,6 +5,7 @@ import { useState } from 'react'
 export default function AdminDashboard() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [name, setName] = useState('') // internal/admin name
   const [displayName, setDisplayName] = useState('')
   const [message, setMessage] = useState('')
 
@@ -14,10 +15,12 @@ export default function AdminDashboard() {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({
         email,
         password,
         role: 'nurse',
+        name,            // admin-visible name
         displayName
       })
     })
@@ -40,16 +43,6 @@ export default function AdminDashboard() {
       <h1 className="text-3xl font-bold text-[#2F3E4E]">
         Admin Dashboard
       </h1>
-
-      <button
-        onClick={async () => {
-          await fetch('/api/auth/logout', { method: 'POST' })
-          window.location.href = '/login'
-        }}
-        className="bg-[#7A8F79] text-white px-4 py-2 rounded hover:bg-[#2F3E4E] transition"
-      >
-        Logout
-      </button>
     </div>
 
     <div className="bg-white p-6 rounded shadow max-w-md">
@@ -60,7 +53,16 @@ export default function AdminDashboard() {
       <form onSubmit={createNurse} className="space-y-3">
         <input
           type="text"
-          placeholder="Nurse Name"
+          placeholder="Internal Name (for you)"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+          className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E] placeholder-[#7A8F79] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+        />
+
+        <input
+          type="text"
+          placeholder="Display Name (visible to nurse)"
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
           required

@@ -23,6 +23,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   if (!profile) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+  const p = profile as any
   return NextResponse.json({
     ...profile,
     ssnEncrypted:         undefined,
@@ -31,11 +32,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     bankRoutingEncrypted: undefined,
     bankAccountEncrypted: undefined,
     // send masked or decrypted versions
-    ssn:         profile.ssnEncrypted         ? decrypt(profile.ssnEncrypted)         : '',
-    ein:         profile.einEncrypted         ? decrypt(profile.einEncrypted)         : '',
-    fein:        profile.feinEncrypted        ? decrypt(profile.feinEncrypted)        : '',
-    bankRouting: profile.bankRoutingEncrypted ? decrypt(profile.bankRoutingEncrypted) : '',
-    bankAccount: profile.bankAccountEncrypted ? decrypt(profile.bankAccountEncrypted) : '',
+    ssn:         p.ssnEncrypted         ? decrypt(p.ssnEncrypted)         : '',
+    ein:         p.einEncrypted         ? decrypt(p.einEncrypted)         : '',
+    fein:        p.feinEncrypted        ? decrypt(p.feinEncrypted)        : '',
+    bankRouting: p.bankRoutingEncrypted ? decrypt(p.bankRoutingEncrypted) : '',
+    bankAccount: p.bankAccountEncrypted ? decrypt(p.bankAccountEncrypted) : '',
   })
 }
 

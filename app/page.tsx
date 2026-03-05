@@ -1,3 +1,4 @@
+import React from 'react'
 import { cookies } from 'next/headers'
 import { verifyToken } from '@/lib/auth'
 import Link from 'next/link'
@@ -16,7 +17,7 @@ function QuickCard({
   accent = false,
 }: {
   href: string
-  title: string
+  title: React.ReactNode
   description: string
   accent?: boolean
 }) {
@@ -32,6 +33,15 @@ function QuickCard({
       <p className={`text-lg font-bold mb-1 ${accent ? 'text-white' : 'text-[#2F3E4E]'}`}>{title}</p>
       <p className={`text-sm ${accent ? 'text-[#D9E1E8]' : 'text-[#7A8F79]'}`}>{description}</p>
     </Link>
+  )
+}
+
+function MyLabel({ word, accent }: { word: string; accent?: boolean }) {
+  return (
+    <>
+      <span style={{ color: '#7A8F79', fontStyle: 'italic' }}>my</span>
+      <span style={{ color: accent ? 'white' : '#2F3E4E' }}>{word}</span>
+    </>
   )
 }
 
@@ -60,18 +70,18 @@ export default async function Home() {
           <div className="grid sm:grid-cols-3 gap-4 max-w-2xl">
             <QuickCard
               href="/nurse"
-              title="myDashboard"
+              title={<MyLabel word="Dashboard" accent />}
               description="Submit hours and view your history."
               accent
             />
             <QuickCard
               href="/nurse/claims"
-              title="myClaims"
+              title={<MyLabel word="Claims" />}
               description="View the status of your submitted claims."
             />
             <QuickCard
               href="/nurse/profile"
-              title="myProfile"
+              title={<MyLabel word="Profile" />}
               description="Update your contact and billing info."
             />
           </div>

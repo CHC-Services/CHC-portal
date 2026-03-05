@@ -107,7 +107,7 @@ export default function ProfilePage() {
         <h2 className="text-xl font-semibold mb-4 text-[#2F3E4E]">Personal Information</h2>
 
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-[#2F3E4E]">Email (<a href='mailto:supportn@cominghomecare.com'>submit update request <u>here</u>.</a>)</label>
+          <label className="block text-sm font-medium text-[#2F3E4E]">Email (<a href='mailto:supportn@cominghomecare.com'>submit request to update email <u>here</u>.</a>)</label>
           <input
             type="text"
             value={user?.email || ''}

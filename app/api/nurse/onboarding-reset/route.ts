@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  await prisma.nurseProfile.update({
+  await (prisma.nurseProfile.update as any)({
     where: { id: session.nurseProfileId! },
     data: { onboardingComplete: false }
   })

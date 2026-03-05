@@ -6,7 +6,7 @@ import { verifyToken } from '../../../../lib/auth'
 async function generateAccountNumber(): Promise<string> {
   while (true) {
     const num = 'CHC-' + String(Math.floor(10000 + Math.random() * 90000))
-    const existing = await prisma.nurseProfile.findUnique({ where: { accountNumber: num } })
+    const existing = await (prisma.nurseProfile.findUnique as any)({ where: { accountNumber: num } })
     if (!existing) return num
   }
 }
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
 
   const hashed = await bcrypt.hash(password, 10)
 
-  const user = await prisma.user.create({
+  const user = await (prisma.user.create as any)({
     data: {
       email,
       password: hashed,

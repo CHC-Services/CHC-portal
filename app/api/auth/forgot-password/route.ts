@@ -17,7 +17,7 @@ export async function POST(req: Request) {
   const token = randomBytes(32).toString('hex')
   const expiry = new Date(Date.now() + 1000 * 60 * 60) // 1 hour
 
-  await prisma.user.update({
+  await (prisma.user.update as any)({
     where: { email },
     data: { passwordResetToken: token, passwordResetExpiry: expiry }
   })

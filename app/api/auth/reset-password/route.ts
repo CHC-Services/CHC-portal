@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid request.' }, { status: 400 })
   }
 
-  const user = await prisma.user.findFirst({
+  const user = await (prisma.user.findFirst as any)({
     where: {
       passwordResetToken: token,
       passwordResetExpiry: { gt: new Date() }
@@ -22,7 +22,7 @@ export async function POST(req: Request) {
 
   const hashed = await bcrypt.hash(password, 10)
 
-  await prisma.user.update({
+  await (prisma.user.update as any)({
     where: { id: user.id },
     data: {
       password: hashed,

@@ -82,8 +82,14 @@ export default function Banner({ user }: BannerProps) {
                             <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Dashboard
                         </Link>
                         <Link
+                            href="/nurse/claims"
+                            className={`transition ${pathname === "/nurse/claims" ? "underline underline-offset-4" : "hover:text-[#7A8F79] scale-[1.02]"}`}
+                        >
+                            <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Claims
+                        </Link>
+                        <Link
                             href="/nurse/profile"
-                            className="transition hover:text-[#7A8F79] scale-[1.02]"
+                            className={`transition ${pathname === "/nurse/profile" ? "underline underline-offset-4" : "hover:text-[#7A8F79] scale-[1.02]"}`}
                         >
                             <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Profile
                         </Link>

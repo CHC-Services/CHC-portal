@@ -176,7 +176,7 @@ By typing my full legal name below, I acknowledge that I have read and agree to 
       {!optedOutConfirm && step === 1 && (
         <StepCard>
           <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-2">Step 1 of {answers.enrolledInBilling === false ? '1' : '4'}</p>
-          <Question>Would you like to enroll in billing services through Coming Home Care?</Question>
+          <Question text="Would you like to enroll in billing services through Coming Home Care?" />
           <div className="space-y-3">
             <ChoiceButton
               label="Yes — enroll me in billing services"
@@ -203,7 +203,7 @@ By typing my full legal name below, I acknowledge that I have read and agree to 
       {!optedOutConfirm && step === 2 && (
         <StepCard>
           <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-2">Step 2 of 4</p>
-          <Question>How many insurance carriers will you need billed?</Question>
+          <Question text="How many insurance carriers will you need billed?" />
           <div className="space-y-3">
             <ChoiceButton
               label="1 carrier — Single Payer"
@@ -239,7 +239,7 @@ By typing my full legal name below, I acknowledge that I have read and agree to 
       {!optedOutConfirm && step === 3 && (
         <StepCard>
           <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-2">Step 3 of 4</p>
-          <Question>How long would you like billing services to continue?</Question>
+          <Question text="How long would you like billing services to continue?" />
           <div className="space-y-3">
             <ChoiceButton
               label="Full year — ongoing"

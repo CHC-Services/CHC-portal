@@ -91,6 +91,18 @@ export default function ProfilePage() {
         </h1>
       </div>
 
+      {profile.accountNumber && (
+        <div className="bg-[#2F3E4E] text-white rounded-xl px-6 py-4 max-w-lg flex items-center justify-between mb-4">
+          <div>
+            <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold">Account Number</p>
+            <p className="text-2xl font-bold tracking-widest mt-0.5">{profile.accountNumber}</p>
+          </div>
+          <div className="w-10 h-10 rounded-full bg-[#7A8F79] flex items-center justify-center text-white font-bold text-lg">
+            {(profile.displayName || '?').charAt(0).toUpperCase()}
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="bg-white p-6 rounded shadow max-w-lg space-y-4">
         <h2 className="text-xl font-semibold mb-4 text-[#2F3E4E]">Personal Information</h2>
 

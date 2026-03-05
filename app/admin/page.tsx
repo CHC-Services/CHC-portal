@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 
 type TimeEntry = {
   id: string
@@ -12,6 +13,7 @@ type TimeEntry = {
 type Nurse = {
   id: string
   displayName: string
+  accountNumber: string | null
   npiNumber: string | null
   user: { email: string; name: string }
   timeEntries: TimeEntry[]
@@ -41,6 +43,16 @@ function NurseRow({ nurse }: { nurse: Nurse }) {
           <div>
             <p className="font-semibold text-[#2F3E4E]">{nurse.displayName}</p>
             <p className="text-xs text-[#7A8F79]">{nurse.user.email}</p>
+            {nurse.accountNumber && (
+              <p className="text-xs font-mono text-[#2F3E4E] mt-0.5">{nurse.accountNumber}</p>
+            )}
+            <Link
+              href={`/admin/nurse/${nurse.id}`}
+              onClick={e => e.stopPropagation()}
+              className="text-xs text-[#7A8F79] underline underline-offset-2 hover:text-[#2F3E4E] mt-0.5 inline-block"
+            >
+              View Full Profile
+            </Link>
           </div>
         </div>
         <div className="flex items-center gap-6 text-sm">

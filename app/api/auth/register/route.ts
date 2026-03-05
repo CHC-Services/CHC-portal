@@ -3,6 +3,14 @@ import bcrypt from 'bcrypt'
 import { prisma } from '../../../../lib/prisma'
 import { verifyToken } from '../../../../lib/auth'
 
+async function generateAccountNumber(): Promise<string> {
+  while (true) {
+    const num = 'CHC-' + String(Math.floor(10000 + Math.random() * 90000))
+    const existing = await prisma.nurseProfile.findUnique({ where: { accountNumber: num } })
+    if (!existing) return num
+  }
+}
+
 export async function POST(req: Request) {
   const { email, password, role, name, displayName } = await req.json()
 
@@ -28,7 +36,7 @@ export async function POST(req: Request) {
       role: role === 'admin' ? 'admin' : 'nurse',
       nurseProfile:
         role === 'nurse'
-          ? { create: { displayName: displayName || email } }
+          ? { create: { displayName: displayName || email, accountNumber: await generateAccountNumber() } }
           : undefined
     },
     select: { id: true, email: true, role: true }

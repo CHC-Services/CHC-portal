@@ -21,7 +21,7 @@ export async function GET(req: Request) {
     where: { id: session.nurseProfileId },
   })
 
-  return NextResponse.json({ user, profile })
+  return NextResponse.json({ user, profile, onboardingComplete: (profile as any)?.onboardingComplete ?? false })
 }
 
 export async function PATCH(req: Request) {

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
 type TimeEntry = {
   id: string
@@ -20,12 +21,14 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
 }
 
 export default function NurseDashboard() {
+  const router = useRouter()
   const [workDate, setWorkDate] = useState('')
   const [hours, setHours] = useState('')
   const [notes, setNotes] = useState('')
   const [message, setMessage] = useState('')
   const [entries, setEntries] = useState<TimeEntry[]>([])
   const [loadingHistory, setLoadingHistory] = useState(true)
+  const [enrolledInBilling, setEnrolledInBilling] = useState<boolean | null>(null)
 
   function loadEntries() {
     fetch('/api/time-entry', { credentials: 'include' })
@@ -36,7 +39,18 @@ export default function NurseDashboard() {
       .finally(() => setLoadingHistory(false))
   }
 
-  useEffect(() => { loadEntries() }, [])
+  useEffect(() => {
+    fetch('/api/nurse/profile', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => {
+        if (!data.onboardingComplete) {
+          router.replace('/nurse/onboarding')
+        } else {
+          setEnrolledInBilling((data.profile as any)?.enrolledInBilling ?? null)
+          loadEntries()
+        }
+      })
+  }, [router])
 
   async function submitTime(e: React.FormEvent) {
     e.preventDefault()
@@ -88,6 +102,27 @@ export default function NurseDashboard() {
           {now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </p>
       </div>
+
+      {/* Billing enrollment banner for opted-out nurses */}
+      {enrolledInBilling === false && (
+        <div className="bg-white border border-[#D9E1E8] rounded-xl p-5 mb-6 flex items-center justify-between gap-4">
+          <div>
+            <p className="font-semibold text-[#2F3E4E] text-sm">Not enrolled in billing services</p>
+            <p className="text-xs text-[#7A8F79] mt-0.5">
+              You can enroll at any time — Coming Home Care will handle your insurance billing so you don't have to.
+            </p>
+          </div>
+          <button
+            onClick={async () => {
+              await fetch('/api/nurse/onboarding-reset', { method: 'POST', credentials: 'include' })
+              router.push('/nurse/onboarding')
+            }}
+            className="shrink-0 bg-[#2F3E4E] text-white px-4 py-2 rounded-lg hover:bg-[#7A8F79] transition text-sm font-semibold"
+          >
+            Enroll in Services
+          </button>
+        </div>
+      )}
 
       {/* Stats strip */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">

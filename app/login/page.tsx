@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -87,6 +88,12 @@ export default function LoginPage() {
             {error}
           </p>
         )}
+
+        <p className="mt-4 text-center text-sm text-[#7A8F79]">
+          <Link href="/forgot-password" className="underline underline-offset-2 hover:text-[#2F3E4E]">
+            Forgot password?
+          </Link>
+        </p>
 
       </div>
     </div>

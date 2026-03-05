@@ -41,8 +41,11 @@ model User {
   mfaSecret  String?
   mfaEnabled Boolean  @default(false)
 
+  passwordResetToken  String?
+  passwordResetExpiry DateTime?
+
   nurseProfile NurseProfile?
-  createdAt  DateTime @default(now())
+  createdAt    DateTime @default(now())
 }    
 
 
@@ -51,18 +54,70 @@ model NurseProfile {
   userId     String   @unique
   displayName String  // name the nurse chooses for themselves
 
-  // optional profile information nurses can edit
-  address      String?
-  city         String?
-  state        String?
-  zip          String?
-  npiNumber    String?
+  accountNumber  String?  @unique
+
+  // Individual provider — nurse-editable
+  firstName      String?
+  middleInitial  String?
+  lastName       String?
+  phone          String?
+  address        String?
+  city           String?
+  state          String?
+  zip            String?
+  dob            String?   // stored as plain text date string
+  ssnEncrypted   String?   // AES-256-GCM encrypted
+  npiNumber      String?
   medicaidNumber String?
+  bcbsPayorId    String?
+
+  // Business provider — admin-managed, conditional
+  hasBusinessProvider  Boolean @default(false)
+  bizServiceAddress    String?
+  bizEntityName        String?
+  bizEmail             String?
+  einEncrypted         String?   // AES-256-GCM encrypted
+  feinEncrypted        String?   // AES-256-GCM encrypted
+  bizNpi               String?
+  bizMedicaidId        String?
+
+  // Payment — admin-managed
+  bankName             String?
+  bankRoutingEncrypted String?   // AES-256-GCM encrypted
+  bankAccountEncrypted String?   // AES-256-GCM encrypted
+
+  // Onboarding & agreement
+  onboardingComplete  Boolean   @default(false)
+  enrolledInBilling   Boolean?
+  carrierCount        Int?
+  billingDurationType String?   // 'full_year' | 'policy_specific'
+  billingDurationNote String?
+  billingPlan         String?   // 'A1' | 'A2' | 'B' | 'custom'
+  planStartDate       String?
+  agreementSignedAt   DateTime?
+  agreementSignature  String?
+  agreementIp         String?
+
+  // Legacy
   billingInfo  String?
 
-  user      User     @relation(fields: [userId], references: [id])
-  timeEntries TimeEntry[]
-  claims     Claim[]
+  user           User            @relation(fields: [userId], references: [id])
+  timeEntries    TimeEntry[]
+  claims         Claim[]
+  enrollmentLogs EnrollmentLog[]
+}
+
+model EnrollmentLog {
+  id               String   @id @default(uuid())
+  nurseId          String
+  nurseDisplayName String
+  action           String   // 'opted_out' | 'opted_in' | 're_enrolled'
+  note             String?
+  sentTo           String?
+  emailSent        Boolean  @default(false)
+  createdAt        DateTime @default(now())
+
+  nurse NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
 }
 
 model TimeEntry {

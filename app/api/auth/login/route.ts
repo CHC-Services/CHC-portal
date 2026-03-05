@@ -36,6 +36,7 @@ export async function POST(req: Request) {
   // use a consistent cookie name that the middleware already expects
   res.cookies.set('auth_token', token, {
     httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/'
   })

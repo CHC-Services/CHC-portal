@@ -168,6 +168,9 @@ export default function AdminDashboard() {
           <p className="text-sm text-[#7A8F79] mt-1">
             {now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
+          <Link href="/admin/claims" className="inline-block mt-2 text-sm text-[#7A8F79] underline underline-offset-2 hover:text-[#2F3E4E]">
+            View Claims →
+          </Link>
         </div>
         <button
           onClick={() => setFormOpen(!formOpen)}

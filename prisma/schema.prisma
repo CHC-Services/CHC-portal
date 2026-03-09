@@ -19,15 +19,6 @@ enum Role {
   admin
 }
 
-enum ClaimStatus {
-  drafted
-  submitted
-  pending
-  paid
-  denied
-  appealed
-  voided
-}
 
 model User {
   id         String   @id @default(uuid())
@@ -134,27 +125,34 @@ model TimeEntry {
 }
 
 model Claim {
-  id              String      @id @default(uuid())
-  nurseId          String
-  internalClaimId  String      @unique
+  id                String   @id @default(uuid())
+  nurseId           String
 
-  periodStart      DateTime
-  periodEnd        DateTime
-
-  status           ClaimStatus @default(drafted)
-
+  claimCtrlId       String?
+  transId           String?
+  submitStatus      String?
+  submitDate        DateTime?
+  status            String?
+  dosStart          DateTime?
+  dosStop           DateTime?
   hoursBilled       Float?
-  chargeAmount      Float?
-  allowedAmount     Float?
-  paidAmount        Float?
-
-  carcCodes         String?   // store as "CO-45, PR-1" etc
-  statusNote        String?
-
-  submittedAt       DateTime?
-  paidAt            DateTime?
+  chargeAmount      Float?   // Billed
+  allowedAmount     Float?   // Allowed
+  paidAmount        Float?   // BCBS Paid
+  remitCheckNumber  String?  // Remit / Check #
+  checkAmount       Float?   // Check $
+  finalizedDate     DateTime?
+  eobDate           DateTime?
+  statusNote        String?  // Comments
+  innOon            String?  // INN / OON
+  dedCoin           Float?   // DED / COIN
+  allowRate         Float?   // Allow Rate
 
   createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  nurse            NurseProfile @relation(fields: [nurseId], references: [id])
+  nurse             NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
+
+  @@index([nurseId])
+  @@index([claimCtrlId])
 }

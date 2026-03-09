@@ -68,3 +68,20 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   return NextResponse.json({ ok: true })
 }
+
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = adminOnly(req)
+  if (!session || session.role !== 'admin') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const { id } = await params
+
+  // NurseProfile id → get userId so we can delete the User (cascades to profile)
+  const profile = await prisma.nurseProfile.findUnique({ where: { id }, select: { userId: true } })
+  if (!profile) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  await prisma.user.delete({ where: { id: profile.userId } })
+
+  return NextResponse.json({ ok: true })
+}

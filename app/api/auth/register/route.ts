@@ -39,7 +39,7 @@ export async function POST(req: Request) {
           ? { create: { displayName: displayName || email, accountNumber: await generateAccountNumber() } }
           : undefined
     },
-    select: { id: true, email: true, role: true }
+    select: { id: true, email: true, role: true, nurseProfile: { select: { id: true } } }
   })
 
   return NextResponse.json(user)

@@ -271,7 +271,7 @@ By typing my full legal name below, I acknowledge that I have read and agree to 
           )}
 
           <div className="mt-5 p-4 bg-[#F4F6F5] rounded-lg text-xs text-[#7A8F79] leading-relaxed">
-            You are free to start/stop services at any time without any minimum enrollment obligation. If you have any questions or need to make changes, please reach out to <a href='mailto:support@cominghomecare.com' className="text-[#2F3E4E] underline">Coming Home Care</a> and we'll update your arrangement promptly.
+            There is no minimum enrollment obligation. You are free to make changes to the plan or discontinue services at any time by navigating to <i>Billing Update</i> under your <i>my</i>Profile area, or submitting a request to <a href='mailto:support@cominghomecare.com' className="text-[#2F3E4E] underline">Coming Home Support</a> and we'll update your profile.
           </div>
           
 
@@ -295,7 +295,10 @@ By typing my full legal name below, I acknowledge that I have read and agree to 
       {!optedOutConfirm && step === 4 && (
         <StepCard>
           <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-2">Step 4 of 4 — Review & Sign</p>
-          <h2 className="text-xl font-bold text-[#2F3E4E] mb-4">Service Agreement</h2>
+          <div className="flex items-end justify-between mb-4">
+            <h2 className="text-xl font-bold text-[#2F3E4E]">Service Agreement</h2>
+            <p className="text-xs text-[#7A8F79] italic">(scroll to bottom to review before continuing)</p>
+          </div>
 
           <div className="bg-[#F4F6F5] rounded-lg p-4 text-sm text-[#2F3E4E] whitespace-pre-line leading-relaxed max-h-64 overflow-y-auto mb-6 border border-[#D9E1E8]">
             {agreementSummary}

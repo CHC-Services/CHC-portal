@@ -227,6 +227,93 @@ export default function ProfilePage() {
         </button>
         {pwMessage && <p className="mt-2 text-sm text-center text-[#2F3E4E]">{pwMessage}</p>}
       </form>
+
+      {/* myBilling section */}
+      <BillingSection profile={profile} onUnenroll={() => setProfile({ ...profile, enrolledInBilling: false })} />
+
+    </div>
+  )
+}
+
+function BillingSection({ profile, onUnenroll }: { profile: any; onUnenroll: () => void }) {
+  const [confirming, setConfirming] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [done, setDone] = useState(false)
+
+  async function handleUnenroll() {
+    setLoading(true)
+    await fetch('/api/nurse/unenroll', { method: 'POST', credentials: 'include' })
+    setLoading(false)
+    setDone(true)
+    setConfirming(false)
+    onUnenroll()
+  }
+
+  const planLabels: Record<string, string> = {
+    A1: 'Plan A1 — Single Payer (BCBS)',
+    A2: 'Plan A2 — Single Payer (Medicaid)',
+    B:  'Plan B — Dual Payer (BCBS + Medicaid)',
+    custom: 'Custom Arrangement',
+  }
+
+  return (
+    <div className="mt-8 bg-white p-6 rounded shadow max-w-lg">
+      <h2 className="text-xl font-semibold mb-4 text-[#2F3E4E]">
+        <span style={{ color: '#7A8F79', fontStyle: 'italic' }}>my</span>Billing
+      </h2>
+
+      {profile.enrolledInBilling === true ? (
+        <div className="space-y-3">
+          <div className="bg-[#F4F6F5] rounded-lg p-4 text-sm space-y-1">
+            <p><span className="text-[#7A8F79] font-semibold">Status:</span> <span className="text-green-700 font-semibold">Enrolled</span></p>
+            {profile.billingPlan && (
+              <p><span className="text-[#7A8F79] font-semibold">Plan:</span> {planLabels[profile.billingPlan] || profile.billingPlan}</p>
+            )}
+            {profile.planStartDate && (
+              <p><span className="text-[#7A8F79] font-semibold">Start Date:</span> {profile.planStartDate}</p>
+            )}
+            {profile.billingDurationType && (
+              <p><span className="text-[#7A8F79] font-semibold">Duration:</span> {profile.billingDurationType === 'full_year' ? 'Full Year' : profile.billingDurationNote || 'Policy Specific'}</p>
+            )}
+          </div>
+
+          {done ? (
+            <p className="text-sm text-[#7A8F79]">Unenrollment request submitted. Your administrator will be in touch.</p>
+          ) : confirming ? (
+            <div className="border border-red-200 rounded-lg p-4 bg-red-50 space-y-3">
+              <p className="text-sm text-red-700 font-semibold">Are you sure you want to unenroll from billing services?</p>
+              <p className="text-xs text-red-500">Your administrator will be notified. You can re-enroll at any time.</p>
+              <div className="flex gap-2">
+                <button onClick={() => setConfirming(false)} className="flex-1 border border-[#D9E1E8] text-[#7A8F79] py-2 rounded-lg text-sm font-semibold hover:border-[#7A8F79] transition">
+                  Cancel
+                </button>
+                <button onClick={handleUnenroll} disabled={loading} className="flex-1 bg-red-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-red-700 transition disabled:opacity-50">
+                  {loading ? 'Submitting…' : 'Yes, Unenroll Me'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirming(true)}
+              className="w-full border border-red-300 text-red-600 py-2 rounded-lg text-sm font-semibold hover:bg-red-50 transition"
+            >
+              Request Unenrollment
+            </button>
+          )}
+        </div>
+      ) : profile.enrolledInBilling === false ? (
+        <div className="space-y-3">
+          <p className="text-sm text-[#7A8F79]">You are not currently enrolled in billing services.</p>
+          <a
+            href="/nurse/onboarding"
+            className="block text-center w-full bg-[#2F3E4E] text-white py-2 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition"
+          >
+            Enroll in Billing Services
+          </a>
+        </div>
+      ) : (
+        <p className="text-sm text-[#7A8F79]">Complete your onboarding to set up billing services.</p>
+      )}
     </div>
   )
 }

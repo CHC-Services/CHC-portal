@@ -19,8 +19,16 @@ type Nurse = {
   timeEntries: TimeEntry[]
 }
 
-function NurseRow({ nurse }: { nurse: Nurse }) {
+function NurseRow({ nurse, onDeleted }: { nurse: Nurse; onDeleted: () => void }) {
   const [open, setOpen] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  async function handleDelete() {
+    setDeleting(true)
+    await fetch(`/api/admin/nurses/${nurse.id}`, { method: 'DELETE', credentials: 'include' })
+    onDeleted()
+  }
 
   const totalHours = nurse.timeEntries.reduce((sum, e) => sum + e.hours, 0)
 
@@ -97,6 +105,25 @@ function NurseRow({ nurse }: { nurse: Nurse }) {
               </tbody>
             </table>
           )}
+
+          {/* Delete nurse */}
+          <div className="mt-4 pt-4 border-t border-[#D9E1E8]">
+            {confirmDelete ? (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
+                <p className="text-sm text-red-700 font-semibold">Permanently delete {nurse.displayName}? This cannot be undone.</p>
+                <div className="flex gap-2">
+                  <button onClick={() => setConfirmDelete(false)} className="flex-1 border border-[#D9E1E8] text-[#7A8F79] py-1.5 rounded text-sm font-semibold">Cancel</button>
+                  <button onClick={handleDelete} disabled={deleting} className="flex-1 bg-red-600 text-white py-1.5 rounded text-sm font-semibold hover:bg-red-700 disabled:opacity-50">
+                    {deleting ? 'Deleting…' : 'Yes, Delete'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setConfirmDelete(true)} className="text-xs text-red-500 hover:text-red-700 underline underline-offset-2">
+                Delete this nurse
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -108,6 +135,13 @@ export default function AdminDashboard() {
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
   const [displayName, setDisplayName] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [dob, setDob] = useState('')
+  const [npiNumber, setNpiNumber] = useState('')
+  const [medicaidNumber, setMedicaidNumber] = useState('')
+  const [bcbsPayorId, setBcbsPayorId] = useState('')
   const [message, setMessage] = useState('')
   const [nurses, setNurses] = useState<Nurse[]>([])
   const [loadingNurses, setLoadingNurses] = useState(true)
@@ -135,11 +169,20 @@ export default function AdminDashboard() {
     const data = await res.json()
 
     if (res.ok) {
+      // Patch extra profile fields if any were filled in
+      const profileId = data.nurseProfile?.id
+      if (profileId && (firstName || lastName || phone || dob || npiNumber || medicaidNumber || bcbsPayorId)) {
+        await fetch(`/api/admin/nurses/${profileId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ firstName, lastName, phone, dob, npiNumber, medicaidNumber, bcbsPayorId })
+        })
+      }
       setMessage('Nurse account created successfully.')
-      setEmail('')
-      setPassword('')
-      setName('')
-      setDisplayName('')
+      setEmail(''); setPassword(''); setName(''); setDisplayName('')
+      setFirstName(''); setLastName(''); setPhone(''); setDob('')
+      setNpiNumber(''); setMedicaidNumber(''); setBcbsPayorId('')
       setFormOpen(false)
       loadNurses()
     } else {
@@ -203,38 +246,25 @@ export default function AdminDashboard() {
             Create Nurse Account
           </h2>
           <form onSubmit={createNurse} className="space-y-3">
-            <input
-              type="text"
-              placeholder="Internal Name (admin-visible)"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-            />
-            <input
-              type="text"
-              placeholder="Display Name (nurse-visible)"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              required
-              className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-            />
-            <input
-              type="email"
-              placeholder="Nurse Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-            />
-            <input
-              type="password"
-              placeholder="Temporary Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-            />
+            <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold pt-1">Account</p>
+            <input type="text" placeholder="Internal Name (admin-visible)" value={name} onChange={e => setName(e.target.value)} required className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+            <input type="text" placeholder="Display Name (nurse-visible)" value={displayName} onChange={e => setDisplayName(e.target.value)} required className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+            <input type="email" placeholder="Nurse Email" value={email} onChange={e => setEmail(e.target.value)} required className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+            <input type="password" placeholder="Temporary Password" value={password} onChange={e => setPassword(e.target.value)} required className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+
+            <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold pt-2">Provider Info <span className="normal-case font-normal">(optional — can be filled in later)</span></p>
+            <div className="grid grid-cols-2 gap-2">
+              <input type="text" placeholder="First Name" value={firstName} onChange={e => setFirstName(e.target.value)} className="border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+              <input type="text" placeholder="Last Name" value={lastName} onChange={e => setLastName(e.target.value)} className="border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <input type="text" placeholder="Phone" value={phone} onChange={e => setPhone(e.target.value)} className="border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+              <input type="text" placeholder="Date of Birth" value={dob} onChange={e => setDob(e.target.value)} className="border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+            </div>
+            <input type="text" placeholder="NPI Number" value={npiNumber} onChange={e => setNpiNumber(e.target.value)} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+            <input type="text" placeholder="Medicaid Number" value={medicaidNumber} onChange={e => setMedicaidNumber(e.target.value)} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+            <input type="text" placeholder="BCBS Payor ID" value={bcbsPayorId} onChange={e => setBcbsPayorId(e.target.value)} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+
             <button
               type="submit"
               className="w-full bg-[#2F3E4E] text-white py-2 rounded-lg hover:bg-[#7A8F79] transition font-semibold"
@@ -264,7 +294,7 @@ export default function AdminDashboard() {
         ) : (
           <div className="space-y-3">
             {nurses.map(nurse => (
-              <NurseRow key={nurse.id} nurse={nurse} />
+              <NurseRow key={nurse.id} nurse={nurse} onDeleted={loadNurses} />
             ))}
           </div>
         )}

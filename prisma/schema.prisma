@@ -117,6 +117,7 @@ model TimeEntry {
   workDate  DateTime
   hours     Float
   notes     String?
+  billed    Boolean  @default(false)
   createdAt DateTime @default(now())
 
   nurse     NurseProfile @relation(fields: [nurseId], references: [id])

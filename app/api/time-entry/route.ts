@@ -11,7 +11,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const entries = await prisma.timeEntry.findMany({
+  const entries = await (prisma.timeEntry.findMany as any)({
     where: { nurseId: session.nurseProfileId! },
     orderBy: { workDate: 'desc' }
   })
@@ -30,9 +30,9 @@ export async function DELETE(req: Request) {
 
   const { ids } = await req.json() as { ids: string[] }
 
-  // Only delete entries that belong to this nurse
-  await prisma.timeEntry.deleteMany({
-    where: { id: { in: ids }, nurseId: session.nurseProfileId! }
+  // Only delete entries that belong to this nurse AND are not yet billed
+  await (prisma.timeEntry.deleteMany as any)({
+    where: { id: { in: ids }, nurseId: session.nurseProfileId!, billed: false }
   })
 
   return NextResponse.json({ ok: true })

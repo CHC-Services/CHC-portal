@@ -8,6 +8,7 @@ type TimeEntry = {
   workDate: string
   hours: number
   notes: string | null
+  billed: boolean
   createdAt: string
 }
 
@@ -104,7 +105,10 @@ export default function NurseDashboard() {
   }
 
   function toggleAll() {
-    setSelected(prev => prev.size === entries.length ? new Set() : new Set(entries.map(e => e.id)))
+    const selectable = entries.filter(e => !e.billed)
+    setSelected(prev =>
+      prev.size === selectable.length ? new Set() : new Set(selectable.map(e => e.id))
+    )
   }
 
   useEffect(() => {
@@ -264,7 +268,7 @@ export default function NurseDashboard() {
 
         {/* History panel */}
         <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center justify-between mb-4 pb-2 border-b border-[#D9E1E8]">
+          <div className="flex items-center justify-between mb-1 pb-2 border-b border-[#D9E1E8]">
             <h2 className="text-lg font-semibold text-[#2F3E4E]">Submission History</h2>
             {selected.size > 0 && (
               <button
@@ -276,6 +280,7 @@ export default function NurseDashboard() {
               </button>
             )}
           </div>
+          <p className="text-xs text-[#7A8F79] mb-3 italic">To delete an entry line, check the box for that row.</p>
 
           {loadingHistory ? (
             <p className="text-sm text-[#7A8F79]">Loading…</p>
@@ -289,7 +294,7 @@ export default function NurseDashboard() {
                     <th className="py-2 pr-2 w-6">
                       <input
                         type="checkbox"
-                        checked={selected.size === entries.length}
+                        checked={entries.filter(e => !e.billed).length > 0 && selected.size === entries.filter(e => !e.billed).length}
                         onChange={toggleAll}
                         className="accent-[#7A8F79]"
                       />
@@ -303,18 +308,28 @@ export default function NurseDashboard() {
                   {entries.map((entry, i) => (
                     <tr
                       key={entry.id}
-                      className={`border-b border-[#D9E1E8] last:border-0 ${selected.has(entry.id) ? 'bg-red-50' : i % 2 === 0 ? '' : 'bg-[#F4F6F5]'}`}
+                      className={`border-b border-[#D9E1E8] last:border-0 ${
+                        entry.billed
+                          ? 'bg-green-50'
+                          : selected.has(entry.id)
+                          ? 'bg-red-50'
+                          : i % 2 === 0 ? '' : 'bg-[#F4F6F5]'
+                      }`}
                     >
                       <td className="py-2 pr-2">
-                        <input
-                          type="checkbox"
-                          checked={selected.has(entry.id)}
-                          onChange={() => toggleSelect(entry.id)}
-                          className="accent-[#7A8F79]"
-                        />
+                        {entry.billed ? (
+                          <span title="Locked — billed by admin" className="text-green-500 text-xs select-none">🔒</span>
+                        ) : (
+                          <input
+                            type="checkbox"
+                            checked={selected.has(entry.id)}
+                            onChange={() => toggleSelect(entry.id)}
+                            className="accent-[#7A8F79]"
+                          />
+                        )}
                       </td>
                       <td className="py-2 pr-4 text-[#2F3E4E] whitespace-nowrap">
-                        {new Date(entry.workDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {new Date(entry.workDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
                       </td>
                       <td className="py-2 pr-4 text-right font-semibold text-[#2F3E4E]">{entry.hours}</td>
                       <td className="py-2 text-[#7A8F79] italic text-xs">{entry.notes || '—'}</td>

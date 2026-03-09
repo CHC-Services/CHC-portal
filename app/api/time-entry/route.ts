@@ -19,6 +19,25 @@ export async function GET(req: Request) {
   return NextResponse.json(entries)
 }
 
+export async function DELETE(req: Request) {
+  const cookie = req.headers.get('cookie') || ''
+  const token = cookie.split('auth_token=').pop()?.split(';')[0]
+  const session = token ? verifyToken(token) : null
+
+  if (!session || session.role !== 'nurse') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const { ids } = await req.json() as { ids: string[] }
+
+  // Only delete entries that belong to this nurse
+  await prisma.timeEntry.deleteMany({
+    where: { id: { in: ids }, nurseId: session.nurseProfileId! }
+  })
+
+  return NextResponse.json({ ok: true })
+}
+
 export async function POST(req: Request) {
   const cookie = req.headers.get('cookie') || ''
   const token = cookie.split('auth_token=').pop()?.split(';')[0]

@@ -243,13 +243,13 @@ By typing my full legal name below, I acknowledge that I have read and agree to 
           <div className="space-y-3">
             <ChoiceButton
               label="Full year — ongoing"
-              sub="Billing continues for the entire policy year on a recurring basis."
+              sub="Billing continues for the full plan year & will adjust to the lower rate if plan maximums warrant no longer being required to bill a carrier."
               selected={answers.billingDurationType === 'full_year'}
               onClick={() => set({ billingDurationType: 'full_year', billingDurationNote: '' })}
             />
             <ChoiceButton
               label="Policy-specific duration"
-              sub="For example: only the first 100 days, or through a specific end date."
+              sub="Example: only needing BCBS billing for the first 100 days, or through a specific end date. Provider will take over their billing again once duration reached."
               selected={answers.billingDurationType === 'policy_specific'}
               onClick={() => set({ billingDurationType: 'policy_specific' })}
             />
@@ -271,8 +271,9 @@ By typing my full legal name below, I acknowledge that I have read and agree to 
           )}
 
           <div className="mt-5 p-4 bg-[#F4F6F5] rounded-lg text-xs text-[#7A8F79] leading-relaxed">
-            You are free to cancel this agreement or make changes to the duration or number of insurance carriers at any time — simply reach out to Coming Home Care and we'll update your arrangement promptly.
+            You are free to start/stop services at any time without any minimum enrollment obligation. If you have any questions or need to make changes, please reach out to <a href='mailto:support@cominghomecare.com' className="text-[#2F3E4E] underline">Coming Home Care</a> and we'll update your arrangement promptly.
           </div>
+          
 
           <div className="flex gap-3 mt-6">
             <button type="button" onClick={() => setStep(2)} className="flex-1 border border-[#D9E1E8] text-[#7A8F79] py-3 rounded-xl hover:border-[#7A8F79] transition font-semibold">
@@ -312,8 +313,8 @@ By typing my full legal name below, I acknowledge that I have read and agree to 
               className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
             />
             <p className="text-xs text-[#7A8F79] mt-1">
-              By signing, you confirm you have read and agree to the terms above.
-              Date: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+              By signing, you confirm you have read and agree to the terms above. 
+              <p><b>Date:</b> {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
             </p>
           </div>
 

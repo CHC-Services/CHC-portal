@@ -143,6 +143,8 @@ export default function AdminDashboard() {
   const [medicaidNumber, setMedicaidNumber] = useState('')
   const [bcbsPayorId, setBcbsPayorId] = useState('')
   const [message, setMessage] = useState('')
+  const [messageIsError, setMessageIsError] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [nurses, setNurses] = useState<Nurse[]>([])
   const [loadingNurses, setLoadingNurses] = useState(true)
   const [formOpen, setFormOpen] = useState(false)
@@ -158,6 +160,8 @@ export default function AdminDashboard() {
 
   async function createNurse(e: React.FormEvent) {
     e.preventDefault()
+    setSubmitting(true)
+    setMessage('')
 
     const res = await fetch('/api/auth/register', {
       method: 'POST',
@@ -179,15 +183,18 @@ export default function AdminDashboard() {
           body: JSON.stringify({ firstName, lastName, phone, dob, npiNumber, medicaidNumber, bcbsPayorId })
         })
       }
-      setMessage('Nurse account created successfully.')
       setEmail(''); setPassword(''); setName(''); setDisplayName('')
       setFirstName(''); setLastName(''); setPhone(''); setDob('')
       setNpiNumber(''); setMedicaidNumber(''); setBcbsPayorId('')
       setFormOpen(false)
+      setMessageIsError(false)
+      setMessage(`Nurse account created successfully. A welcome email has been sent to ${data.email}.`)
       loadNurses()
     } else {
+      setMessageIsError(true)
       setMessage(data.error || 'Error creating nurse.')
     }
+    setSubmitting(false)
   }
 
   const totalHoursThisMonth = nurses.reduce((sum, nurse) => {
@@ -221,7 +228,7 @@ export default function AdminDashboard() {
           </div>
         </div>
         <button
-          onClick={() => setFormOpen(!formOpen)}
+          onClick={() => { setFormOpen(!formOpen); setMessage('') }}
           className="bg-[#2F3E4E] text-white px-4 py-2 rounded-lg hover:bg-[#7A8F79] transition text-sm font-semibold"
         >
           {formOpen ? 'Cancel' : '+ Add Nurse'}
@@ -272,16 +279,23 @@ export default function AdminDashboard() {
 
             <button
               type="submit"
-              className="w-full bg-[#2F3E4E] text-white py-2 rounded-lg hover:bg-[#7A8F79] transition font-semibold"
+              disabled={submitting}
+              className="w-full bg-[#2F3E4E] text-white py-2 rounded-lg hover:bg-[#7A8F79] transition font-semibold disabled:opacity-60"
             >
-              Create Nurse
+              {submitting ? 'Creating…' : 'Create Nurse'}
             </button>
           </form>
-          {message && (
-            <p className={`mt-3 text-sm text-center font-medium ${message.includes('Error') || message.includes('error') ? 'text-red-500' : 'text-[#7A8F79]'}`}>
-              {message}
-            </p>
+          {/* Error shown inside the form while it's open */}
+          {message && messageIsError && (
+            <p className="mt-3 text-sm text-center font-medium text-red-500">{message}</p>
           )}
+        </div>
+      )}
+
+      {/* Success banner — outside the form so it persists after the form closes */}
+      {message && !messageIsError && (
+        <div className="mb-6 max-w-lg px-4 py-3 rounded-xl text-sm font-medium bg-[#f0f4f0] text-[#2F3E4E] border border-[#7A8F79]">
+          {message}
         </div>
       )}
 

@@ -77,11 +77,18 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
 
   const { id } = await params
 
-  // NurseProfile id → get userId so we can delete the User (cascades to profile)
   const profile = await prisma.nurseProfile.findUnique({ where: { id }, select: { userId: true } })
   if (!profile) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  await prisma.user.delete({ where: { id: profile.userId } })
+  // Delete in dependency order:
+  // 1. TimeEntries (no cascade from NurseProfile)
+  // 2. NurseProfile (cascades Claims + EnrollmentLogs)
+  // 3. User
+  await prisma.$transaction([
+    prisma.timeEntry.deleteMany({ where: { nurseId: id } }),
+    prisma.nurseProfile.delete({ where: { id } }),
+    prisma.user.delete({ where: { id: profile.userId } }),
+  ])
 
   return NextResponse.json({ ok: true })
 }

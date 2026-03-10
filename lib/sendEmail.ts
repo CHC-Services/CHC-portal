@@ -22,7 +22,7 @@ export async function sendWelcomeEmail({
     const { error } = await resend.emails.send({
       from: FROM,
       to,
-      subject: 'Your Coming Home Care Portal Account is Ready',
+      subject: 'WELCOME: Your Coming Home Care Provider Portal Account is Ready',
       html: `
         <div style="font-family:sans-serif;max-width:520px;padding:32px;color:#2F3E4E">
           <h2 style="margin:0 0 8px;color:#2F3E4E">Welcome to the CHC Provider Portal</h2>
@@ -67,9 +67,9 @@ export async function sendEnrollmentAlert({
   if (!process.env.RESEND_API_KEY) return false
 
   const subject =
-    action === 'opted_out'   ? `${nurseName} opted out of billing services` :
-    action === 'opted_in'    ? `${nurseName} enrolled in billing services` :
-                               `${nurseName} re-enrolled in billing services`
+    action === 'opted_out'   ? `BILLING: ${nurseName} – Opted Out of Billing Services` :
+    action === 'opted_in'    ? `BILLING: ${nurseName} – Enrolled in Billing Services` :
+                               `BILLING: ${nurseName} – Re-Enrolled in Billing Services`
 
   const body =
     action === 'opted_out'

@@ -115,7 +115,7 @@ const guides: ProcessGuide[] = [
           'Once you receive your NY Medicaid Provider ID and approval letter, send a copy to Coming Home Care so we can update your profile and begin submitting claims on your behalf.',
         link: {
           label: 'Email Support →',
-          href: 'mailto:support@cominghomecare.com',
+          href: 'mailto:support@cominghomecare.com?subject=ENROLLMENT%3A%20NY%20Medicaid%20Provider%20Enrollment%20Update&body=Hi%20CHC%20Team%2C%0A%0AI%20have%20completed%20my%20NY%20Medicaid%20enrollment%20and%20wanted%20to%20share%20my%20provider%20ID%2F%20approval%20letter.%0A%0AMy%20Medicaid%20Provider%20ID%20(MMIS%20ID)%3A%20%0A%0AThank%20you%2C%0A',
         },
       },
     ],
@@ -173,7 +173,7 @@ const guides: ProcessGuide[] = [
           'Share your BCBS Provider ID and effective date with us so we can begin routing claims correctly through our billing system.',
         link: {
           label: 'Email Support →',
-          href: 'mailto:support@cominghomecare.com',
+          href: 'mailto:support@cominghomecare.com?subject=BILLING%3A%20BCBS%20Credentialing%20Approved%20%E2%80%93%20Provider%20ID%20Update&body=Hi%20CHC%20Team%2C%0A%0AMy%20Empire%20BCBS%20credentialing%20has%20been%20approved.%20Here%20are%20my%20details%3A%0A%0ABCBS%20Provider%20ID%3A%20%0AEffective%20Date%3A%20%0A%0APlease%20update%20my%20profile%20and%20let%20me%20know%20if%20anything%20else%20is%20needed.%0A%0AThank%20you%2C%0A',
         },
       },
     ],
@@ -323,7 +323,7 @@ export default function ResourcesPage() {
             </p>
           </div>
           <a
-            href="mailto:support@cominghomecare.com"
+            href="mailto:support@cominghomecare.com?subject=SUPPORT%3A%20Provider%20Portal%20Question&body=Hi%20CHC%20Team%2C%0A%0A(Please%20replace%20%22SUPPORT%22%20in%20the%20subject%20line%20with%20one%20of%20the%20following%20if%20it%20applies%3A%20ENROLLMENT%20%7C%20BILLING%20%7C%20CREDENTIALING%20%7C%20PROFILE)%0A%0AMy%20question%3A%0A%0AThank%20you%2C%0A"
             className="flex-shrink-0 bg-[#2F3E4E] text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-[#7A8F79] transition"
           >
             Contact Support →

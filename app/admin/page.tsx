@@ -163,38 +163,44 @@ export default function AdminDashboard() {
     setSubmitting(true)
     setMessage('')
 
-    const res = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ email, password, role: 'nurse', name, displayName })
-    })
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, password, role: 'nurse', name, displayName })
+      })
 
-    const data = await res.json()
+      const data = await res.json()
 
-    if (res.ok) {
-      // Patch extra profile fields if any were filled in
-      const profileId = data.nurseProfile?.id
-      if (profileId && (firstName || lastName || phone || dob || npiNumber || medicaidNumber || bcbsPayorId)) {
-        await fetch(`/api/admin/nurses/${profileId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ firstName, lastName, phone, dob, npiNumber, medicaidNumber, bcbsPayorId })
-        })
+      if (res.ok) {
+        // Patch extra profile fields if any were filled in
+        const profileId = data.nurseProfile?.id
+        if (profileId && (firstName || lastName || phone || dob || npiNumber || medicaidNumber || bcbsPayorId)) {
+          await fetch(`/api/admin/nurses/${profileId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ firstName, lastName, phone, dob, npiNumber, medicaidNumber, bcbsPayorId })
+          })
+        }
+        setEmail(''); setPassword(''); setName(''); setDisplayName('')
+        setFirstName(''); setLastName(''); setPhone(''); setDob('')
+        setNpiNumber(''); setMedicaidNumber(''); setBcbsPayorId('')
+        setFormOpen(false)
+        setMessageIsError(false)
+        setMessage(`Nurse account created successfully. A welcome email has been sent to ${data.email}.`)
+        loadNurses()
+      } else {
+        setMessageIsError(true)
+        setMessage(data.error || 'Error creating nurse.')
       }
-      setEmail(''); setPassword(''); setName(''); setDisplayName('')
-      setFirstName(''); setLastName(''); setPhone(''); setDob('')
-      setNpiNumber(''); setMedicaidNumber(''); setBcbsPayorId('')
-      setFormOpen(false)
-      setMessageIsError(false)
-      setMessage(`Nurse account created successfully. A welcome email has been sent to ${data.email}.`)
-      loadNurses()
-    } else {
+    } catch {
       setMessageIsError(true)
-      setMessage(data.error || 'Error creating nurse.')
+      setMessage('Network error — please try again.')
+    } finally {
+      setSubmitting(false)
     }
-    setSubmitting(false)
   }
 
   const totalHoursThisMonth = nurses.reduce((sum, nurse) => {

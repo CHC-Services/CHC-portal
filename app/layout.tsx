@@ -13,6 +13,8 @@ export default async function RootLayout({
     <html lang="en">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="icon" href="/favicon.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
       <body className="pt-[220px] md:pt-[200px]" >
         <Banner user={user} />

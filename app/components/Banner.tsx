@@ -72,6 +72,12 @@ export default function Banner({ user }: BannerProps) {
                     >
                         Home
                     </Link>
+                    <Link
+                        href="/resources"
+                        className={`transition ${pathname === "/resources" ? "underline underline-offset-4" : "hover:text-[#7A8F79] scale-[1.02]"}`}
+                    >
+                        Resources
+                    </Link>
                     {role === "nurse" && (
                         <>
                         <Link

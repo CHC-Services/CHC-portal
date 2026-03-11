@@ -12,35 +12,42 @@ async function generateAccountNumber(): Promise<string> {
 }
 
 export async function POST(req: Request) {
-  const { email, password, role, name, displayName } = await req.json()
+  try {
+    const { email, password, role, name, displayName } = await req.json()
 
-  const userCount = await prisma.user.count()
+    const userCount = await prisma.user.count()
 
-  if (userCount > 0) {
-    const cookie = req.headers.get('cookie') || ''
-    const token = cookie.split('auth_token=').pop()?.split(';')[0]
-    const session = token ? verifyToken(token) : null
+    if (userCount > 0) {
+      const cookie = req.headers.get('cookie') || ''
+      const token = cookie.split('auth_token=').pop()?.split(';')[0]
+      const session = token ? verifyToken(token) : null
 
-    if (!session || session.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      if (!session || session.role !== 'admin') {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
     }
+
+    const hashed = await bcrypt.hash(password, 10)
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const user = await (prisma.user.create as any)({
+      data: {
+        email,
+        password: hashed,
+        name: name || email,
+        role: role === 'admin' ? 'admin' : 'nurse',
+        nurseProfile:
+          role === 'nurse'
+            ? { create: { displayName: displayName || email, accountNumber: await generateAccountNumber() } }
+            : undefined
+      },
+      select: { id: true, email: true, role: true, nurseProfile: { select: { id: true } } }
+    })
+
+    return NextResponse.json(user)
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('Register error:', msg)
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
-
-  const hashed = await bcrypt.hash(password, 10)
-
-  const user = await (prisma.user.create as any)({
-    data: {
-      email,
-      password: hashed,
-      name: name || email,
-      role: role === 'admin' ? 'admin' : 'nurse',
-      nurseProfile:
-        role === 'nurse'
-          ? { create: { displayName: displayName || email, accountNumber: await generateAccountNumber() } }
-          : undefined
-    },
-    select: { id: true, email: true, role: true, nurseProfile: { select: { id: true } } }
-  })
-
-  return NextResponse.json(user)
 }

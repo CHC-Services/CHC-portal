@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import bcrypt from 'bcrypt'
 import { prisma } from '../../../../lib/prisma'
 import { verifyToken } from '../../../../lib/auth'
+import { sendWelcomeEmail } from '../../../../lib/sendEmail'
 
 async function generateAccountNumber(): Promise<string> {
   while (true) {
@@ -43,6 +44,15 @@ export async function POST(req: Request) {
       },
       select: { id: true, email: true, role: true, nurseProfile: { select: { id: true } } }
     })
+
+    if (role === 'nurse') {
+      sendWelcomeEmail({
+        to: email,
+        displayName: displayName || email,
+        email,
+        password,
+      })
+    }
 
     return NextResponse.json(user)
   } catch (err: unknown) {

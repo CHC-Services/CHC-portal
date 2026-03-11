@@ -1,6 +1,5 @@
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 const ALERT_TO = 'enroll@cominghomecare.com'
 const FROM = 'Coming Home Care <support@cominghomecare.com>'
 const PORTAL_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://portal.cominghomecare.com'
@@ -17,6 +16,7 @@ export async function sendWelcomeEmail({
   password: string
 }): Promise<boolean> {
   if (!process.env.RESEND_API_KEY) return false
+  const resend = new Resend(process.env.RESEND_API_KEY)
 
   try {
     const { error } = await resend.emails.send({
@@ -65,6 +65,7 @@ export async function sendEnrollmentAlert({
   details?: string
 }): Promise<boolean> {
   if (!process.env.RESEND_API_KEY) return false
+  const resend = new Resend(process.env.RESEND_API_KEY)
 
   const subject =
     action === 'opted_out'   ? `BILLING: ${nurseName} – Opted Out of Billing Services` :

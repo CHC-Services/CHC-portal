@@ -171,9 +171,9 @@ export default function AdminDashboard() {
         body: JSON.stringify({ email, password, role: 'nurse', name, displayName })
       })
 
-      const text = await res.text()
-      let data: Record<string, unknown>
-      try { data = JSON.parse(text) } catch { throw new Error(`Server error (${res.status}): ${text.slice(0, 200)}`) }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let data: any
+      try { data = await res.json() } catch { throw new Error(`Server error (${res.status})`) }
 
       if (res.ok) {
         // Patch extra profile fields if any were filled in
@@ -191,7 +191,7 @@ export default function AdminDashboard() {
         setNpiNumber(''); setMedicaidNumber(''); setBcbsPayorId('')
         setFormOpen(false)
         setMessageIsError(false)
-        setMessage(`Nurse account created successfully. A welcome email has been sent to ${data.email}.`)
+        setMessage(`Nurse account created successfully for ${data.email}.`)
         loadNurses()
       } else {
         setMessageIsError(true)

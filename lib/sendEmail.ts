@@ -2,7 +2,7 @@ import { Resend } from 'resend'
 
 const ALERT_TO = 'enroll@cominghomecare.com'
 const FROM = 'Coming Home Care <support@cominghomecare.com>'
-const PORTAL_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://portal.cominghomecare.com'
+const PORTAL_URL = process.env.BASE_URL || 'https://portal.cominghomecare.com'
 
 export async function sendWelcomeEmail({
   to,

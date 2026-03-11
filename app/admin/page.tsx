@@ -171,7 +171,9 @@ export default function AdminDashboard() {
         body: JSON.stringify({ email, password, role: 'nurse', name, displayName })
       })
 
-      const data = await res.json()
+      const text = await res.text()
+      let data: Record<string, unknown>
+      try { data = JSON.parse(text) } catch { throw new Error(`Server error (${res.status}): ${text.slice(0, 200)}`) }
 
       if (res.ok) {
         // Patch extra profile fields if any were filled in
@@ -195,9 +197,9 @@ export default function AdminDashboard() {
         setMessageIsError(true)
         setMessage(data.error || 'Error creating nurse.')
       }
-    } catch {
+    } catch (err: unknown) {
       setMessageIsError(true)
-      setMessage('Network error — please try again.')
+      setMessage('Error: ' + (err instanceof Error ? err.message : String(err)))
     } finally {
       setSubmitting(false)
     }

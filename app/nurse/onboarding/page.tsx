@@ -26,11 +26,13 @@ function Question({ text }: { text: string }) {
 function ChoiceButton({
   label,
   sub,
+  subNode,
   selected,
   onClick,
 }: {
   label: string
   sub?: string
+  subNode?: React.ReactNode
   selected: boolean
   onClick: () => void
 }) {
@@ -46,6 +48,7 @@ function ChoiceButton({
     >
       <p className="font-semibold">{label}</p>
       {sub && <p className="text-sm text-[#7A8F79] mt-0.5">{sub}</p>}
+      {subNode && <p className="text-sm text-[#7A8F79] mt-0.5">{subNode}</p>}
     </button>
   )
 }
@@ -186,7 +189,7 @@ By typing my full legal name below, I acknowledge that I have read and agree to 
             />
             <ChoiceButton
               label="No — I'll manage my own billing"
-              sub="You can always enroll later by contacting Coming Home Care."
+              subNode={<>You can always enroll later by clicking &lsquo;Start Enrollment&rsquo; in the <em>my</em>Billing section of your profile, or by{' '}<a href="mailto:enroll@cominghomecare.com?subject=Billing%20Enrollment%20Request&body=Hi%20Coming%20Home%20Care%2C%0A%0AI%20would%20like%20to%20enroll%20in%20billing%20services.%0A%0AName%3A%20%0A%0AThank%20you." className="underline text-[#2F3E4E] hover:text-[#7A8F79]" onClick={e => e.stopPropagation()}>contacting us</a>.</>}
               selected={answers.enrolledInBilling === false}
               onClick={() => set({ enrolledInBilling: false })}
             />

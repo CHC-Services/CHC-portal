@@ -92,7 +92,7 @@ export default function ProfilePage() {
       </div>
 
       {profile.accountNumber && (
-        <div className="bg-[#2F3E4E] text-white rounded-xl px-6 py-4 max-w-lg flex items-center justify-between mb-4">
+        <div className="bg-[#2F3E4E] text-white rounded-xl px-6 py-4 max-w-3xl flex items-center justify-between mb-6">
           <div>
             <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold">Account Number</p>
             <p className="text-2xl font-bold tracking-widest mt-0.5">{profile.accountNumber}</p>
@@ -103,133 +103,142 @@ export default function ProfilePage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="bg-white p-6 rounded shadow max-w-lg space-y-4">
-        <h2 className="text-xl font-semibold mb-4 text-[#2F3E4E]">Personal Information</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl">
 
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-[#2F3E4E]">Email (<a href='mailto:supportn@cominghomecare.com'>submit request to update email <u>here</u>.</a>)</label>
-          <input
-            type="text"
-            value={user?.email || ''}
-            disabled
-            className="w-full border border-[#D9E1E8] p-2 rounded bg-gray-100 text-[#2F3E4E]"
-          />
+        {/* Left column */}
+        <div className="space-y-6">
+          <form onSubmit={handleSubmit} className="bg-white p-6 rounded shadow space-y-4">
+            <h2 className="text-xl font-semibold mb-4 text-[#2F3E4E]">Personal Information</h2>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-[#2F3E4E]">Email (<a href='mailto:supportn@cominghomecare.com'>submit request to update email <u>here</u>.</a>)</label>
+              <input
+                type="text"
+                value={user?.email || ''}
+                disabled
+                className="w-full border border-[#D9E1E8] p-2 rounded bg-gray-100 text-[#2F3E4E]"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-[#2F3E4E]">Display Name</label>
+              <input
+                type="text"
+                value={profile.displayName || ''}
+                onChange={(e) => setProfile({ ...profile, displayName: e.target.value })}
+                className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <input
+                type="text"
+                placeholder="Address"
+                value={profile.address || ''}
+                onChange={(e) => setProfile({ ...profile, address: e.target.value })}
+                className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
+              />
+              <input
+                type="text"
+                placeholder="City"
+                value={profile.city || ''}
+                onChange={(e) => setProfile({ ...profile, city: e.target.value })}
+                className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
+              />
+              <input
+                type="text"
+                placeholder="State"
+                value={profile.state || ''}
+                onChange={(e) => setProfile({ ...profile, state: e.target.value })}
+                className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
+              />
+              <input
+                type="text"
+                placeholder="ZIP Code"
+                value={profile.zip || ''}
+                onChange={(e) => setProfile({ ...profile, zip: e.target.value })}
+                className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-[#2F3E4E]">NPI Number</label>
+              <input
+                type="text"
+                value={profile.npiNumber || ''}
+                onChange={(e) => setProfile({ ...profile, npiNumber: e.target.value })}
+                className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-[#2F3E4E]">Medicaid Number</label>
+              <input
+                type="text"
+                value={profile.medicaidNumber || ''}
+                onChange={(e) => setProfile({ ...profile, medicaidNumber: e.target.value })}
+                className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-[#2F3E4E]">Billing Info</label>
+              <textarea
+                value={profile.billingInfo || ''}
+                onChange={(e) => setProfile({ ...profile, billingInfo: e.target.value })}
+                className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full bg-[#2F3E4E] text-white p-2 rounded hover:bg-[#7A8F79] transition"
+            >
+              Save Changes
+            </button>
+
+            {message && <p className="mt-2 text-sm text-center text-[#2F3E4E]">{message}</p>}
+          </form>
+
+          <form onSubmit={changePassword} className="bg-white p-6 rounded shadow space-y-4">
+            <h2 className="text-xl font-semibold mb-4 text-[#2F3E4E]">Change Password</h2>
+            <input
+              type="password"
+              placeholder="Current password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
+            />
+            <input
+              type="password"
+              placeholder="New password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
+            />
+            <input
+              type="password"
+              placeholder="Confirm new password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
+            />
+            <button
+              type="submit"
+              className="w-full bg-[#2F3E4E] text-white p-2 rounded hover:bg-[#7A8F79] transition"
+            >
+              Update Password
+            </button>
+            {pwMessage && <p className="mt-2 text-sm text-center text-[#2F3E4E]">{pwMessage}</p>}
+          </form>
         </div>
 
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-[#2F3E4E]">Display Name</label>
-          <input
-            type="text"
-            value={profile.displayName || ''}
-            onChange={(e) => setProfile({ ...profile, displayName: e.target.value })}
-            className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
-          />
+        {/* Right column — myBilling */}
+        <div>
+          <BillingSection profile={profile} onUnenroll={() => setProfile({ ...profile, enrolledInBilling: false })} />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <input
-            type="text"
-            placeholder="Address"
-            value={profile.address || ''}
-            onChange={(e) => setProfile({ ...profile, address: e.target.value })}
-            className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
-          />
-          <input
-            type="text"
-            placeholder="City"
-            value={profile.city || ''}
-            onChange={(e) => setProfile({ ...profile, city: e.target.value })}
-            className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
-          />
-          <input
-            type="text"
-            placeholder="State"
-            value={profile.state || ''}
-            onChange={(e) => setProfile({ ...profile, state: e.target.value })}
-            className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
-          />
-          <input
-            type="text"
-            placeholder="ZIP Code"
-            value={profile.zip || ''}
-            onChange={(e) => setProfile({ ...profile, zip: e.target.value })}
-            className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-[#2F3E4E]">NPI Number</label>
-          <input
-            type="text"
-            value={profile.npiNumber || ''}
-            onChange={(e) => setProfile({ ...profile, npiNumber: e.target.value })}
-            className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-[#2F3E4E]">Medicaid Number</label>
-          <input
-            type="text"
-            value={profile.medicaidNumber || ''}
-            onChange={(e) => setProfile({ ...profile, medicaidNumber: e.target.value })}
-            className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-[#2F3E4E]">Billing Info</label>
-          <textarea
-            value={profile.billingInfo || ''}
-            onChange={(e) => setProfile({ ...profile, billingInfo: e.target.value })}
-            className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
-          />
-        </div>
-
-        <button
-          type="submit"
-          className="w-full bg-[#2F3E4E] text-white p-2 rounded hover:bg-[#7A8F79] transition"
-        >
-          Save Changes
-        </button>
-
-        {message && <p className="mt-2 text-sm text-center text-[#2F3E4E]">{message}</p>}
-      </form>
-
-      <form onSubmit={changePassword} className="mt-8 bg-white p-6 rounded shadow max-w-lg space-y-4">
-        <h2 className="text-xl font-semibold mb-4 text-[#2F3E4E]">Change Password</h2>
-        <input
-          type="password"
-          placeholder="Current password"
-          value={currentPassword}
-          onChange={(e) => setCurrentPassword(e.target.value)}
-          className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
-        />
-        <input
-          type="password"
-          placeholder="New password"
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
-          className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
-        />
-        <input
-          type="password"
-          placeholder="Confirm new password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
-        />
-        <button
-          type="submit"
-          className="w-full bg-[#2F3E4E] text-white p-2 rounded hover:bg-[#7A8F79] transition"
-        >
-          Update Password
-        </button>
-        {pwMessage && <p className="mt-2 text-sm text-center text-[#2F3E4E]">{pwMessage}</p>}
-      </form>
-
-      {/* myBilling section */}
-      <BillingSection profile={profile} onUnenroll={() => setProfile({ ...profile, enrolledInBilling: false })} />
+      </div>
 
     </div>
   )
@@ -257,7 +266,7 @@ function BillingSection({ profile, onUnenroll }: { profile: any; onUnenroll: () 
   }
 
   return (
-    <div className="mt-8 bg-white p-6 rounded shadow max-w-lg">
+    <div className="bg-white p-6 rounded shadow">
       <h2 className="text-xl font-semibold mb-4 text-[#2F3E4E]">
         <span style={{ color: '#7A8F79', fontStyle: 'italic' }}>my</span>Billing
       </h2>
@@ -318,7 +327,7 @@ function BillingSection({ profile, onUnenroll }: { profile: any; onUnenroll: () 
             href="/nurse/onboarding"
             className="block text-center w-full bg-[#2F3E4E] text-white py-2 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition"
           >
-            Start Onboarding
+            Start Enrollment
           </a>
         </div>
       )}

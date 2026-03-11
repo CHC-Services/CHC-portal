@@ -312,7 +312,15 @@ function BillingSection({ profile, onUnenroll }: { profile: any; onUnenroll: () 
           </a>
         </div>
       ) : (
-        <p className="text-sm text-[#7A8F79]">Complete your onboarding to set up billing services.</p>
+        <div className="space-y-3">
+          <p className="text-sm text-[#7A8F79]">Complete your onboarding to set up billing services.</p>
+          <a
+            href="/nurse/onboarding"
+            className="block text-center w-full bg-[#2F3E4E] text-white py-2 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition"
+          >
+            Start Onboarding
+          </a>
+        </div>
       )}
     </div>
   )

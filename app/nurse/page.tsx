@@ -21,16 +21,28 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
   )
 }
 
-// Converts MM/DD/YYYY display string → YYYY-MM-DD for the API
+// Converts MM/DD/YYYY (or MM/DD/YY) display string → YYYY-MM-DD for the API
 function toISODate(display: string): string {
   const [mm, dd, yyyy] = display.split('/')
-  if (!mm || !dd || !yyyy || yyyy.length < 4) return ''
-  return `${yyyy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`
+  if (!mm || !dd || !yyyy) return ''
+  const fullYear = yyyy.length === 2 ? `20${yyyy}` : yyyy
+  if (fullYear.length !== 4) return ''
+  return `${fullYear}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`
+}
+
+function isoToDisplay(iso: string): string {
+  if (!iso) return ''
+  const [y, m, d] = iso.split('-')
+  return `${m}/${d}/${y}`
 }
 
 function DateInput({ value, onChange }: { value: string; onChange: (iso: string, display: string) => void }) {
-  const [display, setDisplay] = useState(value ? (() => { const [y,m,d] = value.split('-'); return `${m}/${d}/${y}` })() : '')
+  const [display, setDisplay] = useState(isoToDisplay(value))
   const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    setDisplay(isoToDisplay(value))
+  }, [value])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const raw = e.target.value.replace(/\D/g, '').slice(0, 8)
@@ -41,8 +53,12 @@ function DateInput({ value, onChange }: { value: string; onChange: (iso: string,
     onChange(toISODate(formatted), formatted)
   }
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    // Allow backspace, arrows, tab
+  function handleBlur() {
+    const parts = display.split('/')
+    if (parts.length === 3 && parts[2].length === 2) {
+      const expanded = `${parts[0]}/${parts[1]}/20${parts[2]}`
+      setDisplay(expanded)
+    }
   }
 
   return (
@@ -53,7 +69,7 @@ function DateInput({ value, onChange }: { value: string; onChange: (iso: string,
       placeholder="MM/DD/YYYY"
       value={display}
       onChange={handleChange}
-      onKeyDown={handleKeyDown}
+      onBlur={handleBlur}
       maxLength={10}
       required
       className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
@@ -212,26 +228,50 @@ export default function NurseDashboard() {
           </h2>
 
           <form onSubmit={submitTime} className="space-y-3">
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Date Worked</label>
-              <DateInput
-                value={workDate}
-                onChange={(iso) => setWorkDate(iso)}
-              />
+
+            {/* Quick-fill buttons */}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const d = new Date(); d.setDate(d.getDate() - 1)
+                  setWorkDate(d.toISOString().split('T')[0])
+                }}
+                className="flex-1 border border-[#D9E1E8] text-[#2F3E4E] text-xs font-semibold py-1.5 rounded-lg hover:bg-[#D9E1E8] transition"
+              >
+                Yesterday
+              </button>
+              <button
+                type="button"
+                onClick={() => setWorkDate(new Date().toISOString().split('T')[0])}
+                className="flex-1 border border-[#7A8F79] text-[#7A8F79] text-xs font-semibold py-1.5 rounded-lg hover:bg-[#D9E1E8] transition"
+              >
+                Today
+              </button>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Hours Worked</label>
-              <input
-                type="number"
-                step="1"
-                min="1"
-                placeholder="e.g. 8"
-                value={hours}
-                onChange={(e) => setHours(e.target.value)}
-                required
-                className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-              />
+            {/* Date + Hours side by side */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Date Worked</label>
+                <DateInput
+                  value={workDate}
+                  onChange={(iso) => setWorkDate(iso)}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Hours Worked</label>
+                <input
+                  type="number"
+                  step="1"
+                  min="1"
+                  placeholder="e.g. 8"
+                  value={hours}
+                  onChange={(e) => setHours(e.target.value)}
+                  required
+                  className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                />
+              </div>
             </div>
 
             <div>

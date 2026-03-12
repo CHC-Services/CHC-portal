@@ -15,8 +15,11 @@ datasource db {
 }
 
 enum Role {
-  nurse
-  admin
+  nurse      // Healthcare caregiver
+  admin      // Full portal access
+  biller     // Third-party billing access
+  provider   // Other medical provider (non-nurse)
+  guardian   // Parent / family member of patient
 }
 
 

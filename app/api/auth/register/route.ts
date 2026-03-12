@@ -5,11 +5,19 @@ import { verifyToken } from '../../../../lib/auth'
 import { sendWelcomeEmail } from '../../../../lib/sendEmail'
 
 async function generateAccountNumber(): Promise<string> {
-  while (true) {
-    const num = 'CHC-' + String(Math.floor(10000 + Math.random() * 90000))
-    const existing = await (prisma.nurseProfile.findUnique as any)({ where: { accountNumber: num } })
-    if (!existing) return num
-  }
+  const yy = String(new Date().getFullYear()).slice(-2) // e.g. "26"
+  const prefix = yy // accounts look like 26001, 26002, ...
+
+  // Find the highest existing sequence number for this year
+  const last = await (prisma.nurseProfile.findFirst as any)({
+    where: { accountNumber: { startsWith: prefix } },
+    orderBy: { accountNumber: 'desc' },
+    select: { accountNumber: true },
+  })
+
+  const lastSeq = last?.accountNumber ? parseInt(last.accountNumber.slice(2), 10) : 0
+  const nextSeq = String(lastSeq + 1).padStart(3, '0')
+  return `${prefix}${nextSeq}`
 }
 
 export async function POST(req: Request) {

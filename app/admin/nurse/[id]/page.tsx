@@ -65,6 +65,7 @@ function Field({
   )
 }
 
+<<<<<<< HEAD
 function AliasEditor({ aliases, onChange }: { aliases: string[]; onChange: (a: string[]) => void }) {
   const [input, setInput] = useState('')
 
@@ -118,6 +119,15 @@ function AliasEditor({ aliases, onChange }: { aliases: string[]; onChange: (a: s
     </div>
   )
 }
+=======
+const ROLE_OPTIONS = [
+  { value: 'nurse',    label: 'Nurse — Healthcare caregiver' },
+  { value: 'biller',   label: 'Biller — Third-party billing access' },
+  { value: 'provider', label: 'Provider — Other medical provider' },
+  { value: 'guardian', label: 'Guardian — Parent / family member' },
+  { value: 'admin',    label: 'Admin — Full portal access' },
+]
+>>>>>>> 2a560719a1d98049f3425de848ff43767092676f
 
 export default function NurseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -126,6 +136,9 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
+  const [userRole, setUserRole] = useState('')
+  const [roleSaving, setRoleSaving] = useState(false)
+  const [roleMessage, setRoleMessage] = useState('')
 
   useEffect(() => {
     fetch(`/api/admin/nurses/${id}`, { credentials: 'include' })
@@ -133,9 +146,27 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
         if (r.status === 401) { router.push('/login'); return }
         return r.json()
       })
-      .then(data => { if (data) setProfile(data) })
+      .then(data => {
+        if (data) {
+          setProfile(data)
+          setUserRole(data.user?.role || 'nurse')
+        }
+      })
       .finally(() => setLoading(false))
   }, [id, router])
+
+  async function saveRole() {
+    setRoleSaving(true)
+    setRoleMessage('')
+    const res = await fetch(`/api/admin/users/${profile.userId}/role`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ role: userRole }),
+    })
+    setRoleSaving(false)
+    setRoleMessage(res.ok ? 'Role updated.' : 'Error updating role.')
+  }
 
   async function save(e: React.FormEvent) {
     e.preventDefault()
@@ -169,6 +200,40 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
             <p className="text-sm font-mono text-[#7A8F79]">{profile.accountNumber}</p>
           )}
         </div>
+      </div>
+
+      {/* Portal Access — role dropdown, saved independently */}
+      <div className="max-w-2xl mb-6 bg-white rounded-xl shadow-sm p-6">
+        <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8] mb-4">
+          Portal Access
+        </h2>
+        <div className="flex items-end gap-3">
+          <div className="flex-1">
+            <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Role</label>
+            <select
+              value={userRole}
+              onChange={(e) => setUserRole(e.target.value)}
+              className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+            >
+              {ROLE_OPTIONS.map(r => (
+                <option key={r.value} value={r.value}>{r.label}</option>
+              ))}
+            </select>
+          </div>
+          <button
+            type="button"
+            onClick={saveRole}
+            disabled={roleSaving}
+            className="bg-[#2F3E4E] text-white px-4 py-2 rounded-lg hover:bg-[#7A8F79] transition text-sm font-semibold disabled:opacity-50"
+          >
+            {roleSaving ? 'Saving…' : 'Update Role'}
+          </button>
+        </div>
+        {roleMessage && (
+          <p className={`mt-2 text-xs font-medium ${roleMessage.includes('Error') ? 'text-red-500' : 'text-[#7A8F79]'}`}>
+            {roleMessage}
+          </p>
+        )}
       </div>
 
       <form onSubmit={save} className="space-y-6 max-w-2xl">

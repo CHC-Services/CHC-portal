@@ -19,10 +19,39 @@ type Nurse = {
   timeEntries: TimeEntry[]
 }
 
-function NurseRow({ nurse, onDeleted }: { nurse: Nurse; onDeleted: () => void }) {
+function NurseRow({ nurse, onDeleted, onRefresh }: { nurse: Nurse; onDeleted: () => void; onRefresh: () => void }) {
   const [open, setOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [logOpen, setLogOpen] = useState(false)
+  const [logDate, setLogDate] = useState('')
+  const [logHours, setLogHours] = useState('')
+  const [logNotes, setLogNotes] = useState('')
+  const [logMessage, setLogMessage] = useState('')
+  const [logSubmitting, setLogSubmitting] = useState(false)
+
+  async function submitHours(e: React.FormEvent) {
+    e.preventDefault()
+    setLogSubmitting(true)
+    setLogMessage('')
+    const res = await fetch('/api/admin/time-entry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ nurseId: nurse.id, workDate: logDate, hours: logHours, notes: logNotes })
+    })
+    const data = await res.json()
+    setLogSubmitting(false)
+    if (res.ok) {
+      setLogDate('')
+      setLogHours('')
+      setLogNotes('')
+      setLogMessage('Hours logged.')
+      onRefresh()
+    } else {
+      setLogMessage(data.error || 'Error logging hours.')
+    }
+  }
 
   async function handleDelete() {
     setDeleting(true)
@@ -105,6 +134,64 @@ function NurseRow({ nurse, onDeleted }: { nurse: Nurse; onDeleted: () => void })
               </tbody>
             </table>
           )}
+
+          {/* Log hours on behalf of nurse */}
+          <div className="mt-4 pt-4 border-t border-[#D9E1E8]">
+            <button
+              onClick={() => { setLogOpen(!logOpen); setLogMessage('') }}
+              className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] underline underline-offset-2"
+            >
+              {logOpen ? 'Cancel' : '+ Log hours on behalf of this nurse'}
+            </button>
+            {logOpen && (
+              <form onSubmit={submitHours} className="mt-3 space-y-2 max-w-sm">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Date Worked</label>
+                    <input
+                      type="date"
+                      value={logDate}
+                      onChange={e => setLogDate(e.target.value)}
+                      required
+                      className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] text-sm focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Hours</label>
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      placeholder="e.g. 8"
+                      value={logHours}
+                      onChange={e => setLogHours(e.target.value)}
+                      required
+                      className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] text-sm focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                    />
+                  </div>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Notes (optional)"
+                  value={logNotes}
+                  onChange={e => setLogNotes(e.target.value)}
+                  className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] text-sm focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                />
+                <button
+                  type="submit"
+                  disabled={logSubmitting}
+                  className="bg-[#2F3E4E] text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-50"
+                >
+                  {logSubmitting ? 'Saving…' : 'Log Hours'}
+                </button>
+                {logMessage && (
+                  <p className={`text-xs font-medium ${logMessage.includes('Error') || logMessage.includes('already') ? 'text-red-500' : 'text-[#7A8F79]'}`}>
+                    {logMessage}
+                  </p>
+                )}
+              </form>
+            )}
+          </div>
 
           {/* Delete nurse */}
           <div className="mt-4 pt-4 border-t border-[#D9E1E8]">
@@ -321,7 +408,7 @@ export default function AdminDashboard() {
         ) : (
           <div className="space-y-3">
             {nurses.map(nurse => (
-              <NurseRow key={nurse.id} nurse={nurse} onDeleted={loadNurses} />
+              <NurseRow key={nurse.id} nurse={nurse} onDeleted={loadNurses} onRefresh={loadNurses} />
             ))}
           </div>
         )}

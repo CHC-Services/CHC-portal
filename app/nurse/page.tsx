@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, forwardRef } from 'react'
 import { useRouter } from 'next/navigation'
 
 type TimeEntry = {
@@ -36,49 +36,51 @@ function isoToDisplay(iso: string): string {
   return `${m}/${d}/${y}`
 }
 
-function DateInput({ value, onChange }: { value: string; onChange: (iso: string, display: string) => void }) {
-  const [display, setDisplay] = useState(isoToDisplay(value))
-  const inputRef = useRef<HTMLInputElement>(null)
+const DateInput = forwardRef<HTMLInputElement, { value: string; onChange: (iso: string, display: string) => void }>(
+  function DateInput({ value, onChange }, ref) {
+    const [display, setDisplay] = useState(isoToDisplay(value))
 
-  useEffect(() => {
-    setDisplay(isoToDisplay(value))
-  }, [value])
+    useEffect(() => {
+      setDisplay(isoToDisplay(value))
+    }, [value])
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const raw = e.target.value.replace(/\D/g, '').slice(0, 8)
-    let formatted = raw
-    if (raw.length > 4) formatted = `${raw.slice(0,2)}/${raw.slice(2,4)}/${raw.slice(4)}`
-    else if (raw.length > 2) formatted = `${raw.slice(0,2)}/${raw.slice(2)}`
-    setDisplay(formatted)
-    onChange(toISODate(formatted), formatted)
-  }
-
-  function handleBlur() {
-    const parts = display.split('/')
-    if (parts.length === 3 && parts[2].length === 2) {
-      const expanded = `${parts[0]}/${parts[1]}/20${parts[2]}`
-      setDisplay(expanded)
+    function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+      const raw = e.target.value.replace(/\D/g, '').slice(0, 8)
+      let formatted = raw
+      if (raw.length > 4) formatted = `${raw.slice(0,2)}/${raw.slice(2,4)}/${raw.slice(4)}`
+      else if (raw.length > 2) formatted = `${raw.slice(0,2)}/${raw.slice(2)}`
+      setDisplay(formatted)
+      onChange(toISODate(formatted), formatted)
     }
-  }
 
-  return (
-    <input
-      ref={inputRef}
-      type="text"
-      inputMode="numeric"
-      placeholder="MM/DD/YYYY"
-      value={display}
-      onChange={handleChange}
-      onBlur={handleBlur}
-      maxLength={10}
-      required
-      className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-    />
-  )
-}
+    function handleBlur() {
+      const parts = display.split('/')
+      if (parts.length === 3 && parts[2].length === 2) {
+        const expanded = `${parts[0]}/${parts[1]}/20${parts[2]}`
+        setDisplay(expanded)
+      }
+    }
+
+    return (
+      <input
+        ref={ref}
+        type="text"
+        inputMode="numeric"
+        placeholder="MM/DD/YYYY"
+        value={display}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        maxLength={10}
+        required
+        className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+      />
+    )
+  }
+)
 
 export default function NurseDashboard() {
   const router = useRouter()
+  const dateInputRef = useRef<HTMLInputElement>(null)
   const [workDate, setWorkDate] = useState('') // stored as YYYY-MM-DD
   const [hours, setHours] = useState('')
   const [notes, setNotes] = useState('')
@@ -154,10 +156,11 @@ export default function NurseDashboard() {
 
     if (res.ok) {
       setMessage('Hours submitted successfully.')
-      setWorkDate('') // DateInput reads this to reset
+      setWorkDate('')
       setHours('')
       setNotes('')
       loadEntries()
+      setTimeout(() => dateInputRef.current?.focus(), 50)
     } else {
       setMessage(data.error || 'Error submitting hours.')
     }
@@ -255,6 +258,7 @@ export default function NurseDashboard() {
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Date Worked</label>
                 <DateInput
+                  ref={dateInputRef}
                   value={workDate}
                   onChange={(iso) => setWorkDate(iso)}
                 />
@@ -345,7 +349,7 @@ export default function NurseDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {entries.map((entry, i) => (
+                  {[...entries].sort((a, b) => new Date(a.workDate).getTime() - new Date(b.workDate).getTime()).map((entry, i) => (
                     <tr
                       key={entry.id}
                       className={`border-b border-[#D9E1E8] last:border-0 ${

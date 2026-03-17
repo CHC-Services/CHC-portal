@@ -276,13 +276,13 @@ function BillingSection({ profile, onUnenroll }: { profile: any; onUnenroll: () 
           <div className="bg-[#F4F6F5] rounded-lg p-4 text-sm space-y-1">
             <p><span className="text-[#7A8F79] font-semibold">Status:</span> <span className="text-green-700 font-semibold">Enrolled</span></p>
             {profile.billingPlan && (
-              <p><span className="text-[#7A8F79] font-semibold">Plan:</span> {planLabels[profile.billingPlan] || profile.billingPlan}</p>
+              <p><span className="text-[#7A8F79] font-semibold">Plan:</span> <span className="text-[#2F3E4E] font-medium">{planLabels[profile.billingPlan] || profile.billingPlan}</span></p>
             )}
             {profile.planStartDate && (
-              <p><span className="text-[#7A8F79] font-semibold">Start Date:</span> {profile.planStartDate}</p>
+              <p><span className="text-[#7A8F79] font-semibold">Start Date:</span> <span className="text-[#2F3E4E] font-medium">{profile.planStartDate}</span></p>
             )}
             {profile.billingDurationType && (
-              <p><span className="text-[#7A8F79] font-semibold">Duration:</span> {profile.billingDurationType === 'full_year' ? 'Full Year' : profile.billingDurationNote || 'Policy Specific'}</p>
+              <p><span className="text-[#7A8F79] font-semibold">Duration:</span> <span className="text-[#2F3E4E] font-medium">{profile.billingDurationType === 'full_year' ? 'Full Year' : profile.billingDurationNote || 'Policy Specific'}</span></p>
             )}
           </div>
 

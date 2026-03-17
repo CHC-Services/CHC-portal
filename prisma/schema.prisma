@@ -162,6 +162,12 @@ model Claim {
   remainingBalance   Float?
   dateFullyFinalized DateTime?
 
+  // Notes
+  processingNotes    String?
+
+  // Resubmission tracking
+  resubmissionOf     String?  // claimId of the original rejected claim
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

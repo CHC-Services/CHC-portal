@@ -23,6 +23,8 @@ type Claim = {
   totalReimbursed: number | null
   remainingBalance: number | null
   dateFullyFinalized: string | null
+  resubmissionOf: string | null
+  processingNotes: string | null
   nurse: { displayName: string; accountNumber: string | null }
 }
 
@@ -77,6 +79,69 @@ function parseCSV(text: string): Record<string, string>[] {
     headers.forEach((h, i) => { row[h] = vals[i] ?? '' })
     return row
   })
+}
+
+// Group claims so resubmissions appear directly after their originals
+function groupClaims(claims: Claim[]): Claim[] {
+  const byClaimId = new Map(claims.filter(c => c.claimId).map(c => [c.claimId!, c]))
+  const resubIds = new Set(claims.filter(c => c.resubmissionOf).map(c => c.resubmissionOf!))
+  const result: Claim[] = []
+  for (const c of claims) {
+    if (c.resubmissionOf) continue // will be inserted after its original
+    result.push(c)
+    if (c.claimId && resubIds.has(c.claimId)) {
+      const children = claims.filter(r => r.resubmissionOf === c.claimId)
+      result.push(...children)
+    }
+  }
+  return result
+}
+
+function LinkButton({ claim, onLinked }: { claim: Claim; onLinked: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [value, setValue] = useState(claim.resubmissionOf || '')
+  const [saving, setSaving] = useState(false)
+
+  async function save() {
+    setSaving(true)
+    await fetch(`/api/admin/claims/${claim.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ resubmissionOf: value.trim() || null })
+    })
+    setSaving(false)
+    setOpen(false)
+    onLinked()
+  }
+
+  return (
+    <div className="inline-block">
+      {open ? (
+        <div className="flex items-center gap-1">
+          <input
+            type="text"
+            value={value}
+            onChange={e => setValue(e.target.value)}
+            placeholder="Original claim ID"
+            className="border border-[#D9E1E8] rounded px-2 py-0.5 text-xs w-36 focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
+          />
+          <button onClick={save} disabled={saving} className="text-xs bg-[#7A8F79] text-white px-2 py-0.5 rounded hover:bg-[#2F3E4E] transition disabled:opacity-50">
+            {saving ? '…' : 'Save'}
+          </button>
+          <button onClick={() => setOpen(false)} className="text-xs text-[#7A8F79] hover:text-[#2F3E4E]">✕</button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setOpen(true)}
+          title={claim.resubmissionOf ? `Linked to #${claim.resubmissionOf}` : 'Link as resubmission'}
+          className={`text-xs px-2 py-0.5 rounded border transition ${claim.resubmissionOf ? 'border-purple-300 text-purple-700 bg-purple-50 hover:bg-purple-100' : 'border-[#D9E1E8] text-[#7A8F79] hover:border-[#7A8F79]'}`}
+        >
+          {claim.resubmissionOf ? `↳ #${claim.resubmissionOf}` : '🔗 Link'}
+        </button>
+      )}
+    </div>
+  )
 }
 
 export default function AdminClaimsPage() {
@@ -234,13 +299,18 @@ export default function AdminClaimsPage() {
                   <th className="px-4 py-3 border-l border-[#D9E1E8]">Reimbursed</th>
                   <th className="px-4 py-3">Balance</th>
                   <th className="px-4 py-3">Finalized</th>
+                  <th className="px-4 py-3">Notes</th>
+                  <th className="px-4 py-3">Link</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#D9E1E8]">
-                {filtered.map(c => (
-                  <tr key={c.id} className="hover:bg-[#F4F6F5] transition">
+                {groupClaims(filtered).map(c => (
+                  <tr key={c.id} className={`hover:bg-[#F4F6F5] transition ${c.resubmissionOf ? 'bg-purple-50' : ''}`}>
                     <td className="px-4 py-3 font-semibold text-[#2F3E4E] whitespace-nowrap">{c.providerName || c.nurse?.displayName}</td>
-                    <td className="px-4 py-3 text-[#7A8F79] font-mono text-xs">{c.claimId || '—'}</td>
+                    <td className="px-4 py-3 text-[#7A8F79] font-mono text-xs">
+                      {c.resubmissionOf && <span className="block text-purple-500 text-[10px] mb-0.5">↳ resubmission</span>}
+                      {c.claimId || '—'}
+                    </td>
                     <td className="px-4 py-3 whitespace-nowrap text-xs text-[#2F3E4E]">
                       {fmtDate(c.dosStart)}{c.dosStop ? ` – ${fmtDate(c.dosStop)}` : ''}
                     </td>
@@ -261,6 +331,8 @@ export default function AdminClaimsPage() {
                       {fmt(c.remainingBalance, '$')}
                     </td>
                     <td className="px-4 py-3 text-xs text-[#7A8F79] whitespace-nowrap">{fmtDate(c.dateFullyFinalized)}</td>
+                    <td className="px-4 py-3 text-xs text-[#7A8F79] max-w-xs truncate">{c.processingNotes || '—'}</td>
+                    <td className="px-4 py-3"><LinkButton claim={c} onLinked={loadClaims} /></td>
                   </tr>
                 ))}
               </tbody>

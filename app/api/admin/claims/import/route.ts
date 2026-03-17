@@ -85,6 +85,7 @@ export async function POST(req: Request) {
       totalReimbursed:     parseFloat2(row['Total Reimbursed'] || ''),
       remainingBalance:    parseFloat2(row['Remaining Balance'] || ''),
       dateFullyFinalized:  parseDate(row['Date Fully Finalized'] || ''),
+      processingNotes:     row['Processing Notes'] || null,
     }
 
     if (claimId) {

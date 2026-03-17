@@ -23,6 +23,8 @@ type Claim = {
   totalReimbursed: number | null
   remainingBalance: number | null
   dateFullyFinalized: string | null
+  resubmissionOf: string | null
+  processingNotes: string | null
 }
 
 function fmt(val: number | null, prefix = '') {
@@ -48,6 +50,19 @@ function StageBadge({ stage }: { stage: string | null }) {
     s === 'appealed' ? 'bg-purple-100 text-purple-800' :
     'bg-gray-900 text-gray-200'
   return <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${color}`}>{stage}</span>
+}
+
+function groupClaims(claims: Claim[]): Claim[] {
+  const resubIds = new Set(claims.filter(c => c.resubmissionOf).map(c => c.resubmissionOf!))
+  const result: Claim[] = []
+  for (const c of claims) {
+    if (c.resubmissionOf) continue
+    result.push(c)
+    if (c.claimId && resubIds.has(c.claimId)) {
+      result.push(...claims.filter(r => r.resubmissionOf === c.claimId))
+    }
+  }
+  return result
 }
 
 export default function NurseClaimsPage() {
@@ -107,13 +122,22 @@ export default function NurseClaimsPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {claims.map(c => (
-              <div key={c.id} className="bg-white rounded-xl shadow-sm p-5">
+            {groupClaims(claims).map(c => (
+              <div key={c.id} className={`bg-white rounded-xl shadow-sm p-5 ${c.resubmissionOf ? 'border-l-4 border-purple-400 ml-4' : ''}`}>
+
+                {/* Resubmission indicator */}
+                {c.resubmissionOf && (
+                  <div className="mb-3 flex items-center gap-2">
+                    <span className="text-xs font-semibold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">
+                      ↳ Resubmission of #{c.resubmissionOf}
+                    </span>
+                  </div>
+                )}
 
                 {/* Header row */}
                 <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
                   <div>
-                    <p className="text-xs text-[#7A8F79] font-mono">{c.claimId || 'No Claim ID'}</p>
+                    <p className="text-xs text-[#7A8F79] font-mono"><span className="font-semibold not-italic">Claim ID:</span> {c.claimId || '—'}</p>
                     <p className="text-sm font-semibold text-[#2F3E4E] mt-0.5">
                       DOS: {fmtDate(c.dosStart)}{c.dosStop ? ` – ${fmtDate(c.dosStop)}` : ''}
                     </p>
@@ -197,6 +221,14 @@ export default function NurseClaimsPage() {
                     </p>
                   </div>
                 </div>
+
+                {/* Processing Notes */}
+                {c.processingNotes && (
+                  <div className="mt-3 pt-3 border-t border-[#D9E1E8]">
+                    <p className="text-xs text-[#7A8F79] font-semibold uppercase tracking-wide mb-1">Processing Notes</p>
+                    <p className="text-sm text-[#2F3E4E]">{c.processingNotes}</p>
+                  </div>
+                )}
 
               </div>
             ))}

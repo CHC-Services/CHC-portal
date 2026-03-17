@@ -50,9 +50,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const body = await req.json()
 
   const {
+    // encrypted fields — handled separately
     ssn, ein, fein, bankRouting, bankAccount,
     ssnEncrypted, einEncrypted, feinEncrypted,
     bankRoutingEncrypted, bankAccountEncrypted,
+    // read-only / relation fields — strip before passing to Prisma
+    id: _id, userId, user, createdAt, updatedAt,
     ...rest
   } = body
 
@@ -64,9 +67,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (bankRouting !== undefined) data.bankRoutingEncrypted = bankRouting ? encrypt(bankRouting) : null
   if (bankAccount !== undefined) data.bankAccountEncrypted = bankAccount ? encrypt(bankAccount) : null
 
-  const updated = await prisma.nurseProfile.update({ where: { id }, data })
-
-  return NextResponse.json({ ok: true })
+  try {
+    await prisma.nurseProfile.update({ where: { id }, data })
+    return NextResponse.json({ ok: true })
+  } catch (err: any) {
+    console.error('Admin nurse PATCH error:', err)
+    return NextResponse.json({ error: err.message || 'Save failed' }, { status: 500 })
+  }
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {

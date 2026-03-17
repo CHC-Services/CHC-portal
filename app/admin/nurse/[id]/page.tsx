@@ -65,7 +65,6 @@ function Field({
   )
 }
 
-<<<<<<< HEAD
 function AliasEditor({ aliases, onChange }: { aliases: string[]; onChange: (a: string[]) => void }) {
   const [input, setInput] = useState('')
 
@@ -119,7 +118,7 @@ function AliasEditor({ aliases, onChange }: { aliases: string[]; onChange: (a: s
     </div>
   )
 }
-=======
+
 const ROLE_OPTIONS = [
   { value: 'nurse',    label: 'Nurse — Healthcare caregiver' },
   { value: 'biller',   label: 'Biller — Third-party billing access' },
@@ -127,7 +126,6 @@ const ROLE_OPTIONS = [
   { value: 'guardian', label: 'Guardian — Parent / family member' },
   { value: 'admin',    label: 'Admin — Full portal access' },
 ]
->>>>>>> 2a560719a1d98049f3425de848ff43767092676f
 
 export default function NurseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)

@@ -11,7 +11,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const claims = await (prisma.claim.findMany as any)({
+  const claims = await prisma.claim.findMany({
     where: { nurseId: session.nurseProfileId },
     orderBy: { dosStart: 'desc' }
   })

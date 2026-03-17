@@ -33,18 +33,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'No rows provided' }, { status: 400 })
   }
 
-  // Build nurse name → id lookup
+  // Build provider name → nurseId lookup using providerAliases
   const profiles = await prisma.nurseProfile.findMany({
-    select: { id: true, displayName: true, firstName: true, lastName: true }
+    select: { id: true, displayName: true, firstName: true, lastName: true, providerAliases: true }
   })
 
-  function findNurse(name: string): string | null {
-    if (!name) return null
-    const lower = name.toLowerCase().trim()
+  function findNurse(providerName: string): string | null {
+    if (!providerName) return null
+    const lower = providerName.toLowerCase().trim()
     return profiles.find(p => {
       const full = `${p.firstName || ''} ${p.lastName || ''}`.toLowerCase().trim()
       const display = (p.displayName || '').toLowerCase().trim()
-      return full === lower || display === lower || display.includes(lower) || lower.includes(display)
+      const aliases = (p.providerAliases || []).map((a: string) => a.toLowerCase().trim())
+      return full === lower || display === lower || aliases.includes(lower)
     })?.id ?? null
   }
 
@@ -53,57 +54,50 @@ export async function POST(req: Request) {
   let skipped = 0
 
   for (const row of rows) {
-    const nurseName = row['Nurse Name'] || row['nurse_name'] || row['NurseName'] || ''
-    const nurseId = findNurse(nurseName)
+    const providerName = row['Provider Name'] || ''
+    const nurseId = findNurse(providerName)
 
     if (!nurseId) {
       skipped++
       continue
     }
 
-    const claimCtrlId = row['Claim Ctrl ID'] || row['claim_ctrl_id'] || null
+    const claimId = row['Claim ID'] || null
 
-    const data: Record<string, unknown> = {
+    const data = {
       nurseId,
-      claimCtrlId,
-      transId:          row['Trans ID'] || null,
-      submitStatus:     row['Submit Status'] || null,
-      submitDate:       parseDate(row['Submit Date'] || ''),
-      status:           row['Status'] || null,
-      dosStart:         parseDate(row['DOS Start'] || ''),
-      dosStop:          parseDate(row['DOS Stop'] || ''),
-      hoursBilled:      parseFloat2(row['Hours Billed'] || ''),
-      chargeAmount:     parseFloat2(row['Billed'] || ''),
-      allowedAmount:    parseFloat2(row['Allowed'] || ''),
-      paidAmount:       parseFloat2(row['BCBS Paid'] || ''),
-      remitCheckNumber: row['Remit / Check #'] || row['Remit/Check #'] || null,
-      checkAmount:      parseFloat2(row['Check $'] || ''),
-      finalizedDate:    parseDate(row['Finalized Date'] || ''),
-      eobDate:          parseDate(row['EOB Date'] || ''),
-      statusNote:       row['Comments'] || null,
-      innOon:           row['INN / OON'] || row['INN/OON'] || null,
-      dedCoin:          parseFloat2(row['DED / COIN'] || row['DED/COIN'] || ''),
-      allowRate:        parseFloat2(row['Allow Rate'] || ''),
+      claimId,
+      providerName:        providerName || null,
+      dosStart:            parseDate(row['DOS Start'] || ''),
+      dosStop:             parseDate(row['DOS Stop'] || ''),
+      totalBilled:         parseFloat2(row['Total Billed'] || ''),
+      claimStage:          row['Claim Stage'] || null,
+      primaryPayer:        row['Primary Payer'] || null,
+      primaryAllowedAmt:   parseFloat2(row['Primary Allowed Amt'] || ''),
+      primaryPaidAmt:      parseFloat2(row['Primary Paid Amt'] || ''),
+      primaryPaidDate:     parseDate(row['Primary Paid Date'] || ''),
+      primaryPaidTo:       row['Primary Paid To'] || null,
+      secondaryPayer:      row['Secondary Payer'] || null,
+      secondaryAllowedAmt: parseFloat2(row['Secondary Allowed Amt'] || ''),
+      secondaryPaidAmt:    parseFloat2(row['Secondary Paid Amt'] || ''),
+      secondaryPaidDate:   parseDate(row['Secondary Paid Date'] || ''),
+      secondaryPaidTo:     row['Secondary Paid To'] || null,
+      totalReimbursed:     parseFloat2(row['Total Reimbursed'] || ''),
+      remainingBalance:    parseFloat2(row['Remaining Balance'] || ''),
+      dateFullyFinalized:  parseDate(row['Date Fully Finalized'] || ''),
     }
 
-    if (claimCtrlId) {
-      // Try to find existing claim by claimCtrlId + nurseId
-      const existing = await (prisma.claim.findFirst as any)({
-        where: { claimCtrlId, nurseId }
-      })
-
+    if (claimId) {
+      const existing = await prisma.claim.findFirst({ where: { claimId, nurseId } })
       if (existing) {
-        await (prisma.claim.update as any)({
-          where: { id: existing.id },
-          data
-        })
+        await prisma.claim.update({ where: { id: existing.id }, data })
         updated++
       } else {
-        await (prisma.claim.create as any)({ data })
+        await prisma.claim.create({ data })
         created++
       }
     } else {
-      await (prisma.claim.create as any)({ data })
+      await prisma.claim.create({ data })
       created++
     }
   }

@@ -92,6 +92,9 @@ model NurseProfile {
   // Legacy
   billingInfo  String?
 
+  // Provider aliases for claim matching (e.g. ["Janine", "JCST"])
+  providerAliases String[] @default([])
+
   user           User            @relation(fields: [userId], references: [id])
   timeEntries    TimeEntry[]
   claims         Claim[]
@@ -126,34 +129,41 @@ model TimeEntry {
 }
 
 model Claim {
-  id                String   @id @default(uuid())
-  nurseId           String
+  id           String @id @default(uuid())
+  nurseId      String
 
-  claimCtrlId       String?
-  transId           String?
-  submitStatus      String?
-  submitDate        DateTime?
-  status            String?
-  dosStart          DateTime?
-  dosStop           DateTime?
-  hoursBilled       Float?
-  chargeAmount      Float?   // Billed
-  allowedAmount     Float?   // Allowed
-  paidAmount        Float?   // BCBS Paid
-  remitCheckNumber  String?  // Remit / Check #
-  checkAmount       Float?   // Check $
-  finalizedDate     DateTime?
-  eobDate           DateTime?
-  statusNote        String?  // Comments
-  innOon            String?  // INN / OON
-  dedCoin           Float?   // DED / COIN
-  allowRate         Float?   // Allow Rate
+  // Claim Submission Details
+  claimId      String?
+  providerName String?
+  dosStart     DateTime?
+  dosStop      DateTime?
+  totalBilled  Float?
+  claimStage   String?
 
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  // Primary Insurance
+  primaryPayer        String?
+  primaryAllowedAmt   Float?
+  primaryPaidAmt      Float?
+  primaryPaidDate     DateTime?
+  primaryPaidTo       String?
 
-  nurse             NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
+  // Secondary Insurance
+  secondaryPayer      String?
+  secondaryAllowedAmt Float?
+  secondaryPaidAmt    Float?
+  secondaryPaidDate   DateTime?
+  secondaryPaidTo     String?
+
+  // Summary
+  totalReimbursed    Float?
+  remainingBalance   Float?
+  dateFullyFinalized DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  nurse NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
 
   @@index([nurseId])
-  @@index([claimCtrlId])
+  @@index([claimId])
 }

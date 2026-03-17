@@ -47,7 +47,7 @@ function StageBadge({ stage }: { stage: string | null }) {
     s === 'info requested' ? 'bg-orange-100 text-orange-800' :
     s === 'info sent' ? 'bg-orange-50 text-orange-700' :
     s === 'appealed' ? 'bg-purple-100 text-purple-800' :
-    'bg-gray-100 text-gray-600'
+    'bg-gray-900 text-gray-200'
   return <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${color}`}>{stage}</span>
 }
 
@@ -70,7 +70,7 @@ function parseCSV(text: string): Record<string, string>[] {
     return result
   }
 
-  const headers = splitLine(lines[0])
+  const headers = splitLine(lines[0]).map(h => h.trim())
   return lines.slice(1).map(line => {
     const vals = splitLine(line)
     const row: Record<string, string> = {}

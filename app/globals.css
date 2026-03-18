@@ -68,3 +68,17 @@ nav a {
 nav a:hover {
   opacity: 0.7;
 }
+
+/* Force form field text to navy across all themes/dark mode */
+input,
+select,
+textarea {
+  color: #2F3E4E !important;
+  background-color: #ffffff !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #7A8F79 !important;
+  opacity: 1;
+}

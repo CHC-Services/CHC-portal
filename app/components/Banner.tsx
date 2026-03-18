@@ -54,6 +54,11 @@ export default function Banner({ user }: BannerProps) {
             <Link href="/resources" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/resources" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Resources
             </Link>
+            {!role && (
+                <Link href="/billing" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/billing" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                    Billing Services
+                </Link>
+            )}
             {role === "nurse" && (
                 <>
                     <Link href="/nurse" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/nurse" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
@@ -78,6 +83,9 @@ export default function Banner({ user }: BannerProps) {
     const bottomNavItems = [
         { href: '/', label: 'Home', icon: '🏠' },
         { href: '/resources', label: 'Resources', icon: '📋' },
+        ...(!role ? [
+            { href: '/billing', label: 'Billing', icon: '💼' },
+        ] : []),
         ...(role === 'nurse' ? [
             { href: '/nurse', label: 'Dashboard', icon: '📊' },
             { href: '/nurse/claims', label: 'Claims', icon: '📄' },

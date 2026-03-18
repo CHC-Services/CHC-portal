@@ -8,7 +8,7 @@ export async function GET(req: Request) {
   const session = token ? verifyToken(token) : null
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const nurse = await prisma.nurseProfile.findUnique({ where: { userId: session.userId } })
+  const nurse = await prisma.nurseProfile.findUnique({ where: { userId: session.id } })
   if (!nurse) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const invoices = await prisma.invoice.findMany({

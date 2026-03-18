@@ -8,6 +8,23 @@ function adminOnly(req: Request) {
   return token ? verifyToken(token) : null
 }
 
+export async function GET(req: Request) {
+  const session = adminOnly(req)
+  if (!session || session.role !== 'admin') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  const { searchParams } = new URL(req.url)
+  const nurseId = searchParams.get('nurseId')
+  if (!nurseId) return NextResponse.json({ error: 'nurseId required' }, { status: 400 })
+
+  const entries = await prisma.timeEntry.findMany({
+    where: { nurseId },
+    orderBy: { workDate: 'asc' },
+    include: { invoice: { select: { invoiceNumber: true, status: true } } },
+  })
+  return NextResponse.json(entries)
+}
+
 export async function POST(req: Request) {
   const session = adminOnly(req)
   if (!session || session.role !== 'admin') {

@@ -127,6 +127,25 @@ const ROLE_OPTIONS = [
   { value: 'admin',    label: 'Admin — Full portal access' },
 ]
 
+const FEE_PLANS = [
+  { value: 'A1', label: 'A1 — Medicaid Single Payer', amount: 2.00 },
+  { value: 'A2', label: 'A2 — Commercial Single Payer', amount: 3.00 },
+  { value: 'B',  label: 'B — Dual Payer', amount: 4.00 },
+  { value: 'C',  label: 'C — 3+ Payer', amount: 6.00 },
+]
+
+type TimeEntry = {
+  id: string
+  workDate: string
+  hours: number
+  notes?: string
+  readyToInvoice: boolean
+  invoiceFeePlan?: string
+  invoiceFeeAmt?: number
+  invoiceId?: string
+  invoice?: { invoiceNumber: string; status: string }
+}
+
 export default function NurseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
@@ -137,6 +156,14 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   const [userRole, setUserRole] = useState('')
   const [roleSaving, setRoleSaving] = useState(false)
   const [roleMessage, setRoleMessage] = useState('')
+
+  // Time entries + invoicing
+  const [entries, setEntries] = useState<TimeEntry[]>([])
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false)
+  const [invoiceDueTerm, setInvoiceDueTerm] = useState('30')
+  const [invoiceNotes, setInvoiceNotes] = useState('')
+  const [invoiceSending, setInvoiceSending] = useState(false)
+  const [invoiceMessage, setInvoiceMessage] = useState('')
 
   useEffect(() => {
     fetch(`/api/admin/nurses/${id}`, { credentials: 'include' })
@@ -151,7 +178,51 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
         }
       })
       .finally(() => setLoading(false))
+
+    fetch(`/api/admin/time-entry?nurseId=${id}`, { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setEntries(data) })
   }, [id, router])
+
+  async function toggleInvoiceFlag(entry: TimeEntry, checked: boolean, feePlan?: string) {
+    const plan = feePlan ?? entry.invoiceFeePlan ?? 'A1'
+    const res = await fetch(`/api/admin/time-entry/${entry.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ readyToInvoice: checked, invoiceFeePlan: checked ? plan : null }),
+    })
+    if (res.ok) {
+      const updated = await res.json()
+      setEntries(prev => prev.map(e => e.id === entry.id ? { ...e, ...updated } : e))
+    }
+  }
+
+  async function createInvoice() {
+    setInvoiceSending(true)
+    setInvoiceMessage('')
+    const res = await fetch('/api/admin/invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ nurseId: id, dueTerm: invoiceDueTerm, notes: invoiceNotes }),
+    })
+    const data = await res.json()
+    setInvoiceSending(false)
+    if (res.ok) {
+      setInvoiceMessage(`Invoice ${data.invoiceNumber} sent successfully.`)
+      setShowInvoiceModal(false)
+      setInvoiceNotes('')
+      // Refresh entries
+      fetch(`/api/admin/time-entry?nurseId=${id}`, { credentials: 'include' })
+        .then(r => r.json()).then(d => { if (Array.isArray(d)) setEntries(d) })
+    } else {
+      setInvoiceMessage(data.error || 'Failed to create invoice.')
+    }
+  }
+
+  const pendingEntries = entries.filter(e => e.readyToInvoice && !e.invoiceId)
+  const pendingTotal = pendingEntries.reduce((s, e) => s + (e.invoiceFeeAmt ?? 0), 0)
 
   async function saveRole() {
     setRoleSaving(true)
@@ -331,6 +402,136 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
         )}
 
       </form>
+
+      {/* ── Time Entries + Invoicing ── */}
+      <div className="max-w-2xl mt-6 bg-white rounded-xl shadow-sm p-6 space-y-4">
+        <div className="flex items-center justify-between pb-2 border-b border-[#D9E1E8]">
+          <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79]">
+            Time Entries — Invoice Flagging
+          </h2>
+          {pendingEntries.length > 0 && (
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-semibold text-[#2F3E4E]">
+                {pendingEntries.length} flagged · ${pendingTotal.toFixed(2)} pending
+              </span>
+              <button
+                onClick={() => setShowInvoiceModal(true)}
+                className="bg-[#7A8F79] text-white px-4 py-1.5 rounded-lg text-xs font-semibold hover:bg-[#2F3E4E] transition"
+              >
+                Create Invoice
+              </button>
+            </div>
+          )}
+        </div>
+
+        {invoiceMessage && (
+          <p className={`text-xs font-semibold ${invoiceMessage.includes('sent') ? 'text-[#7A8F79]' : 'text-red-500'}`}>
+            {invoiceMessage}
+          </p>
+        )}
+
+        {entries.length === 0 ? (
+          <p className="text-sm text-[#7A8F79] italic">No time entries yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {entries.map(entry => {
+              const isInvoiced = !!entry.invoiceId
+              const dateStr = new Date(entry.workDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+              return (
+                <div key={entry.id} className={`flex items-center gap-3 p-3 rounded-lg border ${isInvoiced ? 'bg-[#f4f6f8] border-[#D9E1E8] opacity-60' : 'border-[#D9E1E8]'}`}>
+                  <input
+                    type="checkbox"
+                    disabled={isInvoiced}
+                    checked={entry.readyToInvoice}
+                    onChange={e => toggleInvoiceFlag(entry, e.target.checked)}
+                    className="w-4 h-4 accent-[#7A8F79] flex-shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-[#2F3E4E]">{dateStr}</p>
+                    <p className="text-xs text-[#7A8F79]">{entry.hours} hrs{entry.notes ? ` · ${entry.notes}` : ''}</p>
+                  </div>
+                  {isInvoiced ? (
+                    <span className="text-xs bg-green-100 text-green-700 font-semibold px-2 py-0.5 rounded-full">
+                      Invoiced · {entry.invoice?.invoiceNumber}
+                    </span>
+                  ) : entry.readyToInvoice ? (
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={entry.invoiceFeePlan ?? 'A1'}
+                        onChange={e => toggleInvoiceFlag(entry, true, e.target.value)}
+                        className="border border-[#D9E1E8] rounded-lg px-2 py-1 text-xs text-[#2F3E4E] focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
+                      >
+                        {FEE_PLANS.map(p => (
+                          <option key={p.value} value={p.value}>{p.label}</option>
+                        ))}
+                      </select>
+                      <span className="text-xs font-bold text-[#2F3E4E] w-10 text-right">
+                        ${(entry.invoiceFeeAmt ?? 0).toFixed(2)}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-[#7A8F79] italic">not flagged</span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ── Create Invoice Modal ── */}
+      {showInvoiceModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md space-y-4">
+            <h3 className="text-lg font-bold text-[#2F3E4E]">Create Invoice</h3>
+            <p className="text-sm text-[#7A8F79]">
+              {pendingEntries.length} entries · <strong className="text-[#2F3E4E]">${pendingTotal.toFixed(2)} total</strong>
+            </p>
+
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Due Terms</label>
+              <select
+                value={invoiceDueTerm}
+                onChange={e => setInvoiceDueTerm(e.target.value)}
+                className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E]"
+              >
+                <option value="30">Net 30 — due in 30 days</option>
+                <option value="60">Net 60 — due in 60 days</option>
+                <option value="90">Net 90 — due in 90 days</option>
+                <option value="ASAP">ASAP — due immediately</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Notes (optional)</label>
+              <textarea
+                value={invoiceNotes}
+                onChange={e => setInvoiceNotes(e.target.value)}
+                rows={3}
+                placeholder="Any additional notes for the nurse…"
+                className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] resize-none"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setShowInvoiceModal(false)}
+                className="flex-1 border border-[#D9E1E8] text-[#7A8F79] py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f6f8] transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={createInvoice}
+                disabled={invoiceSending}
+                className="flex-1 bg-[#2F3E4E] text-white py-2 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-50"
+              >
+                {invoiceSending ? 'Sending…' : 'Send Invoice'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

@@ -102,6 +102,7 @@ model NurseProfile {
   timeEntries    TimeEntry[]
   claims         Claim[]
   enrollmentLogs EnrollmentLog[]
+  invoices       Invoice[]
 }
 
 model EnrollmentLog {
@@ -124,11 +125,40 @@ model TimeEntry {
   hours     Float
   notes     String?
   billed    Boolean  @default(false)
+
+  // Invoice flagging
+  readyToInvoice Boolean @default(false)
+  invoiceFeePlan String? // 'A1' | 'A2' | 'B' | 'C'
+  invoiceFeeAmt  Float?
+  invoiceId      String?
+  invoice        Invoice? @relation(fields: [invoiceId], references: [id])
+
   createdAt DateTime @default(now())
 
   nurse     NurseProfile @relation(fields: [nurseId], references: [id])
 
   @@unique([nurseId, workDate])
+}
+
+model Invoice {
+  id            String   @id @default(uuid())
+  nurseId       String
+  invoiceNumber String   @unique
+  totalAmount   Float
+  dueTerm       String   // '30' | '60' | '90' | 'ASAP'
+  dueDate       DateTime
+  status        String   @default("Pending") // Pending | Paid | Overdue | Cancelled
+  notes         String?
+  nurseEmail    String
+  nurseName     String
+  sentAt        DateTime @default(now())
+  paidAt        DateTime?
+
+  entries TimeEntry[]
+  nurse   NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Claim {

@@ -55,6 +55,58 @@ export async function sendWelcomeEmail({
   }
 }
 
+export async function sendBillingInquiry({
+  firstName,
+  lastName,
+  email,
+  phone,
+  insuranceCount,
+  insuranceNames,
+}: {
+  firstName: string
+  lastName: string
+  email: string
+  phone?: string
+  insuranceCount: number
+  insuranceNames: string[]
+}): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) return false
+  const resend = new Resend(process.env.RESEND_API_KEY)
+
+  const insuranceList = insuranceNames
+    .map((name, i) => `<li style="margin-bottom:4px">${i + 1}. ${name}</li>`)
+    .join('')
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to: ALERT_TO,
+      subject: `BILLING INQUIRY: ${firstName} ${lastName}`,
+      html: `
+        <div style="font-family:sans-serif;max-width:520px;padding:32px;color:#2F3E4E">
+          <h2 style="margin:0 0 8px;color:#2F3E4E">New Billing Services Inquiry</h2>
+          <p style="margin:0 0 20px;color:#7A8F79;font-size:14px">Submitted via the CHC Billing Services page.</p>
+
+          <div style="background:#f4f6f8;border-radius:10px;padding:20px 24px;margin-bottom:24px">
+            <p style="margin:0 0 8px;font-size:14px"><strong>Name:</strong> ${firstName} ${lastName}</p>
+            <p style="margin:0 0 8px;font-size:14px"><strong>Email:</strong> ${email}</p>
+            ${phone ? `<p style="margin:0 0 8px;font-size:14px"><strong>Phone:</strong> ${phone}</p>` : ''}
+            <p style="margin:0 0 8px;font-size:14px"><strong>Total Insurances:</strong> ${insuranceCount}</p>
+            <p style="margin:0 4px 4px;font-size:14px"><strong>Insurance Names:</strong></p>
+            <ul style="margin:0;padding-left:20px;font-size:14px">${insuranceList}</ul>
+          </div>
+
+          <hr style="border:none;border-top:1px solid #D9E1E8;margin:24px 0"/>
+          <p style="font-size:11px;color:#aab">Submitted from cominghomecare.com/billing</p>
+        </div>
+      `,
+    })
+    return !error
+  } catch {
+    return false
+  }
+}
+
 export async function sendEnrollmentAlert({
   nurseName,
   action,

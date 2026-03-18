@@ -1,4 +1,3 @@
-import Link from 'next/link'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -6,6 +5,7 @@ type Step = {
   title: string
   description: string
   link?: { label: string; href: string }
+  links?: { label: string; href: string }[]
   note?: string
 }
 
@@ -83,13 +83,19 @@ const guides: ProcessGuide[] = [
         note: 'Have your NPI, Social Security Number, NY professional license number, and practice address ready before you begin.',
       },
       {
-        title: 'Complete the Provider ETIN Attestation (Notarized)',
+        title: 'Complete the Provider ETIN Application or Renewal (Notarized)',
         description:
-          'The Electronic Transmitter Identification Number (ETIN) attestation form must be completed, signed, and notarized before submission. This authorizes electronic claim submission through eMedNY on your behalf.',
-        link: {
-          label: 'Download ETIN Attestation Form →',
-          href: '#', // update with direct eMedNY form link
-        },
+          'The Electronic Transmitter Identification Number (ETIN) form must be completed, signed, and notarized before submission. This authorizes electronic claim submission through eMedNY on your behalf. Download the form that applies to you:',
+        links: [
+          {
+            label: 'New Providers — Download ETIN Application →',
+            href: 'https://www.emedny.org/info/providerenrollment/ProviderMaintForms/401101_ETIN_aPPL_Provider_Electronic_Paper_ETIN_application.pdf',
+          },
+          {
+            label: 'Existing Providers — Download ETIN Renewal Certification →',
+            href: 'https://www.emedny.org/info/providerenrollment/ProviderMaintForms/490501_ETIN_CERT_Certification_Statement_Cert_Instructions_for_Existing_ETINs.pdf',
+          },
+        ],
         note: 'This form must be physically notarized — most banks, UPS Stores, and public libraries offer notary services. There is typically no charge at a bank branch.',
       },
       {
@@ -211,6 +217,21 @@ function StepCard({ step, index }: { step: Step; index: number }) {
           >
             {step.link.label}
           </a>
+        )}
+        {step.links && (
+          <div className="flex flex-col gap-1.5">
+            {step.links.map((l, i) => (
+              <a
+                key={i}
+                href={l.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-sm font-semibold text-[#7A8F79] hover:text-[#2F3E4E] underline underline-offset-2 transition"
+              >
+                {l.label}
+              </a>
+            ))}
+          </div>
         )}
       </div>
     </div>

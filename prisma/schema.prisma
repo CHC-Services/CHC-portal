@@ -103,6 +103,22 @@ model NurseProfile {
   claims         Claim[]
   enrollmentLogs EnrollmentLog[]
   invoices       Invoice[]
+  reminders      NurseReminder[]
+}
+
+model NurseReminder {
+  id        String   @id @default(uuid())
+  nurseId   String
+  title     String
+  category  String   @default("general") // 'license' | 'medicaid' | 'bcbs' | 'npi' | 'insurance' | 'general'
+  dueDate   DateTime
+  notes     String?
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  nurse NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
+
+  @@index([nurseId])
 }
 
 model EnrollmentLog {

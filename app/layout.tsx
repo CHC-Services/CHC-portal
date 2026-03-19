@@ -1,6 +1,7 @@
 import "./globals.css";
 import { getUserFromCookie } from "@/lib/getUserFromCookie";
 import Banner from "./components/Banner";
+import Footer from "./components/Footer";
 
 export default async function RootLayout({
   children,
@@ -16,11 +17,12 @@ export default async function RootLayout({
         <link rel="icon" href="/favicon.png" type="image/png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
-      <body className="pt-[220px] md:pt-[200px] pb-16 md:pb-0" >
+      <body className="pt-[220px] md:pt-[200px]">
         <Banner user={user} />
         <div className="page-wrap px-4 sm:px-6">
           {children}
         </div>
+        <Footer />
       </body>
     </html>
   );

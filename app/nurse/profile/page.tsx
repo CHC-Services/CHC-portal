@@ -3,6 +3,24 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
+const REMINDER_CATEGORIES = [
+  { value: 'license',   label: '📄 Professional License' },
+  { value: 'medicaid',  label: '🏥 Medicaid Enrollment' },
+  { value: 'bcbs',      label: '💳 BCBS / Insurance' },
+  { value: 'npi',       label: '🔢 NPI Registration' },
+  { value: 'insurance', label: '🛡️ Malpractice Insurance' },
+  { value: 'general',   label: '📅 General Reminder' },
+]
+
+type Reminder = {
+  id: string
+  title: string
+  category: string
+  dueDate: string
+  notes?: string
+  completed: boolean
+}
+
 export default function ProfilePage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -15,6 +33,12 @@ export default function ProfilePage() {
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+
+  // reminders
+  const [reminders, setReminders] = useState<Reminder[]>([])
+  const [reminderForm, setReminderForm] = useState({ title: '', category: 'general', dueDate: '', notes: '' })
+  const [reminderAdding, setReminderAdding] = useState(false)
+  const [showReminderForm, setShowReminderForm] = useState(false)
 
   useEffect(() => {
     fetch('/api/nurse/profile')
@@ -32,7 +56,45 @@ export default function ProfilePage() {
         }
       })
       .finally(() => setLoading(false))
+
+    fetch('/api/nurse/reminders', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setReminders(data) })
   }, [router])
+
+  async function addReminder(e: React.FormEvent) {
+    e.preventDefault()
+    if (!reminderForm.title || !reminderForm.dueDate) return
+    setReminderAdding(true)
+    const res = await fetch('/api/nurse/reminders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(reminderForm),
+    })
+    const data = await res.json()
+    if (res.ok) {
+      setReminders(prev => [...prev, data].sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()))
+      setReminderForm({ title: '', category: 'general', dueDate: '', notes: '' })
+      setShowReminderForm(false)
+    }
+    setReminderAdding(false)
+  }
+
+  async function toggleReminder(id: string, completed: boolean) {
+    await fetch(`/api/nurse/reminders/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ completed }),
+    })
+    setReminders(prev => prev.map(r => r.id === id ? { ...r, completed } : r))
+  }
+
+  async function deleteReminder(id: string) {
+    await fetch(`/api/nurse/reminders/${id}`, { method: 'DELETE', credentials: 'include' })
+    setReminders(prev => prev.filter(r => r.id !== id))
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -238,6 +300,135 @@ export default function ProfilePage() {
           <BillingSection profile={profile} onUnenroll={() => setProfile({ ...profile, enrolledInBilling: false })} />
         </div>
 
+      </div>
+
+      {/* ── Renewal Reminders ── */}
+      <div className="mt-6 max-w-3xl">
+        <div className="bg-white rounded-xl shadow p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-semibold text-[#2F3E4E]">
+                <span style={{ color: '#7A8F79', fontStyle: 'italic' }}>my</span>Renewals
+              </h2>
+              <p className="text-xs text-[#7A8F79] mt-0.5">Track license renewals, enrollment deadlines, and important dates.</p>
+            </div>
+            <button
+              onClick={() => setShowReminderForm(!showReminderForm)}
+              className="bg-[#2F3E4E] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#7A8F79] transition"
+            >
+              {showReminderForm ? 'Cancel' : '+ Add Reminder'}
+            </button>
+          </div>
+
+          {showReminderForm && (
+            <form onSubmit={addReminder} className="bg-[#F4F6F5] rounded-lg p-4 mb-5 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Reminder Title</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. NY RN License Renewal"
+                    value={reminderForm.title}
+                    onChange={e => setReminderForm({ ...reminderForm, title: e.target.value })}
+                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Category</label>
+                  <select
+                    value={reminderForm.category}
+                    onChange={e => setReminderForm({ ...reminderForm, category: e.target.value })}
+                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                  >
+                    {REMINDER_CATEGORIES.map(c => (
+                      <option key={c.value} value={c.value}>{c.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Due Date</label>
+                  <input
+                    type="date"
+                    value={reminderForm.dueDate}
+                    onChange={e => setReminderForm({ ...reminderForm, dueDate: e.target.value })}
+                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                    required
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Notes (optional)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Renew at nysed.gov/nursing"
+                    value={reminderForm.notes}
+                    onChange={e => setReminderForm({ ...reminderForm, notes: e.target.value })}
+                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                  />
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={reminderAdding}
+                className="w-full bg-[#7A8F79] text-white py-2 rounded-lg text-sm font-semibold hover:bg-[#657a64] transition disabled:opacity-50"
+              >
+                {reminderAdding ? 'Saving…' : 'Save Reminder'}
+              </button>
+            </form>
+          )}
+
+          {reminders.length === 0 ? (
+            <p className="text-sm text-[#7A8F79] italic text-center py-6">
+              No reminders yet. Add your first renewal deadline above — never miss a license renewal or enrollment deadline again.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {reminders.map(r => {
+                const due = new Date(r.dueDate)
+                const daysLeft = Math.ceil((due.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+                const overdue = daysLeft < 0
+                const urgent = daysLeft >= 0 && daysLeft <= 14
+                const catIcon = r.category === 'license' ? '📄' : r.category === 'medicaid' ? '🏥' : r.category === 'bcbs' ? '💳' : r.category === 'npi' ? '🔢' : r.category === 'insurance' ? '🛡️' : '📅'
+                return (
+                  <div
+                    key={r.id}
+                    className={`flex items-start gap-3 rounded-lg px-4 py-3 border transition ${
+                      r.completed ? 'bg-gray-50 border-[#D9E1E8] opacity-60' :
+                      overdue ? 'bg-red-50 border-red-200' :
+                      urgent ? 'bg-amber-50 border-amber-200' :
+                      'bg-[#F4F6F5] border-[#D9E1E8]'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={r.completed}
+                      onChange={e => toggleReminder(r.id, e.target.checked)}
+                      className="mt-1 accent-[#7A8F79] w-4 h-4 cursor-pointer"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-semibold ${r.completed ? 'line-through text-[#7A8F79]' : 'text-[#2F3E4E]'}`}>
+                        {catIcon} {r.title}
+                      </p>
+                      <p className={`text-xs mt-0.5 font-medium ${overdue ? 'text-red-600' : urgent ? 'text-amber-600' : 'text-[#7A8F79]'}`}>
+                        {overdue ? `Overdue by ${Math.abs(daysLeft)} days` :
+                         urgent ? `${daysLeft} days left` :
+                         due.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                      </p>
+                      {r.notes && <p className="text-xs text-[#7A8F79] mt-0.5">{r.notes}</p>}
+                    </div>
+                    <button
+                      onClick={() => deleteReminder(r.id)}
+                      className="text-[#D9E1E8] hover:text-red-400 transition text-sm mt-0.5"
+                      title="Delete reminder"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
     </div>

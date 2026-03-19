@@ -15,27 +15,40 @@ async function getUser() {
 async function getNurseStats(nurseProfileId: string) {
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-  const [monthData, allData, upcomingReminders] = await Promise.all([
-    (prisma.timeEntry as any).aggregate({
-      where: { nurseId: nurseProfileId, workDate: { gte: startOfMonth } },
-      _sum: { hours: true },
-      _count: true,
-    }),
-    (prisma.timeEntry as any).aggregate({
-      where: { nurseId: nurseProfileId },
-      _sum: { hours: true },
-    }),
-    (prisma.nurseReminder as any).findMany({
-      where: { nurseId: nurseProfileId, completed: false, dueDate: { gte: now } },
-      orderBy: { dueDate: 'asc' },
-      take: 3,
-    }),
-  ])
-  return {
-    hoursThisMonth: (monthData._sum.hours ?? 0) as number,
-    submissionsThisMonth: (monthData._count ?? 0) as number,
-    totalHours: (allData._sum.hours ?? 0) as number,
-    upcomingReminders: upcomingReminders as { id: string; title: string; dueDate: Date; category: string }[],
+
+  try {
+    const [monthData, allData] = await Promise.all([
+      (prisma.timeEntry as any).aggregate({
+        where: { nurseId: nurseProfileId, workDate: { gte: startOfMonth } },
+        _sum: { hours: true },
+        _count: true,
+      }),
+      (prisma.timeEntry as any).aggregate({
+        where: { nurseId: nurseProfileId },
+        _sum: { hours: true },
+      }),
+    ])
+
+    // Query reminders separately — table may not exist yet if migration is pending
+    let upcomingReminders: { id: string; title: string; dueDate: Date; category: string }[] = []
+    try {
+      upcomingReminders = await (prisma.nurseReminder as any).findMany({
+        where: { nurseId: nurseProfileId, completed: false, dueDate: { gte: now } },
+        orderBy: { dueDate: 'asc' },
+        take: 3,
+      })
+    } catch {
+      // NurseReminder table not yet migrated — silently skip
+    }
+
+    return {
+      hoursThisMonth: (monthData._sum.hours ?? 0) as number,
+      submissionsThisMonth: (monthData._count ?? 0) as number,
+      totalHours: (allData._sum.hours ?? 0) as number,
+      upcomingReminders,
+    }
+  } catch {
+    return { hoursThisMonth: 0, submissionsThisMonth: 0, totalHours: 0, upcomingReminders: [] }
   }
 }
 

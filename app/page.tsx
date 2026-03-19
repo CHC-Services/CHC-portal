@@ -163,6 +163,33 @@ export default async function Home() {
         </div>
       </div>
 
+      {/* ── Definition of Home ── */}
+      <div className="bg-white border-b border-[#D9E1E8] px-6 md:px-10 py-8">
+        <div className="max-w-3xl">
+          <p className="text-2xl md:text-3xl font-bold text-[#2F3E4E] tracking-tight">
+            home <span className="text-base font-normal text-[#7A8F79] italic tracking-normal ml-1">/hōm/</span>
+          </p>
+          <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mt-1 mb-4">noun</p>
+          <ol className="space-y-3 text-[#2F3E4E] text-sm">
+            <li className="flex gap-3">
+              <span className="text-[#7A8F79] font-bold shrink-0">1.</span>
+              <span>A place to <em>land</em> — where the paperwork is handled, the deadlines are tracked, and you finally get a moment to breathe.</span>
+            </li>
+            <li className="flex gap-3">
+              <span className="text-[#7A8F79] font-bold shrink-0">2.</span>
+              <span>A space to <em>grow</em> — resources, step-by-step guides, and real support for the business side of caregiving, so you can become the provider you're meant to be.</span>
+            </li>
+            <li className="flex gap-3">
+              <span className="text-[#7A8F79] font-bold shrink-0">3.</span>
+              <span>A community to <em>belong to</em> — a safe corner of the internet where it's okay to vent, laugh, learn, ask questions, and remember why you chose this work.</span>
+            </li>
+          </ol>
+          <p className="mt-5 text-xs italic text-[#7A8F79] border-l-2 border-[#7A8F79] pl-3">
+            "You spend every day making someone else's house feel like home. This is yours."
+          </p>
+        </div>
+      </div>
+
       <div className="px-6 md:px-10 py-10 space-y-12 max-w-5xl">
 
         {/* ── Nurse: stats ── */}

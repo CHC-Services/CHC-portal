@@ -158,6 +158,9 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   const [roleMessage, setRoleMessage] = useState('')
   const [inviteSending, setInviteSending] = useState(false)
   const [inviteMessage, setInviteMessage] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [pwSaving, setPwSaving] = useState(false)
+  const [pwMessage, setPwMessage] = useState('')
 
   // Time entries + invoicing
   const [entries, setEntries] = useState<TimeEntry[]>([])
@@ -254,6 +257,25 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
       : data.error || 'Failed to send invite.')
   }
 
+  async function setPassword() {
+    if (!newPassword.trim()) return
+    setPwSaving(true)
+    setPwMessage('')
+    const res = await fetch(`/api/admin/nurses/${id}/set-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ password: newPassword }),
+    })
+    setPwSaving(false)
+    if (res.ok) {
+      setPwMessage('Password updated successfully.')
+      setNewPassword('')
+    } else {
+      setPwMessage('Error updating password.')
+    }
+  }
+
   async function save(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
@@ -320,6 +342,33 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
             {roleMessage}
           </p>
         )}
+
+        <div className="mt-4 pt-4 border-t border-[#D9E1E8]">
+          <p className="text-xs font-semibold text-[#2F3E4E] mb-1">Set Password Manually</p>
+          <p className="text-xs text-[#7A8F79] mb-2">Set a specific password for this provider without sending an email.</p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+              placeholder="Enter new password"
+              className="flex-1 border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+            />
+            <button
+              type="button"
+              onClick={setPassword}
+              disabled={pwSaving || !newPassword.trim()}
+              className="shrink-0 bg-[#2F3E4E] text-white px-4 py-2 rounded-lg hover:bg-[#7A8F79] transition text-sm font-semibold disabled:opacity-50"
+            >
+              {pwSaving ? 'Saving…' : 'Set Password'}
+            </button>
+          </div>
+          {pwMessage && (
+            <p className={`mt-2 text-xs font-medium ${pwMessage.includes('Error') ? 'text-red-500' : 'text-[#7A8F79]'}`}>
+              {pwMessage}
+            </p>
+          )}
+        </div>
 
         <div className="mt-4 pt-4 border-t border-[#D9E1E8] flex items-center justify-between">
           <div>

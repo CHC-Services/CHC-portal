@@ -27,7 +27,7 @@ export async function POST(req: Request) {
 
   if (process.env.RESEND_API_KEY) {
     await resend.emails.send({
-      from: 'CHC Portal <notifications@cominghomecare.com>',
+      from: 'Coming Home Care <support@cominghomecare.com>',
       to: email,
       subject: 'Reset your CHC Portal password',
       html: `

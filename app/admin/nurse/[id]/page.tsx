@@ -156,6 +156,8 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   const [userRole, setUserRole] = useState('')
   const [roleSaving, setRoleSaving] = useState(false)
   const [roleMessage, setRoleMessage] = useState('')
+  const [inviteSending, setInviteSending] = useState(false)
+  const [inviteMessage, setInviteMessage] = useState('')
 
   // Time entries + invoicing
   const [entries, setEntries] = useState<TimeEntry[]>([])
@@ -237,6 +239,21 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
     setRoleMessage(res.ok ? 'Role updated.' : 'Error updating role.')
   }
 
+  async function resendInvite() {
+    if (!confirm(`This will reset ${profile.displayName}'s password and send them a new login email. Continue?`)) return
+    setInviteSending(true)
+    setInviteMessage('')
+    const res = await fetch(`/api/admin/nurses/${id}/resend-invite`, {
+      method: 'POST',
+      credentials: 'include',
+    })
+    const data = await res.json()
+    setInviteSending(false)
+    setInviteMessage(res.ok
+      ? `Invite resent to ${data.email}. Their password has been reset.`
+      : data.error || 'Failed to send invite.')
+  }
+
   async function save(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
@@ -301,6 +318,26 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
         {roleMessage && (
           <p className={`mt-2 text-xs font-medium ${roleMessage.includes('Error') ? 'text-red-500' : 'text-[#7A8F79]'}`}>
             {roleMessage}
+          </p>
+        )}
+
+        <div className="mt-4 pt-4 border-t border-[#D9E1E8] flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-[#2F3E4E]">Resend Portal Invite</p>
+            <p className="text-xs text-[#7A8F79] mt-0.5">Resets their password and sends a new welcome email with fresh login credentials.</p>
+          </div>
+          <button
+            type="button"
+            onClick={resendInvite}
+            disabled={inviteSending}
+            className="shrink-0 ml-4 bg-[#7A8F79] text-white px-4 py-2 rounded-lg hover:bg-[#657a64] transition text-sm font-semibold disabled:opacity-50"
+          >
+            {inviteSending ? 'Sending…' : 'Resend Invite'}
+          </button>
+        </div>
+        {inviteMessage && (
+          <p className={`mt-2 text-xs font-medium ${inviteMessage.includes('Failed') || inviteMessage.includes('error') ? 'text-red-500' : 'text-[#7A8F79]'}`}>
+            {inviteMessage}
           </p>
         )}
       </div>

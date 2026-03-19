@@ -292,7 +292,7 @@ export default function ResourcesPage() {
 
       {/* Hero */}
       <div className="bg-[#2F3E4E] px-6 md:px-10 py-10 md:py-14">
-        <div className="max-w-3xl">
+        <div className="max-w-4xl mx-auto">
           <p className="text-[#7A8F79] text-sm font-semibold uppercase tracking-widest mb-2">
             Provider Resources
           </p>
@@ -307,7 +307,7 @@ export default function ResourcesPage() {
         </div>
       </div>
 
-      <div className="px-6 md:px-10 py-8">
+      <div className="px-6 md:px-10 py-8 max-w-4xl mx-auto">
 
         {/* Jump links */}
         <div className="mb-8">

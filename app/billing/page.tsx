@@ -51,7 +51,7 @@ export default function BillingPage() {
       {/* Header */}
       <header className="bg-[#2F3E4E] px-6 py-4 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-3">
-          <Image src="/chc-logo.png" alt="Coming Home Care" width={44} height={44} className="rounded-lg" />
+          <Image src="/chc_logo.png" alt="Coming Home Care" width={44} height={44} className="rounded-lg" />
           <span className="text-white font-bold text-lg hidden sm:block">Coming Home Care</span>
         </Link>
         <Link

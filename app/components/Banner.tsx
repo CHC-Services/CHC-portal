@@ -33,17 +33,23 @@ export default function Banner({ user }: BannerProps) {
                 await fetch('/api/logout', { method: 'POST', credentials: 'include' })
                 window.location.href = '/login'
             }}
-            className="bg-[#7A8F79] text-white px-3 py-1 rounded hover:bg-[#2F3E4E] transition text-sm"
+            className="flex items-center gap-1.5 bg-[#D9E1E8] text-[#2F3E4E] px-4 py-1.5 rounded-full hover:bg-[#7A8F79] hover:text-white transition text-xs font-semibold"
         >
-            Logout
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            Sign Out
         </button>
     ) : (
-        <button
-            onClick={() => { window.location.href = '/login' }}
-            className="bg-[#2F3E4E] text-white px-3 py-1 rounded hover:bg-[#1f2a33] transition text-sm"
+        <Link
+            href="/login"
+            className="flex items-center gap-1.5 bg-[#2F3E4E] text-white px-4 py-1.5 rounded-full hover:bg-[#7A8F79] transition text-xs font-semibold"
         >
-            Login
-        </button>
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+            </svg>
+            <span><span className="italic text-[#7A8F79]">my</span>Portal</span>
+        </Link>
     )
 
     const navLinks = (
@@ -156,9 +162,10 @@ export default function Banner({ user }: BannerProps) {
             {/* ── DESKTOP header (hidden below md) ── */}
             <div className="hidden md:flex fixed top-0 left-0 w-full bg-[#F4F6F5] text-[#2f3e4e] items-center justify-between px-6 h-[200px] z-50">
 
-                {/* Clock */}
-                <div className="absolute top-4 right-10 text-sm text-right">
-                    <span style={{color:'#7A8F79'}}>{time}</span>
+                {/* Top-right: clock + auth */}
+                <div className="absolute top-4 right-10 flex items-center gap-4">
+                    <span className="text-sm" style={{color:'#7A8F79'}}>{time}</span>
+                    {authButton}
                 </div>
 
                 {/* Logo */}
@@ -185,7 +192,6 @@ export default function Banner({ user }: BannerProps) {
                     )}
                     <nav className="flex flex-wrap gap-8 text-med font-semibold mt-4 items-center">
                         {navLinks}
-                        <div className="ml-auto">{authButton}</div>
                     </nav>
                 </div>
             </div>

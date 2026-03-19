@@ -106,6 +106,21 @@ model NurseProfile {
   reminders      NurseReminder[]
 }
 
+model GlobalEvent {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  eventDate   DateTime
+  category    String   @default("general") // 'tax' | 'renewal' | 'compliance' | 'general'
+  targetRoles String[] @default([])        // empty = visible to all; otherwise ['nurse','biller',...]
+  recurrence  String?                      // 'quarterly' | 'annual' | null (one-time)
+  createdBy   String?                      // admin user id
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([eventDate])
+}
+
 model NurseReminder {
   id        String   @id @default(uuid())
   nurseId   String

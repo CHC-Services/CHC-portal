@@ -124,6 +124,7 @@ export default async function Home() {
         <div className="max-w-4xl mx-auto">
           {user ? (
             <>
+              <HomeDefinition />
               <p className="text-[#7A8F79] text-xs font-semibold uppercase tracking-widest mb-2">
                 {user.role === 'nurse' ? 'Nurse Portal' : user.role === 'admin' ? 'Admin Portal' : 'Provider Portal'}
               </p>
@@ -136,11 +137,10 @@ export default async function Home() {
                   ? 'Everything you need to stay compliant, get paid, and focus on what matters — caring for your patients.'
                   : 'Your team is counting on you. Manage the roster, review submissions, and keep the operation running smoothly.'}
               </p>
-              {/* Quote */}
-              <HomeDefinition />
             </>
           ) : (
             <>
+              <HomeDefinition />
               <p className="text-[#7A8F79] text-xs font-semibold uppercase tracking-widest mb-2">
                 Provider &amp; Admin Portal
               </p>
@@ -151,13 +151,6 @@ export default async function Home() {
               <p className="mt-4 text-[#D9E1E8] text-sm max-w-xl">
                 Coming Home Care's secure portal puts time tracking, claims management, billing enrollment, and yearly renewal reminders all in one place — so you can focus on your patients.
               </p>
-              <HomeDefinition />
-              <Link
-                href="/login"
-                className="mt-7 inline-block bg-[#7A8F79] text-white font-semibold px-7 py-3 rounded-lg hover:bg-[#657a64] transition text-sm"
-              >
-                Sign In to Your Portal →
-              </Link>
             </>
           )}
         </div>

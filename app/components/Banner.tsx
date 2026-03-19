@@ -33,9 +33,9 @@ export default function Banner({ user }: BannerProps) {
                 await fetch('/api/logout', { method: 'POST', credentials: 'include' })
                 window.location.href = '/login'
             }}
-            className="flex items-center gap-1.5 bg-[#D9E1E8] text-[#2F3E4E] px-4 py-1.5 rounded-full hover:bg-[#7A8F79] hover:text-white transition text-xs font-semibold"
+            className="flex items-center gap-2 bg-[#7A8F79] text-white px-5 py-2 rounded-full hover:bg-[#657a64] transition text-sm font-semibold"
         >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
             Sign Out
@@ -43,12 +43,12 @@ export default function Banner({ user }: BannerProps) {
     ) : (
         <Link
             href="/login"
-            className="flex items-center gap-1.5 bg-[#2F3E4E] text-white px-4 py-1.5 rounded-full hover:bg-[#7A8F79] transition text-xs font-semibold"
+            className="flex items-center gap-2 bg-[#7A8F79] text-white px-5 py-2 rounded-full hover:bg-[#657a64] transition text-sm font-semibold"
         >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
             </svg>
-            <span><span className="italic text-[#7A8F79]">my</span>Portal</span>
+            <span><span className="italic text-[#D9E1E8]">my</span>Portal</span>
         </Link>
     )
 
@@ -76,15 +76,23 @@ export default function Banner({ user }: BannerProps) {
                     <Link href="/nurse/invoices" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/nurse/invoices" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                         <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Invoices
                     </Link>
+                    <Link href="/calendar" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/calendar" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                        <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Calendar
+                    </Link>
                     <Link href="/nurse/profile" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/nurse/profile" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                         <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Profile
                     </Link>
                 </>
             )}
             {role === "admin" && (
-                <Link href="/admin" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/admin" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
-                    Admin
-                </Link>
+                <>
+                    <Link href="/admin" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/admin" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                        Admin
+                    </Link>
+                    <Link href="/admin/calendar" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/admin/calendar" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                        Calendar
+                    </Link>
+                </>
             )}
         </>
     )
@@ -98,7 +106,7 @@ export default function Banner({ user }: BannerProps) {
         ...(role === 'nurse' ? [
             { href: '/nurse', label: 'Dashboard', icon: '📊' },
             { href: '/nurse/claims', label: 'Claims', icon: '📄' },
-            { href: '/nurse/invoices', label: 'Invoices', icon: '🧾' },
+            { href: '/calendar', label: 'Calendar', icon: '📅' },
             { href: '/nurse/profile', label: 'Profile', icon: '👤' },
         ] : []),
         ...(role === 'admin' ? [

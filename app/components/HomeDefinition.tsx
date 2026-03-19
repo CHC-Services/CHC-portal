@@ -9,28 +9,18 @@ const DEFINITIONS = [
 ]
 
 export default function HomeDefinition() {
-  const [index, setIndex] = useState(0)
-  const [phase, setPhase] = useState<'in' | 'hold' | 'out'>('in')
+  // Pick a random definition once on load — changes only on page refresh
+  const [index] = useState(() => Math.floor(Math.random() * DEFINITIONS.length))
+  const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    // in → hold → out → next in
-    const timers: ReturnType<typeof setTimeout>[] = []
-
-    timers.push(setTimeout(() => setPhase('hold'), 600))   // finish fade-in
-    timers.push(setTimeout(() => setPhase('out'), 4200))   // start fade-out
-    timers.push(setTimeout(() => {                          // swap and restart
-      setIndex(i => (i + 1) % DEFINITIONS.length)
-      setPhase('in')
-    }, 4900))
-
-    return () => timers.forEach(clearTimeout)
-  }, [index])
-
-  const opacity = phase === 'hold' ? 1 : 0
-  const translateY = phase === 'in' ? 6 : phase === 'out' ? -6 : 0
+    // Slight delay so the fade-in is noticeable on load
+    const t = setTimeout(() => setVisible(true), 100)
+    return () => clearTimeout(t)
+  }, [])
 
   return (
-    <div className="mt-6 pt-5 border-t border-[#3d5166]">
+    <div className="mb-6 pb-5 border-b border-[#3d5166]">
       <p className="text-white font-bold text-base tracking-tight">
         home{' '}
         <span className="text-sm font-normal text-[#7A8F79] italic tracking-normal">/hōm/</span>
@@ -38,9 +28,9 @@ export default function HomeDefinition() {
       </p>
       <div
         style={{
-          opacity,
-          transform: `translateY(${translateY}px)`,
-          transition: 'opacity 0.6s ease, transform 0.6s ease',
+          opacity: visible ? 1 : 0,
+          transform: visible ? 'translateY(0)' : 'translateY(6px)',
+          transition: 'opacity 0.7s ease, transform 0.7s ease',
           minHeight: '2.5rem',
         }}
         className="mt-2 flex gap-2 items-start"

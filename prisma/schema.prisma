@@ -164,6 +164,7 @@ model TimeEntry {
   invoiceFeeAmt  Float?
   invoiceId      String?
   invoice        Invoice? @relation(fields: [invoiceId], references: [id])
+  claimRef       String?  // optional claim reference number for billing lookup
 
   createdAt DateTime @default(now())
 

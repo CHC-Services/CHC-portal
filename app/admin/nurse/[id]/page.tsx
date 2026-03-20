@@ -144,6 +144,7 @@ type TimeEntry = {
   invoiceFeeAmt?: number
   invoiceId?: string
   invoice?: { invoiceNumber: string; status: string }
+  claimRef?: string
 }
 
 export default function NurseDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -164,6 +165,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
 
   // Time entries + invoicing
   const [entries, setEntries] = useState<TimeEntry[]>([])
+  const [claimRefs, setClaimRefs] = useState<Record<string, string>>({})
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
   const [invoiceDueTerm, setInvoiceDueTerm] = useState('30')
   const [invoiceNotes, setInvoiceNotes] = useState('')
@@ -186,7 +188,14 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
 
     fetch(`/api/admin/time-entry?nurseId=${id}`, { credentials: 'include' })
       .then(r => r.json())
-      .then(data => { if (Array.isArray(data)) setEntries(data) })
+      .then(data => {
+        if (Array.isArray(data)) {
+          setEntries(data)
+          const refs: Record<string, string> = {}
+          data.forEach((e: TimeEntry) => { refs[e.id] = e.claimRef || '' })
+          setClaimRefs(refs)
+        }
+      })
   }, [id, router])
 
   async function toggleInvoiceFlag(entry: TimeEntry, checked: boolean, feePlan?: string) {
@@ -200,6 +209,19 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
     if (res.ok) {
       const updated = await res.json()
       setEntries(prev => prev.map(e => e.id === entry.id ? { ...e, ...updated } : e))
+    }
+  }
+
+  async function saveClaimRef(entryId: string, ref: string) {
+    const res = await fetch(`/api/admin/time-entry/${entryId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ claimRef: ref }),
+    })
+    if (res.ok) {
+      const updated = await res.json()
+      setEntries(prev => prev.map(e => e.id === entryId ? { ...e, claimRef: updated.claimRef } : e))
     }
   }
 
@@ -542,48 +564,94 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
         {entries.length === 0 ? (
           <p className="text-sm text-[#7A8F79] italic">No time entries yet.</p>
         ) : (
-          <div className="space-y-2">
-            {entries.map(entry => {
-              const isInvoiced = !!entry.invoiceId
-              const dateStr = new Date(entry.workDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
-              return (
-                <div key={entry.id} className={`flex items-center gap-3 p-3 rounded-lg border ${isInvoiced ? 'bg-[#f4f6f8] border-[#D9E1E8] opacity-60' : 'border-[#D9E1E8]'}`}>
-                  <input
-                    type="checkbox"
-                    disabled={isInvoiced}
-                    checked={entry.readyToInvoice}
-                    onChange={e => toggleInvoiceFlag(entry, e.target.checked)}
-                    className="w-4 h-4 accent-[#7A8F79] flex-shrink-0"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[#2F3E4E]">{dateStr}</p>
-                    <p className="text-xs text-[#7A8F79]">{entry.hours} hrs{entry.notes ? ` · ${entry.notes}` : ''}</p>
-                  </div>
-                  {isInvoiced ? (
-                    <span className="text-xs bg-green-100 text-green-700 font-semibold px-2 py-0.5 rounded-full">
-                      Invoiced · {entry.invoice?.invoiceNumber}
-                    </span>
-                  ) : entry.readyToInvoice ? (
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={entry.invoiceFeePlan ?? 'A1'}
-                        onChange={e => toggleInvoiceFlag(entry, true, e.target.value)}
-                        className="border border-[#D9E1E8] rounded-lg px-2 py-1 text-xs text-[#2F3E4E] focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
-                      >
-                        {FEE_PLANS.map(p => (
-                          <option key={p.value} value={p.value}>{p.label}</option>
-                        ))}
-                      </select>
-                      <span className="text-xs font-bold text-[#2F3E4E] w-10 text-right">
-                        ${(entry.invoiceFeeAmt ?? 0).toFixed(2)}
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="text-xs text-[#7A8F79] italic">not flagged</span>
-                  )}
-                </div>
-              )
-            })}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[640px]">
+              <thead>
+                <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
+                  <th className="text-left py-2 pr-3 w-8"></th>
+                  <th className="text-left py-2 pr-4">Account #</th>
+                  <th className="text-left py-2 pr-4">Provider</th>
+                  <th className="text-left py-2 pr-4">Date of Service</th>
+                  <th className="text-right py-2 pr-4">Hours</th>
+                  <th className="text-left py-2 pr-4">Notes</th>
+                  <th className="text-left py-2 pr-4">Claim Ref #</th>
+                  <th className="text-left py-2">Fee / Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {entries.map((entry, i) => {
+                  const isInvoiced = !!entry.invoiceId
+                  const dateStr = new Date(entry.workDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+                  return (
+                    <tr
+                      key={entry.id}
+                      className={`border-b border-[#D9E1E8] last:border-0 ${i % 2 === 0 ? '' : 'bg-[#F4F6F5]'} ${isInvoiced ? 'opacity-60' : ''}`}
+                    >
+                      <td className="py-2.5 pr-3">
+                        <input
+                          type="checkbox"
+                          disabled={isInvoiced}
+                          checked={entry.readyToInvoice}
+                          onChange={e => toggleInvoiceFlag(entry, e.target.checked)}
+                          className="w-4 h-4 accent-[#7A8F79]"
+                        />
+                      </td>
+                      <td className="py-2.5 pr-4">
+                        <span className="font-mono text-xs text-[#2F3E4E]">
+                          {profile.accountNumber || '—'}
+                        </span>
+                      </td>
+                      <td className="py-2.5 pr-4 font-semibold text-[#2F3E4E] whitespace-nowrap">
+                        {profile.displayName}
+                      </td>
+                      <td className="py-2.5 pr-4 text-[#2F3E4E] whitespace-nowrap">{dateStr}</td>
+                      <td className="py-2.5 pr-4 text-right font-semibold text-[#2F3E4E]">{entry.hours}</td>
+                      <td className="py-2.5 pr-4 text-[#7A8F79] italic text-xs max-w-[120px] truncate">
+                        {entry.notes || '—'}
+                      </td>
+                      <td className="py-2.5 pr-4">
+                        {isInvoiced ? (
+                          <span className="text-xs text-[#7A8F79] font-mono">{entry.claimRef || '—'}</span>
+                        ) : (
+                          <input
+                            type="text"
+                            value={claimRefs[entry.id] ?? entry.claimRef ?? ''}
+                            onChange={e => setClaimRefs(prev => ({ ...prev, [entry.id]: e.target.value }))}
+                            onBlur={e => saveClaimRef(entry.id, e.target.value)}
+                            placeholder="e.g. CLM-001"
+                            className="border border-[#D9E1E8] rounded px-2 py-1 text-xs text-[#2F3E4E] w-28 focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
+                          />
+                        )}
+                      </td>
+                      <td className="py-2.5">
+                        {isInvoiced ? (
+                          <span className="text-xs bg-green-100 text-green-700 font-semibold px-2 py-0.5 rounded-full whitespace-nowrap">
+                            {entry.invoice?.invoiceNumber}
+                          </span>
+                        ) : entry.readyToInvoice ? (
+                          <div className="flex items-center gap-1.5">
+                            <select
+                              value={entry.invoiceFeePlan ?? 'A1'}
+                              onChange={e => toggleInvoiceFlag(entry, true, e.target.value)}
+                              className="border border-[#D9E1E8] rounded px-1.5 py-1 text-xs text-[#2F3E4E] focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
+                            >
+                              {FEE_PLANS.map(p => (
+                                <option key={p.value} value={p.value}>{p.value} — ${p.amount.toFixed(2)}</option>
+                              ))}
+                            </select>
+                            <span className="text-xs font-bold text-[#2F3E4E]">
+                              ${(entry.invoiceFeeAmt ?? 0).toFixed(2)}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-[#7A8F79] italic">not flagged</span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

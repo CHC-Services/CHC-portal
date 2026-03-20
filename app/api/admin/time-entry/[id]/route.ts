@@ -22,16 +22,23 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   const { id } = await params
-  const { readyToInvoice, invoiceFeePlan } = await req.json()
+  const { readyToInvoice, invoiceFeePlan, claimRef } = await req.json()
 
-  const data: Record<string, unknown> = { readyToInvoice }
+  const data: Record<string, unknown> = {}
 
-  if (readyToInvoice && invoiceFeePlan) {
-    data.invoiceFeePlan = invoiceFeePlan
-    data.invoiceFeeAmt = FEE_AMOUNTS[invoiceFeePlan] ?? null
-  } else if (!readyToInvoice) {
-    data.invoiceFeePlan = null
-    data.invoiceFeeAmt = null
+  if (readyToInvoice !== undefined) {
+    data.readyToInvoice = readyToInvoice
+    if (readyToInvoice && invoiceFeePlan) {
+      data.invoiceFeePlan = invoiceFeePlan
+      data.invoiceFeeAmt = FEE_AMOUNTS[invoiceFeePlan] ?? null
+    } else if (!readyToInvoice) {
+      data.invoiceFeePlan = null
+      data.invoiceFeeAmt = null
+    }
+  }
+
+  if (claimRef !== undefined) {
+    data.claimRef = claimRef || null
   }
 
   const entry = await prisma.timeEntry.update({ where: { id }, data })

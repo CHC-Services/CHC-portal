@@ -128,7 +128,7 @@ function NurseRow({ nurse, onDeleted, onRefresh }: { nurse: Nurse; onDeleted: ()
                       {new Date(entry.workDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
                     </td>
                     <td className="py-2 pr-4 text-right font-semibold text-[#2F3E4E]">{entry.hours}</td>
-                    <td className="py-2 text-[#7A8F79] italic text-xs">{entry.notes || '—'}</td>
+                    <td className="py-2 text-[#2F3E4E] italic text-xs">{entry.notes || '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -303,46 +303,82 @@ export default function AdminDashboard() {
   const now = new Date()
   const monthName = now.toLocaleString('default', { month: 'long' })
 
+  const totalEntries = nurses.reduce((s, n) => s + n.timeEntries.length, 0)
+  const entriesThisMonth = nurses.reduce((sum, nurse) => {
+    return sum + nurse.timeEntries.filter(e => {
+      const d = new Date(e.workDate)
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+    }).length
+  }, 0)
+
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-[#2F3E4E]">Admin Dashboard</h1>
-          <p className="text-sm text-[#7A8F79] mt-1">
-            {now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-          </p>
-          <div className="flex gap-4 mt-2">
-            <Link href="/admin/claims" className="text-sm text-[#7A8F79] underline underline-offset-2 hover:text-[#2F3E4E]">
-              View Claims →
-            </Link>
-            <Link href="/admin/billing" className="text-sm text-[#7A8F79] underline underline-offset-2 hover:text-[#2F3E4E]">
-              Billing Summary →
-            </Link>
-          </div>
-        </div>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-[#2F3E4E]">Admin Dashboard</h1>
+        <p className="text-sm text-[#7A8F79] mt-1">
+          {now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+        </p>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+        <Link
+          href="/admin/claims"
+          className="bg-white rounded-xl shadow-sm p-5 flex flex-col gap-2 hover:shadow-md transition group"
+        >
+          <span className="text-2xl">📄</span>
+          <span className="font-semibold text-[#2F3E4E] group-hover:text-[#7A8F79] transition">Claims</span>
+          <span className="text-xs text-[#7A8F79]">Import & manage insurance claims</span>
+        </Link>
+        <Link
+          href="/admin/billing"
+          className="bg-white rounded-xl shadow-sm p-5 flex flex-col gap-2 hover:shadow-md transition group"
+        >
+          <span className="text-2xl">💳</span>
+          <span className="font-semibold text-[#2F3E4E] group-hover:text-[#7A8F79] transition">Billing Summary</span>
+          <span className="text-xs text-[#7A8F79]">Enrollment status & billing plans</span>
+        </Link>
+        <Link
+          href="/admin/calendar"
+          className="bg-white rounded-xl shadow-sm p-5 flex flex-col gap-2 hover:shadow-md transition group"
+        >
+          <span className="text-2xl">📅</span>
+          <span className="font-semibold text-[#2F3E4E] group-hover:text-[#7A8F79] transition">Calendar</span>
+          <span className="text-xs text-[#7A8F79]">Events, deadlines & reminders</span>
+        </Link>
         <button
           onClick={() => { setFormOpen(!formOpen); setMessage('') }}
-          className="bg-[#2F3E4E] text-white px-4 py-2 rounded-lg hover:bg-[#7A8F79] transition text-sm font-semibold"
+          className="bg-[#2F3E4E] text-white rounded-xl shadow-sm p-5 flex flex-col gap-2 hover:bg-[#3d5166] transition text-left"
         >
-          {formOpen ? 'Cancel' : '+ Add Nurse'}
+          <span className="text-2xl">➕</span>
+          <span className="font-semibold">{formOpen ? 'Cancel' : 'Add Provider'}</span>
+          <span className="text-xs text-[#D9E1E8]">Create a new provider account</span>
         </button>
       </div>
 
       {/* Stats strip */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <div className="bg-white rounded-xl shadow-sm p-5 flex flex-col gap-1 border-t-4 border-[#7A8F79]">
-          <span className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold">Active Nurses</span>
+          <span className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold">Active Providers</span>
           <span className="text-3xl font-bold text-[#2F3E4E]">{nurses.length}</span>
+          <span className="text-xs text-[#7A8F79]">registered accounts</span>
         </div>
         <div className="bg-white rounded-xl shadow-sm p-5 flex flex-col gap-1 border-t-4 border-[#7A8F79]">
           <span className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold">{monthName} Hours</span>
           <span className="text-3xl font-bold text-[#2F3E4E]">{totalHoursThisMonth}</span>
+          <span className="text-xs text-[#7A8F79]">hours worked this month</span>
         </div>
         <div className="bg-white rounded-xl shadow-sm p-5 flex flex-col gap-1 border-t-4 border-[#7A8F79]">
-          <span className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold">Total Submissions</span>
-          <span className="text-3xl font-bold text-[#2F3E4E]">{nurses.reduce((s, n) => s + n.timeEntries.length, 0)}</span>
+          <span className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold">{monthName} Submissions</span>
+          <span className="text-3xl font-bold text-[#2F3E4E]">{entriesThisMonth}</span>
+          <span className="text-xs text-[#7A8F79]">time entries logged this month</span>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm p-5 flex flex-col gap-1 border-t-4 border-[#7A8F79]">
+          <span className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold">All-Time Entries</span>
+          <span className="text-3xl font-bold text-[#2F3E4E]">{totalEntries}</span>
+          <span className="text-xs text-[#7A8F79]">total time entry records</span>
         </div>
       </div>
 

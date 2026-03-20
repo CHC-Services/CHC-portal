@@ -139,6 +139,7 @@ type TimeEntry = {
   workDate: string
   hours: number
   notes?: string
+  billed: boolean
   readyToInvoice: boolean
   invoiceFeePlan?: string
   invoiceFeeAmt?: number
@@ -222,6 +223,22 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
     if (res.ok) {
       const updated = await res.json()
       setEntries(prev => prev.map(e => e.id === entryId ? { ...e, claimRef: updated.claimRef } : e))
+    }
+  }
+
+  async function deleteEntry(entryId: string) {
+    if (!confirm('Delete this time entry? This cannot be undone.')) return
+    const res = await fetch('/api/admin/time-entry', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ id: entryId }),
+    })
+    if (res.ok) {
+      setEntries(prev => prev.filter(e => e.id !== entryId))
+    } else {
+      const d = await res.json()
+      alert(d.error || 'Failed to delete entry.')
     }
   }
 
@@ -575,7 +592,8 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                   <th className="text-right py-2 pr-4">Hours</th>
                   <th className="text-left py-2 pr-4">Notes</th>
                   <th className="text-left py-2 pr-4">Claim Ref #</th>
-                  <th className="text-left py-2">Fee / Status</th>
+                  <th className="text-left py-2 pr-4">Fee / Status</th>
+                  <th className="w-6"></th>
                 </tr>
               </thead>
               <tbody>
@@ -623,7 +641,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                           />
                         )}
                       </td>
-                      <td className="py-2.5">
+                      <td className="py-2.5 pr-4">
                         {isInvoiced ? (
                           <span className="text-xs bg-green-100 text-green-700 font-semibold px-2 py-0.5 rounded-full whitespace-nowrap">
                             {entry.invoice?.invoiceNumber}
@@ -645,6 +663,19 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                           </div>
                         ) : (
                           <span className="text-xs text-[#7A8F79] italic">not flagged</span>
+                        )}
+                      </td>
+                      <td className="py-2.5">
+                        {!entry.billed && (
+                          <button
+                            onClick={() => deleteEntry(entry.id)}
+                            title="Delete entry"
+                            className="text-red-400 hover:text-red-600 transition"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
                         )}
                       </td>
                     </tr>

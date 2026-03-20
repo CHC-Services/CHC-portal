@@ -194,6 +194,17 @@ model Invoice {
   updatedAt DateTime @updatedAt
 }
 
+model FaqItem {
+  id        String   @id @default(uuid())
+  question  String
+  answer    String
+  category  String   @default("General")
+  sortOrder Int      @default(0)
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Claim {
   id           String @id @default(uuid())
   nurseId      String

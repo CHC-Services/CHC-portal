@@ -65,6 +65,10 @@ export async function DELETE(req: Request) {
   const { id } = await req.json()
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
 
+  const entry = await prisma.timeEntry.findUnique({ where: { id }, select: { billed: true } })
+  if (!entry) return NextResponse.json({ error: 'Entry not found' }, { status: 404 })
+  if (entry.billed) return NextResponse.json({ error: 'Cannot delete a billed entry.' }, { status: 403 })
+
   await prisma.timeEntry.delete({ where: { id } })
   return NextResponse.json({ ok: true })
 }

@@ -53,7 +53,7 @@ export default function Banner({ user }: BannerProps) {
         </Link>
     )
 
-    // Desktop auth button — text nav style, sits below the clock
+    // Desktop auth button — only shown when logged in (Sign Out); login is handled in nav row 1
     const authButtonDesktop = role ? (
         <button
             onClick={async () => {
@@ -67,76 +67,69 @@ export default function Banner({ user }: BannerProps) {
             </svg>
             Sign Out
         </button>
+    ) : null
+
+    // Row 1: personal "my" portal links
+    const myRow = role === 'nurse' ? (
+        <>
+            <Link href="/nurse" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/nurse" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Dashboard
+            </Link>
+            <Link href="/calendar" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/calendar" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Calendar
+            </Link>
+            <Link href="/nurse/claims" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/nurse/claims" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Claims
+            </Link>
+            <Link href="/nurse/invoices" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/nurse/invoices" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Invoices
+            </Link>
+            <Link href="/nurse/profile" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/nurse/profile" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Profile
+            </Link>
+        </>
+    ) : role === 'admin' ? (
+        <>
+            <Link href="/admin" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/admin" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                Admin
+            </Link>
+            <Link href="/admin/calendar" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/admin/calendar" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                Admin Calendar
+            </Link>
+            <Link href="/admin/faq" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/admin/faq" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                Admin FAQ
+            </Link>
+        </>
     ) : (
-        <Link
-            href="/login"
-            className="flex items-center gap-1.5 hover:opacity-80 transition"
-        >
-            <svg className="w-4 h-4 text-[#7A8F79]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-            </svg>
-            <span className="text-base font-bold">
-                <span style={{ color: '#7A8F79', fontStyle: 'italic' }}>my</span>
-                <span style={{ color: '#2F3E4E' }}>Portal</span>
-            </span>
+        <Link href="/login" onClick={() => setMenuOpen(false)} className={`transition font-bold ${pathname === "/login" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+            <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Portal Login
         </Link>
     )
 
-    const navLinks = (
+    // Row 2: general site links (always visible)
+    const generalRow = (
         <>
             <Link href="/" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 Home
             </Link>
-            <Link href="/resources" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/resources" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
-                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Resources
+            <Link href="/billing" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/billing" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                Services
             </Link>
-            {!role && (
-                <Link href="/billing" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/billing" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
-                    Billing Services
-                </Link>
-            )}
-            {role === "nurse" && (
-                <>
-                    <Link href="/nurse" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/nurse" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
-                        <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Dashboard
-                    </Link>
-                    <Link href="/nurse/claims" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/nurse/claims" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
-                        <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Claims
-                    </Link>
-                    <Link href="/nurse/invoices" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/nurse/invoices" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
-                        <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Invoices
-                    </Link>
-                    <Link href="/calendar" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/calendar" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
-                        <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Calendar
-                    </Link>
-                    <Link href="/nurse/profile" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/nurse/profile" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
-                        <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Profile
-                    </Link>
-                </>
-            )}
-            {role === "admin" && (
-                <>
-                    <Link href="/admin" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/admin" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
-                        Admin
-                    </Link>
-                    <Link href="/admin/calendar" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/admin/calendar" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
-                        Calendar
-                    </Link>
-                </>
-            )}
+            <Link href="/resources" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/resources" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                Resources
+            </Link>
+            <Link href="/faq" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/faq" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                FAQ
+            </Link>
         </>
     )
 
     const bottomNavItems = [
         { href: '/', label: 'Home', icon: '🏠' },
         { href: '/resources', label: 'Resources', icon: '📋' },
-        ...(!role ? [
-            { href: '/billing', label: 'Billing', icon: '💼' },
-        ] : []),
+        { href: '/faq', label: 'FAQ', icon: '❓' },
         ...(role === 'nurse' ? [
             { href: '/nurse', label: 'Dashboard', icon: '📊' },
-            { href: '/nurse/claims', label: 'Claims', icon: '📄' },
-            { href: '/calendar', label: 'Calendar', icon: '📅' },
             { href: '/nurse/profile', label: 'Profile', icon: '👤' },
         ] : []),
         ...(role === 'admin' ? [
@@ -191,8 +184,11 @@ export default function Banner({ user }: BannerProps) {
 
                 {/* Hamburger dropdown */}
                 {menuOpen && (
-                    <div className="border-t border-[#D9E1E8] bg-[#F4F6F5] px-6 py-4 flex flex-col gap-5 text-sm font-semibold shadow-md">
-                        {navLinks}
+                    <div className="border-t border-[#D9E1E8] bg-[#F4F6F5] px-6 py-4 flex flex-col gap-4 text-sm font-semibold shadow-md">
+                        {myRow}
+                        <div className="border-t border-[#D9E1E8] pt-4 flex flex-col gap-4 text-[#2F3E4E]/70">
+                            {generalRow}
+                        </div>
                     </div>
                 )}
             </div>
@@ -220,7 +216,7 @@ export default function Banner({ user }: BannerProps) {
                     </Link>
                 </div>
 
-                {/* Right: welcome + nav */}
+                {/* Right: welcome + 2-row nav */}
                 <div className="h-full flex flex-col justify-center items-end pr-10 mt-6">
                     {displayName && (
                         <div className="mt-1 text-lg font-bold">
@@ -228,8 +224,11 @@ export default function Banner({ user }: BannerProps) {
                             <span style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.5rem' }}>&nbsp;{displayName}</span>
                         </div>
                     )}
-                    <nav className="flex flex-wrap gap-8 text-med font-semibold mt-4 items-center">
-                        {navLinks}
+                    <nav className="flex flex-wrap gap-6 text-sm font-semibold mt-3 items-center">
+                        {myRow}
+                    </nav>
+                    <nav className="flex flex-wrap gap-6 text-sm font-semibold mt-2 items-center text-[#2F3E4E]/60">
+                        {generalRow}
                     </nav>
                 </div>
             </div>

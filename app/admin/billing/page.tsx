@@ -174,20 +174,20 @@ export default function AdminBillingPage() {
                     key={entry.id}
                     className={`border-b border-[#D9E1E8] last:border-0 ${
                       entry.billed
-                        ? 'bg-green-50 text-[#7A8F79]'
-                        : i % 2 === 0 ? '' : 'bg-[#F4F6F5]'
+                        ? 'bg-green-50'
+                        : i % 2 === 0 ? 'bg-white' : 'bg-[#F4F6F5]'
                     }`}
                   >
-                    <td className="py-2 pr-4 font-semibold text-[#2F3E4E] whitespace-nowrap">
+                    <td className={`py-2 pr-4 font-semibold whitespace-nowrap ${entry.billed ? 'text-[#7A8F79]' : 'text-[#2F3E4E]'}`}>
                       {entry.nurse.displayName}
                     </td>
-                    <td className="py-2 pr-4 text-[#7A8F79] text-xs whitespace-nowrap">
+                    <td className={`py-2 pr-4 text-xs whitespace-nowrap ${entry.billed ? 'text-[#7A8F79]' : 'text-[#7A8F79]'}`}>
                       {entry.nurse.accountNumber ?? '—'}
                     </td>
-                    <td className="py-2 pr-4 whitespace-nowrap">
+                    <td className={`py-2 pr-4 whitespace-nowrap ${entry.billed ? 'text-[#7A8F79]' : 'text-[#2F3E4E]'}`}>
                       {fmt(entry.workDate)}
                     </td>
-                    <td className="py-2 pr-4 text-right font-semibold">
+                    <td className={`py-2 pr-4 text-right font-semibold ${entry.billed ? 'text-[#7A8F79]' : 'text-[#2F3E4E]'}`}>
                       {entry.hours}
                     </td>
                     <td className="py-2 pr-4 text-xs italic text-[#7A8F79]">

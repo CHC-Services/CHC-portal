@@ -18,7 +18,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const { id } = await params
   const profile = await prisma.nurseProfile.findUnique({
     where: { id },
-    include: { user: { select: { email: true, name: true } } }
+    include: { user: { select: { email: true, name: true, lastLoginAt: true } } }
   })
 
   if (!profile) return NextResponse.json({ error: 'Not found' }, { status: 404 })

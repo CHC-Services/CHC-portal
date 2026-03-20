@@ -37,6 +37,7 @@ model User {
 
   passwordResetToken  String?
   passwordResetExpiry DateTime?
+  lastLoginAt         DateTime?
 
   nurseProfile NurseProfile?
   createdAt    DateTime @default(now())

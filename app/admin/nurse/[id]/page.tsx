@@ -315,6 +315,29 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
         <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8] mb-4">
           Portal Access
         </h2>
+        {/* Last login indicator */}
+        <div className="mb-4 flex items-center gap-2">
+          {profile.user?.lastLoginAt ? (() => {
+            const last = new Date(profile.user.lastLoginAt)
+            const daysAgo = Math.floor((Date.now() - last.getTime()) / (1000 * 60 * 60 * 24))
+            const color = daysAgo <= 7 ? 'bg-green-100 text-green-700' : daysAgo <= 30 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
+            return (
+              <>
+                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${color}`}>
+                  {daysAgo === 0 ? 'Active today' : daysAgo === 1 ? 'Active yesterday' : `Active ${daysAgo} days ago`}
+                </span>
+                <span className="text-xs text-[#7A8F79]">
+                  Last login: {last.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                </span>
+              </>
+            )
+          })() : (
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">
+              Never logged in
+            </span>
+          )}
+        </div>
+
         <div className="flex items-end gap-3">
           <div className="flex-1">
             <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Role</label>

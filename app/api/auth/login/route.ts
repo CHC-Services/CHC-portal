@@ -21,6 +21,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
   }
 
+  await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } })
+
  const token = signToken({
   id: user.id,
   role: user.role,

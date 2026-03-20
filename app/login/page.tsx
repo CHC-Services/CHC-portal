@@ -45,7 +45,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-[#D9E1E8] flex items-stretch">
 
       {/* Left — branding panel */}
-      <div className="hidden md:flex flex-col justify-between bg-[#2F3E4E] text-white w-1/2 px-12 py-16">
+      <div className="hidden md:flex flex-col justify-center gap-12 bg-[#2F3E4E] text-white w-1/2 px-12 py-16">
         <div>
           <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-2">Coming Home Care</p>
           <h2 className="text-4xl font-bold leading-tight">

@@ -1,8 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import Image from 'next/image'
-import Link from 'next/link'
 
 export default function BillingPage() {
   const [form, setForm] = useState({
@@ -47,20 +45,6 @@ export default function BillingPage() {
 
   return (
     <div className="min-h-screen bg-[#D9E1E8]">
-
-      {/* Header */}
-      <header className="bg-[#2F3E4E] px-6 py-4 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-3">
-          <Image src="/chc_logo.png" alt="Coming Home Care" width={44} height={44} className="rounded-lg" />
-          <span className="text-white font-bold text-lg hidden sm:block">Coming Home Care</span>
-        </Link>
-        <Link
-          href="/login"
-          className="text-[#D9E1E8] text-sm hover:text-white transition font-semibold"
-        >
-          Provider Portal →
-        </Link>
-      </header>
 
       {/* Hero */}
       <div className="bg-[#2F3E4E] px-6 md:px-10 py-12 md:py-16">

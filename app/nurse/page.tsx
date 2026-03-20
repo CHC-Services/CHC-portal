@@ -92,7 +92,7 @@ export default function NurseDashboard() {
   const [deleting, setDeleting] = useState(false)
 
   function loadEntries() {
-    fetch('/api/time-entry', { credentials: 'include' })
+    return fetch('/api/time-entry', { credentials: 'include' })
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data)) setEntries(data)
@@ -159,8 +159,9 @@ export default function NurseDashboard() {
       setWorkDate('')
       setHours('')
       setNotes('')
-      loadEntries()
-      setTimeout(() => dateInputRef.current?.focus(), 50)
+      loadEntries().finally(() => {
+        requestAnimationFrame(() => dateInputRef.current?.focus())
+      })
     } else {
       setMessage(data.error || 'Error submitting hours.')
     }

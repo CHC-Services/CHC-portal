@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import PortalMessages from '../../components/PortalMessages'
 
 const REMINDER_CATEGORIES = [
   { value: 'license',   label: '📄 Professional License' },
@@ -146,12 +147,15 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#D9E1E8] p-8">
-      <div className="flex justify-between items-center mb-6">
+    <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">
+      <div className="mb-6">
         <h1 className="text-3xl font-bold text-[#2F3E4E]">
-          <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Profile
+          <span className="text-[#7A8F79] italic">my</span>Profile
         </h1>
+        <p className="text-sm text-[#7A8F79] mt-1">Manage your personal information and billing preferences.</p>
       </div>
+
+      <PortalMessages priority="General" />
 
       {profile.accountNumber && (
         <div className="bg-[#2F3E4E] text-white rounded-xl px-6 py-4 max-w-3xl flex items-center justify-between mb-6">

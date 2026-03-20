@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import PortalMessages from '../../components/PortalMessages'
 
 const STATUS_COLORS: Record<string, string> = {
   Pending:   'bg-yellow-100 text-yellow-800',
@@ -63,14 +64,18 @@ export default function NurseInvoicesPage() {
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">
 
-      {/* Hero */}
-      <div className="bg-[#2F3E4E] rounded-2xl px-6 py-8 mb-8 max-w-3xl">
-        <p className="text-[#7A8F79] text-xs font-semibold uppercase tracking-widest mb-1">Billing</p>
-        <h1 className="text-2xl font-bold text-white">myInvoices</h1>
-        <p className="text-sm text-[#D9E1E8] mt-1">Your billing statements from Coming Home Care Services, LLC.</p>
-      </div>
+      <div className="max-w-3xl mx-auto">
 
-      <div className="max-w-3xl space-y-4">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-[#2F3E4E]">
+            <span className="text-[#7A8F79] italic">my</span>Invoices
+          </h1>
+          <p className="text-sm text-[#7A8F79] mt-1">Your billing statements from Coming Home Care Services, LLC.</p>
+        </div>
+
+        <PortalMessages priority="Invoices" />
+
+      <div className="space-y-4">
         {invoices.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-sm p-8 text-center">
             <p className="text-[#7A8F79] text-sm">No invoices yet.</p>
@@ -189,6 +194,7 @@ export default function NurseInvoicesPage() {
             )}
           </div>
         ))}
+      </div>
       </div>
     </div>
   )

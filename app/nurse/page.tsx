@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, forwardRef } from 'react'
 import { useRouter } from 'next/navigation'
+import PortalMessages from '../components/PortalMessages'
 
 type TimeEntry = {
   id: string
@@ -194,6 +195,8 @@ export default function NurseDashboard() {
           {now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </p>
       </div>
+
+      <PortalMessages priority="General" />
 
       {/* Billing enrollment banner for opted-out nurses */}
       {enrolledInBilling === false && (

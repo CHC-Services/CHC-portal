@@ -1,9 +1,8 @@
-import React from 'react'
 import { cookies } from 'next/headers'
 import { verifyToken } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
-import HomeDefinition from './components/HomeDefinition'
+// import HomeDefinition from './components/HomeDefinition'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -137,7 +136,7 @@ export default async function Home() {
         <div className="max-w-4xl mx-auto">
           {user ? (
             <>
-              <HomeDefinition />
+              {/* <HomeDefinition /> */}
               <p className="text-[#7A8F79] text-xs font-semibold uppercase tracking-widest mb-2">
                 {user.role === 'nurse' ? 'Nurse Portal' : user.role === 'admin' ? 'Admin Portal' : 'Provider Portal'}
               </p>
@@ -153,7 +152,7 @@ export default async function Home() {
             </>
           ) : (
             <>
-              <HomeDefinition />
+              {/* <HomeDefinition /> */}
               <p className="text-[#7A8F79] text-xs font-semibold uppercase tracking-widest mb-2">
                 Provider &amp; Admin Portal
               </p>

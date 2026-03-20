@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import PortalMessages from '../../components/PortalMessages'
 
 type Claim = {
   id: string
@@ -89,6 +90,8 @@ export default function NurseClaimsPage() {
           </h1>
           <p className="text-sm text-[#7A8F79] mt-1">View the status of your submitted billing claims.</p>
         </div>
+
+        <PortalMessages priority="Claims" />
 
         {claims.length > 0 && (
           <div className="grid grid-cols-3 gap-4 mb-6">

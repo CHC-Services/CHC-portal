@@ -103,22 +103,18 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#D9E1E8]">
+    <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">
 
-      {/* Hero */}
-      <div className="bg-[#2F3E4E] px-6 md:px-10 py-10">
-        <div className="max-w-4xl mx-auto">
-          <p className="text-[#7A8F79] text-xs font-semibold uppercase tracking-widest mb-1">Coming Home Care</p>
-          <h1 className="text-3xl md:text-4xl font-bold text-white">
-            <span className="italic text-[#7A8F79]">my</span>Calendar
+      <div className="max-w-4xl mx-auto">
+
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-[#2F3E4E]">
+            <span className="text-[#7A8F79] italic">my</span>Calendar
           </h1>
-          <p className="mt-2 text-[#D9E1E8] text-sm max-w-xl">
-            Your upcoming deadlines, renewal dates, tax filings, and personal reminders — all in one place.
+          <p className="text-sm text-[#7A8F79] mt-1">
+            Your upcoming deadlines, renewal dates, tax filings, and personal reminders.
           </p>
         </div>
-      </div>
-
-      <div className="px-6 md:px-10 py-8 max-w-4xl mx-auto">
 
         {/* Filter tabs */}
         <div className="flex gap-2 mb-6">
@@ -203,3 +199,4 @@ export default function CalendarPage() {
     </div>
   )
 }
+

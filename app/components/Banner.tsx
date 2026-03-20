@@ -27,7 +27,8 @@ export default function Banner({ user }: BannerProps) {
     const displayName = user?.displayName || null
     const pathname = usePathname()
 
-    const authButton = role ? (
+    // Mobile auth button — pill style next to hamburger
+    const authButtonMobile = role ? (
         <button
             onClick={async () => {
                 await fetch('/api/logout', { method: 'POST', credentials: 'include' })
@@ -46,9 +47,38 @@ export default function Banner({ user }: BannerProps) {
             className="flex items-center gap-2 bg-[#7A8F79] text-white px-5 py-2 rounded-full hover:bg-[#657a64] transition text-sm font-semibold"
         >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013 3v1" />
             </svg>
             <span><span className="italic text-[#D9E1E8]">my</span>Portal</span>
+        </Link>
+    )
+
+    // Desktop auth button — text nav style, sits below the clock
+    const authButtonDesktop = role ? (
+        <button
+            onClick={async () => {
+                await fetch('/api/logout', { method: 'POST', credentials: 'include' })
+                window.location.href = '/login'
+            }}
+            className="flex items-center gap-1.5 text-sm font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition"
+        >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            Sign Out
+        </button>
+    ) : (
+        <Link
+            href="/login"
+            className="flex items-center gap-1.5 hover:opacity-80 transition"
+        >
+            <svg className="w-4 h-4 text-[#7A8F79]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+            </svg>
+            <span className="text-base font-bold">
+                <span style={{ color: '#7A8F79', fontStyle: 'italic' }}>my</span>
+                <span style={{ color: '#2F3E4E' }}>Portal</span>
+            </span>
         </Link>
     )
 
@@ -147,7 +177,7 @@ export default function Banner({ user }: BannerProps) {
                                 </svg>
                             )}
                         </button>
-                        {authButton}
+                        {authButtonMobile}
                     </div>
                 </div>
 
@@ -170,10 +200,10 @@ export default function Banner({ user }: BannerProps) {
             {/* ── DESKTOP header (hidden below md) ── */}
             <div className="hidden md:flex fixed top-0 left-0 w-full bg-[#F4F6F5] text-[#2f3e4e] items-center justify-between px-6 h-[200px] z-50">
 
-                {/* Top-right: clock + auth */}
-                <div className="absolute top-4 right-10 flex items-center gap-4">
+                {/* Top-right: clock, then portal button below */}
+                <div className="absolute top-4 right-10 flex flex-col items-end gap-2">
                     <span className="text-sm" style={{color:'#7A8F79'}}>{time}</span>
-                    {authButton}
+                    {authButtonDesktop}
                 </div>
 
                 {/* Logo */}

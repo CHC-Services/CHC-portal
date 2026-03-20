@@ -188,6 +188,132 @@ const guides: ProcessGuide[] = [
   },
 ]
 
+// ─── Resource Directory Sections ─────────────────────────────────────────────
+
+type ResourceLink = {
+  label: string
+  description: string
+  href: string
+  badge?: string
+}
+
+type ResourceDirectory = {
+  id: string
+  icon: string
+  title: string
+  subtitle: string
+  note?: string
+  resources: ResourceLink[]
+}
+
+const resourceDirectories: ResourceDirectory[] = [
+  {
+    id: 'mental-wellness',
+    icon: '🧘',
+    title: 'Mental Wellness & Decompression',
+    subtitle: 'Caregiving is demanding work. These tools are here to help you decompress, reset, and protect your mental health — because you can\'t pour from an empty cup.',
+    note: 'Compassion fatigue is real. Even 10 minutes of intentional rest can shift your entire day. You deserve care too.',
+    resources: [
+      {
+        label: 'Insight Timer',
+        description: 'Free app with thousands of guided meditations, sleep music, and breathing exercises. No subscription required.',
+        href: 'https://insighttimer.com',
+        badge: 'Free',
+      },
+      {
+        label: 'Calm',
+        description: 'Guided meditations, sleep stories, and stress-reduction programs. Includes a dedicated section for healthcare workers.',
+        href: 'https://www.calm.com',
+        badge: 'Subscription',
+      },
+      {
+        label: 'Headspace',
+        description: 'Structured mindfulness courses with sessions as short as 3 minutes. Great for building a daily habit around a busy schedule.',
+        href: 'https://www.headspace.com',
+        badge: 'Subscription',
+      },
+      {
+        label: 'Ten Percent Happier',
+        description: 'Meditation for skeptics — practical, no-fluff approach built around real science. Popular with healthcare professionals.',
+        href: 'https://www.tenpercent.com',
+        badge: 'Subscription',
+      },
+      {
+        label: 'SAMHSA National Helpline',
+        description: 'Free, confidential 24/7 treatment referral service for mental health and substance use. Call or text 1-800-662-4357.',
+        href: 'https://www.samhsa.gov/find-help/national-helpline',
+        badge: 'Free · 24/7',
+      },
+    ],
+  },
+  {
+    id: 'cpr-firstaid',
+    icon: '❤️‍🩹',
+    title: 'CPR & First Aid Recertification',
+    subtitle: 'Most certifications require renewal every 2 years. Use these resources to find in-person or online courses near you.',
+    note: 'Always confirm with your employer or licensing board which certification provider is accepted. AHA and Red Cross are the most universally recognized.',
+    resources: [
+      {
+        label: 'American Red Cross — Course Finder',
+        description: 'Find in-person CPR, AED, and First Aid certification and recertification courses by zip code. Online/blended options also available.',
+        href: 'https://www.redcross.org/take-a-class',
+        badge: 'In-person & Online',
+      },
+      {
+        label: 'American Heart Association — Course Locator',
+        description: 'Find AHA-certified BLS (Basic Life Support) and Heartsaver courses. BLS is the standard for most nursing roles.',
+        href: 'https://www.heart.org/en/cpr/find-a-course',
+        badge: 'In-person & Online',
+      },
+      {
+        label: 'ProTrainings',
+        description: 'OSHA-compliant online CPR and First Aid courses with same-day certification. Accepted by many employers and insurers.',
+        href: 'https://www.protrainings.com',
+        badge: 'Online',
+      },
+      {
+        label: 'National CPR Foundation',
+        description: 'Affordable online certification with instant card delivery. Includes CPR/AED, First Aid, and combined courses.',
+        href: 'https://www.nationalcprfoundation.com',
+        badge: 'Online · Fast',
+      },
+    ],
+  },
+  {
+    id: 'malpractice-insurance',
+    icon: '🛡️',
+    title: 'Nursing Malpractice Insurance',
+    subtitle: 'Professional liability insurance protects you personally if a patient or employer ever files a claim against you — separate from any coverage your employer carries. Home care nurses are especially encouraged to carry individual coverage.',
+    note: 'Your employer\'s policy protects the employer, not necessarily you individually. Individual coverage is typically $100–$200/year and is strongly recommended for any nurse providing direct patient care.',
+    resources: [
+      {
+        label: 'NSO — Nurses Service Organization',
+        description: 'The most widely used individual malpractice insurer for nurses. Coverage starts around $100/year for RNs. Easy online application.',
+        href: 'https://www.nso.com',
+        badge: 'Most Popular',
+      },
+      {
+        label: 'HPSO — Healthcare Providers Service Organization',
+        description: 'Comprehensive professional liability coverage for nurses and other healthcare providers. Endorsed by many nursing associations.',
+        href: 'https://www.hpso.com',
+        badge: 'Highly Rated',
+      },
+      {
+        label: 'CM&F Group',
+        description: 'Specializes in healthcare malpractice insurance with options tailored to home care and private duty nurses.',
+        href: 'https://www.cmfgroup.com',
+        badge: 'Home Care Specialty',
+      },
+      {
+        label: 'Proliability by Mercer',
+        description: 'Endorsed by the American Nurses Association. Offers flexible coverage levels with online quotes and instant coverage.',
+        href: 'https://www.proliability.com',
+        badge: 'ANA Endorsed',
+      },
+    ],
+  },
+]
+
 // ─── Components ──────────────────────────────────────────────────────────────
 
 function StepCard({ step, index }: { step: Step; index: number }) {
@@ -284,6 +410,48 @@ function GuideCard({ guide }: { guide: ProcessGuide }) {
   )
 }
 
+function ResourceDirectoryCard({ dir }: { dir: ResourceDirectory }) {
+  return (
+    <section id={dir.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-[#2F3E4E] px-6 py-5">
+        <div className="flex items-start gap-3">
+          <span className="text-3xl">{dir.icon}</span>
+          <div>
+            <h2 className="text-xl font-bold text-white">{dir.title}</h2>
+            <p className="text-sm text-[#D9E1E8] mt-1">{dir.subtitle}</p>
+          </div>
+        </div>
+      </div>
+      {dir.note && (
+        <div className="mx-6 mt-5 bg-[#f0f4f0] border-l-4 border-[#7A8F79] rounded-r-lg px-4 py-3">
+          <p className="text-xs text-[#4a5a6a] leading-relaxed">{dir.note}</p>
+        </div>
+      )}
+      <div className="px-6 py-5 grid sm:grid-cols-2 gap-4">
+        {dir.resources.map((r, i) => (
+          <a
+            key={i}
+            href={r.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group flex flex-col gap-1.5 border border-[#D9E1E8] rounded-xl p-4 hover:border-[#7A8F79] hover:shadow-sm transition"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-semibold text-[#2F3E4E] text-sm group-hover:text-[#7A8F79] transition">{r.label} →</p>
+              {r.badge && (
+                <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide bg-[#D9E1E8] text-[#2F3E4E] px-2 py-0.5 rounded-full">
+                  {r.badge}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-[#7A8F79] leading-relaxed">{r.description}</p>
+          </a>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ResourcesPage() {
@@ -324,6 +492,15 @@ export default function ResourcesPage() {
                 {g.icon} {g.title}
               </a>
             ))}
+            {resourceDirectories.map(d => (
+              <a
+                key={d.id}
+                href={`#${d.id}`}
+                className="bg-white border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition"
+              >
+                {d.icon} {d.title}
+              </a>
+            ))}
           </div>
         </div>
 
@@ -331,6 +508,13 @@ export default function ResourcesPage() {
         <div className="space-y-8 max-w-3xl">
           {guides.map(guide => (
             <GuideCard key={guide.id} guide={guide} />
+          ))}
+        </div>
+
+        {/* Resource directories */}
+        <div className="space-y-8 max-w-3xl mt-8">
+          {resourceDirectories.map(dir => (
+            <ResourceDirectoryCard key={dir.id} dir={dir} />
           ))}
         </div>
 

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../../lib/prisma'
 import { verifyToken } from '../../../../../../lib/auth'
 import bcrypt from 'bcrypt'
+import { sendPasswordResetByAdmin } from '../../../../../../lib/sendEmail'
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -19,7 +20,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const nurse = await prisma.nurseProfile.findUnique({
     where: { id },
-    select: { userId: true },
+    select: { userId: true, displayName: true, user: { select: { email: true } } },
   })
 
   if (!nurse) return NextResponse.json({ error: 'Nurse not found' }, { status: 404 })
@@ -29,6 +30,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   await prisma.user.update({
     where: { id: nurse.userId },
     data: { password: hashed },
+  })
+
+  // Send notification email with the new password (before hashing)
+  await sendPasswordResetByAdmin({
+    to: nurse.user.email,
+    displayName: nurse.displayName,
+    email: nurse.user.email,
+    password,
   })
 
   return NextResponse.json({ ok: true })

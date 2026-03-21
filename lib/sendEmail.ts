@@ -222,6 +222,59 @@ export async function sendInvoiceEmail({
   }
 }
 
+export async function sendPasswordResetByAdmin({
+  to,
+  displayName,
+  email,
+  password,
+}: {
+  to: string
+  displayName: string
+  email: string
+  password: string
+}): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) return false
+  const resend = new Resend(process.env.RESEND_API_KEY)
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to,
+      subject: 'ACTION REQUIRED: Your Coming Home Care Portal Password Has Been Updated',
+      html: `
+        <div style="font-family:sans-serif;max-width:520px;padding:32px;color:#2F3E4E">
+          <h2 style="margin:0 0 8px;color:#2F3E4E">Your Portal Password Was Updated</h2>
+          <p style="margin:0 0 20px;color:#7A8F79;font-size:14px">
+            Hi ${displayName} — your password for the Coming Home Care Provider Portal has been set by an administrator.
+            Use the credentials below to sign in.
+          </p>
+
+          <div style="background:#f4f6f8;border-radius:10px;padding:20px 24px;margin-bottom:24px">
+            <p style="margin:0 0 8px;font-size:14px"><strong>Email:</strong> ${email}</p>
+            <p style="margin:0;font-size:14px"><strong>New Password:</strong> ${password}</p>
+          </div>
+
+          <a href="${PORTAL_URL}/login"
+             style="display:inline-block;background:#2F3E4E;color:white;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600">
+            Sign In to Your Portal →
+          </a>
+
+          <p style="margin-top:24px;font-size:13px;color:#7A8F79">
+            We recommend updating your password after signing in.<br/>
+            If you did not expect this change, please contact us at support@cominghomecare.com.
+          </p>
+
+          <hr style="border:none;border-top:1px solid #D9E1E8;margin:24px 0"/>
+          <p style="font-size:11px;color:#aab">This is an automated message from Coming Home Care. Please do not reply to this email.</p>
+        </div>
+      `,
+    })
+    return !error
+  } catch {
+    return false
+  }
+}
+
 export async function sendBillingInquiry({
   firstName,
   lastName,

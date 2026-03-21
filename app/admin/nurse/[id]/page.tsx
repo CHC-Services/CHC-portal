@@ -160,6 +160,8 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   const [roleMessage, setRoleMessage] = useState('')
   const [inviteSending, setInviteSending] = useState(false)
   const [inviteMessage, setInviteMessage] = useState('')
+  const [notifEnabled, setNotifEnabled] = useState(true)
+  const [notifSaving, setNotifSaving] = useState(false)
   const [newPassword, setNewPassword] = useState('')
   const [pwSaving, setPwSaving] = useState(false)
   const [pwMessage, setPwMessage] = useState('')
@@ -167,6 +169,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   // Time entries + invoicing
   const [entries, setEntries] = useState<TimeEntry[]>([])
   const [claimRefs, setClaimRefs] = useState<Record<string, string>>({})
+  const [deletingEntry, setDeletingEntry] = useState<string | null>(null)
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
   const [invoiceDueTerm, setInvoiceDueTerm] = useState('30')
   const [invoiceNotes, setInvoiceNotes] = useState('')
@@ -183,6 +186,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
         if (data) {
           setProfile(data)
           setUserRole(data.user?.role || 'nurse')
+          setNotifEnabled(data.receiveNotifications !== false)
         }
       })
       .finally(() => setLoading(false))
@@ -228,12 +232,14 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
 
   async function deleteEntry(entryId: string) {
     if (!confirm('Delete this time entry? This cannot be undone.')) return
+    setDeletingEntry(entryId)
     const res = await fetch('/api/admin/time-entry', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({ id: entryId }),
     })
+    setDeletingEntry(null)
     if (res.ok) {
       setEntries(prev => prev.filter(e => e.id !== entryId))
     } else {
@@ -451,6 +457,38 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
             {inviteMessage}
           </p>
         )}
+
+        <div className="mt-4 pt-4 border-t border-[#D9E1E8] flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-[#2F3E4E]">Weekly Reminder Emails</p>
+            <p className="text-xs text-[#7A8F79] mt-0.5">
+              {notifEnabled ? 'This provider receives weekly hour submission reminders.' : 'Weekly reminders are turned off for this provider.'}
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={notifSaving}
+            onClick={async () => {
+              const next = !notifEnabled
+              setNotifSaving(true)
+              const res = await fetch(`/api/admin/nurses/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ receiveNotifications: next }),
+              })
+              setNotifSaving(false)
+              if (res.ok) setNotifEnabled(next)
+            }}
+            className={`shrink-0 ml-4 px-4 py-2 rounded-lg text-sm font-semibold transition disabled:opacity-50 ${
+              notifEnabled
+                ? 'bg-[#D9E1E8] text-[#2F3E4E] hover:bg-red-100 hover:text-red-600'
+                : 'bg-green-100 text-green-700 hover:bg-green-200'
+            }`}
+          >
+            {notifSaving ? 'Saving…' : notifEnabled ? 'Turn Off' : 'Turn On'}
+          </button>
+        </div>
       </div>
 
       <form onSubmit={save} className="space-y-6 max-w-2xl">

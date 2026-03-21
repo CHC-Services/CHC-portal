@@ -275,6 +275,68 @@ export async function sendPasswordResetByAdmin({
   }
 }
 
+export async function sendWeeklyHoursReminder({
+  to,
+  displayName,
+  nurseProfileId,
+}: {
+  to: string
+  displayName: string
+  nurseProfileId: string
+}): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) return false
+  const resend = new Resend(process.env.RESEND_API_KEY)
+
+  const { createHmac } = await import('crypto')
+  const unsubToken = createHmac('sha256', process.env.JWT_SECRET!)
+    .update(nurseProfileId)
+    .digest('hex')
+  const unsubUrl = `${PORTAL_URL}/unsubscribe?id=${nurseProfileId}&token=${unsubToken}`
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM,
+      replyTo: 'support@cominghomecare.com',
+      to,
+      subject: 'Reminder: Submit Your Hours for Billing This Week',
+      html: `
+        <div style="font-family:sans-serif;max-width:520px;padding:32px;color:#2F3E4E">
+          <h2 style="margin:0 0 8px;color:#2F3E4E">Hi ${displayName},</h2>
+          <p style="margin:0 0 16px;font-size:15px;color:#2F3E4E;line-height:1.6">
+            This is your weekly reminder to log any hours worked this week in the CHC Provider Portal.
+            Staying current with your time entries helps ensure accurate and timely billing.
+          </p>
+
+          <div style="background:#f4f6f8;border-left:4px solid #7A8F79;border-radius:0 10px 10px 0;padding:16px 20px;margin-bottom:24px">
+            <p style="margin:0;font-size:14px;color:#2F3E4E">
+              <strong>What to do:</strong> Sign in, head to <em>myDashboard</em>, and submit your hours for each day worked this week.
+            </p>
+          </div>
+
+          <a href="${PORTAL_URL}/nurse"
+             style="display:inline-block;background:#2F3E4E;color:white;text-decoration:none;padding:13px 28px;border-radius:8px;font-size:14px;font-weight:600">
+            Go to myDashboard →
+          </a>
+
+          <p style="margin-top:24px;font-size:13px;color:#7A8F79;line-height:1.5">
+            If you have any questions about your hours or billing, reply to this email and we'll get back to you.
+          </p>
+
+          <hr style="border:none;border-top:1px solid #D9E1E8;margin:28px 0"/>
+          <p style="font-size:11px;color:#aab;line-height:1.6">
+            Coming Home Care Services, LLC · cominghomecare.com<br/>
+            You're receiving this because you have an active provider account.<br/>
+            <a href="${unsubUrl}" style="color:#7A8F79;text-decoration:underline">Unsubscribe from weekly reminders</a>
+          </p>
+        </div>
+      `,
+    })
+    return !error
+  } catch {
+    return false
+  }
+}
+
 export async function sendBillingInquiry({
   firstName,
   lastName,

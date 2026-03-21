@@ -300,8 +300,41 @@ export default function ProfilePage() {
         </div>
 
         {/* Right column — myBilling */}
-        <div>
+        <div className="space-y-6">
           <BillingSection profile={profile} onUnenroll={() => setProfile({ ...profile, enrolledInBilling: false })} />
+
+          {/* Email Notifications */}
+          <div className="bg-white p-6 rounded shadow">
+            <h2 className="text-xl font-semibold mb-1 text-[#2F3E4E]">Email Notifications</h2>
+            <p className="text-xs text-[#7A8F79] mb-4">Control whether you receive weekly hour submission reminders.</p>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  className="sr-only"
+                  checked={profile.receiveNotifications !== false}
+                  onChange={async (e) => {
+                    const val = e.target.checked
+                    setProfile({ ...profile, receiveNotifications: val })
+                    await fetch('/api/nurse/profile', {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      credentials: 'include',
+                      body: JSON.stringify({ receiveNotifications: val }),
+                    })
+                  }}
+                />
+                <div className={`w-11 h-6 rounded-full transition-colors ${profile.receiveNotifications !== false ? 'bg-[#2F3E4E]' : 'bg-[#D9E1E8]'}`} />
+                <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${profile.receiveNotifications !== false ? 'translate-x-5' : 'translate-x-0'}`} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-[#2F3E4E]">
+                  {profile.receiveNotifications !== false ? 'Reminders enabled' : 'Reminders disabled'}
+                </p>
+                <p className="text-xs text-[#7A8F79]">Weekly Friday reminder to submit hours</p>
+              </div>
+            </label>
+          </div>
         </div>
 
       </div>

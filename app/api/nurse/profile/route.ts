@@ -43,6 +43,7 @@ export async function PATCH(req: Request) {
     npiNumber,
     medicaidNumber,
     billingInfo,
+    receiveNotifications,
     currentPassword,
     newPassword
   } = body
@@ -56,6 +57,7 @@ export async function PATCH(req: Request) {
   if (npiNumber !== undefined) updates.npiNumber = npiNumber
   if (medicaidNumber !== undefined) updates.medicaidNumber = medicaidNumber
   if (billingInfo !== undefined) updates.billingInfo = billingInfo
+  if (receiveNotifications !== undefined) updates.receiveNotifications = receiveNotifications
 
   // apply profile updates
   let displayNameChanged = false

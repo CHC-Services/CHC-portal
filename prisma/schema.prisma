@@ -99,6 +99,9 @@ model NurseProfile {
   // Provider aliases for claim matching (e.g. ["Janine", "JCST"])
   providerAliases String[] @default([])
 
+  // Email notification preferences
+  receiveNotifications Boolean @default(true)
+
   user           User            @relation(fields: [userId], references: [id])
   timeEntries    TimeEntry[]
   claims         Claim[]

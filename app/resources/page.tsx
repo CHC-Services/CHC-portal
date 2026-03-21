@@ -498,56 +498,48 @@ export default function ResourcesPage() {
 
       <div className="px-6 md:px-10 py-8 max-w-4xl mx-auto">
 
-        {/* Jump links — categorized */}
+        {/* Jump links — 3 columns */}
         <div className="mb-10 bg-white rounded-2xl shadow-sm p-6">
           <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-5">
             Jump to a guide
           </p>
 
-          <div className="space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
             {/* Getting Started */}
             <div>
-              <div className="flex items-center gap-2 mb-2.5">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-white bg-[#2F3E4E] px-2.5 py-1 rounded-full">
-                  Getting Started
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <a href="#npi-registration"      className="bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition">🪪 Obtain Your NPI Number</a>
-                <a href="#ny-medicaid-enrollment" className="bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition">🏥 NY Medicaid Enrollment</a>
-                <a href="#bcbs-credentialing"     className="bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition">🔵 BCBS Credentialing</a>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-white bg-[#2F3E4E] px-2.5 py-1 rounded-full">
+                Getting Started
+              </span>
+              <div className="mt-3 space-y-2">
+                <a href="#npi-registration"      className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">🪪 Obtain Your NPI Number</a>
+                <a href="#ny-medicaid-enrollment" className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">🏥 NY Medicaid Enrollment</a>
+                <a href="#bcbs-credentialing"     className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">🔵 BCBS Credentialing</a>
               </div>
             </div>
-
-            <div className="border-t border-[#D9E1E8]" />
 
             {/* Staying Active */}
             <div>
-              <div className="flex items-center gap-2 mb-2.5">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-white bg-[#7A8F79] px-2.5 py-1 rounded-full">
-                  Staying Active
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <a href="#etin-renewal"        className="bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition">📋 Annual ETIN Renewal</a>
-                <a href="#cpr-firstaid"        className="bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition">❤️‍🩹 CPR & First Aid Recertification</a>
-                <a href="#malpractice-insurance" className="bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition">🛡️ Malpractice Insurance</a>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-white bg-[#7A8F79] px-2.5 py-1 rounded-full">
+                Staying Active
+              </span>
+              <div className="mt-3 space-y-2">
+                <a href="#etin-renewal"           className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">📋 Annual ETIN Renewal</a>
+                <a href="#cpr-firstaid"           className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">❤️‍🩹 CPR & First Aid</a>
+                <a href="#malpractice-insurance"  className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">🛡️ Malpractice Insurance</a>
               </div>
             </div>
-
-            <div className="border-t border-[#D9E1E8]" />
 
             {/* Avoiding Burnout */}
             <div>
-              <div className="flex items-center gap-2 mb-2.5">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-white bg-[#657a64] px-2.5 py-1 rounded-full">
-                  Avoiding Burnout
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <a href="#mental-wellness" className="bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition">🧘 Mental Wellness & Decompression</a>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-white bg-[#657a64] px-2.5 py-1 rounded-full">
+                Avoiding Burnout
+              </span>
+              <div className="mt-3 space-y-2">
+                <a href="#mental-wellness"        className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">🧘 Mental Wellness & Decompression</a>
               </div>
             </div>
+
           </div>
         </div>
 

@@ -102,6 +102,9 @@ export default function Banner({ user }: BannerProps) {
             <Link href="/admin/messages" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/admin/messages" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 Portal Messaging
             </Link>
+            <Link href="/admin/email" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/admin/email" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                Send Email
+            </Link>
         </>
     ) : (
         <Link href="/login" onClick={() => setMenuOpen(false)} className={`transition font-bold ${pathname === "/login" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>

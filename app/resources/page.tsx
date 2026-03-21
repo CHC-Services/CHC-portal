@@ -208,6 +208,27 @@ type ResourceDirectory = {
 
 const resourceDirectories: ResourceDirectory[] = [
   {
+    id: 'etin-renewal',
+    icon: '📋',
+    title: 'Annual ETIN Renewal',
+    subtitle: 'Once enrolled in NY Medicaid, your Electronic Transmitter Identification Number (ETIN) certification must be renewed each year to stay active as a billing provider.',
+    note: 'Download the renewal form, complete and notarize it, then mail or upload it to the NYS DOH Provider Enrollment unit. Most banks, UPS Stores, and public libraries offer free notary services. Failure to renew can suspend your ability to submit Medicaid claims.',
+    resources: [
+      {
+        label: 'ETIN Renewal Certification Form',
+        description: 'For existing Medicaid providers — download, complete, have it notarized, and submit to NYS DOH annually.',
+        href: 'https://www.emedny.org/info/providerenrollment/ProviderMaintForms/490501_ETIN_CERT_Certification_Statement_Cert_Instructions_for_Existing_ETINs.pdf',
+        badge: 'Annual',
+      },
+      {
+        label: 'eMedNY Provider Enrollment',
+        description: 'Log in to your eMedNY account to check your enrollment status, update contact information, or track your renewal submission.',
+        href: 'https://www.emedny.org/info/ProviderEnrollment/index.aspx',
+        badge: 'eMedNY Portal',
+      },
+    ],
+  },
+  {
     id: 'mental-wellness',
     icon: '🧘',
     title: 'Mental Wellness & Decompression',
@@ -477,45 +498,99 @@ export default function ResourcesPage() {
 
       <div className="px-6 md:px-10 py-8 max-w-4xl mx-auto">
 
-        {/* Jump links */}
-        <div className="mb-8">
-          <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-3">
+        {/* Jump links — categorized */}
+        <div className="mb-10 bg-white rounded-2xl shadow-sm p-6">
+          <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-5">
             Jump to a guide
           </p>
-          <div className="flex flex-wrap gap-3">
-            {guides.map(g => (
-              <a
-                key={g.id}
-                href={`#${g.id}`}
-                className="bg-white border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition"
-              >
-                {g.icon} {g.title}
-              </a>
-            ))}
-            {resourceDirectories.map(d => (
-              <a
-                key={d.id}
-                href={`#${d.id}`}
-                className="bg-white border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition"
-              >
-                {d.icon} {d.title}
-              </a>
+
+          <div className="space-y-5">
+            {/* Getting Started */}
+            <div>
+              <div className="flex items-center gap-2 mb-2.5">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-white bg-[#2F3E4E] px-2.5 py-1 rounded-full">
+                  Getting Started
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <a href="#npi-registration"      className="bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition">🪪 Obtain Your NPI Number</a>
+                <a href="#ny-medicaid-enrollment" className="bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition">🏥 NY Medicaid Enrollment</a>
+                <a href="#bcbs-credentialing"     className="bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition">🔵 BCBS Credentialing</a>
+              </div>
+            </div>
+
+            <div className="border-t border-[#D9E1E8]" />
+
+            {/* Staying Active */}
+            <div>
+              <div className="flex items-center gap-2 mb-2.5">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-white bg-[#7A8F79] px-2.5 py-1 rounded-full">
+                  Staying Active
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <a href="#etin-renewal"        className="bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition">📋 Annual ETIN Renewal</a>
+                <a href="#cpr-firstaid"        className="bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition">❤️‍🩹 CPR & First Aid Recertification</a>
+                <a href="#malpractice-insurance" className="bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition">🛡️ Malpractice Insurance</a>
+              </div>
+            </div>
+
+            <div className="border-t border-[#D9E1E8]" />
+
+            {/* Avoiding Burnout */}
+            <div>
+              <div className="flex items-center gap-2 mb-2.5">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-white bg-[#657a64] px-2.5 py-1 rounded-full">
+                  Avoiding Burnout
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <a href="#mental-wellness" className="bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition">🧘 Mental Wellness & Decompression</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Getting Started ── */}
+        <div className="max-w-3xl mb-12">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="h-px flex-1 bg-[#D9E1E8]" />
+            <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full bg-[#2F3E4E] text-white">Getting Started</span>
+            <div className="h-px flex-1 bg-[#D9E1E8]" />
+          </div>
+          <div className="space-y-8">
+            {guides.map(guide => (
+              <GuideCard key={guide.id} guide={guide} />
             ))}
           </div>
         </div>
 
-        {/* Guide cards */}
-        <div className="space-y-8 max-w-3xl">
-          {guides.map(guide => (
-            <GuideCard key={guide.id} guide={guide} />
-          ))}
+        {/* ── Staying Active ── */}
+        <div className="max-w-3xl mb-12">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="h-px flex-1 bg-[#D9E1E8]" />
+            <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full bg-[#7A8F79] text-white">Staying Active</span>
+            <div className="h-px flex-1 bg-[#D9E1E8]" />
+          </div>
+          <div className="space-y-8">
+            {resourceDirectories.filter(d => ['etin-renewal', 'cpr-firstaid', 'malpractice-insurance'].includes(d.id)).map(dir => (
+              <ResourceDirectoryCard key={dir.id} dir={dir} />
+            ))}
+          </div>
         </div>
 
-        {/* Resource directories */}
-        <div className="space-y-8 max-w-3xl mt-8">
-          {resourceDirectories.map(dir => (
-            <ResourceDirectoryCard key={dir.id} dir={dir} />
-          ))}
+        {/* ── Avoiding Burnout ── */}
+        <div className="max-w-3xl mb-12">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="h-px flex-1 bg-[#D9E1E8]" />
+            <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full bg-[#657a64] text-white">Avoiding Burnout</span>
+            <div className="h-px flex-1 bg-[#D9E1E8]" />
+          </div>
+          <div className="space-y-8">
+            {resourceDirectories.filter(d => d.id === 'mental-wellness').map(dir => (
+              <ResourceDirectoryCard key={dir.id} dir={dir} />
+            ))}
+          </div>
         </div>
 
         {/* Bottom CTA */}

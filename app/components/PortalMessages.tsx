@@ -66,19 +66,14 @@ export default function PortalMessages({ priority }: { priority?: string }) {
                 <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${style.badge}`}>
                   {msg.category}
                 </span>
-                {isPriority && (
-                  <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-[#2F3E4E] text-white">
-                    Relevant to this page
-                  </span>
-                )}
+                <span className="text-[10px] text-[#7A8F79]">
+                  {new Date(msg.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
               </div>
               {msg.title && (
                 <p className="text-sm font-semibold text-[#2F3E4E]">{msg.title}</p>
               )}
               <p className="text-sm text-[#2F3E4E] leading-relaxed mt-0.5">{msg.body}</p>
-              <p className="text-[10px] text-[#7A8F79] mt-1.5">
-                {new Date(msg.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-              </p>
             </div>
           )
         })}

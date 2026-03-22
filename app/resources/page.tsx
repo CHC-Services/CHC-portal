@@ -25,41 +25,98 @@ type ProcessGuide = {
 
 const guides: ProcessGuide[] = [
   {
-    id: 'npi-registration',
+    id: 'npi-individual',
     icon: '🪪',
-    title: 'Obtain Your NPI Number',
+    title: 'Obtain Your NPI Number — Individual Provider (Type 1)',
     subtitle:
-      'A National Provider Identifier (NPI) is required before enrolling in any payer network. This is a federal process that applies in all states.',
+      'A Type 1 NPI is for individual healthcare providers — nurses, therapists, and other clinicians applying in their own name. This is the NPI most home care nurses need. It is a federal process that applies in all states.',
     estimatedTime: '1 – 5 business days',
     steps: [
       {
+        title: 'Gather What You Will Need',
+        description:
+          'Before starting your application, have the following ready: your Social Security Number, your current NY professional license number, your practice or home address, and your taxonomy code.',
+        note: 'For most home care nurses the taxonomy code is 163W00000X (Registered Nurse). LPNs use 164W00000X. If you have a specialty, look up your code at nucc.org before starting.',
+      },
+      {
         title: 'Create an Account on the NPPES Registry',
         description:
-          'The NPI is issued through the National Plan and Provider Enumeration System (NPPES), run by CMS. Create a free account to begin your application.',
+          'The NPI is issued through the National Plan and Provider Enumeration System (NPPES), run by CMS. Create a free account to begin your Type 1 application.',
         link: {
           label: 'Go to NPPES Registry →',
           href: 'https://nppes.cms.hhs.gov',
         },
-        note: 'Have your Social Security Number (or EIN if applying as a business entity), license number, and taxonomy code ready. For most home care nurses, the taxonomy code is 163W00000X (Registered Nurse) or your specific specialty.',
       },
       {
         title: 'Complete the Individual Provider Application',
         description:
-          'Select "Individual" provider type and fill out your personal information, practice location, and taxonomy code. Double-check that your name matches your license exactly.',
+          'Select "Individual" as the provider type (this is Type 1). Enter your personal information, practice location, and taxonomy code. Double-check that your name matches your license exactly — discrepancies are a common reason for delays.',
       },
       {
         title: 'Submit and Receive Your NPI',
         description:
-          'After submitting, NPIs are typically issued within 1 – 5 business days. You will receive an email confirmation with your 10-digit NPI number.',
-        note: 'Keep a copy of your NPI confirmation letter — you will need it for Medicaid enrollment, BCBS credentialing, and other payer applications.',
+          'After submitting, your NPI is typically issued within 1 – 5 business days. You will receive an email confirmation with your 10-digit NPI number.',
+        note: 'Save your NPI confirmation — you will need it for NY Medicaid enrollment, BCBS credentialing, and any other payer applications.',
       },
       {
         title: 'Share Your NPI with Coming Home Care',
         description:
-          'Once you have your NPI, add it to your profile in the portal or email it to us so we can attach it to your account.',
+          'Once you have your NPI, add it to your profile in the portal or email it to us so we can attach it to your billing account.',
         link: {
           label: 'Update Your Profile →',
           href: '/nurse/profile',
+        },
+      },
+    ],
+  },
+  {
+    id: 'npi-organization',
+    icon: '🏢',
+    title: 'Obtain Your NPI Number — Organization / Business Entity (Type 2)',
+    subtitle:
+      'A Type 2 NPI is for organizations — LLCs, corporations, group practices, and agencies that bill under a business name rather than an individual. If you are billing as a business entity or practice, you need this in addition to your personal Type 1 NPI.',
+    estimatedTime: '1 – 5 business days',
+    steps: [
+      {
+        title: 'Gather What You Will Need',
+        description:
+          'Before starting, have the following ready: your business Employer Identification Number (EIN) from the IRS — not your SSN — your legal business name exactly as it appears on your IRS documents, your business service address, and the information of the Authorized Official who will sign on behalf of the organization.',
+        note: 'The Authorized Official must be a person with legal authority to commit the organization — typically an owner, officer, or director. Their name, title, and phone number are required on the application.',
+      },
+      {
+        title: 'Create an Account on the NPPES Registry',
+        description:
+          'Log in or create an account on NPPES. You will start a new application and select "Organization" as the entity type to begin a Type 2 application.',
+        link: {
+          label: 'Go to NPPES Registry →',
+          href: 'https://nppes.cms.hhs.gov',
+        },
+      },
+      {
+        title: 'Complete the Organization (Type 2) Application',
+        description:
+          'Select "Organization" as the provider type. Enter your legal business name, EIN, service address, and contact information. You will also add your Authorized Official and any individual providers (Type 1 NPI holders) who are part of the organization.',
+        note: 'Your business name must match your IRS EIN registration exactly. Even minor differences (LLC vs. L.L.C.) can cause processing issues.',
+      },
+      {
+        title: 'Select the Correct Taxonomy Code for Your Organization',
+        description:
+          'Organization taxonomy codes are different from individual provider codes. For home health and home care agencies, the standard taxonomy is 251E00000X (Home Health). Do not use an individual nurse taxonomy code (163W00000X) for your organization.',
+        note: 'If your organization provides multiple service types, you can add multiple taxonomy codes. Select the one that best represents your primary service as your primary taxonomy.',
+      },
+      {
+        title: 'Submit and Receive Your Organization NPI',
+        description:
+          'Submit the completed application. Organization NPIs are typically issued within 1 – 5 business days, the same as individual NPIs. You will receive email confirmation with your 10-digit Type 2 NPI.',
+        note: 'Keep this NPI on file — it is what Coming Home Care will use when submitting claims on behalf of your organization, and it will appear on remittance advice from payers.',
+      },
+      {
+        title: 'Share Your Organization NPI with Coming Home Care',
+        description:
+          'Send your Type 2 NPI and your legal business name to Coming Home Care so we can update your billing profile and route organization claims correctly.',
+        link: {
+          label: 'Email Support →',
+          href: 'mailto:support@cominghomecare.com?subject=BILLING%3A%20Organization%20NPI%20Update&body=Hi%20CHC%20Team%2C%0A%0AOur%20organization%20has%20received%20its%20Type%202%20NPI.%20Here%20are%20our%20details%3A%0A%0ALegal%20Business%20Name%3A%20%0AOrganization%20NPI%20(Type%202)%3A%20%0AEIN%3A%20%0A%0AThank%20you%2C%0A',
         },
       },
     ],
@@ -90,10 +147,6 @@ const guides: ProcessGuide[] = [
           {
             label: 'New Providers — Download ETIN Application →',
             href: 'https://www.emedny.org/info/providerenrollment/ProviderMaintForms/401101_ETIN_aPPL_Provider_Electronic_Paper_ETIN_application.pdf',
-          },
-          {
-            label: 'Existing Providers — Download ETIN Renewal Certification →',
-            href: 'https://www.emedny.org/info/providerenrollment/ProviderMaintForms/490501_ETIN_CERT_Certification_Statement_Cert_Instructions_for_Existing_ETINs.pdf',
           },
         ],
         note: 'This form must be physically notarized — most banks, UPS Stores, and public libraries offer notary services. There is typically no charge at a bank branch.',
@@ -229,6 +282,27 @@ const resourceDirectories: ResourceDirectory[] = [
     ],
   },
   {
+    id: 'license-renewal',
+    icon: '📄',
+    title: 'Professional License Renewal — New York State',
+    subtitle: 'New York State requires nurses and other licensed healthcare professionals to renew their registration every three years through the Office of the Professions. Letting your license lapse can interrupt your ability to practice and submit claims.',
+    note: 'This guide is specific to New York State. If you are licensed in another state, visit your state\'s licensing board website for renewal instructions — requirements and timelines vary. Do not use the NY link below if you are renewing an out-of-state license.',
+    resources: [
+      {
+        label: 'NY Online License Renewal — Office of the Professions',
+        description: 'Renew your NY professional license (RN, LPN, or other healthcare license) online through the NYS Education Department Office of the Professions portal.',
+        href: 'https://www.op.nysed.gov/registration-renewal/online-registration-renewal',
+        badge: 'NY Only',
+      },
+      {
+        label: 'NYS License Verification & Status Lookup',
+        description: 'Confirm your current license is active and check your registration expiration date before renewing.',
+        href: 'https://www.nysed.gov/professions/verification-search',
+        badge: 'Verify License',
+      },
+    ],
+  },
+  {
     id: 'mental-wellness',
     icon: '🧘',
     title: 'Mental Wellness & Decompression',
@@ -349,12 +423,6 @@ function StepCard({ step, index }: { step: Step; index: number }) {
         <p className="font-semibold text-[#2F3E4E] text-base mb-1">{step.title}</p>
         <p className="text-sm text-[#4a5a6a] leading-relaxed mb-2">{step.description}</p>
 
-        {step.note && (
-          <div className="bg-[#f0f4f0] border-l-4 border-[#7A8F79] rounded-r-lg px-3 py-2 mb-2">
-            <p className="text-xs text-[#4a5a6a] leading-relaxed">{step.note}</p>
-          </div>
-        )}
-
         {step.link && (
           <a
             href={step.link.href}
@@ -366,7 +434,7 @@ function StepCard({ step, index }: { step: Step; index: number }) {
           </a>
         )}
         {step.links && (
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5 mb-2">
             {step.links.map((l, i) => (
               <a
                 key={i}
@@ -378,6 +446,12 @@ function StepCard({ step, index }: { step: Step; index: number }) {
                 {l.label}
               </a>
             ))}
+          </div>
+        )}
+
+        {step.note && (
+          <div className="bg-[#f0f4f0] border-l-4 border-[#7A8F79] rounded-r-lg px-3 py-2 mt-2">
+            <p className="text-xs text-[#4a5a6a] leading-relaxed">{step.note}</p>
           </div>
         )}
       </div>
@@ -512,9 +586,10 @@ export default function ResourcesPage() {
                 Getting Started
               </span>
               <div className="mt-3 space-y-2">
-                <a href="#npi-registration"      className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">🪪 Obtain Your NPI Number</a>
-                <a href="#ny-medicaid-enrollment" className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">🏥 NY Medicaid Enrollment</a>
-                <a href="#bcbs-credentialing"     className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">🔵 BCBS Credentialing</a>
+                <a href="#npi-individual"         className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">🪪 NPI — Individual (Type 1)</a>
+                <a href="#npi-organization"        className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">🏢 NPI — Organization (Type 2)</a>
+                <a href="#ny-medicaid-enrollment"  className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">🏥 NY Medicaid Enrollment</a>
+                <a href="#bcbs-credentialing"      className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">🔵 BCBS Credentialing</a>
               </div>
             </div>
 
@@ -525,6 +600,7 @@ export default function ResourcesPage() {
               </span>
               <div className="mt-3 space-y-2">
                 <a href="#etin-renewal"           className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">📋 Annual ETIN Renewal</a>
+                <a href="#license-renewal"         className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">📄 License Renewal (NY)</a>
                 <a href="#cpr-firstaid"           className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">❤️‍🩹 CPR & First Aid</a>
                 <a href="#malpractice-insurance"  className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">🛡️ Malpractice Insurance</a>
               </div>
@@ -565,7 +641,7 @@ export default function ResourcesPage() {
             <div className="h-px flex-1 bg-[#D9E1E8]" />
           </div>
           <div className="space-y-8">
-            {resourceDirectories.filter(d => ['etin-renewal', 'cpr-firstaid', 'malpractice-insurance'].includes(d.id)).map(dir => (
+            {resourceDirectories.filter(d => ['etin-renewal', 'license-renewal', 'cpr-firstaid', 'malpractice-insurance'].includes(d.id)).map(dir => (
               <ResourceDirectoryCard key={dir.id} dir={dir} />
             ))}
           </div>

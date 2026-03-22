@@ -25,7 +25,7 @@ type ProcessGuide = {
 
 const guides: ProcessGuide[] = [
   {
-    id: 'npi-individual',
+    id: 'npi: individual',
     icon: '🪪',
     title: 'Obtain Your NPI Number — Individual Provider (Type 1)',
     subtitle:
@@ -70,7 +70,7 @@ const guides: ProcessGuide[] = [
     ],
   },
   {
-    id: 'npi-organization',
+    id: 'npi: organization',
     icon: '🏢',
     title: 'Obtain Your NPI Number — Organization / Business Entity (Type 2)',
     subtitle:
@@ -299,6 +299,21 @@ const resourceDirectories: ResourceDirectory[] = [
         description: 'Confirm your current license is active and check your registration expiration date before renewing.',
         href: 'https://www.nysed.gov/professions/verification-search',
         badge: 'Verify License',
+      },
+    ],
+  },
+  {
+    id: 'emedny-listserv',
+    icon: '📬',
+    title: 'Stay Current with eMedNY Updates',
+    subtitle: 'eMedNY sends out policy changes, system updates, and billing alerts that directly affect NY Medicaid providers. Subscribing to their mailing list is one of the easiest ways to stay informed and avoid surprises on claims.',
+    note: 'These lists are free to join and managed directly by NYS DOH / eMedNY. You can subscribe to only the topics relevant to your practice type — you do not need to join every list.',
+    resources: [
+      {
+        label: 'eMedNY Email Alert System — Subscribe',
+        description: 'Sign up for one or more eMedNY LISTSERV mailing lists to receive direct email notifications about NY Medicaid policy updates, billing changes, and system outages.',
+        href: 'https://www.emedny.org/Listserv/eMedNY_Email_Alert_System.aspx',
+        badge: 'Free · NY Medicaid',
       },
     ],
   },
@@ -586,8 +601,8 @@ export default function ResourcesPage() {
                 Getting Started
               </span>
               <div className="mt-3 space-y-2">
-                <a href="#npi-individual"         className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">🪪 NPI — Individual (Type 1)</a>
-                <a href="#npi-organization"        className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">🏢 NPI — Organization (Type 2)</a>
+                <a href="#npi: individual"         className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">🪪 NPI — Individual (Type 1)</a>
+                <a href="#npi: organization"        className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">🏢 NPI — Organization (Type 2)</a>
                 <a href="#ny-medicaid-enrollment"  className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">🏥 NY Medicaid Enrollment</a>
                 <a href="#bcbs-credentialing"      className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">🔵 BCBS Credentialing</a>
               </div>
@@ -601,6 +616,7 @@ export default function ResourcesPage() {
               <div className="mt-3 space-y-2">
                 <a href="#etin-renewal"           className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">📋 Annual ETIN Renewal</a>
                 <a href="#license-renewal"         className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">📄 License Renewal (NY)</a>
+                <a href="#emedny-listserv"         className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">📬 eMedNY Updates</a>
                 <a href="#cpr-firstaid"           className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">❤️‍🩹 CPR & First Aid</a>
                 <a href="#malpractice-insurance"  className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">🛡️ Malpractice Insurance</a>
               </div>
@@ -641,7 +657,7 @@ export default function ResourcesPage() {
             <div className="h-px flex-1 bg-[#D9E1E8]" />
           </div>
           <div className="space-y-8">
-            {resourceDirectories.filter(d => ['etin-renewal', 'license-renewal', 'cpr-firstaid', 'malpractice-insurance'].includes(d.id)).map(dir => (
+            {resourceDirectories.filter(d => ['etin-renewal', 'license-renewal', 'emedny-listserv', 'cpr-firstaid', 'malpractice-insurance'].includes(d.id)).map(dir => (
               <ResourceDirectoryCard key={dir.id} dir={dir} />
             ))}
           </div>

@@ -200,42 +200,45 @@ export default function Banner({ user }: BannerProps) {
             </div>
 
             {/* ── DESKTOP header (hidden below md) ── */}
-            <div className="hidden md:flex fixed top-0 left-0 w-full bg-[#F4F6F5] text-[#2f3e4e] items-center justify-between px-6 h-[200px] z-50">
+            <div className="hidden md:block fixed top-0 left-0 w-full bg-[#F4F6F5] text-[#2f3e4e] h-[200px] z-50">
+                <div className="max-w-[1400px] mx-auto h-full flex items-center justify-between px-6 relative">
 
-                {/* Top-right: clock, then portal button below */}
-                <div className="absolute top-4 right-10 flex flex-col items-end gap-2">
-                    <span className="text-sm" style={{color:'#7A8F79'}}>{time}</span>
-                    {authButtonDesktop}
-                </div>
+                    {/* Top-right: clock, then portal button below */}
+                    <div className="absolute top-4 right-6 flex flex-col items-end gap-2">
+                        <span className="text-sm" style={{color:'#7A8F79'}}>{time}</span>
+                        {authButtonDesktop}
+                    </div>
 
-                {/* Logo */}
-                <div className="flex items-center">
-                    <Link href="/">
-                        <Image
-                            src="/chc_logo.png"
-                            alt="Coming Homecare Logo"
-                            width={350}
-                            height={120}
-                            priority
-                            className="w-[350px] h-auto cursor-pointer transition duration-300 hover:opacity-80 hover:scale-[1.02]"
-                        />
-                    </Link>
-                </div>
+                    {/* Logo */}
+                    <div className="flex items-center">
+                        <Link href="/">
+                            <Image
+                                src="/chc_logo.png"
+                                alt="Coming Homecare Logo"
+                                width={350}
+                                height={120}
+                                priority
+                                className="w-[350px] h-auto cursor-pointer transition duration-300 hover:opacity-80 hover:scale-[1.02]"
+                            />
+                        </Link>
+                    </div>
 
-                {/* Right: welcome + 2-row nav */}
-                <div className="h-full flex flex-col justify-center items-end pr-10 mt-6">
-                    {displayName && (
-                        <div className="mt-1 text-lg font-bold">
-                            <span style={{ fontFamily: "'Lato', sans-serif", fontStyle: 'italic' }}>Welcome home,</span>
-                            <span style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.5rem' }}>&nbsp;{displayName}</span>
-                        </div>
-                    )}
-                    <nav className="flex flex-wrap gap-6 text-sm font-semibold mt-3 items-center">
-                        {myRow}
-                    </nav>
-                    <nav className="flex flex-wrap gap-6 text-sm font-semibold mt-2 items-center text-[#2F3E4E]/60">
-                        {generalRow}
-                    </nav>
+                    {/* Right: welcome + 2-row nav */}
+                    <div className="h-full flex flex-col justify-center items-end mt-6">
+                        {displayName && (
+                            <div className="mt-1 text-lg font-bold">
+                                <span style={{ fontFamily: "'Lato', sans-serif", fontStyle: 'italic' }}>Welcome home,</span>
+                                <span style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.5rem' }}>&nbsp;{displayName}</span>
+                            </div>
+                        )}
+                        <nav className="flex flex-wrap gap-6 text-sm font-semibold mt-3 items-center">
+                            {myRow}
+                        </nav>
+                        <nav className="flex flex-wrap gap-6 text-sm font-semibold mt-2 items-center text-[#2F3E4E]/60">
+                            {generalRow}
+                        </nav>
+                    </div>
+
                 </div>
             </div>
 

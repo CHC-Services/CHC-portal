@@ -476,7 +476,7 @@ function StepCard({ step, index }: { step: Step; index: number }) {
 
 function GuideCard({ guide }: { guide: ProcessGuide }) {
   return (
-    <section id={guide.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+    <section id={guide.id} className="bg-white rounded-2xl shadow-sm overflow-hidden scroll-mt-28 md:scroll-mt-56">
       {/* Header */}
       <div className="bg-[#2F3E4E] px-6 py-5">
         <div className="flex items-start gap-3">
@@ -522,7 +522,7 @@ function GuideCard({ guide }: { guide: ProcessGuide }) {
 
 function ResourceDirectoryCard({ dir }: { dir: ResourceDirectory }) {
   return (
-    <section id={dir.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+    <section id={dir.id} className="bg-white rounded-2xl shadow-sm overflow-hidden scroll-mt-28 md:scroll-mt-56">
       <div className="bg-[#2F3E4E] px-6 py-5">
         <div className="flex items-start gap-3">
           <span className="text-3xl">{dir.icon}</span>
@@ -575,12 +575,11 @@ export default function ResourcesPage() {
             Resources
           </p>
           <h1 className="text-3xl md:text-4xl font-bold text-white leading-tight">
-            Step-by-Step Guides
+            Enrollments &amp; Renewals
           </h1>
           <p className="mt-3 text-[#D9E1E8] text-sm max-w-xl">
-            We know enrollment and credentialing paperwork can feel overwhelming. These guides break
-            each New York State process down into clear, actionable steps — with links to every form
-            you need. Federal processes (NPI, BCBS) apply regardless of state.
+            Step-by-step guides for enrollment, credentialing, and staying active as a provider in New York State.
+            Federal processes (NPI, BCBS) apply regardless of state.
           </p>
         </div>
       </div>
@@ -593,7 +592,7 @@ export default function ResourcesPage() {
             Jump to a guide
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
             {/* Getting Started */}
             <div>
@@ -601,10 +600,10 @@ export default function ResourcesPage() {
                 Getting Started
               </span>
               <div className="mt-3 space-y-2">
-                <a href="#npi: individual"         className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">🪪 NPI — Individual (Type 1)</a>
-                <a href="#npi: organization"        className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">🏢 NPI — Organization (Type 2)</a>
-                <a href="#ny-medicaid-enrollment"  className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">🏥 NY Medicaid Enrollment</a>
-                <a href="#bcbs-credentialing"      className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">🔵 BCBS Credentialing</a>
+                <a href="#npi-individual"          className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">🪪 NPI — Individual (Type 1)</a>
+                <a href="#npi-organization"         className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">🏢 NPI — Organization (Type 2)</a>
+                <a href="#ny-medicaid-enrollment"   className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">🏥 NY Medicaid Enrollment</a>
+                <a href="#bcbs-credentialing"       className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">🔵 BCBS Credentialing</a>
               </div>
             </div>
 
@@ -614,21 +613,11 @@ export default function ResourcesPage() {
                 Staying Active
               </span>
               <div className="mt-3 space-y-2">
-                <a href="#etin-renewal"           className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">📋 Annual ETIN Renewal</a>
-                <a href="#license-renewal"         className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">📄 License Renewal (NY)</a>
-                <a href="#emedny-listserv"         className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">📬 eMedNY Updates</a>
-                <a href="#cpr-firstaid"           className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">❤️‍🩹 CPR & First Aid</a>
-                <a href="#malpractice-insurance"  className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">🛡️ Malpractice Insurance</a>
-              </div>
-            </div>
-
-            {/* Avoiding Burnout */}
-            <div>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-white bg-[#657a64] px-2.5 py-1 rounded-full">
-                Avoiding Burnout
-              </span>
-              <div className="mt-3 space-y-2">
-                <a href="#mental-wellness"        className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">🧘 Mental Wellness & Decompression</a>
+                <a href="#etin-renewal"            className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">📋 Annual ETIN Renewal</a>
+                <a href="#license-renewal"          className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">📄 License Renewal (NY)</a>
+                <a href="#emedny-listserv"          className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">📬 eMedNY Updates</a>
+                <a href="#cpr-firstaid"            className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">❤️‍🩹 CPR & First Aid</a>
+                <a href="#malpractice-insurance"   className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition w-full">🛡️ Malpractice Insurance</a>
               </div>
             </div>
 
@@ -658,20 +647,6 @@ export default function ResourcesPage() {
           </div>
           <div className="space-y-8">
             {resourceDirectories.filter(d => ['etin-renewal', 'license-renewal', 'emedny-listserv', 'cpr-firstaid', 'malpractice-insurance'].includes(d.id)).map(dir => (
-              <ResourceDirectoryCard key={dir.id} dir={dir} />
-            ))}
-          </div>
-        </div>
-
-        {/* ── Avoiding Burnout ── */}
-        <div className="max-w-3xl mb-12">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="h-px flex-1 bg-[#D9E1E8]" />
-            <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full bg-[#657a64] text-white">Avoiding Burnout</span>
-            <div className="h-px flex-1 bg-[#D9E1E8]" />
-          </div>
-          <div className="space-y-8">
-            {resourceDirectories.filter(d => d.id === 'mental-wellness').map(dir => (
               <ResourceDirectoryCard key={dir.id} dir={dir} />
             ))}
           </div>

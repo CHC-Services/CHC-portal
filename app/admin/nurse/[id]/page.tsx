@@ -3,6 +3,7 @@
 import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import AdminNav from '../../../components/AdminNav'
 
 type Profile = Record<string, any>
 
@@ -341,6 +342,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">
+      <AdminNav />
 
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">

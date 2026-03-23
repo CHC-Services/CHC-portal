@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import AdminNav from '../../components/AdminNav'
 
 type Claim = {
   id: string
@@ -203,6 +204,7 @@ export default function AdminClaimsPage() {
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-6">
       <div className="max-w-screen-xl mx-auto">
+        <AdminNav />
 
         {/* Header */}
         <div className="flex flex-wrap items-start justify-between gap-4 mb-6">

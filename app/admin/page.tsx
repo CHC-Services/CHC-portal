@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import AdminNav from '../components/AdminNav'
 
 type TimeEntry = {
   id: string
@@ -339,6 +340,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">
+      <AdminNav />
 
       {/* Header */}
       <div className="mb-8">

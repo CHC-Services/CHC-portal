@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import AdminNav from '../../components/AdminNav'
 
 type TimeEntry = {
   id: string
@@ -8,6 +9,7 @@ type TimeEntry = {
   hours: number
   notes: string | null
   billed: boolean
+  claimRef: string | null
   createdAt: string
   nurse: {
     displayName: string
@@ -25,17 +27,33 @@ export default function AdminBillingPage() {
   const [filter, setFilter] = useState<'all' | 'unbilled' | 'billed'>('unbilled')
   const [search, setSearch] = useState('')
   const [toggling, setToggling] = useState<string | null>(null)
+  const [claimRefs, setClaimRefs] = useState<Record<string, string>>({})
 
   function load() {
     fetch('/api/admin/time-entries', { credentials: 'include' })
       .then(r => r.json())
       .then(data => {
-        if (Array.isArray(data)) setEntries(data)
+        if (Array.isArray(data)) {
+          setEntries(data)
+          const refs: Record<string, string> = {}
+          data.forEach((e: TimeEntry) => { if (e.claimRef) refs[e.id] = e.claimRef })
+          setClaimRefs(refs)
+        }
       })
       .finally(() => setLoading(false))
   }
 
   useEffect(() => { load() }, [])
+
+  async function saveClaimRef(id: string, value: string) {
+    await fetch(`/api/admin/time-entry/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ claimRef: value }),
+    })
+    setEntries(prev => prev.map(e => e.id === id ? { ...e, claimRef: value || null } : e))
+  }
 
   async function toggleBilled(entry: TimeEntry) {
     setToggling(entry.id)
@@ -77,6 +95,7 @@ export default function AdminBillingPage() {
 
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">
+      <AdminNav />
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-[#2F3E4E]">
           <span className="text-[#7A8F79] italic">my</span>Billing Summary
@@ -165,6 +184,7 @@ export default function AdminBillingPage() {
                   <th className="text-left py-2 pr-4">Date Worked</th>
                   <th className="text-right py-2 pr-4">Hours</th>
                   <th className="text-left py-2 pr-4">Notes</th>
+                  <th className="text-left py-2 pr-4">Claim Ref #</th>
                   <th className="text-center py-2">Billed</th>
                 </tr>
               </thead>
@@ -192,6 +212,16 @@ export default function AdminBillingPage() {
                     </td>
                     <td className="py-2 pr-4 text-xs italic text-[#7A8F79]">
                       {entry.notes || '—'}
+                    </td>
+                    <td className="py-2 pr-4">
+                      <input
+                        type="text"
+                        value={claimRefs[entry.id] ?? entry.claimRef ?? ''}
+                        onChange={e => setClaimRefs(prev => ({ ...prev, [entry.id]: e.target.value }))}
+                        onBlur={e => saveClaimRef(entry.id, e.target.value)}
+                        placeholder="e.g. CLM-001"
+                        className="border border-[#D9E1E8] rounded px-2 py-1 text-xs text-[#2F3E4E] w-28 focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
+                      />
                     </td>
                     <td className="py-2 text-center">
                       <button

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import AdminNav from '../../components/AdminNav'
 
 type FaqItem = {
   id: string
@@ -120,6 +121,7 @@ export default function AdminFaqPage() {
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">
       <div className="max-w-4xl mx-auto">
+        <AdminNav />
 
         <div className="mb-6 flex items-center justify-between">
           <div>

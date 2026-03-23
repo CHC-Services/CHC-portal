@@ -29,6 +29,7 @@ function NurseRow({ nurse, onDeleted, onRefresh }: { nurse: Nurse; onDeleted: ()
   const [logNotes, setLogNotes] = useState('')
   const [logMessage, setLogMessage] = useState('')
   const [logSubmitting, setLogSubmitting] = useState(false)
+  const [deletingEntry, setDeletingEntry] = useState<string | null>(null)
 
   async function submitHours(e: React.FormEvent) {
     e.preventDefault()
@@ -57,6 +58,18 @@ function NurseRow({ nurse, onDeleted, onRefresh }: { nurse: Nurse; onDeleted: ()
     setDeleting(true)
     await fetch(`/api/admin/nurses/${nurse.id}`, { method: 'DELETE', credentials: 'include' })
     onDeleted()
+  }
+
+  async function deleteEntry(entryId: string) {
+    setDeletingEntry(entryId)
+    const res = await fetch('/api/admin/time-entry', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ id: entryId }),
+    })
+    setDeletingEntry(null)
+    if (res.ok) onRefresh()
   }
 
   const totalHours = nurse.timeEntries.reduce((sum, e) => sum + e.hours, 0)
@@ -116,6 +129,7 @@ function NurseRow({ nurse, onDeleted, onRefresh }: { nurse: Nurse; onDeleted: ()
                   <th className="text-left py-2 pr-4">Date</th>
                   <th className="text-right py-2 pr-4">Hours</th>
                   <th className="text-left py-2">Notes</th>
+                  <th className="w-6"></th>
                 </tr>
               </thead>
               <tbody>
@@ -129,6 +143,18 @@ function NurseRow({ nurse, onDeleted, onRefresh }: { nurse: Nurse; onDeleted: ()
                     </td>
                     <td className="py-2 pr-4 text-right font-semibold text-[#2F3E4E]">{entry.hours}</td>
                     <td className="py-2 text-[#2F3E4E] italic text-xs">{entry.notes || '—'}</td>
+                    <td className="py-2 pl-2">
+                      <button
+                        onClick={() => deleteEntry(entry.id)}
+                        disabled={deletingEntry === entry.id}
+                        title="Delete entry"
+                        className="text-red-400 hover:text-red-600 transition disabled:opacity-40"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

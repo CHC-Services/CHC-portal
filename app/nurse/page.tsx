@@ -10,6 +10,7 @@ type TimeEntry = {
   hours: number
   notes: string | null
   billed: boolean
+  claimRef: string | null
   createdAt: string
 }
 
@@ -349,7 +350,8 @@ export default function NurseDashboard() {
                     </th>
                     <th className="text-left py-2 pr-4">Date</th>
                     <th className="text-right py-2 pr-4">Hours</th>
-                    <th className="text-left py-2">Notes</th>
+                    <th className="text-left py-2 pr-4">Notes</th>
+                    <th className="text-left py-2">Claim Ref #</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -380,7 +382,10 @@ export default function NurseDashboard() {
                         {new Date(entry.workDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
                       </td>
                       <td className="py-2 pr-4 text-right font-semibold text-[#2F3E4E]">{entry.hours}</td>
-                      <td className="py-2 text-[#7A8F79] italic text-xs">{entry.notes || '—'}</td>
+                      <td className="py-2 pr-4 text-[#7A8F79] italic text-xs">{entry.notes || '—'}</td>
+                      <td className="py-2 text-xs font-mono text-[#2F3E4E]">
+                        {entry.claimRef || <span className="text-[#7A8F79] not-italic">—</span>}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

@@ -666,18 +666,14 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                         {entry.notes || '—'}
                       </td>
                       <td className="py-2.5 pr-4">
-                        {isInvoiced ? (
-                          <span className="text-xs text-[#7A8F79] font-mono">{entry.claimRef || '—'}</span>
-                        ) : (
-                          <input
-                            type="text"
-                            value={claimRefs[entry.id] ?? entry.claimRef ?? ''}
-                            onChange={e => setClaimRefs(prev => ({ ...prev, [entry.id]: e.target.value }))}
-                            onBlur={e => saveClaimRef(entry.id, e.target.value)}
-                            placeholder="e.g. CLM-001"
-                            className="border border-[#D9E1E8] rounded px-2 py-1 text-xs text-[#2F3E4E] w-28 focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
-                          />
-                        )}
+                        <input
+                          type="text"
+                          value={claimRefs[entry.id] ?? entry.claimRef ?? ''}
+                          onChange={e => setClaimRefs(prev => ({ ...prev, [entry.id]: e.target.value }))}
+                          onBlur={e => saveClaimRef(entry.id, e.target.value)}
+                          placeholder="e.g. CLM-001"
+                          className="border border-[#D9E1E8] rounded px-2 py-1 text-xs text-[#2F3E4E] w-28 focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
+                        />
                       </td>
                       <td className="py-2.5 pr-4">
                         {isInvoiced ? (

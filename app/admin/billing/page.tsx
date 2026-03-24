@@ -69,16 +69,18 @@ export default function AdminBillingPage() {
     setToggling(null)
   }
 
-  const filtered = entries.filter(e => {
-    const matchSearch = search === '' ||
-      e.nurse.displayName.toLowerCase().includes(search.toLowerCase()) ||
-      (e.nurse.accountNumber ?? '').toLowerCase().includes(search.toLowerCase())
-    const matchFilter =
-      filter === 'all' ? true :
-      filter === 'billed' ? e.billed :
-      !e.billed
-    return matchSearch && matchFilter
-  })
+  const filtered = entries
+    .filter(e => {
+      const matchSearch = search === '' ||
+        e.nurse.displayName.toLowerCase().includes(search.toLowerCase()) ||
+        (e.nurse.accountNumber ?? '').toLowerCase().includes(search.toLowerCase())
+      const matchFilter =
+        filter === 'all' ? true :
+        filter === 'billed' ? e.billed :
+        !e.billed
+      return matchSearch && matchFilter
+    })
+    .sort((a, b) => new Date(a.workDate).getTime() - new Date(b.workDate).getTime())
 
   const totalHours = filtered.reduce((s, e) => s + e.hours, 0)
   const billedHours = filtered.filter(e => e.billed).reduce((s, e) => s + e.hours, 0)

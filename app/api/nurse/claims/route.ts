@@ -11,10 +11,16 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const claims = await prisma.claim.findMany({
-    where: { nurseId: session.nurseProfileId },
-    orderBy: { dosStart: 'desc' }
-  })
+  const [claims, profile] = await Promise.all([
+    prisma.claim.findMany({
+      where: { nurseId: session.nurseProfileId },
+      orderBy: { dosStart: 'desc' }
+    }),
+    prisma.nurseProfile.findUnique({
+      where: { id: session.nurseProfileId },
+      select: { enrolledInBilling: true }
+    })
+  ])
 
-  return NextResponse.json({ claims })
+  return NextResponse.json({ claims, enrolledInBilling: profile?.enrolledInBilling ?? null })
 }

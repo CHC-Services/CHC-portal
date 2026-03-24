@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import AdminNav from '../components/AdminNav'
+import { DateInput, DateInputHandle } from '../components/DateInput'
 
 type TimeEntry = {
   id: string
@@ -26,6 +27,7 @@ function NurseRow({ nurse, onDeleted, onRefresh }: { nurse: Nurse; onDeleted: ()
   const [deleting, setDeleting] = useState(false)
   const [logOpen, setLogOpen] = useState(false)
   const [logDate, setLogDate] = useState('')
+  const logDateRef = useRef<DateInputHandle>(null)
   const [logHours, setLogHours] = useState('')
   const [logNotes, setLogNotes] = useState('')
   const [logMessage, setLogMessage] = useState('')
@@ -50,6 +52,7 @@ function NurseRow({ nurse, onDeleted, onRefresh }: { nurse: Nurse; onDeleted: ()
       setLogNotes('')
       setLogMessage('Hours logged.')
       onRefresh()
+      requestAnimationFrame(() => logDateRef.current?.focus())
     } else {
       setLogMessage(data.error || 'Error logging hours.')
     }
@@ -175,12 +178,10 @@ function NurseRow({ nurse, onDeleted, onRefresh }: { nurse: Nurse; onDeleted: ()
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Date Worked</label>
-                    <input
-                      type="date"
+                    <DateInput
+                      ref={logDateRef}
                       value={logDate}
-                      onChange={e => setLogDate(e.target.value)}
-                      required
-                      className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] text-sm focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                      onChange={setLogDate}
                     />
                   </div>
                   <div>

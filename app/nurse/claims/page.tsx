@@ -69,12 +69,17 @@ function groupClaims(claims: Claim[]): Claim[] {
 
 export default function NurseClaimsPage() {
   const [claims, setClaims] = useState<Claim[]>([])
+  const [enrolledInBilling, setEnrolledInBilling] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetch('/api/nurse/claims', { credentials: 'include' })
       .then(r => r.json())
-      .then(data => { setClaims(data.claims || []); setLoading(false) })
+      .then(data => {
+        setClaims(data.claims || [])
+        setEnrolledInBilling(data.enrolledInBilling ?? null)
+        setLoading(false)
+      })
   }, [])
 
   // Exclude superseded originals — if a claim was resubmitted, only count the resubmission
@@ -97,6 +102,46 @@ export default function NurseClaimsPage() {
         </div>
 
         <PortalMessages priority="Claims" />
+
+        {/* Billing services promo — shown when not enrolled */}
+        {enrolledInBilling !== true && (
+          <div className="mb-6 bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div className="bg-[#2F3E4E] px-6 py-5">
+              <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-1">Coming Home Care Billing Services</p>
+              <h2 className="text-xl font-bold text-white">Let us handle your claims so you can focus on care.</h2>
+              <p className="text-sm text-[#D9E1E8] mt-2 max-w-xl">
+                When you enroll in our billing program, we submit and track your Medicaid and insurance claims on your behalf — and your claims status will appear right here on this page.
+              </p>
+            </div>
+            <div className="px-6 py-5 grid sm:grid-cols-3 gap-4">
+              {[
+                { icon: '📋', title: 'Claims Submission', body: 'We prepare and submit your Medicaid, BCBS, and dual-payer claims directly to the correct payers on your behalf.' },
+                { icon: '🔍', title: 'Status Tracking', body: 'Track every claim from submission through payment — all in one place, updated each time we review your account.' },
+                { icon: '💬', title: 'Dedicated Support', body: 'Have a question about a claim or payment? Our team is reachable directly by email — no automated phone trees.' },
+              ].map(item => (
+                <div key={item.title} className="flex flex-col gap-1.5 border border-[#D9E1E8] rounded-xl p-4">
+                  <span className="text-2xl">{item.icon}</span>
+                  <p className="font-semibold text-[#2F3E4E] text-sm">{item.title}</p>
+                  <p className="text-xs text-[#7A8F79] leading-relaxed">{item.body}</p>
+                </div>
+              ))}
+            </div>
+            <div className="px-6 pb-6 flex flex-col sm:flex-row gap-3">
+              <a
+                href="/nurse/onboarding"
+                className="inline-flex items-center justify-center gap-2 bg-[#7A8F79] hover:bg-[#657a64] text-white font-semibold px-5 py-2.5 rounded-lg transition text-sm"
+              >
+                Enroll in Billing Services →
+              </a>
+              <a
+                href="mailto:support@cominghomecare.com?subject=BILLING%3A%20Question%20About%20Billing%20Services"
+                className="inline-flex items-center justify-center gap-2 border border-[#D9E1E8] text-[#2F3E4E] hover:border-[#7A8F79] font-semibold px-5 py-2.5 rounded-lg transition text-sm"
+              >
+                Contact Us
+              </a>
+            </div>
+          </div>
+        )}
 
         {claims.length > 0 && (
           <div className="grid grid-cols-3 gap-4 mb-6">

@@ -26,6 +26,7 @@ type Claim = {
   dateFullyFinalized: string | null
   resubmissionOf: string | null
   processingNotes: string | null
+  updatedAt: string
 }
 
 function fmt(val: number | null, prefix = '') {
@@ -76,9 +77,13 @@ export default function NurseClaimsPage() {
       .then(data => { setClaims(data.claims || []); setLoading(false) })
   }, [])
 
-  const totalBilled = claims.reduce((s, c) => s + (c.totalBilled || 0), 0)
-  const totalReimbursed = claims.reduce((s, c) => s + (c.totalReimbursed || 0), 0)
-  const totalBalance = claims.reduce((s, c) => s + (c.remainingBalance || 0), 0)
+  // Exclude superseded originals — if a claim was resubmitted, only count the resubmission
+  // Exclude superseded originals — if a claim was resubmitted, only count the resubmission
+  const resubIds = new Set(claims.filter(c => c.resubmissionOf).map(c => c.resubmissionOf as string))
+  const activeClaims = claims.filter(c => !c.claimId || !resubIds.has(c.claimId))
+
+  const totalBilled = activeClaims.reduce((s, c) => s + (c.totalBilled || 0), 0)
+  const totalReimbursed = activeClaims.reduce((s, c) => s + (c.totalReimbursed || 0), 0)
 
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">
@@ -97,7 +102,7 @@ export default function NurseClaimsPage() {
           <div className="grid grid-cols-3 gap-4 mb-6">
             <div className="bg-white rounded-xl p-4 shadow-sm">
               <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold">Total Claims</p>
-              <p className="text-2xl font-bold text-[#2F3E4E] mt-1">{claims.length}</p>
+              <p className="text-2xl font-bold text-[#2F3E4E] mt-1">{activeClaims.length}</p>
             </div>
             <div className="bg-white rounded-xl p-4 shadow-sm">
               <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold">Total Billed</p>
@@ -147,9 +152,6 @@ export default function NurseClaimsPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     <StageBadge stage={c.claimStage} />
-                    {c.dateFullyFinalized && (
-                      <span className="text-xs text-[#7A8F79]">Finalized {fmtDate(c.dateFullyFinalized)}</span>
-                    )}
                   </div>
                 </div>
 
@@ -208,22 +210,36 @@ export default function NurseClaimsPage() {
                 )}
 
                 {/* Summary */}
-                <div className="pt-3 border-t border-[#D9E1E8] grid grid-cols-3 gap-3 text-sm">
-                  <div>
-                    <p className="text-xs text-[#7A8F79]">Total Billed</p>
-                    <p className="font-semibold text-[#2F3E4E]">{fmt(c.totalBilled, '$')}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-[#7A8F79]">Total Reimbursed</p>
-                    <p className="font-semibold text-[#7A8F79]">{fmt(c.totalReimbursed, '$')}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-[#7A8F79]">Remaining Balance</p>
-                    <p className={`font-semibold ${(c.remainingBalance || 0) > 0 ? 'text-red-600' : 'text-[#2F3E4E]'}`}>
-                      {fmt(c.remainingBalance, '$')}
-                    </p>
-                  </div>
-                </div>
+                {(() => {
+                  const finalStages = ['paid', 'denied', 'rejected', 'finalized']
+                  const isFinal = finalStages.includes((c.claimStage || '').toLowerCase())
+                  const dateLabel = isFinal ? 'Processed Date' : 'Last Updated'
+                  const dateValue = isFinal
+                    ? (c.dateFullyFinalized || c.primaryPaidDate || c.updatedAt)
+                    : c.updatedAt
+                  return (
+                    <div className="pt-3 border-t border-[#D9E1E8] grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                      <div>
+                        <p className="text-xs text-[#7A8F79]">Total Billed</p>
+                        <p className="font-semibold text-[#2F3E4E]">{fmt(c.totalBilled, '$')}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-[#7A8F79]">Total Reimbursed</p>
+                        <p className="font-semibold text-[#7A8F79]">{fmt(c.totalReimbursed, '$')}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-[#7A8F79]">Remaining Balance</p>
+                        <p className={`font-semibold ${(c.remainingBalance || 0) > 0 ? 'text-red-600' : 'text-[#2F3E4E]'}`}>
+                          {fmt(c.remainingBalance, '$')}
+                        </p>
+                      </div>
+                      <div>
+                        <p className={`text-xs font-semibold ${isFinal ? 'text-green-700' : 'text-[#7A8F79]'}`}>{dateLabel}</p>
+                        <p className="font-semibold text-[#2F3E4E]">{fmtDate(dateValue)}</p>
+                      </div>
+                    </div>
+                  )
+                })()}
 
                 {/* Processing Notes */}
                 {c.processingNotes && (

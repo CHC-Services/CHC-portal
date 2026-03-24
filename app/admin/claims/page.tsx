@@ -197,9 +197,13 @@ export default function AdminClaimsPage() {
     return matchSearch && matchStage
   })
 
-  const totalBilled = filtered.reduce((s, c) => s + (c.totalBilled || 0), 0)
-  const totalReimbursed = filtered.reduce((s, c) => s + (c.totalReimbursed || 0), 0)
-  const totalBalance = filtered.reduce((s, c) => s + (c.remainingBalance || 0), 0)
+  // Exclude superseded originals from totals — only count the most recent submission
+  const filteredResubIds = new Set(filtered.filter(c => c.resubmissionOf).map(c => c.resubmissionOf as string))
+  const activeFiltered = filtered.filter(c => !c.claimId || !filteredResubIds.has(c.claimId))
+
+  const totalBilled = activeFiltered.reduce((s, c) => s + (c.totalBilled || 0), 0)
+  const totalReimbursed = activeFiltered.reduce((s, c) => s + (c.totalReimbursed || 0), 0)
+  const totalBalance = activeFiltered.reduce((s, c) => s + (c.remainingBalance || 0), 0)
 
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-6">

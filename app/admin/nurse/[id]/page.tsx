@@ -626,12 +626,12 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
               <thead>
                 <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
                   <th className="text-left py-2 pr-3 w-8"></th>
+                  <th className="text-left py-2 pr-4">Claim Ref #</th>
                   <th className="text-left py-2 pr-4">Account #</th>
                   <th className="text-left py-2 pr-4">Provider</th>
                   <th className="text-left py-2 pr-4">Date of Service</th>
                   <th className="text-right py-2 pr-4">Hours</th>
                   <th className="text-left py-2 pr-4">Notes</th>
-                  <th className="text-left py-2 pr-4">Claim Ref #</th>
                   <th className="text-left py-2 pr-4">Fee / Status</th>
                   <th className="w-6"></th>
                 </tr>
@@ -655,6 +655,16 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                         />
                       </td>
                       <td className="py-2.5 pr-4">
+                        <input
+                          type="text"
+                          value={claimRefs[entry.id] ?? entry.claimRef ?? ''}
+                          onChange={e => setClaimRefs(prev => ({ ...prev, [entry.id]: e.target.value }))}
+                          onBlur={e => saveClaimRef(entry.id, e.target.value)}
+                          placeholder="e.g. CLM-001"
+                          className="border border-[#D9E1E8] rounded px-2 py-1 text-xs text-[#2F3E4E] w-28 focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
+                        />
+                      </td>
+                      <td className="py-2.5 pr-4">
                         <span className="font-mono text-xs text-[#2F3E4E]">
                           {profile.accountNumber || '—'}
                         </span>
@@ -666,16 +676,6 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                       <td className="py-2.5 pr-4 text-right font-semibold text-[#2F3E4E]">{entry.hours}</td>
                       <td className="py-2.5 pr-4 text-[#7A8F79] italic text-xs max-w-[120px] truncate">
                         {entry.notes || '—'}
-                      </td>
-                      <td className="py-2.5 pr-4">
-                        <input
-                          type="text"
-                          value={claimRefs[entry.id] ?? entry.claimRef ?? ''}
-                          onChange={e => setClaimRefs(prev => ({ ...prev, [entry.id]: e.target.value }))}
-                          onBlur={e => saveClaimRef(entry.id, e.target.value)}
-                          placeholder="e.g. CLM-001"
-                          className="border border-[#D9E1E8] rounded px-2 py-1 text-xs text-[#2F3E4E] w-28 focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
-                        />
                       </td>
                       <td className="py-2.5 pr-4">
                         {isInvoiced ? (

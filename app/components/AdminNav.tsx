@@ -9,6 +9,7 @@ const links = [
   { label: 'Billing Summary', href: '/admin/billing' },
   { label: 'Calendar',        href: '/admin/calendar' },
   { label: 'Add Provider',    href: '/admin#add-provider' },
+  { label: 'myIdeas',         href: '/admin/ideas' },
 ]
 
 export default function AdminNav() {

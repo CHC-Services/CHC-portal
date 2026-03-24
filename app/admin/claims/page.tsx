@@ -287,6 +287,7 @@ export default function AdminClaimsPage() {
             <table className="w-full text-sm text-left">
               <thead className="bg-[#F4F6F5] text-xs uppercase tracking-widest text-[#7A8F79]">
                 <tr>
+                  <th className="px-4 py-3">Link</th>
                   <th className="px-4 py-3">Provider</th>
                   <th className="px-4 py-3">Claim ID</th>
                   <th className="px-4 py-3">DOS</th>
@@ -306,12 +307,12 @@ export default function AdminClaimsPage() {
                   <th className="px-4 py-3">Balance</th>
                   <th className="px-4 py-3">Finalized</th>
                   <th className="px-4 py-3">Notes</th>
-                  <th className="px-4 py-3">Link</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#D9E1E8]">
                 {groupClaims(filtered).map(c => (
                   <tr key={c.id} className={`hover:bg-[#F4F6F5] transition ${c.resubmissionOf ? 'bg-purple-50' : ''}`}>
+                    <td className="px-4 py-3"><LinkButton claim={c} onLinked={loadClaims} /></td>
                     <td className="px-4 py-3 font-semibold text-[#2F3E4E] whitespace-nowrap">{c.providerName || c.nurse?.displayName}</td>
                     <td className="px-4 py-3 text-[#7A8F79] font-mono text-xs">
                       {c.resubmissionOf && <span className="block text-purple-500 text-[10px] mb-0.5">↳ resubmission</span>}
@@ -338,7 +339,6 @@ export default function AdminClaimsPage() {
                     </td>
                     <td className="px-4 py-3 text-xs text-[#7A8F79] whitespace-nowrap">{fmtDate(c.dateFullyFinalized)}</td>
                     <td className="px-4 py-3 text-xs text-[#7A8F79] max-w-xs truncate">{c.processingNotes || '—'}</td>
-                    <td className="px-4 py-3"><LinkButton claim={c} onLinked={loadClaims} /></td>
                   </tr>
                 ))}
               </tbody>

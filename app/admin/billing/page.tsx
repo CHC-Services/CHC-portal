@@ -181,12 +181,12 @@ export default function AdminBillingPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
+                  <th className="text-left py-2 pr-4">Claim Ref #</th>
                   <th className="text-left py-2 pr-4">Nurse</th>
                   <th className="text-left py-2 pr-4">Account</th>
                   <th className="text-left py-2 pr-4">Date Worked</th>
                   <th className="text-right py-2 pr-4">Hours</th>
                   <th className="text-left py-2 pr-4">Notes</th>
-                  <th className="text-left py-2 pr-4">Claim Ref #</th>
                   <th className="text-center py-2">Billed</th>
                 </tr>
               </thead>
@@ -200,10 +200,20 @@ export default function AdminBillingPage() {
                         : i % 2 === 0 ? 'bg-white' : 'bg-[#F4F6F5]'
                     }`}
                   >
+                    <td className="py-2 pr-4">
+                      <input
+                        type="text"
+                        value={claimRefs[entry.id] ?? entry.claimRef ?? ''}
+                        onChange={e => setClaimRefs(prev => ({ ...prev, [entry.id]: e.target.value }))}
+                        onBlur={e => saveClaimRef(entry.id, e.target.value)}
+                        placeholder="e.g. CLM-001"
+                        className="border border-[#D9E1E8] rounded px-2 py-1 text-xs text-[#2F3E4E] w-28 focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
+                      />
+                    </td>
                     <td className={`py-2 pr-4 font-semibold whitespace-nowrap ${entry.billed ? 'text-[#7A8F79]' : 'text-[#2F3E4E]'}`}>
                       {entry.nurse.displayName}
                     </td>
-                    <td className={`py-2 pr-4 text-xs whitespace-nowrap ${entry.billed ? 'text-[#7A8F79]' : 'text-[#7A8F79]'}`}>
+                    <td className="py-2 pr-4 text-xs whitespace-nowrap text-[#7A8F79]">
                       {entry.nurse.accountNumber ?? '—'}
                     </td>
                     <td className={`py-2 pr-4 whitespace-nowrap ${entry.billed ? 'text-[#7A8F79]' : 'text-[#2F3E4E]'}`}>
@@ -214,16 +224,6 @@ export default function AdminBillingPage() {
                     </td>
                     <td className="py-2 pr-4 text-xs italic text-[#7A8F79]">
                       {entry.notes || '—'}
-                    </td>
-                    <td className="py-2 pr-4">
-                      <input
-                        type="text"
-                        value={claimRefs[entry.id] ?? entry.claimRef ?? ''}
-                        onChange={e => setClaimRefs(prev => ({ ...prev, [entry.id]: e.target.value }))}
-                        onBlur={e => saveClaimRef(entry.id, e.target.value)}
-                        placeholder="e.g. CLM-001"
-                        className="border border-[#D9E1E8] rounded px-2 py-1 text-xs text-[#2F3E4E] w-28 focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
-                      />
                     </td>
                     <td className="py-2 text-center">
                       <button

@@ -150,9 +150,7 @@ export default function NurseClaimsPage() {
                       DOS: {fmtDate(c.dosStart)}{c.dosStop ? ` – ${fmtDate(c.dosStop)}` : ''}
                     </p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <StageBadge stage={c.claimStage} />
-                  </div>
+                  <div />
                 </div>
 
                 {/* Primary insurance */}
@@ -234,8 +232,9 @@ export default function NurseClaimsPage() {
                         </p>
                       </div>
                       <div>
-                        <p className={`text-xs font-semibold ${isFinal ? 'text-green-700' : 'text-[#7A8F79]'}`}>{dateLabel}</p>
-                        <p className="font-semibold text-[#2F3E4E]">{fmtDate(dateValue)}</p>
+                        <StageBadge stage={c.claimStage} />
+                        <p className="font-semibold text-[#2F3E4E] mt-1">{fmtDate(dateValue)}</p>
+                        <p className={`text-[10px] ${isFinal ? 'text-green-700' : 'text-[#7A8F79]'}`}>{dateLabel}</p>
                       </div>
                     </div>
                   )

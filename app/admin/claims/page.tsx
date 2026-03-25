@@ -154,6 +154,16 @@ export default function AdminClaimsPage() {
   const [filterStage, setFilterStage] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
+  // EDI upload state
+  const [ediDragging, setEdiDragging] = useState(false)
+  const [ediUploading, setEdiUploading] = useState(false)
+  const [ediResult, setEdiResult] = useState<{
+    summary: { filesUploaded: number; filesParsed: number; filesSkipped: number; claimsFound: number; claimsMatched: number; claimsUnmatched: number }
+    matched: { claimId: string; changes: string[] }[]
+    unmatched: string[]
+    skippedFiles: string[]
+  } | null>(null)
+
   async function loadClaims() {
     setLoading(true)
     const res = await fetch('/api/admin/claims', { credentials: 'include' })
@@ -181,6 +191,20 @@ export default function AdminClaimsPage() {
     setImportResult(data)
     setImporting(false)
     if (fileRef.current) fileRef.current.value = ''
+    loadClaims()
+  }
+
+  async function handleEdiUpload(files: FileList | File[]) {
+    const arr = Array.from(files)
+    if (!arr.length) return
+    setEdiUploading(true)
+    setEdiResult(null)
+    const form = new FormData()
+    arr.forEach(f => form.append('files', f))
+    const res = await fetch('/api/admin/edi', { method: 'POST', credentials: 'include', body: form })
+    const data = await res.json()
+    setEdiResult(data)
+    setEdiUploading(false)
     loadClaims()
   }
 
@@ -232,6 +256,100 @@ export default function AdminClaimsPage() {
             <span className="text-blue-700 font-semibold">{importResult.updated} updated</span>
             {importResult.skipped > 0 && (
               <span className="text-red-600 font-semibold">{importResult.skipped} skipped — provider name not matched</span>
+            )}
+          </div>
+        )}
+
+        {/* EDI drop zone */}
+        <div
+          onDragOver={e => { e.preventDefault(); setEdiDragging(true) }}
+          onDragLeave={() => setEdiDragging(false)}
+          onDrop={e => { e.preventDefault(); setEdiDragging(false); handleEdiUpload(e.dataTransfer.files) }}
+          className={`mb-4 rounded-xl border-2 border-dashed px-6 py-5 text-center transition cursor-default ${
+            ediDragging ? 'border-[#7A8F79] bg-[#f0f4f0]' : 'border-[#D9E1E8] bg-white'
+          }`}
+        >
+          {ediUploading ? (
+            <p className="text-sm text-[#7A8F79] font-semibold animate-pulse">Processing files…</p>
+          ) : (
+            <>
+              <p className="text-sm font-semibold text-[#2F3E4E]">
+                📂 Drop Availity EDI files here to auto-update claims
+              </p>
+              <p className="text-xs text-[#7A8F79] mt-1">
+                Accepts .ebr · .dpr · .ibr files — patient names and payer claim numbers are never read or stored
+              </p>
+              <p className="text-xs text-[#7A8F79]/60 mt-1">Max upload size: 4.5MB per batch</p>
+              <label className="mt-3 inline-block cursor-pointer text-xs font-semibold text-[#7A8F79] underline underline-offset-2 hover:text-[#2F3E4E] transition">
+                or click to select files
+                <input
+                  type="file"
+                  multiple
+                  accept=".ebr,.dpr,.ibr,.ebt,.ibt,.dpt,.99t,.277ibr,.277dpr,.277ebr"
+                  className="hidden"
+                  onChange={e => e.target.files && handleEdiUpload(e.target.files)}
+                />
+              </label>
+            </>
+          )}
+        </div>
+
+        {/* EDI results */}
+        {ediResult && (
+          <div className="mb-6 bg-white rounded-xl shadow-sm p-5">
+            <div className="flex items-center justify-between mb-3">
+              <p className="font-semibold text-[#2F3E4E]">EDI Upload Results</p>
+              <button onClick={() => setEdiResult(null)} className="text-xs text-[#7A8F79] hover:text-[#2F3E4E]">✕ Dismiss</button>
+            </div>
+
+            {/* Summary pills */}
+            <div className="flex flex-wrap gap-3 mb-4">
+              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-[#D9E1E8] text-[#2F3E4E]">
+                {ediResult.summary.filesUploaded} files uploaded
+              </span>
+              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-[#D9E1E8] text-[#2F3E4E]">
+                {ediResult.summary.filesParsed} parsed · {ediResult.summary.filesSkipped} skipped
+              </span>
+              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-[#D9E1E8] text-[#2F3E4E]">
+                {ediResult.summary.claimsFound} claims found in files
+              </span>
+              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-green-100 text-green-800">
+                ✓ {ediResult.summary.claimsMatched} matched & updated
+              </span>
+              {ediResult.summary.claimsUnmatched > 0 && (
+                <span className="text-xs font-semibold px-3 py-1 rounded-full bg-yellow-100 text-yellow-800">
+                  ⚠ {ediResult.summary.claimsUnmatched} unmatched
+                </span>
+              )}
+            </div>
+
+            {/* Matched detail */}
+            {ediResult.matched.length > 0 && (
+              <div className="mb-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-2">Updated</p>
+                <div className="space-y-1 max-h-40 overflow-y-auto">
+                  {ediResult.matched.map(m => (
+                    <div key={m.claimId} className="flex items-center gap-3 text-xs">
+                      <span className="font-mono font-semibold text-[#2F3E4E]">{m.claimId}</span>
+                      <span className="text-[#7A8F79]">{m.changes.join(' · ')}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Unmatched */}
+            {ediResult.unmatched.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-yellow-700 mb-2">
+                  Not found in portal — may need CSV import first
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {ediResult.unmatched.map(id => (
+                    <span key={id} className="font-mono text-xs bg-yellow-50 border border-yellow-200 px-2 py-0.5 rounded text-yellow-800">{id}</span>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         )}

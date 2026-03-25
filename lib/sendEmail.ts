@@ -432,3 +432,123 @@ export async function sendEnrollmentAlert({
     return false
   }
 }
+
+export async function sendEdiSummaryEmail({
+  unmatched,
+  matched,
+  summary,
+}: {
+  unmatched: { claimId: string; submittedDate: string | null; status: string; payerName: string | null }[]
+  matched: { claimId: string; changes: string[] }[]
+  summary: {
+    filesUploaded: number
+    filesParsed: number
+    claimsFound: number
+    claimsMatched: number
+    claimsUnmatched: number
+  }
+}): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) return false
+  const resend = new Resend(process.env.RESEND_API_KEY)
+
+  const now = new Date().toLocaleDateString('en-US', {
+    timeZone: 'America/New_York',
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    hour: 'numeric', minute: '2-digit',
+  })
+
+  const statusColor = (s: string) =>
+    s === 'accepted' ? '#15803d' : s === 'rejected' || s === 'warning' ? '#b91c1c' : '#7A8F79'
+
+  const statusLabel = (s: string) =>
+    s === 'accepted' ? 'Accepted' : s === 'rejected' ? 'Rejected' : s === 'warning' ? 'Warning' : 'Unknown'
+
+  const unmatchedRows = unmatched.map(u => `
+    <tr style="border-bottom:1px solid #e5e7eb;">
+      <td style="padding:8px 12px;font-family:monospace;font-size:13px;color:#2F3E4E">${u.claimId}</td>
+      <td style="padding:8px 12px;font-size:13px;color:#2F3E4E">${u.submittedDate || '—'}</td>
+      <td style="padding:8px 12px;font-size:13px;font-weight:600;color:${statusColor(u.status)}">${statusLabel(u.status)}</td>
+      <td style="padding:8px 12px;font-size:13px;color:#7A8F79">${u.payerName || '—'}</td>
+    </tr>`).join('')
+
+  const matchedRows = matched.map(m => `
+    <tr style="border-bottom:1px solid #e5e7eb;">
+      <td style="padding:8px 12px;font-family:monospace;font-size:13px;color:#2F3E4E">${m.claimId}</td>
+      <td style="padding:8px 12px;font-size:13px;color:#7A8F79">${m.changes.join(' · ')}</td>
+    </tr>`).join('')
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to: 'alex@cominghomecare.com',
+      replyTo: 'support@cominghomecare.com',
+      subject: `EDI Upload Summary — ${unmatched.length} unmatched claim${unmatched.length !== 1 ? 's' : ''}`,
+      html: `
+        <div style="font-family:sans-serif;max-width:680px;padding:32px;color:#2F3E4E">
+          <h2 style="margin:0 0 4px;color:#2F3E4E">EDI Upload Summary</h2>
+          <p style="margin:0 0 24px;font-size:13px;color:#7A8F79">${now} · Files processed in-memory only — no file content is stored.</p>
+
+          <table style="width:100%;border-collapse:collapse;margin-bottom:28px;background:#F4F6F5;border-radius:8px;overflow:hidden">
+            <tr>
+              <td style="padding:14px 18px;text-align:center">
+                <div style="font-size:22px;font-weight:700;color:#2F3E4E">${summary.filesUploaded}</div>
+                <div style="font-size:11px;color:#7A8F79;text-transform:uppercase;letter-spacing:.05em">Files Uploaded</div>
+              </td>
+              <td style="padding:14px 18px;text-align:center">
+                <div style="font-size:22px;font-weight:700;color:#2F3E4E">${summary.claimsFound}</div>
+                <div style="font-size:11px;color:#7A8F79;text-transform:uppercase;letter-spacing:.05em">Claims in Files</div>
+              </td>
+              <td style="padding:14px 18px;text-align:center">
+                <div style="font-size:22px;font-weight:700;color:#15803d">${summary.claimsMatched}</div>
+                <div style="font-size:11px;color:#7A8F79;text-transform:uppercase;letter-spacing:.05em">Matched & Updated</div>
+              </td>
+              <td style="padding:14px 18px;text-align:center">
+                <div style="font-size:22px;font-weight:700;color:${unmatched.length > 0 ? '#b91c1c' : '#2F3E4E'}">${summary.claimsUnmatched}</div>
+                <div style="font-size:11px;color:#7A8F79;text-transform:uppercase;letter-spacing:.05em">Not in Portal</div>
+              </td>
+            </tr>
+          </table>
+
+          ${unmatched.length > 0 ? `
+          <h3 style="margin:0 0 10px;font-size:14px;color:#b91c1c;text-transform:uppercase;letter-spacing:.05em">
+            ⚠ Claims in EDI Files — Not Yet in Portal
+          </h3>
+          <p style="margin:0 0 12px;font-size:13px;color:#7A8F79">These claim IDs appeared in the uploaded files but have no matching record in the portal. Import a CSV to add them.</p>
+          <table style="width:100%;border-collapse:collapse;margin-bottom:28px">
+            <thead>
+              <tr style="background:#2F3E4E;color:white;font-size:11px;text-transform:uppercase;letter-spacing:.05em">
+                <th style="padding:8px 12px;text-align:left">Claim ID</th>
+                <th style="padding:8px 12px;text-align:left">Submit Date</th>
+                <th style="padding:8px 12px;text-align:left">Status</th>
+                <th style="padding:8px 12px;text-align:left">Payer</th>
+              </tr>
+            </thead>
+            <tbody>${unmatchedRows}</tbody>
+          </table>` : `
+          <p style="font-size:14px;color:#15803d;font-weight:600;margin-bottom:28px">✓ All claims in the uploaded files were matched to the portal.</p>`}
+
+          ${matched.length > 0 ? `
+          <h3 style="margin:0 0 10px;font-size:14px;color:#2F3E4E;text-transform:uppercase;letter-spacing:.05em">
+            ✓ Updated Claims
+          </h3>
+          <table style="width:100%;border-collapse:collapse;margin-bottom:28px">
+            <thead>
+              <tr style="background:#F4F6F5;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#7A8F79">
+                <th style="padding:8px 12px;text-align:left">Claim ID</th>
+                <th style="padding:8px 12px;text-align:left">Changes</th>
+              </tr>
+            </thead>
+            <tbody>${matchedRows}</tbody>
+          </table>` : ''}
+
+          <p style="font-size:11px;color:#aaa;border-top:1px solid #e5e7eb;padding-top:16px;margin:0">
+            Coming Home Care Services, LLC · EDI files are processed in-memory and never written to disk or database.
+          </p>
+        </div>
+      `,
+    })
+    return !error
+  } catch {
+    return false
+  }
+}

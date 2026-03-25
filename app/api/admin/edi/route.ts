@@ -121,15 +121,16 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── Append note to processingNotes ─────────────────────────────────────
-    const note = buildNote(result)
-    const existingNotes = claim.processingNotes || ''
-    // Avoid adding duplicate notes for same file
-    if (!existingNotes.includes(note)) {
-      updateData.processingNotes = existingNotes
-        ? `${note}\n${existingNotes}`
-        : note
-      changes.push('notes updated')
+    // ── Append note to processingNotes (non-accepted statuses only) ────────
+    if (result.status !== 'accepted') {
+      const note = buildNote(result)
+      const existingNotes = claim.processingNotes || ''
+      if (!existingNotes.includes(note)) {
+        updateData.processingNotes = existingNotes
+          ? `${existingNotes}\n${note}`
+          : note
+        changes.push('notes updated')
+      }
     }
 
     if (Object.keys(updateData).length > 0) {

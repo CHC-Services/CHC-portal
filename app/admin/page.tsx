@@ -10,6 +10,7 @@ type TimeEntry = {
   workDate: string
   hours: number
   notes: string | null
+  invoiceId: string | null
 }
 
 type Nurse = {
@@ -84,6 +85,10 @@ function NurseRow({ nurse, onDeleted, onRefresh }: { nurse: Nurse; onDeleted: ()
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
   }).reduce((sum, e) => sum + e.hours, 0)
 
+  const unbilledHours = nurse.timeEntries
+    .filter(e => !e.invoiceId)
+    .reduce((sum, e) => sum + e.hours, 0)
+
   return (
     <div className="bg-white rounded-xl shadow-sm overflow-hidden">
       <button
@@ -110,6 +115,10 @@ function NurseRow({ nurse, onDeleted, onRefresh }: { nurse: Nurse; onDeleted: ()
           </div>
         </div>
         <div className="flex items-center gap-6 text-sm">
+          <div className="text-right hidden sm:block">
+            <p className="text-xs text-[#7A8F79] uppercase tracking-wide">Unbilled</p>
+            <p className={`font-bold ${unbilledHours > 0 ? 'text-orange-500' : 'text-[#7A8F79]'}`}>{unbilledHours} hrs</p>
+          </div>
           <div className="text-right hidden sm:block">
             <p className="text-xs text-[#7A8F79] uppercase tracking-wide">This Month</p>
             <p className="font-bold text-[#2F3E4E]">{hoursThisMonth} hrs</p>

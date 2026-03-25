@@ -36,7 +36,22 @@ function fmt(val: number | null, prefix = '') {
 
 function fmtDate(val: string | null) {
   if (!val) return '—'
-  return new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })
+  return new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit', timeZone: 'UTC' })
+}
+
+function fmtDOS(start: string | null, stop: string | null): string {
+  if (!start) return '—'
+  const s = new Date(start)
+  const e = stop ? new Date(stop) : null
+  const mon    = (d: Date) => d.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short' })
+  const day    = (d: Date) => d.toLocaleDateString('en-US', { timeZone: 'UTC', day: 'numeric' })
+  const yr     = (d: Date) => d.toLocaleDateString('en-US', { timeZone: 'UTC', year: 'numeric' })
+  const monDay = (d: Date) => d.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' })
+  const full   = (d: Date) => d.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })
+  if (!e) return full(s)
+  if (s.getUTCFullYear() !== e.getUTCFullYear()) return `${full(s)}–${full(e)}`
+  if (s.getUTCMonth() !== e.getUTCMonth()) return `${monDay(s)}–${monDay(e)}, ${yr(e)}`
+  return `${mon(s)} ${day(s)}–${day(e)}, ${yr(s)}`
 }
 
 function StageBadge({ stage }: { stage: string | null }) {
@@ -54,23 +69,27 @@ function StageBadge({ stage }: { stage: string | null }) {
   return <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${color}`}>{stage}</span>
 }
 
-function groupClaims(claims: Claim[]): Claim[] {
-  const resubIds = new Set(claims.filter(c => c.resubmissionOf).map(c => c.resubmissionOf!))
-  const result: Claim[] = []
+type ClaimGroup = { primary: Claim; originals: Claim[] }
+
+function groupClaims(claims: Claim[]): ClaimGroup[] {
+  const superseded = new Set(claims.filter(c => c.resubmissionOf).map(c => c.resubmissionOf!))
+  const byClaimId = new Map(claims.filter(c => c.claimId).map(c => [c.claimId!, c]))
+  const groups: ClaimGroup[] = []
   for (const c of claims) {
-    if (c.resubmissionOf) continue
-    result.push(c)
-    if (c.claimId && resubIds.has(c.claimId)) {
-      result.push(...claims.filter(r => r.resubmissionOf === c.claimId))
-    }
+    if (superseded.has(c.claimId || '')) continue
+    const originals = c.resubmissionOf && byClaimId.has(c.resubmissionOf)
+      ? [byClaimId.get(c.resubmissionOf)!]
+      : []
+    groups.push({ primary: c, originals })
   }
-  return result
+  return groups
 }
 
 export default function NurseClaimsPage() {
   const [claims, setClaims] = useState<Claim[]>([])
   const [enrolledInBilling, setEnrolledInBilling] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(true)
+  const [expandedOriginals, setExpandedOriginals] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     fetch('/api/nurse/claims', { credentials: 'include' })
@@ -175,14 +194,22 @@ export default function NurseClaimsPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {groupClaims(claims).map(c => (
-              <div key={c.id} className={`bg-white rounded-xl shadow-sm p-5 ${c.resubmissionOf ? 'border-l-4 border-purple-400 ml-4' : ''}`}>
+            {groupClaims(claims).map(({ primary: c, originals }) => {
+              const isExpanded = expandedOriginals.has(c.id)
+              const toggleOriginals = () => setExpandedOriginals(prev => {
+                const next = new Set(prev)
+                if (next.has(c.id)) next.delete(c.id); else next.add(c.id)
+                return next
+              })
+              return (
+              <div key={c.id}>
+              <div className="bg-white rounded-xl shadow-sm p-5">
 
-                {/* Resubmission indicator */}
+                {/* Resubmission badge */}
                 {c.resubmissionOf && (
                   <div className="mb-3 flex items-center gap-2">
-                    <span className="text-xs font-semibold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">
-                      ↳ Resubmission of #{c.resubmissionOf}
+                    <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                      ↻ Resubmitted Claim
                     </span>
                   </div>
                 )}
@@ -192,7 +219,7 @@ export default function NurseClaimsPage() {
                   <div>
                     <p className="text-xs text-[#7A8F79] font-mono"><span className="font-semibold not-italic">Claim ID:</span> {c.claimId || '—'}</p>
                     <p className="text-sm font-semibold text-[#2F3E4E] mt-0.5">
-                      DOS: {fmtDate(c.dosStart)}{c.dosStop ? ` – ${fmtDate(c.dosStop)}` : ''}
+                      DOS: {fmtDOS(c.dosStart, c.dosStop)}
                     </p>
                   </div>
                   <div />
@@ -293,8 +320,37 @@ export default function NurseClaimsPage() {
                   </div>
                 )}
 
+                {/* Toggle to show original */}
+                {originals.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-[#D9E1E8]">
+                    <button
+                      onClick={toggleOriginals}
+                      className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] flex items-center gap-1.5 transition"
+                    >
+                      <span className="text-[10px]">{isExpanded ? '▲' : '▼'}</span>
+                      {isExpanded ? 'Hide original claim' : 'Show original claim'}
+                    </button>
+                  </div>
+                )}
+
               </div>
-            ))}
+
+              {/* Collapsed original claim */}
+              {isExpanded && originals.map(orig => (
+                <div key={orig.id} className="mt-1 ml-6 rounded-xl p-4 border-l-4 border-red-200 bg-red-50">
+                  <p className="text-xs font-semibold text-red-500 mb-2">Original claim (superseded)</p>
+                  <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5 text-sm">
+                    <span><span className="text-xs text-[#7A8F79]">Claim ID: </span><span className="font-mono text-xs text-[#2F3E4E]">{orig.claimId || '—'}</span></span>
+                    <span><span className="text-xs text-[#7A8F79]">DOS: </span><span className="text-[#2F3E4E]">{fmtDOS(orig.dosStart, orig.dosStop)}</span></span>
+                    <StageBadge stage={orig.claimStage} />
+                    <span><span className="text-xs text-[#7A8F79]">Billed: </span><span className="font-semibold text-[#2F3E4E]">{fmt(orig.totalBilled, '$')}</span></span>
+                  </div>
+                </div>
+              ))}
+
+              </div>
+              )
+            })}
           </div>
         )}
 

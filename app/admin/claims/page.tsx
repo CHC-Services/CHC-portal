@@ -36,7 +36,22 @@ function fmt(val: number | null, prefix = '') {
 
 function fmtDate(val: string | null) {
   if (!val) return '—'
-  return new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })
+  return new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit', timeZone: 'UTC' })
+}
+
+function fmtDOS(start: string | null, stop: string | null): string {
+  if (!start) return '—'
+  const s = new Date(start)
+  const e = stop ? new Date(stop) : null
+  const mon    = (d: Date) => d.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short' })
+  const day    = (d: Date) => d.toLocaleDateString('en-US', { timeZone: 'UTC', day: 'numeric' })
+  const yr     = (d: Date) => d.toLocaleDateString('en-US', { timeZone: 'UTC', year: 'numeric' })
+  const monDay = (d: Date) => d.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' })
+  const full   = (d: Date) => d.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })
+  if (!e) return full(s)
+  if (s.getUTCFullYear() !== e.getUTCFullYear()) return `${full(s)}–${full(e)}`
+  if (s.getUTCMonth() !== e.getUTCMonth()) return `${monDay(s)}–${monDay(e)}, ${yr(e)}`
+  return `${mon(s)} ${day(s)}–${day(e)}, ${yr(s)}`
 }
 
 function StageBadge({ stage }: { stage: string | null }) {
@@ -437,7 +452,7 @@ export default function AdminClaimsPage() {
                       {c.claimId || '—'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-xs text-[#2F3E4E]">
-                      {fmtDate(c.dosStart)}{c.dosStop ? ` – ${fmtDate(c.dosStop)}` : ''}
+                      {fmtDOS(c.dosStart, c.dosStop)}
                     </td>
                     <td className="px-4 py-3"><StageBadge stage={c.claimStage} /></td>
                     <td className="px-4 py-3 text-right text-[#2F3E4E]">{fmt(c.totalBilled, '$')}</td>

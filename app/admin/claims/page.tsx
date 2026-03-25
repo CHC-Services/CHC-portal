@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Fragment } from 'react'
 import AdminNav from '../../components/AdminNav'
 
 type Claim = {
@@ -97,20 +97,20 @@ function parseCSV(text: string): Record<string, string>[] {
   })
 }
 
-// Group claims so resubmissions appear directly after their originals
-function groupClaims(claims: Claim[]): Claim[] {
+type ClaimGroup = { primary: Claim; originals: Claim[] }
+
+function groupClaims(claims: Claim[]): ClaimGroup[] {
+  const superseded = new Set(claims.filter(c => c.resubmissionOf).map(c => c.resubmissionOf!))
   const byClaimId = new Map(claims.filter(c => c.claimId).map(c => [c.claimId!, c]))
-  const resubIds = new Set(claims.filter(c => c.resubmissionOf).map(c => c.resubmissionOf!))
-  const result: Claim[] = []
+  const groups: ClaimGroup[] = []
   for (const c of claims) {
-    if (c.resubmissionOf) continue // will be inserted after its original
-    result.push(c)
-    if (c.claimId && resubIds.has(c.claimId)) {
-      const children = claims.filter(r => r.resubmissionOf === c.claimId)
-      result.push(...children)
-    }
+    if (superseded.has(c.claimId || '')) continue
+    const originals = c.resubmissionOf && byClaimId.has(c.resubmissionOf)
+      ? [byClaimId.get(c.resubmissionOf)!]
+      : []
+    groups.push({ primary: c, originals })
   }
-  return result
+  return groups
 }
 
 function LinkButton({ claim, onLinked }: { claim: Claim; onLinked: () => void }) {
@@ -168,6 +168,8 @@ export default function AdminClaimsPage() {
   const [search, setSearch] = useState('')
   const [filterStage, setFilterStage] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
+
+  const [expandedOriginals, setExpandedOriginals] = useState<Set<string>>(new Set())
 
   // EDI upload state
   const [ediDragging, setEdiDragging] = useState(false)
@@ -443,37 +445,76 @@ export default function AdminClaimsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#D9E1E8]">
-                {groupClaims(filtered).map(c => (
-                  <tr key={c.id} className={`hover:bg-[#F4F6F5] transition ${c.resubmissionOf ? 'bg-purple-50' : ''}`}>
-                    <td className="px-4 py-3"><LinkButton claim={c} onLinked={loadClaims} /></td>
-                    <td className="px-4 py-3 font-semibold text-[#2F3E4E] whitespace-nowrap">{c.providerName || c.nurse?.displayName}</td>
-                    <td className="px-4 py-3 text-[#7A8F79] font-mono text-xs">
-                      {c.resubmissionOf && <span className="block text-purple-500 text-[10px] mb-0.5">↳ resubmission</span>}
-                      {c.claimId || '—'}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-xs text-[#2F3E4E]">
-                      {fmtDOS(c.dosStart, c.dosStop)}
-                    </td>
-                    <td className="px-4 py-3"><StageBadge stage={c.claimStage} /></td>
-                    <td className="px-4 py-3 text-right text-[#2F3E4E]">{fmt(c.totalBilled, '$')}</td>
-                    <td className="px-4 py-3 border-l border-[#D9E1E8] text-[#2F3E4E]">{c.primaryPayer || '—'}</td>
-                    <td className="px-4 py-3 text-right text-[#2F3E4E]">{fmt(c.primaryAllowedAmt, '$')}</td>
-                    <td className="px-4 py-3 text-right font-semibold text-[#7A8F79]">{fmt(c.primaryPaidAmt, '$')}</td>
-                    <td className="px-4 py-3 text-xs text-[#7A8F79] whitespace-nowrap">{fmtDate(c.primaryPaidDate)}</td>
-                    <td className="px-4 py-3 text-xs text-[#2F3E4E]">{c.primaryPaidTo || '—'}</td>
-                    <td className="px-4 py-3 border-l border-[#D9E1E8] text-[#2F3E4E]">{c.secondaryPayer || '—'}</td>
-                    <td className="px-4 py-3 text-right text-[#2F3E4E]">{fmt(c.secondaryAllowedAmt, '$')}</td>
-                    <td className="px-4 py-3 text-right font-semibold text-[#7A8F79]">{fmt(c.secondaryPaidAmt, '$')}</td>
-                    <td className="px-4 py-3 text-xs text-[#7A8F79] whitespace-nowrap">{fmtDate(c.secondaryPaidDate)}</td>
-                    <td className="px-4 py-3 text-xs text-[#2F3E4E]">{c.secondaryPaidTo || '—'}</td>
-                    <td className="px-4 py-3 border-l border-[#D9E1E8] text-right font-semibold text-[#7A8F79]">{fmt(c.totalReimbursed, '$')}</td>
-                    <td className={`px-4 py-3 text-right font-semibold ${(c.remainingBalance || 0) > 0 ? 'text-red-600' : 'text-[#2F3E4E]'}`}>
-                      {fmt(c.remainingBalance, '$')}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-[#7A8F79] whitespace-nowrap">{fmtDate(c.dateFullyFinalized)}</td>
-                    <td className="px-4 py-3 text-xs text-[#7A8F79] max-w-xs truncate">{c.processingNotes || '—'}</td>
-                  </tr>
-                ))}
+                {groupClaims(filtered).map(({ primary: c, originals }) => {
+                  const isExpanded = expandedOriginals.has(c.id)
+                  const toggleOriginals = () => setExpandedOriginals(prev => {
+                    const next = new Set(prev)
+                    if (next.has(c.id)) next.delete(c.id); else next.add(c.id)
+                    return next
+                  })
+                  return (
+                    <Fragment key={c.id}>
+                      <tr className="hover:bg-[#F4F6F5] transition">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1">
+                            <LinkButton claim={c} onLinked={loadClaims} />
+                            {originals.length > 0 && (
+                              <button onClick={toggleOriginals} title={isExpanded ? 'Hide original' : 'Show original'} className="text-[11px] text-[#7A8F79] hover:text-[#2F3E4E] transition ml-1 leading-none">
+                                {isExpanded ? '▲' : '▼'}
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 font-semibold text-[#2F3E4E] whitespace-nowrap">{c.providerName || c.nurse?.displayName}</td>
+                        <td className="px-4 py-3 text-[#7A8F79] font-mono text-xs">
+                          {c.resubmissionOf && <span className="block text-blue-500 text-[10px] mb-0.5">↻ resubmission</span>}
+                          {c.claimId || '—'}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-xs text-[#2F3E4E]">{fmtDOS(c.dosStart, c.dosStop)}</td>
+                        <td className="px-4 py-3"><StageBadge stage={c.claimStage} /></td>
+                        <td className="px-4 py-3 text-right text-[#2F3E4E]">{fmt(c.totalBilled, '$')}</td>
+                        <td className="px-4 py-3 border-l border-[#D9E1E8] text-[#2F3E4E]">{c.primaryPayer || '—'}</td>
+                        <td className="px-4 py-3 text-right text-[#2F3E4E]">{fmt(c.primaryAllowedAmt, '$')}</td>
+                        <td className="px-4 py-3 text-right font-semibold text-[#7A8F79]">{fmt(c.primaryPaidAmt, '$')}</td>
+                        <td className="px-4 py-3 text-xs text-[#7A8F79] whitespace-nowrap">{fmtDate(c.primaryPaidDate)}</td>
+                        <td className="px-4 py-3 text-xs text-[#2F3E4E]">{c.primaryPaidTo || '—'}</td>
+                        <td className="px-4 py-3 border-l border-[#D9E1E8] text-[#2F3E4E]">{c.secondaryPayer || '—'}</td>
+                        <td className="px-4 py-3 text-right text-[#2F3E4E]">{fmt(c.secondaryAllowedAmt, '$')}</td>
+                        <td className="px-4 py-3 text-right font-semibold text-[#7A8F79]">{fmt(c.secondaryPaidAmt, '$')}</td>
+                        <td className="px-4 py-3 text-xs text-[#7A8F79] whitespace-nowrap">{fmtDate(c.secondaryPaidDate)}</td>
+                        <td className="px-4 py-3 text-xs text-[#2F3E4E]">{c.secondaryPaidTo || '—'}</td>
+                        <td className="px-4 py-3 border-l border-[#D9E1E8] text-right font-semibold text-[#7A8F79]">{fmt(c.totalReimbursed, '$')}</td>
+                        <td className={`px-4 py-3 text-right font-semibold ${(c.remainingBalance || 0) > 0 ? 'text-red-600' : 'text-[#2F3E4E]'}`}>{fmt(c.remainingBalance, '$')}</td>
+                        <td className="px-4 py-3 text-xs text-[#7A8F79] whitespace-nowrap">{fmtDate(c.dateFullyFinalized)}</td>
+                        <td className="px-4 py-3 text-xs text-[#7A8F79] max-w-xs truncate">{c.processingNotes || '—'}</td>
+                      </tr>
+                      {isExpanded && originals.map(orig => (
+                        <tr key={orig.id} className="bg-red-50 text-xs text-[#7A8F79] border-l-4 border-red-200">
+                          <td className="px-4 py-2 text-[10px] text-red-400 font-semibold whitespace-nowrap">Original</td>
+                          <td className="px-4 py-2">{orig.providerName || orig.nurse?.displayName}</td>
+                          <td className="px-4 py-2 font-mono">{orig.claimId || '—'}</td>
+                          <td className="px-4 py-2 whitespace-nowrap">{fmtDOS(orig.dosStart, orig.dosStop)}</td>
+                          <td className="px-4 py-2"><StageBadge stage={orig.claimStage} /></td>
+                          <td className="px-4 py-2 text-right">{fmt(orig.totalBilled, '$')}</td>
+                          <td className="px-4 py-2 border-l border-[#D9E1E8]">{orig.primaryPayer || '—'}</td>
+                          <td className="px-4 py-2 text-right">{fmt(orig.primaryAllowedAmt, '$')}</td>
+                          <td className="px-4 py-2 text-right">{fmt(orig.primaryPaidAmt, '$')}</td>
+                          <td className="px-4 py-2 whitespace-nowrap">{fmtDate(orig.primaryPaidDate)}</td>
+                          <td className="px-4 py-2">{orig.primaryPaidTo || '—'}</td>
+                          <td className="px-4 py-2 border-l border-[#D9E1E8]">{orig.secondaryPayer || '—'}</td>
+                          <td className="px-4 py-2 text-right">{fmt(orig.secondaryAllowedAmt, '$')}</td>
+                          <td className="px-4 py-2 text-right">{fmt(orig.secondaryPaidAmt, '$')}</td>
+                          <td className="px-4 py-2 whitespace-nowrap">{fmtDate(orig.secondaryPaidDate)}</td>
+                          <td className="px-4 py-2">{orig.secondaryPaidTo || '—'}</td>
+                          <td className="px-4 py-2 border-l border-[#D9E1E8] text-right">{fmt(orig.totalReimbursed, '$')}</td>
+                          <td className="px-4 py-2 text-right">{fmt(orig.remainingBalance, '$')}</td>
+                          <td className="px-4 py-2 whitespace-nowrap">{fmtDate(orig.dateFullyFinalized)}</td>
+                          <td className="px-4 py-2 max-w-xs truncate">{orig.processingNotes || '—'}</td>
+                        </tr>
+                      ))}
+                    </Fragment>
+                  )
+                })}
               </tbody>
             </table>
           </div>

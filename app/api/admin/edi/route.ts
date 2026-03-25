@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-import { verifySession } from '@/lib/session'
+import { prisma } from '@/lib/prisma'
+import { verifyToken } from '@/lib/auth'
 import { parseEdiFile, deduplicateResults, EdiClaimResult } from '@/lib/ediParser'
 import { sendEdiSummaryEmail } from '@/lib/sendEmail'
 
-const prisma = new PrismaClient()
+function adminOnly(req: NextRequest) {
+  const cookie = req.headers.get('cookie') || ''
+  const token = cookie.split('auth_token=').pop()?.split(';')[0]
+  return token ? verifyToken(token) : null
+}
 
 // Stage priority — don't overwrite a more-resolved stage with an earlier one
 const STAGE_PRIORITY: Record<string, number> = {
@@ -45,7 +49,7 @@ function buildNote(result: EdiClaimResult): string {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await verifySession(req)
+  const session = adminOnly(req)
   if (!session || session.role !== 'admin') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

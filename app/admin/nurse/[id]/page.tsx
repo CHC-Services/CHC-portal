@@ -334,8 +334,13 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
       body: JSON.stringify(profile)
     })
 
+    const data = await res.json()
     setSaving(false)
-    setMessage(res.ok ? 'Saved successfully.' : 'Error saving.')
+    if (res.ok) {
+      setMessage('Saved successfully.')
+    } else {
+      setMessage(data.error || 'Error saving profile.')
+    }
   }
 
   if (loading) return <div className="p-8 text-[#7A8F79]">Loading…</div>

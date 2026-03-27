@@ -59,7 +59,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     ...rest
   } = body
 
-  const data: Record<string, unknown> = { ...rest }
+  // Extract user.email if the form sent it as a flat dot-notation key
+  const userEmail: string | undefined = rest['user.email'] as string | undefined
+  delete rest['user.email']
+
+  // Strip any remaining dot-notation or relation keys Prisma doesn't know about
+  const data: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(rest)) {
+    if (!key.includes('.')) data[key] = value
+  }
 
   if (ssn !== undefined)         data.ssnEncrypted         = ssn         ? encrypt(ssn)         : null
   if (ein !== undefined)         data.einEncrypted         = ein         ? encrypt(ein)         : null
@@ -68,7 +76,20 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (bankAccount !== undefined) data.bankAccountEncrypted = bankAccount ? encrypt(bankAccount) : null
 
   try {
-    await prisma.nurseProfile.update({ where: { id }, data })
+    const updated = await prisma.nurseProfile.update({
+      where: { id },
+      data,
+      select: { userId: true },
+    })
+
+    // If the form sent a new email address, update it on the User record
+    if (userEmail && userEmail.trim()) {
+      await prisma.user.update({
+        where: { id: updated.userId },
+        data: { email: userEmail.trim() },
+      })
+    }
+
     return NextResponse.json({ ok: true })
   } catch (err: any) {
     console.error('Admin nurse PATCH error:', err)

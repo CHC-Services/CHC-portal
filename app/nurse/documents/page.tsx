@@ -6,6 +6,7 @@ type NurseDocument = {
   id: string
   title: string
   fileName: string
+  category: string
   fileSize: number | null
   mimeType: string | null
   expiresAt: string | null
@@ -104,7 +105,10 @@ export default function NurseDocumentsPage() {
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-[#2F3E4E] text-sm truncate">{doc.title}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-[#2F3E4E] text-sm truncate">{doc.title}</p>
+                      <span className="text-[10px] font-semibold bg-[#D9E1E8] text-[#2F3E4E] px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">{doc.category}</span>
+                    </div>
                     <p className="text-[11px] text-[#7A8F79] truncate mt-0.5">
                       {doc.fileName}{doc.fileSize ? ` · ${fmtSize(doc.fileSize)}` : ''} · Uploaded {fmtDate(doc.createdAt)}
                     </p>

@@ -168,15 +168,22 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   const [pwMessage, setPwMessage] = useState('')
 
   // Documents
-  const [documents, setDocuments] = useState<{id:string;title:string;fileName:string;fileSize:number|null;expiresAt:string|null;createdAt:string;reminderDays:number[]}[]>([])
+  const [documents, setDocuments] = useState<{id:string;title:string;fileName:string;category:string;fileSize:number|null;expiresAt:string|null;createdAt:string;reminderDays:number[]}[]>([])
   const [docViewing, setDocViewing] = useState<string | null>(null)
   const [docFile, setDocFile] = useState<File | null>(null)
   const [docTitle, setDocTitle] = useState('')
+  const [docCategory, setDocCategory] = useState('General')
   const [docExpiry, setDocExpiry] = useState('')
   const [docReminderDays, setDocReminderDays] = useState<number[]>([])
   const [docUploading, setDocUploading] = useState(false)
   const [docMessage, setDocMessage] = useState('')
   const [docDeleting, setDocDeleting] = useState<string | null>(null)
+  // Category manager
+  const [categories, setCategories] = useState<{id:string;name:string}[]>([])
+  const [showCatManager, setShowCatManager] = useState(false)
+  const [newCatName, setNewCatName] = useState('')
+  const [catSaving, setCatSaving] = useState(false)
+  const [catDeleting, setCatDeleting] = useState<string | null>(null)
 
   // Time entries + invoicing
   const [entries, setEntries] = useState<TimeEntry[]>([])
@@ -192,6 +199,41 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
     const res = await fetch(`/api/admin/documents?nurseId=${id}`, { credentials: 'include' })
     const data = await res.json()
     setDocuments(data.documents || [])
+  }
+
+  async function fetchCategories() {
+    const res = await fetch('/api/admin/document-categories', { credentials: 'include' })
+    const data = await res.json()
+    setCategories(data.categories || [])
+  }
+
+  async function handleAddCategory(e: React.FormEvent) {
+    e.preventDefault()
+    const name = newCatName.trim()
+    if (!name) return
+    setCatSaving(true)
+    const res = await fetch('/api/admin/document-categories', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    })
+    if (res.ok) {
+      setNewCatName('')
+      // Auto-select the new category
+      setDocCategory(name)
+      fetchCategories()
+    }
+    setCatSaving(false)
+  }
+
+  async function handleDeleteCategory(catId: string, catName: string) {
+    setCatDeleting(catId)
+    await fetch(`/api/admin/document-categories/${catId}`, { method: 'DELETE', credentials: 'include' })
+    // If the deleted category was selected, reset to General
+    if (docCategory === catName) setDocCategory('General')
+    fetchCategories()
+    setCatDeleting(null)
   }
 
   useEffect(() => {
@@ -221,6 +263,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
       })
 
     fetchDocuments()
+    fetchCategories()
   }, [id, router])
 
   async function handleDocUpload(e: React.FormEvent) {
@@ -232,6 +275,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
     fd.append('file', docFile)
     fd.append('nurseId', id)
     fd.append('title', docTitle)
+    fd.append('category', docCategory)
     if (docExpiry) fd.append('expiresAt', docExpiry)
     if (docReminderDays.length > 0) fd.append('reminderDays', JSON.stringify(docReminderDays))
     const res = await fetch('/api/admin/documents', { method: 'POST', credentials: 'include', body: fd })
@@ -240,6 +284,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
       setDocMessage('Document uploaded.')
       setDocFile(null)
       setDocTitle('')
+      setDocCategory('General')
       setDocExpiry('')
       setDocReminderDays([])
       fetchDocuments()
@@ -807,7 +852,10 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
               return (
                 <div key={doc.id} className="flex items-center gap-3 p-3 bg-[#F4F6F5] rounded-lg">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[#2F3E4E] truncate">{doc.title}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-[#2F3E4E] truncate">{doc.title}</p>
+                      <span className="text-[10px] font-semibold bg-[#D9E1E8] text-[#2F3E4E] px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">{doc.category}</span>
+                    </div>
                     <p className="text-[11px] text-[#7A8F79] truncate">{doc.fileName}</p>
                     {doc.expiresAt && (
                       <p className={`text-[11px] font-semibold mt-0.5 ${expiryColor}`}>
@@ -853,14 +901,72 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Expiration Date <span className="normal-case font-normal text-[#7A8F79]">(optional)</span></label>
-              <input
-                type="date"
-                value={docExpiry}
-                onChange={e => setDocExpiry(e.target.value)}
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Category</label>
+                <button
+                  type="button"
+                  onClick={() => setShowCatManager(v => !v)}
+                  className="text-[10px] text-[#7A8F79] hover:text-[#2F3E4E] underline transition"
+                >
+                  {showCatManager ? 'Done' : 'Manage folders'}
+                </button>
+              </div>
+              <select
+                value={docCategory}
+                onChange={e => setDocCategory(e.target.value)}
                 className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-              />
+              >
+                {categories.map(c => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
+                ))}
+              </select>
+              {/* Inline category manager */}
+              {showCatManager && (
+                <div className="mt-2 border border-[#D9E1E8] rounded-lg p-3 bg-[#FAFBFC] space-y-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79]">Folder List</p>
+                  <div className="space-y-1">
+                    {categories.map(c => (
+                      <div key={c.id} className="flex items-center justify-between gap-2 py-0.5">
+                        <span className="text-sm text-[#2F3E4E]">{c.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCategory(c.id, c.name)}
+                          disabled={catDeleting === c.id}
+                          className="text-[11px] text-red-400 hover:text-red-600 transition disabled:opacity-40"
+                        >
+                          {catDeleting === c.id ? '…' : 'Remove'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <form onSubmit={handleAddCategory} className="flex gap-2 pt-1 border-t border-[#D9E1E8]">
+                    <input
+                      type="text"
+                      value={newCatName}
+                      onChange={e => setNewCatName(e.target.value)}
+                      placeholder="New folder name"
+                      className="flex-1 border border-[#D9E1E8] px-2 py-1 rounded text-sm text-[#2F3E4E] focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
+                    />
+                    <button
+                      type="submit"
+                      disabled={catSaving || !newCatName.trim()}
+                      className="bg-[#7A8F79] text-white px-3 py-1 rounded text-xs font-semibold hover:bg-[#2F3E4E] transition disabled:opacity-50"
+                    >
+                      {catSaving ? '…' : 'Add'}
+                    </button>
+                  </form>
+                </div>
+              )}
             </div>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Expiration Date <span className="normal-case font-normal text-[#7A8F79]">(optional)</span></label>
+            <input
+              type="date"
+              value={docExpiry}
+              onChange={e => setDocExpiry(e.target.value)}
+              className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+            />
           </div>
 
           <div className="space-y-1">

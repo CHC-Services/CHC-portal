@@ -99,8 +99,13 @@ model NurseProfile {
   // Provider aliases for claim matching (e.g. ["Janine", "JCST"])
   providerAliases String[] @default([])
 
-  // Email notification preferences
-  receiveNotifications Boolean @default(true)
+  // Notification preferences — reminders
+  receiveNotifications    Boolean @default(true)  // weekly hour submission reminder (legacy)
+  notifyBillingReminder   Boolean @default(true)  // billing-related reminders
+  notifyDocExpiring       Boolean @default(true)  // document/license expiration reminders
+  // Notification preferences — alerts
+  notifyNewDocument       Boolean @default(true)  // alert when admin uploads a document
+  notifyNewClaim          Boolean @default(true)  // alert when a new claim is added
 
   user           User            @relation(fields: [userId], references: [id])
   timeEntries    TimeEntry[]
@@ -222,6 +227,12 @@ model AdminIdea {
   @@index([completed])
 }
 
+model DocumentCategory {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+}
+
 model NurseDocument {
   id              String    @id @default(uuid())
   nurseId         String
@@ -229,6 +240,7 @@ model NurseDocument {
   title           String
   fileName        String
   storageKey      String       // S3 object key — never a public URL
+  category        String       @default("General") // EOB | License | Contract | Tax | Other | General
   fileSize        Int?
   mimeType        String?
   uploadedBy      String

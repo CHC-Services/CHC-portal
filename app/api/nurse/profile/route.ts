@@ -44,6 +44,10 @@ export async function PATCH(req: Request) {
     medicaidNumber,
     billingInfo,
     receiveNotifications,
+    notifyBillingReminder,
+    notifyDocExpiring,
+    notifyNewDocument,
+    notifyNewClaim,
     currentPassword,
     newPassword
   } = body
@@ -58,6 +62,10 @@ export async function PATCH(req: Request) {
   if (medicaidNumber !== undefined) updates.medicaidNumber = medicaidNumber
   if (billingInfo !== undefined) updates.billingInfo = billingInfo
   if (receiveNotifications !== undefined) updates.receiveNotifications = receiveNotifications
+  if (notifyBillingReminder !== undefined) updates.notifyBillingReminder = notifyBillingReminder
+  if (notifyDocExpiring !== undefined) updates.notifyDocExpiring = notifyDocExpiring
+  if (notifyNewDocument !== undefined) updates.notifyNewDocument = notifyNewDocument
+  if (notifyNewClaim !== undefined) updates.notifyNewClaim = notifyNewClaim
 
   // apply profile updates
   let displayNameChanged = false

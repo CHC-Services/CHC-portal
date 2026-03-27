@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../lib/prisma'
 import { verifyToken } from '../../../../../lib/auth'
+import { sendNewClaimAlert } from '../../../../../lib/sendEmail'
 
 // Must stay in sync with EDI route — controls which direction stage can move
 const STAGE_PRIORITY: Record<string, number> = {
@@ -121,14 +122,36 @@ export async function POST(req: Request) {
         })
         updated++
       } else {
-        await prisma.claim.create({ data })
+        const newClaim = await prisma.claim.create({ data })
         created++
+        fireClaimAlert(nurseId, newClaim)
       }
     } else {
-      await prisma.claim.create({ data })
+      const newClaim = await prisma.claim.create({ data })
       created++
+      fireClaimAlert(nurseId, newClaim)
     }
   }
 
   return NextResponse.json({ ok: true, created, updated, skipped })
+}
+
+async function fireClaimAlert(nurseId: string, claim: { claimId: string | null; dosStart: Date | null; dosStop: Date | null; totalBilled: number | null }) {
+  try {
+    const profile = await prisma.nurseProfile.findUnique({
+      where: { id: nurseId },
+      include: { user: { select: { email: true } } },
+    })
+    if (!profile?.notifyNewClaim || !profile.user?.email || !claim.claimId) return
+    sendNewClaimAlert({
+      nurseEmail: profile.user.email,
+      nurseName: profile.displayName,
+      claimId: claim.claimId,
+      dosStart: claim.dosStart,
+      dosStop: claim.dosStop,
+      totalBilled: claim.totalBilled,
+    }).catch(() => {})
+  } catch {
+    // fire-and-forget — never block the import
+  }
 }

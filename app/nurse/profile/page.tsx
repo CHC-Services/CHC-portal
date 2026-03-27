@@ -303,37 +303,67 @@ export default function ProfilePage() {
         <div className="space-y-6">
           <BillingSection profile={profile} onUnenroll={() => setProfile({ ...profile, enrolledInBilling: false })} />
 
-          {/* Email Notifications */}
-          <div className="bg-white p-6 rounded shadow">
-            <h2 className="text-xl font-semibold mb-1 text-[#2F3E4E]">Email Notifications</h2>
-            <p className="text-xs text-[#7A8F79] mb-4">Control whether you receive weekly hour submission reminders.</p>
-            <label className="flex items-center gap-3 cursor-pointer">
-              <div className="relative">
-                <input
-                  type="checkbox"
-                  className="sr-only"
-                  checked={profile.receiveNotifications !== false}
-                  onChange={async (e) => {
-                    const val = e.target.checked
-                    setProfile({ ...profile, receiveNotifications: val })
-                    await fetch('/api/nurse/profile', {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
-                      credentials: 'include',
-                      body: JSON.stringify({ receiveNotifications: val }),
-                    })
-                  }}
-                />
-                <div className={`w-11 h-6 rounded-full transition-colors ${profile.receiveNotifications !== false ? 'bg-[#2F3E4E]' : 'bg-[#D9E1E8]'}`} />
-                <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${profile.receiveNotifications !== false ? 'translate-x-5' : 'translate-x-0'}`} />
+          {/* Notification Preferences */}
+          <div className="bg-white p-6 rounded shadow space-y-5">
+            <div>
+              <h2 className="text-xl font-semibold text-[#2F3E4E]">Notification Preferences</h2>
+              <p className="text-xs text-[#7A8F79] mt-0.5">Choose which emails you'd like to receive from Coming Home Care.</p>
+            </div>
+
+            {/* Reminders group */}
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-3">Reminders</p>
+              <div className="space-y-3">
+                {[
+                  { field: 'receiveNotifications', label: 'Weekly Hour Submission', desc: 'Friday reminder to submit your hours for the week' },
+                  { field: 'notifyBillingReminder', label: 'Billing Reminder', desc: 'Reminders related to invoices and billing activity' },
+                  { field: 'notifyDocExpiring', label: 'Document / License Expiring', desc: 'Alerts before a document or license on file reaches its expiration date' },
+                ].map(({ field, label, desc }) => (
+                  <NotifToggle
+                    key={field}
+                    label={label}
+                    desc={desc}
+                    checked={profile[field] !== false}
+                    onChange={async (val) => {
+                      setProfile({ ...profile, [field]: val })
+                      await fetch('/api/nurse/profile', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ [field]: val }),
+                      })
+                    }}
+                  />
+                ))}
               </div>
-              <div>
-                <p className="text-sm font-semibold text-[#2F3E4E]">
-                  {profile.receiveNotifications !== false ? 'Reminders enabled' : 'Reminders disabled'}
-                </p>
-                <p className="text-xs text-[#7A8F79]">Weekly Friday reminder to submit hours</p>
+            </div>
+
+            {/* Alerts group */}
+            <div className="pt-4 border-t border-[#D9E1E8]">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-3">Alerts</p>
+              <div className="space-y-3">
+                {[
+                  { field: 'notifyNewDocument', label: 'New Document Added', desc: 'Email when your coordinator uploads a document to your profile' },
+                  { field: 'notifyNewClaim', label: 'New Claim Added', desc: 'Email when a new claim is added to your account — includes Claim ID, date of service, and total billed' },
+                ].map(({ field, label, desc }) => (
+                  <NotifToggle
+                    key={field}
+                    label={label}
+                    desc={desc}
+                    checked={profile[field] !== false}
+                    onChange={async (val) => {
+                      setProfile({ ...profile, [field]: val })
+                      await fetch('/api/nurse/profile', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ [field]: val }),
+                      })
+                    }}
+                  />
+                ))}
               </div>
-            </label>
+            </div>
           </div>
         </div>
 
@@ -469,6 +499,27 @@ export default function ProfilePage() {
       </div>
 
     </div>
+  )
+}
+
+function NotifToggle({ label, desc, checked, onChange }: {
+  label: string
+  desc: string
+  checked: boolean
+  onChange: (val: boolean) => void
+}) {
+  return (
+    <label className="flex items-center justify-between gap-3 cursor-pointer group">
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-[#2F3E4E] leading-tight">{label}</p>
+        <p className="text-xs text-[#7A8F79] mt-0.5 leading-snug">{desc}</p>
+      </div>
+      <div className="relative flex-shrink-0">
+        <input type="checkbox" className="sr-only" checked={checked} onChange={e => onChange(e.target.checked)} />
+        <div className={`w-11 h-6 rounded-full transition-colors ${checked ? 'bg-[#2F3E4E]' : 'bg-[#D9E1E8]'}`} />
+        <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
+      </div>
+    </label>
   )
 }
 

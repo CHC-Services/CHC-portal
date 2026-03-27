@@ -18,6 +18,7 @@ export async function GET(req: Request) {
       id: true,
       title: true,
       fileName: true,
+      category: true,
       fileSize: true,
       mimeType: true,
       expiresAt: true,

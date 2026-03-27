@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '../../../../lib/prisma'
 import { verifyToken } from '../../../../lib/auth'
 import { uploadToS3 } from '../../../../lib/s3'
+import { sendNewDocumentAlert } from '../../../../lib/sendEmail'
 
 function adminOnly(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -22,6 +23,7 @@ export async function POST(req: Request) {
   const title = formData.get('title') as string | null
   const expiresAt = formData.get('expiresAt') as string | null
   const reminderDaysRaw = formData.get('reminderDays') as string | null
+  const category = (formData.get('category') as string | null)?.trim() || 'General'
 
   if (!file || !nurseId || !title) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -31,8 +33,9 @@ export async function POST(req: Request) {
     ? JSON.parse(reminderDaysRaw).map(Number).filter((n: number) => !isNaN(n))
     : []
 
-  // Upload to private S3 bucket (AES-256 encrypted at rest, no public access)
-  const storageKey = `nurse-documents/${nurseId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
+  // S3 key uses category as a subfolder — all docs live in one private bucket
+  const safeCategory = category.toLowerCase().replace(/[^a-z0-9]/g, '-')
+  const storageKey = `nurse-documents/${nurseId}/${safeCategory}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
   const buffer = Buffer.from(await file.arrayBuffer())
   await uploadToS3(storageKey, buffer, file.type || 'application/octet-stream')
 
@@ -42,6 +45,7 @@ export async function POST(req: Request) {
       title,
       fileName: file.name,
       storageKey,
+      category,
       fileSize: file.size,
       mimeType: file.type || null,
       uploadedBy: session.id,
@@ -49,6 +53,21 @@ export async function POST(req: Request) {
       reminderDays,
     },
   })
+
+  // Fire new-document alert if the nurse has that preference enabled
+  const nurseProfile = await prisma.nurseProfile.findUnique({
+    where: { id: nurseId },
+    include: { user: { select: { email: true } } },
+  })
+  if (nurseProfile?.notifyNewDocument && nurseProfile.user?.email) {
+    sendNewDocumentAlert({
+      nurseEmail: nurseProfile.user.email,
+      nurseName: nurseProfile.displayName,
+      documentTitle: title,
+      category,
+      uploadedAt: doc.createdAt,
+    }).catch(() => {})
+  }
 
   return NextResponse.json({ ok: true, document: doc })
 }
@@ -71,6 +90,7 @@ export async function GET(req: Request) {
       id: true,
       title: true,
       fileName: true,
+      category: true,
       fileSize: true,
       mimeType: true,
       expiresAt: true,

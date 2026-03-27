@@ -629,3 +629,134 @@ export async function sendEdiSummaryEmail({
     return false
   }
 }
+
+export async function sendNewDocumentAlert({
+  nurseEmail,
+  nurseName,
+  documentTitle,
+  category,
+  uploadedAt,
+}: {
+  nurseEmail: string
+  nurseName: string
+  documentTitle: string
+  category: string
+  uploadedAt: Date
+}): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) return false
+  const resend = new Resend(process.env.RESEND_API_KEY)
+
+  const dateStr = uploadedAt.toLocaleDateString('en-US', {
+    timeZone: 'America/New_York',
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+  })
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to: nurseEmail,
+      replyTo: 'support@cominghomecare.com',
+      subject: `New document added to your profile — ${documentTitle}`,
+      html: `
+        <div style="font-family:sans-serif;max-width:520px;padding:32px;color:#2F3E4E">
+          <h2 style="margin:0 0 4px;color:#2F3E4E">New Document Added</h2>
+          <p style="margin:0 0 24px;font-size:13px;color:#7A8F79">Coming Home Care Services, LLC</p>
+          <div style="background:#f4f6f8;border-radius:10px;padding:20px 24px;margin-bottom:24px">
+            <p style="margin:0 0 10px;font-size:14px">Hi <strong>${nurseName}</strong>,</p>
+            <p style="margin:0 0 16px;font-size:14px">A new document has been added to your provider profile:</p>
+            <p style="margin:0 0 4px;font-size:15px;font-weight:700;color:#2F3E4E">${documentTitle}</p>
+            <p style="margin:0 0 4px;font-size:13px;color:#7A8F79">Category: ${category}</p>
+            <p style="margin:0;font-size:13px;color:#7A8F79">Added: ${dateStr}</p>
+          </div>
+          <p style="font-size:13px;color:#2F3E4E;margin-bottom:20px">
+            You can view and download this document any time from your
+            <a href="${PORTAL_URL}/nurse/documents" style="color:#7A8F79;font-weight:600">myDocuments</a> page.
+          </p>
+          <hr style="border:none;border-top:1px solid #D9E1E8;margin:24px 0"/>
+          <p style="font-size:11px;color:#aab">Coming Home Care Services, LLC · Automated document alert</p>
+        </div>
+      `,
+    })
+    return !error
+  } catch {
+    return false
+  }
+}
+
+export async function sendNewClaimAlert({
+  nurseEmail,
+  nurseName,
+  claimId,
+  dosStart,
+  dosStop,
+  totalBilled,
+}: {
+  nurseEmail: string
+  nurseName: string
+  claimId: string
+  dosStart: Date | null
+  dosStop: Date | null
+  totalBilled: number | null
+}): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) return false
+  const resend = new Resend(process.env.RESEND_API_KEY)
+
+  function fmtDate(d: Date | null) {
+    if (!d) return '—'
+    return d.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })
+  }
+  function fmtDOS() {
+    if (!dosStart) return '—'
+    if (!dosStop) return fmtDate(dosStart)
+    if (dosStart.getUTCFullYear() !== dosStop.getUTCFullYear()) return `${fmtDate(dosStart)} – ${fmtDate(dosStop)}`
+    if (dosStart.getUTCMonth() !== dosStop.getUTCMonth())
+      return `${dosStart.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' })} – ${fmtDate(dosStop)}`
+    return `${dosStart.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short' })} ${dosStart.getUTCDate()}–${dosStop.getUTCDate()}, ${dosStart.getUTCFullYear()}`
+  }
+  function fmtMoney(n: number | null) {
+    if (n == null) return '—'
+    return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  }
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to: nurseEmail,
+      replyTo: 'support@cominghomecare.com',
+      subject: `New claim added to your account — ${claimId}`,
+      html: `
+        <div style="font-family:sans-serif;max-width:520px;padding:32px;color:#2F3E4E">
+          <h2 style="margin:0 0 4px;color:#2F3E4E">New Claim Added</h2>
+          <p style="margin:0 0 24px;font-size:13px;color:#7A8F79">Coming Home Care Services, LLC</p>
+          <div style="background:#f4f6f8;border-radius:10px;padding:20px 24px;margin-bottom:24px">
+            <p style="margin:0 0 12px;font-size:14px">Hi <strong>${nurseName}</strong>,</p>
+            <p style="margin:0 0 16px;font-size:14px">A new claim has been added to your account:</p>
+            <table style="width:100%;border-collapse:collapse;font-size:14px">
+              <tr>
+                <td style="padding:6px 0;color:#7A8F79;font-weight:600;width:140px">Claim ID</td>
+                <td style="padding:6px 0;font-family:monospace;font-weight:700;color:#2F3E4E">${claimId}</td>
+              </tr>
+              <tr>
+                <td style="padding:6px 0;color:#7A8F79;font-weight:600">Date of Service</td>
+                <td style="padding:6px 0;color:#2F3E4E;font-weight:600">${fmtDOS()}</td>
+              </tr>
+              <tr>
+                <td style="padding:6px 0;color:#7A8F79;font-weight:600">Total Billed</td>
+                <td style="padding:6px 0;color:#2F3E4E;font-weight:700">${fmtMoney(totalBilled)}</td>
+              </tr>
+            </table>
+          </div>
+          <p style="font-size:13px;color:#2F3E4E;margin-bottom:20px">
+            Track this claim and all your billing activity on your
+            <a href="${PORTAL_URL}/nurse/claims" style="color:#7A8F79;font-weight:600">myClaims</a> page.
+          </p>
+          <hr style="border:none;border-top:1px solid #D9E1E8;margin:24px 0"/>
+          <p style="font-size:11px;color:#aab">Coming Home Care Services, LLC · Automated claim alert</p>
+        </div>
+      `,
+    })
+    return !error
+  } catch {
+    return false
+  }
+}

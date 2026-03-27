@@ -31,6 +31,28 @@ export async function deleteFromS3(key: string): Promise<void> {
 }
 
 /**
+ * Generate a short-lived presigned PUT URL so the browser can upload directly
+ * to S3 without routing the file bytes through Next.js / Vercel.
+ * Expiry: 15 minutes. The URL is single-use and scoped to one object key.
+ */
+export async function getPresignedUploadUrl(
+  key: string,
+  contentType: string,
+  expiresInSeconds = 900,
+): Promise<string> {
+  return getSignedUrl(
+    s3,
+    new PutObjectCommand({
+      Bucket: BUCKET,
+      Key: key,
+      ContentType: contentType,
+      ServerSideEncryption: 'AES256',
+    }),
+    { expiresIn: expiresInSeconds },
+  )
+}
+
+/**
  * Generate a short-lived presigned GET URL for a private S3 object.
  * Default expiry: 15 minutes. The URL grants read access to that one object
  * and expires automatically — no permanent public access is ever granted.

@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../../lib/prisma'
 import { verifyToken } from '../../../../lib/auth'
-import { uploadToS3 } from '../../../../lib/s3'
 import { sendNewDocumentAlert } from '../../../../lib/sendEmail'
 
 function adminOnly(req: Request) {
@@ -10,47 +9,43 @@ function adminOnly(req: Request) {
   return token ? verifyToken(token) : null
 }
 
-// POST /api/admin/documents — upload a document for a nurse
+// POST /api/admin/documents — save document metadata after a presigned S3 upload
+// Body (JSON): { nurseId, title, fileName, storageKey, category, fileSize, mimeType, expiresAt, reminderDays }
 export async function POST(req: Request) {
   const session = adminOnly(req)
   if (!session || session.role !== 'admin') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const formData = await req.formData()
-  const file = formData.get('file') as File | null
-  const nurseId = formData.get('nurseId') as string | null
-  const title = formData.get('title') as string | null
-  const expiresAt = formData.get('expiresAt') as string | null
-  const reminderDaysRaw = formData.get('reminderDays') as string | null
-  const category = (formData.get('category') as string | null)?.trim() || 'General'
+  const body = await req.json()
+  const {
+    nurseId,
+    title,
+    fileName,
+    storageKey,
+    category = 'General',
+    fileSize,
+    mimeType,
+    expiresAt,
+    reminderDays = [],
+  } = body
 
-  if (!file || !nurseId || !title) {
+  if (!nurseId || !title || !fileName || !storageKey) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
-
-  const reminderDays: number[] = reminderDaysRaw
-    ? JSON.parse(reminderDaysRaw).map(Number).filter((n: number) => !isNaN(n))
-    : []
-
-  // S3 key uses category as a subfolder — all docs live in one private bucket
-  const safeCategory = category.toLowerCase().replace(/[^a-z0-9]/g, '-')
-  const storageKey = `nurse-documents/${nurseId}/${safeCategory}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
-  const buffer = Buffer.from(await file.arrayBuffer())
-  await uploadToS3(storageKey, buffer, file.type || 'application/octet-stream')
 
   const doc = await prisma.nurseDocument.create({
     data: {
       nurseId,
       title,
-      fileName: file.name,
+      fileName,
       storageKey,
       category,
-      fileSize: file.size,
-      mimeType: file.type || null,
+      fileSize: fileSize ?? null,
+      mimeType: mimeType ?? null,
       uploadedBy: session.id,
       expiresAt: expiresAt ? new Date(expiresAt) : null,
-      reminderDays,
+      reminderDays: Array.isArray(reminderDays) ? reminderDays.map(Number).filter((n: number) => !isNaN(n)) : [],
     },
   })
 

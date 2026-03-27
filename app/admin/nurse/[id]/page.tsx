@@ -280,26 +280,72 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
     if (!docFile || !docTitle) return
     setDocUploading(true)
     setDocMessage('')
-    const fd = new FormData()
-    fd.append('file', docFile)
-    fd.append('nurseId', id)
-    fd.append('title', docTitle)
-    fd.append('category', docCategory)
-    if (docExpiry) fd.append('expiresAt', docExpiry)
-    if (docReminderDays.length > 0) fd.append('reminderDays', JSON.stringify(docReminderDays))
-    const res = await fetch('/api/admin/documents', { method: 'POST', credentials: 'include', body: fd })
-    const data = await res.json()
-    if (data.ok) {
-      setDocMessage('Document uploaded.')
-      setDocFile(null)
-      setDocTitle('')
-      setDocCategory('General')
-      setDocExpiry('')
-      setDocReminderDays([])
-      fetchDocuments()
-    } else {
-      setDocMessage(data.error || 'Upload failed.')
+
+    try {
+      // Step 1: get a presigned PUT URL from the server
+      const presignRes = await fetch('/api/admin/documents/presign', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileName: docFile.name,
+          contentType: docFile.type || 'application/octet-stream',
+          nurseId: id,
+          category: docCategory,
+        }),
+      })
+      const presignData = await presignRes.json()
+      if (!presignRes.ok) {
+        setDocMessage(presignData.error || 'Could not prepare upload.')
+        setDocUploading(false)
+        return
+      }
+
+      // Step 2: upload file bytes directly to S3 (bypasses Next.js size limit)
+      const s3Res = await fetch(presignData.uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': docFile.type || 'application/octet-stream' },
+        body: docFile,
+      })
+      if (!s3Res.ok) {
+        setDocMessage(`S3 upload failed (${s3Res.status}). Check bucket permissions.`)
+        setDocUploading(false)
+        return
+      }
+
+      // Step 3: save metadata to the database
+      const metaRes = await fetch('/api/admin/documents', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nurseId: id,
+          title: docTitle,
+          fileName: docFile.name,
+          storageKey: presignData.storageKey,
+          category: docCategory,
+          fileSize: docFile.size,
+          mimeType: docFile.type || null,
+          expiresAt: docExpiry || null,
+          reminderDays: docReminderDays,
+        }),
+      })
+      const metaData = await metaRes.json()
+      if (metaData.ok) {
+        setDocMessage('Document uploaded.')
+        setDocFile(null)
+        setDocTitle('')
+        setDocCategory('General')
+        setDocExpiry('')
+        setDocReminderDays([])
+        fetchDocuments()
+      } else {
+        setDocMessage(metaData.error || 'Upload failed.')
+      }
+    } catch (err: any) {
+      setDocMessage(err?.message || 'Unexpected error during upload.')
     }
+
     setDocUploading(false)
   }
 

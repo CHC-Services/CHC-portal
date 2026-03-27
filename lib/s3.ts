@@ -1,12 +1,22 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
-const s3 = new S3Client({
+const clientConfig = {
   region: process.env.AWS_REGION!,
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
   },
+}
+
+// Standard client for server-side operations
+const s3 = new S3Client(clientConfig)
+
+// Presign client with checksums disabled — browser uploads can't compute them
+const s3Presign = new S3Client({
+  ...clientConfig,
+  requestChecksumCalculation: 'WHEN_REQUIRED' as any,
+  responseChecksumValidation: 'WHEN_REQUIRED' as any,
 })
 
 const BUCKET = process.env.AWS_S3_BUCKET!
@@ -40,13 +50,14 @@ export async function getPresignedUploadUrl(
   contentType: string,
   expiresInSeconds = 900,
 ): Promise<string> {
+  // No SSE or checksum headers — browser PUTs can't sign or compute them.
+  // AWS encrypts by default at the bucket level (AES-256) for all new buckets.
   return getSignedUrl(
-    s3,
+    s3Presign,
     new PutObjectCommand({
       Bucket: BUCKET,
       Key: key,
       ContentType: contentType,
-      ServerSideEncryption: 'AES256',
     }),
     { expiresIn: expiresInSeconds },
   )

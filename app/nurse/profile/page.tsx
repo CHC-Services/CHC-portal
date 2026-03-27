@@ -158,7 +158,7 @@ export default function ProfilePage() {
       <PortalMessages priority="General" />
 
       {profile.accountNumber && (
-        <div className="bg-[#2F3E4E] text-white rounded-xl px-6 py-4 max-w-3xl flex items-center justify-between mb-6">
+        <div className="bg-[#2F3E4E] text-white rounded-xl px-6 py-4 flex items-center justify-between mb-6">
           <div>
             <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold">Account Number</p>
             <p className="text-2xl font-bold tracking-widest mt-0.5">{profile.accountNumber}</p>
@@ -169,41 +169,49 @@ export default function ProfilePage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl">
+      {/* 3-column layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
-        {/* Left column */}
-        <div className="space-y-6">
-          <form onSubmit={handleSubmit} className="bg-white p-6 rounded shadow space-y-4">
-            <h2 className="text-xl font-semibold mb-4 text-[#2F3E4E]">Personal Information</h2>
+        {/* ── Col 1: Personal Information ── */}
+        <form onSubmit={handleSubmit} className="bg-white p-6 rounded shadow space-y-4">
+          <h2 className="text-xl font-semibold text-[#2F3E4E]">Personal Information</h2>
 
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-[#2F3E4E]">Email (<a href='mailto:supportn@cominghomecare.com'>submit request to update email <u>here</u>.</a>)</label>
-              <input
-                type="text"
-                value={user?.email || ''}
-                disabled
-                className="w-full border border-[#D9E1E8] p-2 rounded bg-gray-100 text-[#2F3E4E]"
-              />
-            </div>
+          <div className="space-y-1">
+            <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">
+              Email — <a href="mailto:support@cominghomecare.com" className="normal-case font-normal underline hover:text-[#2F3E4E]">request update</a>
+            </label>
+            <input
+              type="text"
+              value={user?.email || ''}
+              disabled
+              className="w-full border border-[#D9E1E8] p-2 rounded bg-gray-100 text-[#2F3E4E]"
+            />
+          </div>
 
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-[#2F3E4E]">Display Name</label>
-              <input
-                type="text"
-                value={profile.displayName || ''}
-                onChange={(e) => setProfile({ ...profile, displayName: e.target.value })}
-                className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
-              />
-            </div>
+          <div className="space-y-1">
+            <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Display Name</label>
+            <input
+              type="text"
+              value={profile.displayName || ''}
+              onChange={(e) => setProfile({ ...profile, displayName: e.target.value })}
+              className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
+            />
+          </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <input
-                type="text"
-                placeholder="Address"
-                value={profile.address || ''}
-                onChange={(e) => setProfile({ ...profile, address: e.target.value })}
-                className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
-              />
+          <div className="space-y-1">
+            <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Home Address</label>
+            <input
+              type="text"
+              placeholder="Street address"
+              value={profile.address || ''}
+              onChange={(e) => setProfile({ ...profile, address: e.target.value })}
+              className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">City</label>
               <input
                 type="text"
                 placeholder="City"
@@ -211,6 +219,9 @@ export default function ProfilePage() {
                 onChange={(e) => setProfile({ ...profile, city: e.target.value })}
                 className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
               />
+            </div>
+            <div className="space-y-1">
+              <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">State</label>
               <input
                 type="text"
                 placeholder="State"
@@ -218,17 +229,19 @@ export default function ProfilePage() {
                 onChange={(e) => setProfile({ ...profile, state: e.target.value })}
                 className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
               />
+            </div>
+            <div className="space-y-1">
+              <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">ZIP Code</label>
               <input
                 type="text"
-                placeholder="ZIP Code"
+                placeholder="ZIP"
                 value={profile.zip || ''}
                 onChange={(e) => setProfile({ ...profile, zip: e.target.value })}
                 className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
               />
             </div>
-
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-[#2F3E4E]">NPI Number</label>
+            <div className="space-y-1">
+              <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">NPI Number</label>
               <input
                 type="text"
                 value={profile.npiNumber || ''}
@@ -236,38 +249,42 @@ export default function ProfilePage() {
                 className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
               />
             </div>
+          </div>
 
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-[#2F3E4E]">Medicaid Number</label>
-              <input
-                type="text"
-                value={profile.medicaidNumber || ''}
-                onChange={(e) => setProfile({ ...profile, medicaidNumber: e.target.value })}
-                className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
-              />
-            </div>
+          <div className="space-y-1">
+            <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Medicaid Number</label>
+            <input
+              type="text"
+              value={profile.medicaidNumber || ''}
+              onChange={(e) => setProfile({ ...profile, medicaidNumber: e.target.value })}
+              className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
+            />
+          </div>
 
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-[#2F3E4E]">Billing Info</label>
-              <textarea
-                value={profile.billingInfo || ''}
-                onChange={(e) => setProfile({ ...profile, billingInfo: e.target.value })}
-                className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
-              />
-            </div>
+          <div className="space-y-1">
+            <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Billing Info</label>
+            <textarea
+              value={profile.billingInfo || ''}
+              onChange={(e) => setProfile({ ...profile, billingInfo: e.target.value })}
+              rows={3}
+              className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E] resize-none"
+            />
+          </div>
 
-            <button
-              type="submit"
-              className="w-full bg-[#2F3E4E] text-white p-2 rounded hover:bg-[#7A8F79] transition"
-            >
-              Save Changes
-            </button>
+          <button
+            type="submit"
+            className="w-full bg-[#2F3E4E] text-white p-2 rounded hover:bg-[#7A8F79] transition font-semibold"
+          >
+            Save Changes
+          </button>
+          {message && <p className="text-sm text-center text-[#2F3E4E]">{message}</p>}
+        </form>
 
-            {message && <p className="mt-2 text-sm text-center text-[#2F3E4E]">{message}</p>}
-          </form>
+        {/* ── Col 2: Change Password + myRenewals ── */}
+        <div className="space-y-6">
 
           <form onSubmit={changePassword} className="bg-white p-6 rounded shadow space-y-4">
-            <h2 className="text-xl font-semibold mb-4 text-[#2F3E4E]">Change Password</h2>
+            <h2 className="text-xl font-semibold text-[#2F3E4E]">Change Password</h2>
             <input
               type="password"
               placeholder="Current password"
@@ -291,26 +308,151 @@ export default function ProfilePage() {
             />
             <button
               type="submit"
-              className="w-full bg-[#2F3E4E] text-white p-2 rounded hover:bg-[#7A8F79] transition"
+              className="w-full bg-[#2F3E4E] text-white p-2 rounded hover:bg-[#7A8F79] transition font-semibold"
             >
               Update Password
             </button>
-            {pwMessage && <p className="mt-2 text-sm text-center text-[#2F3E4E]">{pwMessage}</p>}
+            {pwMessage && <p className="text-sm text-center text-[#2F3E4E]">{pwMessage}</p>}
           </form>
+
+          {/* myRenewals */}
+          <div className="bg-white rounded-xl shadow p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-xl font-semibold text-[#2F3E4E]">
+                  <span style={{ color: '#7A8F79', fontStyle: 'italic' }}>my</span>Renewals
+                </h2>
+                <p className="text-xs text-[#7A8F79] mt-0.5">Track license renewals, enrollment deadlines, and important dates.</p>
+              </div>
+              <button
+                onClick={() => setShowReminderForm(!showReminderForm)}
+                className="bg-[#2F3E4E] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#7A8F79] transition"
+              >
+                {showReminderForm ? 'Cancel' : '+ Add'}
+              </button>
+            </div>
+
+            {showReminderForm && (
+              <form onSubmit={addReminder} className="bg-[#F4F6F5] rounded-lg p-4 mb-5 space-y-3">
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Reminder Title</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. NY RN License Renewal"
+                    value={reminderForm.title}
+                    onChange={e => setReminderForm({ ...reminderForm, title: e.target.value })}
+                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Category</label>
+                    <select
+                      value={reminderForm.category}
+                      onChange={e => setReminderForm({ ...reminderForm, category: e.target.value })}
+                      className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                    >
+                      {REMINDER_CATEGORIES.map(c => (
+                        <option key={c.value} value={c.value}>{c.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Due Date</label>
+                    <input
+                      type="date"
+                      value={reminderForm.dueDate}
+                      onChange={e => setReminderForm({ ...reminderForm, dueDate: e.target.value })}
+                      className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Notes (optional)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Renew at nysed.gov/nursing"
+                    value={reminderForm.notes}
+                    onChange={e => setReminderForm({ ...reminderForm, notes: e.target.value })}
+                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={reminderAdding}
+                  className="w-full bg-[#7A8F79] text-white py-2 rounded-lg text-sm font-semibold hover:bg-[#657a64] transition disabled:opacity-50"
+                >
+                  {reminderAdding ? 'Saving…' : 'Save Reminder'}
+                </button>
+              </form>
+            )}
+
+            {reminders.length === 0 ? (
+              <p className="text-sm text-[#7A8F79] italic text-center py-4">
+                No reminders yet — add a renewal deadline above.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {reminders.map(r => {
+                  const due = new Date(r.dueDate)
+                  const daysLeft = Math.ceil((due.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+                  const overdue = daysLeft < 0
+                  const urgent = daysLeft >= 0 && daysLeft <= 14
+                  const catIcon = r.category === 'license' ? '📄' : r.category === 'medicaid' ? '🏥' : r.category === 'bcbs' ? '💳' : r.category === 'npi' ? '🔢' : r.category === 'insurance' ? '🛡️' : '📅'
+                  return (
+                    <div
+                      key={r.id}
+                      className={`flex items-start gap-3 rounded-lg px-4 py-3 border transition ${
+                        r.completed ? 'bg-gray-50 border-[#D9E1E8] opacity-60' :
+                        overdue ? 'bg-red-50 border-red-200' :
+                        urgent ? 'bg-amber-50 border-amber-200' :
+                        'bg-[#F4F6F5] border-[#D9E1E8]'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={r.completed}
+                        onChange={e => toggleReminder(r.id, e.target.checked)}
+                        className="mt-1 accent-[#7A8F79] w-4 h-4 cursor-pointer"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-semibold ${r.completed ? 'line-through text-[#7A8F79]' : 'text-[#2F3E4E]'}`}>
+                          {catIcon} {r.title}
+                        </p>
+                        <p className={`text-xs mt-0.5 font-medium ${overdue ? 'text-red-600' : urgent ? 'text-amber-600' : 'text-[#7A8F79]'}`}>
+                          {overdue ? `Overdue by ${Math.abs(daysLeft)} days` :
+                           urgent ? `${daysLeft} days left` :
+                           due.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </p>
+                        {r.notes && <p className="text-xs text-[#7A8F79] mt-0.5">{r.notes}</p>}
+                      </div>
+                      <button
+                        onClick={() => deleteReminder(r.id)}
+                        className="text-[#D9E1E8] hover:text-red-400 transition text-sm mt-0.5"
+                        title="Delete reminder"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Right column — myBilling */}
+        {/* ── Col 3: myBilling + Notification Preferences ── */}
         <div className="space-y-6">
           <BillingSection profile={profile} onUnenroll={() => setProfile({ ...profile, enrolledInBilling: false })} />
 
-          {/* Notification Preferences */}
           <div className="bg-white p-6 rounded shadow space-y-5">
             <div>
               <h2 className="text-xl font-semibold text-[#2F3E4E]">Notification Preferences</h2>
-              <p className="text-xs text-[#7A8F79] mt-0.5">Choose which emails you'd like to receive from Coming Home Care.</p>
+              <p className="text-xs text-[#7A8F79] mt-0.5">Choose which emails you'd like to receive.</p>
             </div>
 
-            {/* Reminders group */}
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-3">Reminders</p>
               <div className="space-y-3">
@@ -338,13 +480,12 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Alerts group */}
             <div className="pt-4 border-t border-[#D9E1E8]">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-3">Alerts</p>
               <div className="space-y-3">
                 {[
                   { field: 'notifyNewDocument', label: 'New Document Added', desc: 'Email when your coordinator uploads a document to your profile' },
-                  { field: 'notifyNewClaim', label: 'New Claim Added', desc: 'Email when a new claim is added to your account — includes Claim ID, date of service, and total billed' },
+                  { field: 'notifyNewClaim', label: 'New Claim Added', desc: 'Email when a new claim is added to your account' },
                 ].map(({ field, label, desc }) => (
                   <NotifToggle
                     key={field}
@@ -368,136 +509,6 @@ export default function ProfilePage() {
         </div>
 
       </div>
-
-      {/* ── Renewal Reminders ── */}
-      <div className="mt-6 max-w-3xl">
-        <div className="bg-white rounded-xl shadow p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-xl font-semibold text-[#2F3E4E]">
-                <span style={{ color: '#7A8F79', fontStyle: 'italic' }}>my</span>Renewals
-              </h2>
-              <p className="text-xs text-[#7A8F79] mt-0.5">Track license renewals, enrollment deadlines, and important dates.</p>
-            </div>
-            <button
-              onClick={() => setShowReminderForm(!showReminderForm)}
-              className="bg-[#2F3E4E] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#7A8F79] transition"
-            >
-              {showReminderForm ? 'Cancel' : '+ Add Reminder'}
-            </button>
-          </div>
-
-          {showReminderForm && (
-            <form onSubmit={addReminder} className="bg-[#F4F6F5] rounded-lg p-4 mb-5 space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="col-span-2">
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Reminder Title</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. NY RN License Renewal"
-                    value={reminderForm.title}
-                    onChange={e => setReminderForm({ ...reminderForm, title: e.target.value })}
-                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Category</label>
-                  <select
-                    value={reminderForm.category}
-                    onChange={e => setReminderForm({ ...reminderForm, category: e.target.value })}
-                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-                  >
-                    {REMINDER_CATEGORIES.map(c => (
-                      <option key={c.value} value={c.value}>{c.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Due Date</label>
-                  <input
-                    type="date"
-                    value={reminderForm.dueDate}
-                    onChange={e => setReminderForm({ ...reminderForm, dueDate: e.target.value })}
-                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-                    required
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Notes (optional)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Renew at nysed.gov/nursing"
-                    value={reminderForm.notes}
-                    onChange={e => setReminderForm({ ...reminderForm, notes: e.target.value })}
-                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-                  />
-                </div>
-              </div>
-              <button
-                type="submit"
-                disabled={reminderAdding}
-                className="w-full bg-[#7A8F79] text-white py-2 rounded-lg text-sm font-semibold hover:bg-[#657a64] transition disabled:opacity-50"
-              >
-                {reminderAdding ? 'Saving…' : 'Save Reminder'}
-              </button>
-            </form>
-          )}
-
-          {reminders.length === 0 ? (
-            <p className="text-sm text-[#7A8F79] italic text-center py-6">
-              No reminders yet. Add your first renewal deadline above — never miss a license renewal or enrollment deadline again.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {reminders.map(r => {
-                const due = new Date(r.dueDate)
-                const daysLeft = Math.ceil((due.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-                const overdue = daysLeft < 0
-                const urgent = daysLeft >= 0 && daysLeft <= 14
-                const catIcon = r.category === 'license' ? '📄' : r.category === 'medicaid' ? '🏥' : r.category === 'bcbs' ? '💳' : r.category === 'npi' ? '🔢' : r.category === 'insurance' ? '🛡️' : '📅'
-                return (
-                  <div
-                    key={r.id}
-                    className={`flex items-start gap-3 rounded-lg px-4 py-3 border transition ${
-                      r.completed ? 'bg-gray-50 border-[#D9E1E8] opacity-60' :
-                      overdue ? 'bg-red-50 border-red-200' :
-                      urgent ? 'bg-amber-50 border-amber-200' :
-                      'bg-[#F4F6F5] border-[#D9E1E8]'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={r.completed}
-                      onChange={e => toggleReminder(r.id, e.target.checked)}
-                      className="mt-1 accent-[#7A8F79] w-4 h-4 cursor-pointer"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-semibold ${r.completed ? 'line-through text-[#7A8F79]' : 'text-[#2F3E4E]'}`}>
-                        {catIcon} {r.title}
-                      </p>
-                      <p className={`text-xs mt-0.5 font-medium ${overdue ? 'text-red-600' : urgent ? 'text-amber-600' : 'text-[#7A8F79]'}`}>
-                        {overdue ? `Overdue by ${Math.abs(daysLeft)} days` :
-                         urgent ? `${daysLeft} days left` :
-                         due.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                      </p>
-                      {r.notes && <p className="text-xs text-[#7A8F79] mt-0.5">{r.notes}</p>}
-                    </div>
-                    <button
-                      onClick={() => deleteReminder(r.id)}
-                      className="text-[#D9E1E8] hover:text-red-400 transition text-sm mt-0.5"
-                      title="Delete reminder"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-
     </div>
   )
 }

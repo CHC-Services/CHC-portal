@@ -178,7 +178,6 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   const [docUploading, setDocUploading] = useState(false)
   const [docMessage, setDocMessage] = useState('')
   const [docDeleting, setDocDeleting] = useState<string | null>(null)
-  // Category manager
   const [categories, setCategories] = useState<{id:string;name:string}[]>([])
   const [showCatManager, setShowCatManager] = useState(false)
   const [newCatName, setNewCatName] = useState('')
@@ -188,12 +187,23 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   // Time entries + invoicing
   const [entries, setEntries] = useState<TimeEntry[]>([])
   const [claimRefs, setClaimRefs] = useState<Record<string, string>>({})
-  const [deletingEntry, setDeletingEntry] = useState<string | null>(null)
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
   const [invoiceDueTerm, setInvoiceDueTerm] = useState('30')
   const [invoiceNotes, setInvoiceNotes] = useState('')
   const [invoiceSending, setInvoiceSending] = useState(false)
   const [invoiceMessage, setInvoiceMessage] = useState('')
+
+  // Multi-select + bulk actions
+  const [selectedEntries, setSelectedEntries] = useState<Set<string>>(new Set())
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [bulkFlagging, setBulkFlagging] = useState(false)
+
+  // Log hours form
+  const [workDate, setWorkDate] = useState('')
+  const [workHours, setWorkHours] = useState('')
+  const [workNotes, setWorkNotes] = useState('')
+  const [workSubmitting, setWorkSubmitting] = useState(false)
+  const [workMessage, setWorkMessage] = useState('')
 
   async function fetchDocuments() {
     const res = await fetch(`/api/admin/documents?nurseId=${id}`, { credentials: 'include' })
@@ -205,6 +215,17 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
     const res = await fetch('/api/admin/document-categories', { credentials: 'include' })
     const data = await res.json()
     setCategories(data.categories || [])
+  }
+
+  async function fetchEntries() {
+    const r = await fetch(`/api/admin/time-entry?nurseId=${id}`, { credentials: 'include' })
+    const d = await r.json()
+    if (Array.isArray(d)) {
+      setEntries(d)
+      const refs: Record<string, string> = {}
+      d.forEach((e: TimeEntry) => { refs[e.id] = e.claimRef || '' })
+      setClaimRefs(refs)
+    }
   }
 
   async function handleAddCategory(e: React.FormEvent) {
@@ -220,7 +241,6 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
     })
     if (res.ok) {
       setNewCatName('')
-      // Auto-select the new category
       setDocCategory(name)
       fetchCategories()
     }
@@ -230,7 +250,6 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   async function handleDeleteCategory(catId: string, catName: string) {
     setCatDeleting(catId)
     await fetch(`/api/admin/document-categories/${catId}`, { method: 'DELETE', credentials: 'include' })
-    // If the deleted category was selected, reset to General
     if (docCategory === catName) setDocCategory('General')
     fetchCategories()
     setCatDeleting(null)
@@ -251,17 +270,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
       })
       .finally(() => setLoading(false))
 
-    fetch(`/api/admin/time-entry?nurseId=${id}`, { credentials: 'include' })
-      .then(r => r.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          setEntries(data)
-          const refs: Record<string, string> = {}
-          data.forEach((e: TimeEntry) => { refs[e.id] = e.claimRef || '' })
-          setClaimRefs(refs)
-        }
-      })
-
+    fetchEntries()
     fetchDocuments()
     fetchCategories()
   }, [id, router])
@@ -336,24 +345,6 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
     }
   }
 
-  async function deleteEntry(entryId: string) {
-    if (!confirm('Delete this time entry? This cannot be undone.')) return
-    setDeletingEntry(entryId)
-    const res = await fetch('/api/admin/time-entry', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ id: entryId }),
-    })
-    setDeletingEntry(null)
-    if (res.ok) {
-      setEntries(prev => prev.filter(e => e.id !== entryId))
-    } else {
-      const d = await res.json()
-      alert(d.error || 'Failed to delete entry.')
-    }
-  }
-
   async function createInvoice() {
     setInvoiceSending(true)
     setInvoiceMessage('')
@@ -369,16 +360,11 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
       setInvoiceMessage(`Invoice ${data.invoiceNumber} sent successfully.`)
       setShowInvoiceModal(false)
       setInvoiceNotes('')
-      // Refresh entries
-      fetch(`/api/admin/time-entry?nurseId=${id}`, { credentials: 'include' })
-        .then(r => r.json()).then(d => { if (Array.isArray(d)) setEntries(d) })
+      fetchEntries()
     } else {
       setInvoiceMessage(data.error || 'Failed to create invoice.')
     }
   }
-
-  const pendingEntries = entries.filter(e => e.readyToInvoice && !e.invoiceId)
-  const pendingTotal = pendingEntries.reduce((s, e) => s + (e.invoiceFeeAmt ?? 0), 0)
 
   async function saveRole() {
     setRoleSaving(true)
@@ -427,18 +413,16 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
     }
   }
 
-  async function save(e: React.FormEvent) {
-    e.preventDefault()
+  async function save(e?: React.FormEvent) {
+    e?.preventDefault()
     setSaving(true)
     setMessage('')
-
     const res = await fetch(`/api/admin/nurses/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify(profile)
     })
-
     const data = await res.json()
     setSaving(false)
     if (res.ok) {
@@ -447,6 +431,98 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
       setMessage(data.error || 'Error saving profile.')
     }
   }
+
+  async function submitTimeEntry(e: React.FormEvent) {
+    e.preventDefault()
+    if (!workDate || !workHours) return
+    setWorkSubmitting(true)
+    setWorkMessage('')
+    const res = await fetch('/api/admin/time-entry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ nurseId: id, workDate, hours: parseFloat(workHours), notes: workNotes }),
+    })
+    const data = await res.json()
+    setWorkSubmitting(false)
+    if (res.ok) {
+      setWorkMessage('Entry added.')
+      setWorkDate('')
+      setWorkHours('')
+      setWorkNotes('')
+      fetchEntries()
+    } else {
+      setWorkMessage(data.error || 'Failed to add entry.')
+    }
+  }
+
+  function toggleSelect(entryId: string) {
+    setSelectedEntries(prev => {
+      const next = new Set(prev)
+      if (next.has(entryId)) next.delete(entryId)
+      else next.add(entryId)
+      return next
+    })
+  }
+
+  function toggleSelectAll() {
+    if (allNonInvoicedSelected) {
+      setSelectedEntries(new Set())
+    } else {
+      setSelectedEntries(new Set(notInvoicedEntries.map(e => e.id)))
+    }
+  }
+
+  async function bulkDelete() {
+    const ids = [...selectedEntries].filter(sid => notInvoicedEntries.some(e => e.id === sid && !e.billed))
+    if (!ids.length || !confirm(`Delete ${ids.length} time entr${ids.length === 1 ? 'y' : 'ies'}? This cannot be undone.`)) return
+    setBulkDeleting(true)
+    await Promise.all(ids.map(entryId =>
+      fetch('/api/admin/time-entry', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ id: entryId }),
+      })
+    ))
+    setBulkDeleting(false)
+    setSelectedEntries(new Set())
+    fetchEntries()
+  }
+
+  async function handleBulkInvoice() {
+    const ids = [...selectedEntries].filter(sid => notInvoicedEntries.some(e => e.id === sid))
+    if (!ids.length) return
+    setBulkFlagging(true)
+    await Promise.all(ids.map(entryId => {
+      const entry = entries.find(e => e.id === entryId)
+      return fetch(`/api/admin/time-entry/${entryId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ readyToInvoice: true, invoiceFeePlan: entry?.invoiceFeePlan || 'A1' }),
+      })
+    }))
+    setBulkFlagging(false)
+    setSelectedEntries(new Set())
+    await fetchEntries()
+    setShowInvoiceModal(true)
+  }
+
+  // Computed values
+  const invoiceGroupMap = new Map<string, TimeEntry[]>()
+  for (const entry of entries) {
+    if (entry.invoiceId) {
+      const group = invoiceGroupMap.get(entry.invoiceId) || []
+      group.push(entry)
+      invoiceGroupMap.set(entry.invoiceId, group)
+    }
+  }
+  const notInvoicedEntries = entries.filter(e => !e.invoiceId)
+  const allNonInvoicedSelected = notInvoicedEntries.length > 0 && notInvoicedEntries.every(e => selectedEntries.has(e.id))
+  const selectedCount = [...selectedEntries].filter(sid => notInvoicedEntries.some(e => e.id === sid)).length
+  const pendingEntries = notInvoicedEntries.filter(e => e.readyToInvoice)
+  const pendingTotal = pendingEntries.reduce((s, e) => s + (e.invoiceFeeAmt ?? 0), 0)
 
   if (loading) return <div className="p-8 text-[#7A8F79]">Loading…</div>
 
@@ -467,550 +543,677 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
-      {/* Portal Access — role dropdown, saved independently */}
-      <div className="max-w-2xl mb-6 bg-white rounded-xl shadow-sm p-6">
-        <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8] mb-4">
-          Portal Access
-        </h2>
-        {/* Last login indicator */}
-        <div className="mb-4 flex items-center gap-2">
-          {profile.user?.lastLoginAt ? (() => {
-            const last = new Date(profile.user.lastLoginAt)
-            const daysAgo = Math.floor((Date.now() - last.getTime()) / (1000 * 60 * 60 * 24))
-            const color = daysAgo <= 7 ? 'bg-green-100 text-green-700' : daysAgo <= 30 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
-            return (
-              <>
-                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${color}`}>
-                  {daysAgo === 0 ? 'Active today' : daysAgo === 1 ? 'Active yesterday' : `Active ${daysAgo} days ago`}
+      {/* 2-column layout */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+
+        {/* ── LEFT COLUMN ── */}
+        <div className="space-y-6">
+
+          {/* Portal Access */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8] mb-4">
+              Portal Access
+            </h2>
+
+            {/* Last login */}
+            <div className="mb-4 flex items-center gap-2">
+              {profile.user?.lastLoginAt ? (() => {
+                const last = new Date(profile.user.lastLoginAt)
+                const daysAgo = Math.floor((Date.now() - last.getTime()) / (1000 * 60 * 60 * 24))
+                const color = daysAgo <= 7 ? 'bg-green-100 text-green-700' : daysAgo <= 30 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
+                return (
+                  <>
+                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${color}`}>
+                      {daysAgo === 0 ? 'Active today' : daysAgo === 1 ? 'Active yesterday' : `Active ${daysAgo} days ago`}
+                    </span>
+                    <span className="text-xs text-[#7A8F79]">
+                      Last login: {last.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                    </span>
+                  </>
+                )
+              })() : (
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">
+                  Never logged in
                 </span>
-                <span className="text-xs text-[#7A8F79]">
-                  Last login: {last.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
-                </span>
-              </>
-            )
-          })() : (
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">
-              Never logged in
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-end gap-3">
-          <div className="flex-1">
-            <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Role</label>
-            <select
-              value={userRole}
-              onChange={(e) => setUserRole(e.target.value)}
-              className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-            >
-              {ROLE_OPTIONS.map(r => (
-                <option key={r.value} value={r.value}>{r.label}</option>
-              ))}
-            </select>
-          </div>
-          <button
-            type="button"
-            onClick={saveRole}
-            disabled={roleSaving}
-            className="bg-[#2F3E4E] text-white px-4 py-2 rounded-lg hover:bg-[#7A8F79] transition text-sm font-semibold disabled:opacity-50"
-          >
-            {roleSaving ? 'Saving…' : 'Update Role'}
-          </button>
-        </div>
-        {roleMessage && (
-          <p className={`mt-2 text-xs font-medium ${roleMessage.includes('Error') ? 'text-red-500' : 'text-[#7A8F79]'}`}>
-            {roleMessage}
-          </p>
-        )}
-
-        <div className="mt-4 pt-4 border-t border-[#D9E1E8]">
-          <p className="text-xs font-semibold text-[#2F3E4E] mb-1">Set Password Manually</p>
-          <p className="text-xs text-[#7A8F79] mb-2">Set a specific password for this provider without sending an email.</p>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={newPassword}
-              onChange={e => setNewPassword(e.target.value)}
-              placeholder="Enter new password"
-              className="flex-1 border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-            />
-            <button
-              type="button"
-              onClick={setPassword}
-              disabled={pwSaving || !newPassword.trim()}
-              className="shrink-0 bg-[#2F3E4E] text-white px-4 py-2 rounded-lg hover:bg-[#7A8F79] transition text-sm font-semibold disabled:opacity-50"
-            >
-              {pwSaving ? 'Saving…' : 'Set Password'}
-            </button>
-          </div>
-          {pwMessage && (
-            <p className={`mt-2 text-xs font-medium ${pwMessage.includes('Error') ? 'text-red-500' : 'text-[#7A8F79]'}`}>
-              {pwMessage}
-            </p>
-          )}
-        </div>
-
-        <div className="mt-4 pt-4 border-t border-[#D9E1E8] flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-[#2F3E4E]">Resend Portal Invite</p>
-            <p className="text-xs text-[#7A8F79] mt-0.5">Resets their password and sends a new welcome email with fresh login credentials.</p>
-          </div>
-          <button
-            type="button"
-            onClick={resendInvite}
-            disabled={inviteSending}
-            className="shrink-0 ml-4 bg-[#7A8F79] text-white px-4 py-2 rounded-lg hover:bg-[#657a64] transition text-sm font-semibold disabled:opacity-50"
-          >
-            {inviteSending ? 'Sending…' : 'Resend Invite'}
-          </button>
-        </div>
-        {inviteMessage && (
-          <p className={`mt-2 text-xs font-medium ${inviteMessage.includes('Failed') || inviteMessage.includes('error') ? 'text-red-500' : 'text-[#7A8F79]'}`}>
-            {inviteMessage}
-          </p>
-        )}
-
-        <div className="mt-4 pt-4 border-t border-[#D9E1E8] flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-[#2F3E4E]">Weekly Reminder Emails</p>
-            <p className="text-xs text-[#7A8F79] mt-0.5">
-              {notifEnabled ? 'This provider receives weekly hour submission reminders.' : 'Weekly reminders are turned off for this provider.'}
-            </p>
-          </div>
-          <button
-            type="button"
-            disabled={notifSaving}
-            onClick={async () => {
-              const next = !notifEnabled
-              setNotifSaving(true)
-              const res = await fetch(`/api/admin/nurses/${id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ receiveNotifications: next }),
-              })
-              setNotifSaving(false)
-              if (res.ok) setNotifEnabled(next)
-            }}
-            className={`shrink-0 ml-4 px-4 py-2 rounded-lg text-sm font-semibold transition disabled:opacity-50 ${
-              notifEnabled
-                ? 'bg-[#D9E1E8] text-[#2F3E4E] hover:bg-red-100 hover:text-red-600'
-                : 'bg-green-100 text-green-700 hover:bg-green-200'
-            }`}
-          >
-            {notifSaving ? 'Saving…' : notifEnabled ? 'Turn Off' : 'Turn On'}
-          </button>
-        </div>
-      </div>
-
-      <form onSubmit={save} className="space-y-6 max-w-2xl">
-
-        {/* Individual Provider */}
-        <Section title="Individual Provider Information">
-          <div className="grid grid-cols-3 gap-3">
-            <Field label="First Name"     field="firstName"     profile={profile} setProfile={setProfile} />
-            <Field label="MI"             field="middleInitial" profile={profile} setProfile={setProfile} />
-            <Field label="Last Name"      field="lastName"      profile={profile} setProfile={setProfile} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Phone"          field="phone"         profile={profile} setProfile={setProfile} />
-            <Field label="Email"          field="user.email"    profile={profile} setProfile={setProfile} type="email" />
-          </div>
-          <Field label="Home Address"     field="address"       profile={profile} setProfile={setProfile} />
-          <div className="grid grid-cols-3 gap-3">
-            <Field label="City"           field="city"          profile={profile} setProfile={setProfile} />
-            <Field label="State"          field="state"         profile={profile} setProfile={setProfile} />
-            <Field label="ZIP"            field="zip"           profile={profile} setProfile={setProfile} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Date of Birth"  field="dob"           profile={profile} setProfile={setProfile} type="date" />
-            <Field label="SSN"            field="ssn"           profile={profile} setProfile={setProfile} sensitive />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="NPI"            field="npiNumber"     profile={profile} setProfile={setProfile} />
-            <Field label="Medicaid ID"    field="medicaidNumber" profile={profile} setProfile={setProfile} />
-          </div>
-          <Field label="BCBS Payor ID"    field="bcbsPayorId"   profile={profile} setProfile={setProfile} />
-        </Section>
-
-        {/* Business Provider toggle */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={!!profile.hasBusinessProvider}
-              onChange={(e) => setProfile({ ...profile, hasBusinessProvider: e.target.checked })}
-              className="w-4 h-4 accent-[#7A8F79]"
-            />
-            <span className="font-semibold text-[#2F3E4E]">This provider has a separate Business entity</span>
-          </label>
-
-          {profile.hasBusinessProvider && (
-            <div className="mt-6 space-y-4">
-              <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8]">
-                Business Provider Information
-              </h2>
-              <Field label="Entity Name"       field="bizEntityName"      profile={profile} setProfile={setProfile} />
-              <Field label="Service Address"   field="bizServiceAddress"  profile={profile} setProfile={setProfile} />
-              <Field label="Business Email"    field="bizEmail"           profile={profile} setProfile={setProfile} type="email" />
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="EIN"             field="ein"                profile={profile} setProfile={setProfile} sensitive />
-                <Field label="FEIN"            field="fein"               profile={profile} setProfile={setProfile} sensitive />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Business NPI"    field="bizNpi"             profile={profile} setProfile={setProfile} />
-                <Field label="Business Medicaid ID" field="bizMedicaidId" profile={profile} setProfile={setProfile} />
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Payment */}
-        <Section title="Payment Information">
-          <Field label="Bank Name"         field="bankName"       profile={profile} setProfile={setProfile} />
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Routing #"       field="bankRouting"    profile={profile} setProfile={setProfile} sensitive />
-            <Field label="Account #"       field="bankAccount"    profile={profile} setProfile={setProfile} sensitive />
-          </div>
-        </Section>
-
-        {/* Claims Access */}
-        <Section title="Claims Access — Provider Aliases">
-          <p className="text-xs text-[#7A8F79]">
-            This provider will see any claim where the Provider Name in the CSV matches one of these aliases exactly.
-          </p>
-          <AliasEditor
-            aliases={profile.providerAliases || []}
-            onChange={(aliases) => setProfile({ ...profile, providerAliases: aliases })}
-          />
-        </Section>
-
-        <button
-          type="submit"
-          disabled={saving}
-          className="w-full bg-[#2F3E4E] text-white py-3 rounded-xl hover:bg-[#7A8F79] transition font-semibold disabled:opacity-50"
-        >
-          {saving ? 'Saving…' : 'Save Profile'}
-        </button>
-
-        {message && (
-          <p className={`text-sm text-center font-medium ${message.includes('Error') ? 'text-red-500' : 'text-[#7A8F79]'}`}>
-            {message}
-          </p>
-        )}
-
-      </form>
-
-      {/* ── Time Entries + Invoicing ── */}
-      <div className="max-w-2xl mt-6 bg-white rounded-xl shadow-sm p-6 space-y-4">
-        <div className="flex items-center justify-between pb-2 border-b border-[#D9E1E8]">
-          <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79]">
-            Time Entries — Invoice Flagging
-          </h2>
-          {pendingEntries.length > 0 && (
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-semibold text-[#2F3E4E]">
-                {pendingEntries.length} flagged · ${pendingTotal.toFixed(2)} pending
-              </span>
-              <button
-                onClick={() => setShowInvoiceModal(true)}
-                className="bg-[#7A8F79] text-white px-4 py-1.5 rounded-lg text-xs font-semibold hover:bg-[#2F3E4E] transition"
-              >
-                Create Invoice
-              </button>
-            </div>
-          )}
-        </div>
-
-        {invoiceMessage && (
-          <p className={`text-xs font-semibold ${invoiceMessage.includes('sent') ? 'text-[#7A8F79]' : 'text-red-500'}`}>
-            {invoiceMessage}
-          </p>
-        )}
-
-        {entries.length === 0 ? (
-          <p className="text-sm text-[#7A8F79] italic">No time entries yet.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[640px]">
-              <thead>
-                <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
-                  <th className="text-left py-2 pr-3 w-8"></th>
-                  <th className="text-left py-2 pr-4">Claim Ref #</th>
-                  <th className="text-left py-2 pr-4">Account #</th>
-                  <th className="text-left py-2 pr-4">Provider</th>
-                  <th className="text-left py-2 pr-4">Date of Service</th>
-                  <th className="text-right py-2 pr-4">Hours</th>
-                  <th className="text-left py-2 pr-4">Notes</th>
-                  <th className="text-left py-2 pr-4">Fee / Status</th>
-                  <th className="w-6"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {entries.map((entry, i) => {
-                  const isInvoiced = !!entry.invoiceId
-                  const dateStr = new Date(entry.workDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
-                  return (
-                    <tr
-                      key={entry.id}
-                      className={`border-b border-[#D9E1E8] last:border-0 ${i % 2 === 0 ? '' : 'bg-[#F4F6F5]'} ${isInvoiced ? 'opacity-60' : ''}`}
-                    >
-                      <td className="py-2.5 pr-3">
-                        <input
-                          type="checkbox"
-                          disabled={isInvoiced}
-                          checked={entry.readyToInvoice}
-                          onChange={e => toggleInvoiceFlag(entry, e.target.checked)}
-                          className="w-4 h-4 accent-[#7A8F79]"
-                        />
-                      </td>
-                      <td className="py-2.5 pr-4">
-                        <input
-                          type="text"
-                          value={claimRefs[entry.id] ?? entry.claimRef ?? ''}
-                          onChange={e => setClaimRefs(prev => ({ ...prev, [entry.id]: e.target.value }))}
-                          onBlur={e => saveClaimRef(entry.id, e.target.value)}
-                          placeholder="e.g. CLM-001"
-                          className="border border-[#D9E1E8] rounded px-2 py-1 text-xs text-[#2F3E4E] w-28 focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
-                        />
-                      </td>
-                      <td className="py-2.5 pr-4">
-                        <span className="font-mono text-xs text-[#2F3E4E]">
-                          {profile.accountNumber || '—'}
-                        </span>
-                      </td>
-                      <td className="py-2.5 pr-4 font-semibold text-[#2F3E4E] whitespace-nowrap">
-                        {profile.displayName}
-                      </td>
-                      <td className="py-2.5 pr-4 text-[#2F3E4E] whitespace-nowrap">{dateStr}</td>
-                      <td className="py-2.5 pr-4 text-right font-semibold text-[#2F3E4E]">{entry.hours}</td>
-                      <td className="py-2.5 pr-4 text-[#7A8F79] italic text-xs max-w-[120px] truncate">
-                        {entry.notes || '—'}
-                      </td>
-                      <td className="py-2.5 pr-4">
-                        {isInvoiced ? (
-                          <span className="text-xs bg-green-100 text-green-700 font-semibold px-2 py-0.5 rounded-full whitespace-nowrap">
-                            {entry.invoice?.invoiceNumber}
-                          </span>
-                        ) : entry.readyToInvoice ? (
-                          <div className="flex items-center gap-1.5">
-                            <select
-                              value={entry.invoiceFeePlan ?? 'A1'}
-                              onChange={e => toggleInvoiceFlag(entry, true, e.target.value)}
-                              className="border border-[#D9E1E8] rounded px-1.5 py-1 text-xs text-[#2F3E4E] focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
-                            >
-                              {FEE_PLANS.map(p => (
-                                <option key={p.value} value={p.value}>{p.value} — ${p.amount.toFixed(2)}</option>
-                              ))}
-                            </select>
-                            <span className="text-xs font-bold text-[#2F3E4E]">
-                              ${(entry.invoiceFeeAmt ?? 0).toFixed(2)}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-[#7A8F79] italic">not flagged</span>
-                        )}
-                      </td>
-                      <td className="py-2.5">
-                        {!entry.billed && (
-                          <button
-                            onClick={() => deleteEntry(entry.id)}
-                            title="Delete entry"
-                            className="text-red-400 hover:text-red-600 transition"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* ── Documents ── */}
-      <div className="max-w-2xl mt-6 bg-white rounded-xl shadow-sm p-6 space-y-4">
-        <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8]">
-          Documents
-        </h2>
-
-        {/* Existing documents list */}
-        {documents.length === 0 ? (
-          <p className="text-sm text-[#7A8F79] italic">No documents uploaded yet.</p>
-        ) : (
-          <div className="space-y-2 mb-4">
-            {documents.map(doc => {
-              const days = doc.expiresAt
-                ? Math.ceil((new Date(doc.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-                : null
-              const expiryColor = days == null ? '' : days < 0 ? 'text-red-600' : days <= 30 ? 'text-orange-500' : 'text-[#7A8F79]'
-              return (
-                <div key={doc.id} className="flex items-center gap-3 p-3 bg-[#F4F6F5] rounded-lg">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-[#2F3E4E] truncate">{doc.title}</p>
-                      <span className="text-[10px] font-semibold bg-[#D9E1E8] text-[#2F3E4E] px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">{doc.category}</span>
-                    </div>
-                    <p className="text-[11px] text-[#7A8F79] truncate">{doc.fileName}</p>
-                    {doc.expiresAt && (
-                      <p className={`text-[11px] font-semibold mt-0.5 ${expiryColor}`}>
-                        {days != null && days < 0 ? 'Expired' : `Expires ${new Date(doc.expiresAt).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })}`}
-                        {doc.reminderDays.length > 0 && ` · Reminders: ${doc.reminderDays.join(', ')}d`}
-                      </p>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => handleDocView(doc.id)}
-                    disabled={docViewing === doc.id}
-                    className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] border border-[#D9E1E8] px-2 py-1 rounded transition disabled:opacity-50"
-                  >
-                    {docViewing === doc.id ? '…' : 'View'}
-                  </button>
-                  <button
-                    onClick={() => handleDocDelete(doc.id)}
-                    disabled={docDeleting === doc.id}
-                    className="text-xs text-red-400 hover:text-red-600 border border-red-200 px-2 py-1 rounded transition disabled:opacity-50"
-                  >
-                    {docDeleting === doc.id ? '…' : 'Delete'}
-                  </button>
-                </div>
-              )
-            })}
-          </div>
-        )}
-
-        {/* Upload form */}
-        <form onSubmit={handleDocUpload} className="space-y-3 border-t border-[#D9E1E8] pt-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Upload New Document</p>
-
-          <div className="grid sm:grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Document Title</label>
-              <input
-                type="text"
-                value={docTitle}
-                onChange={e => setDocTitle(e.target.value)}
-                placeholder="e.g. Medicaid License 2026"
-                className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-                required
-              />
-            </div>
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Category</label>
-                <button
-                  type="button"
-                  onClick={() => setShowCatManager(v => !v)}
-                  className="text-[10px] text-[#7A8F79] hover:text-[#2F3E4E] underline transition"
-                >
-                  {showCatManager ? 'Done' : 'Manage folders'}
-                </button>
-              </div>
-              <select
-                value={docCategory}
-                onChange={e => setDocCategory(e.target.value)}
-                className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-              >
-                {categories.map(c => (
-                  <option key={c.id} value={c.name}>{c.name}</option>
-                ))}
-              </select>
-              {/* Inline category manager */}
-              {showCatManager && (
-                <div className="mt-2 border border-[#D9E1E8] rounded-lg p-3 bg-[#FAFBFC] space-y-2">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79]">Folder List</p>
-                  <div className="space-y-1">
-                    {categories.map(c => (
-                      <div key={c.id} className="flex items-center justify-between gap-2 py-0.5">
-                        <span className="text-sm text-[#2F3E4E]">{c.name}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteCategory(c.id, c.name)}
-                          disabled={catDeleting === c.id}
-                          className="text-[11px] text-red-400 hover:text-red-600 transition disabled:opacity-40"
-                        >
-                          {catDeleting === c.id ? '…' : 'Remove'}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                  <form onSubmit={handleAddCategory} className="flex gap-2 pt-1 border-t border-[#D9E1E8]">
-                    <input
-                      type="text"
-                      value={newCatName}
-                      onChange={e => setNewCatName(e.target.value)}
-                      placeholder="New folder name"
-                      className="flex-1 border border-[#D9E1E8] px-2 py-1 rounded text-sm text-[#2F3E4E] focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
-                    />
-                    <button
-                      type="submit"
-                      disabled={catSaving || !newCatName.trim()}
-                      className="bg-[#7A8F79] text-white px-3 py-1 rounded text-xs font-semibold hover:bg-[#2F3E4E] transition disabled:opacity-50"
-                    >
-                      {catSaving ? '…' : 'Add'}
-                    </button>
-                  </form>
-                </div>
               )}
             </div>
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Expiration Date <span className="normal-case font-normal text-[#7A8F79]">(optional)</span></label>
-            <input
-              type="date"
-              value={docExpiry}
-              onChange={e => setDocExpiry(e.target.value)}
-              className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-            />
+
+            <div className="flex items-end gap-3">
+              <div className="flex-1">
+                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Role</label>
+                <select
+                  value={userRole}
+                  onChange={(e) => setUserRole(e.target.value)}
+                  className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                >
+                  {ROLE_OPTIONS.map(r => (
+                    <option key={r.value} value={r.value}>{r.label}</option>
+                  ))}
+                </select>
+              </div>
+              <button
+                type="button"
+                onClick={saveRole}
+                disabled={roleSaving}
+                className="bg-[#2F3E4E] text-white px-4 py-2 rounded-lg hover:bg-[#7A8F79] transition text-sm font-semibold disabled:opacity-50"
+              >
+                {roleSaving ? 'Saving…' : 'Update Role'}
+              </button>
+            </div>
+            {roleMessage && (
+              <p className={`mt-2 text-xs font-medium ${roleMessage.includes('Error') ? 'text-red-500' : 'text-[#7A8F79]'}`}>
+                {roleMessage}
+              </p>
+            )}
+
+            <div className="mt-4 pt-4 border-t border-[#D9E1E8]">
+              <p className="text-xs font-semibold text-[#2F3E4E] mb-1">Set Password Manually</p>
+              <p className="text-xs text-[#7A8F79] mb-2">Set a specific password without sending an email.</p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  placeholder="Enter new password"
+                  className="flex-1 border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                />
+                <button
+                  type="button"
+                  onClick={setPassword}
+                  disabled={pwSaving || !newPassword.trim()}
+                  className="shrink-0 bg-[#2F3E4E] text-white px-4 py-2 rounded-lg hover:bg-[#7A8F79] transition text-sm font-semibold disabled:opacity-50"
+                >
+                  {pwSaving ? 'Saving…' : 'Set Password'}
+                </button>
+              </div>
+              {pwMessage && (
+                <p className={`mt-2 text-xs font-medium ${pwMessage.includes('Error') ? 'text-red-500' : 'text-[#7A8F79]'}`}>
+                  {pwMessage}
+                </p>
+              )}
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-[#D9E1E8] flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[#2F3E4E]">Resend Portal Invite</p>
+                <p className="text-xs text-[#7A8F79] mt-0.5">Resets their password and sends a new welcome email.</p>
+              </div>
+              <button
+                type="button"
+                onClick={resendInvite}
+                disabled={inviteSending}
+                className="shrink-0 ml-4 bg-[#7A8F79] text-white px-4 py-2 rounded-lg hover:bg-[#657a64] transition text-sm font-semibold disabled:opacity-50"
+              >
+                {inviteSending ? 'Sending…' : 'Resend Invite'}
+              </button>
+            </div>
+            {inviteMessage && (
+              <p className={`mt-2 text-xs font-medium ${inviteMessage.includes('Failed') || inviteMessage.includes('error') ? 'text-red-500' : 'text-[#7A8F79]'}`}>
+                {inviteMessage}
+              </p>
+            )}
+
+            <div className="mt-4 pt-4 border-t border-[#D9E1E8] flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[#2F3E4E]">Weekly Reminder Emails</p>
+                <p className="text-xs text-[#7A8F79] mt-0.5">
+                  {notifEnabled ? 'This provider receives weekly hour submission reminders.' : 'Weekly reminders are turned off for this provider.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={notifSaving}
+                onClick={async () => {
+                  const next = !notifEnabled
+                  setNotifSaving(true)
+                  const res = await fetch(`/api/admin/nurses/${id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ receiveNotifications: next }),
+                  })
+                  setNotifSaving(false)
+                  if (res.ok) setNotifEnabled(next)
+                }}
+                className={`shrink-0 ml-4 px-4 py-2 rounded-lg text-sm font-semibold transition disabled:opacity-50 ${
+                  notifEnabled
+                    ? 'bg-[#D9E1E8] text-[#2F3E4E] hover:bg-red-100 hover:text-red-600'
+                    : 'bg-green-100 text-green-700 hover:bg-green-200'
+                }`}
+              >
+                {notifSaving ? 'Saving…' : notifEnabled ? 'Turn Off' : 'Turn On'}
+              </button>
+            </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">File</label>
-            <input
-              type="file"
-              onChange={e => setDocFile(e.target.files?.[0] || null)}
-              className="w-full text-sm text-[#2F3E4E] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#D9E1E8] file:text-[#2F3E4E] hover:file:bg-[#7A8F79] hover:file:text-white transition"
-              required
-            />
-          </div>
-
-          {docExpiry && (
-            <div className="space-y-2">
-              <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Email Reminders Before Expiry</label>
-              <div className="flex flex-wrap gap-3">
-                {[90, 60, 30, 14, 7, 1].map(days => (
-                  <label key={days} className="flex items-center gap-1.5 text-sm text-[#2F3E4E] cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={docReminderDays.includes(days)}
-                      onChange={e => setDocReminderDays(prev =>
-                        e.target.checked ? [...prev, days] : prev.filter(d => d !== days)
-                      )}
-                      className="accent-[#7A8F79]"
-                    />
-                    {days === 1 ? '1 day' : `${days} days`}
-                  </label>
-                ))}
+          {/* Invoice Summary */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8] mb-4">
+              Invoice Summary
+            </h2>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-[#F4F6F5] rounded-lg p-4 text-center">
+                <p className="text-3xl font-bold text-[#2F3E4E]">{invoiceGroupMap.size}</p>
+                <p className="text-xs text-[#7A8F79] mt-1 font-semibold uppercase tracking-wide">Invoices Created</p>
+              </div>
+              <div className={`rounded-lg p-4 text-center ${pendingEntries.length > 0 ? 'bg-amber-50' : 'bg-[#F4F6F5]'}`}>
+                <p className={`text-3xl font-bold ${pendingEntries.length > 0 ? 'text-amber-600' : 'text-[#2F3E4E]'}`}>
+                  {pendingEntries.length}
+                </p>
+                <p className="text-xs text-[#7A8F79] mt-1 font-semibold uppercase tracking-wide">Outstanding</p>
+                {pendingEntries.length > 0 && (
+                  <p className="text-xs font-bold text-amber-600 mt-0.5">${pendingTotal.toFixed(2)}</p>
+                )}
               </div>
             </div>
-          )}
-
-          <div className="flex items-center gap-3">
-            <button
-              type="submit"
-              disabled={docUploading || !docFile || !docTitle}
-              className="bg-[#7A8F79] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#2F3E4E] transition disabled:opacity-50"
-            >
-              {docUploading ? 'Uploading…' : 'Upload Document'}
-            </button>
-            {docMessage && <p className="text-sm text-[#7A8F79]">{docMessage}</p>}
+            {invoiceMessage && (
+              <p className={`mt-3 text-xs font-semibold ${invoiceMessage.includes('sent') ? 'text-[#7A8F79]' : 'text-red-500'}`}>
+                {invoiceMessage}
+              </p>
+            )}
           </div>
-        </form>
+
+          {/* Individual Provider Information */}
+          <Section title="Individual Provider Information">
+            <div className="grid grid-cols-3 gap-3">
+              <Field label="First Name"     field="firstName"     profile={profile} setProfile={setProfile} />
+              <Field label="MI"             field="middleInitial" profile={profile} setProfile={setProfile} />
+              <Field label="Last Name"      field="lastName"      profile={profile} setProfile={setProfile} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Phone"          field="phone"         profile={profile} setProfile={setProfile} />
+              <Field label="Email"          field="user.email"    profile={profile} setProfile={setProfile} type="email" />
+            </div>
+            <Field label="Home Address"     field="address"       profile={profile} setProfile={setProfile} />
+            <div className="grid grid-cols-3 gap-3">
+              <Field label="City"           field="city"          profile={profile} setProfile={setProfile} />
+              <Field label="State"          field="state"         profile={profile} setProfile={setProfile} />
+              <Field label="ZIP"            field="zip"           profile={profile} setProfile={setProfile} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Date of Birth"  field="dob"           profile={profile} setProfile={setProfile} type="date" />
+              <Field label="SSN"            field="ssn"           profile={profile} setProfile={setProfile} sensitive />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="NPI"            field="npiNumber"     profile={profile} setProfile={setProfile} />
+              <Field label="Medicaid ID"    field="medicaidNumber" profile={profile} setProfile={setProfile} />
+            </div>
+            <Field label="BCBS Payor ID"    field="bcbsPayorId"   profile={profile} setProfile={setProfile} />
+          </Section>
+
+          {/* Business Provider toggle */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={!!profile.hasBusinessProvider}
+                onChange={(e) => setProfile({ ...profile, hasBusinessProvider: e.target.checked })}
+                className="w-4 h-4 accent-[#7A8F79]"
+              />
+              <span className="font-semibold text-[#2F3E4E]">This provider has a separate Business entity</span>
+            </label>
+
+            {profile.hasBusinessProvider && (
+              <div className="mt-6 space-y-4">
+                <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8]">
+                  Business Provider Information
+                </h2>
+                <Field label="Entity Name"       field="bizEntityName"      profile={profile} setProfile={setProfile} />
+                <Field label="Service Address"   field="bizServiceAddress"  profile={profile} setProfile={setProfile} />
+                <Field label="Business Email"    field="bizEmail"           profile={profile} setProfile={setProfile} type="email" />
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="EIN"             field="ein"                profile={profile} setProfile={setProfile} sensitive />
+                  <Field label="FEIN"            field="fein"               profile={profile} setProfile={setProfile} sensitive />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Business NPI"    field="bizNpi"             profile={profile} setProfile={setProfile} />
+                  <Field label="Business Medicaid ID" field="bizMedicaidId" profile={profile} setProfile={setProfile} />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Payment Information */}
+          <Section title="Payment Information">
+            <Field label="Bank Name"         field="bankName"       profile={profile} setProfile={setProfile} />
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Routing #"       field="bankRouting"    profile={profile} setProfile={setProfile} sensitive />
+              <Field label="Account #"       field="bankAccount"    profile={profile} setProfile={setProfile} sensitive />
+            </div>
+          </Section>
+
+          <button
+            type="button"
+            onClick={save}
+            disabled={saving}
+            className="w-full bg-[#2F3E4E] text-white py-3 rounded-xl hover:bg-[#7A8F79] transition font-semibold disabled:opacity-50"
+          >
+            {saving ? 'Saving…' : 'Save Profile'}
+          </button>
+
+          {message && (
+            <p className={`text-sm text-center font-medium ${message.includes('Error') ? 'text-red-500' : 'text-[#7A8F79]'}`}>
+              {message}
+            </p>
+          )}
+        </div>
+
+        {/* ── RIGHT COLUMN ── */}
+        <div className="space-y-6">
+
+          {/* Document Uploads */}
+          <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
+            <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8]">
+              Document Uploads
+            </h2>
+
+            {documents.length === 0 ? (
+              <p className="text-sm text-[#7A8F79] italic">No documents uploaded yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {documents.map(doc => {
+                  const days = doc.expiresAt
+                    ? Math.ceil((new Date(doc.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+                    : null
+                  const expiryColor = days == null ? '' : days < 0 ? 'text-red-600' : days <= 30 ? 'text-orange-500' : 'text-[#7A8F79]'
+                  return (
+                    <div key={doc.id} className="flex items-center gap-3 p-3 bg-[#F4F6F5] rounded-lg">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold text-[#2F3E4E] truncate">{doc.title}</p>
+                          <span className="text-[10px] font-semibold bg-[#D9E1E8] text-[#2F3E4E] px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">{doc.category}</span>
+                        </div>
+                        <p className="text-[11px] text-[#7A8F79] truncate">{doc.fileName}</p>
+                        {doc.expiresAt && (
+                          <p className={`text-[11px] font-semibold mt-0.5 ${expiryColor}`}>
+                            {days != null && days < 0 ? 'Expired' : `Expires ${new Date(doc.expiresAt).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })}`}
+                            {doc.reminderDays.length > 0 && ` · Reminders: ${doc.reminderDays.join(', ')}d`}
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleDocView(doc.id)}
+                        disabled={docViewing === doc.id}
+                        className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] border border-[#D9E1E8] px-2 py-1 rounded transition disabled:opacity-50"
+                      >
+                        {docViewing === doc.id ? '…' : 'View'}
+                      </button>
+                      <button
+                        onClick={() => handleDocDelete(doc.id)}
+                        disabled={docDeleting === doc.id}
+                        className="text-xs text-red-400 hover:text-red-600 border border-red-200 px-2 py-1 rounded transition disabled:opacity-50"
+                      >
+                        {docDeleting === doc.id ? '…' : 'Delete'}
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            <form onSubmit={handleDocUpload} className="space-y-3 border-t border-[#D9E1E8] pt-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Upload New Document</p>
+
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Document Title</label>
+                  <input
+                    type="text"
+                    value={docTitle}
+                    onChange={e => setDocTitle(e.target.value)}
+                    placeholder="e.g. Medicaid License 2026"
+                    className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Category</label>
+                    <button
+                      type="button"
+                      onClick={() => setShowCatManager(v => !v)}
+                      className="text-[10px] text-[#7A8F79] hover:text-[#2F3E4E] underline transition"
+                    >
+                      {showCatManager ? 'Done' : 'Manage folders'}
+                    </button>
+                  </div>
+                  <select
+                    value={docCategory}
+                    onChange={e => setDocCategory(e.target.value)}
+                    className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                  >
+                    {categories.map(c => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
+                  {showCatManager && (
+                    <div className="mt-2 border border-[#D9E1E8] rounded-lg p-3 bg-[#FAFBFC] space-y-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79]">Folder List</p>
+                      <div className="space-y-1">
+                        {categories.map(c => (
+                          <div key={c.id} className="flex items-center justify-between gap-2 py-0.5">
+                            <span className="text-sm text-[#2F3E4E]">{c.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteCategory(c.id, c.name)}
+                              disabled={catDeleting === c.id}
+                              className="text-[11px] text-red-400 hover:text-red-600 transition disabled:opacity-40"
+                            >
+                              {catDeleting === c.id ? '…' : 'Remove'}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <form onSubmit={handleAddCategory} className="flex gap-2 pt-1 border-t border-[#D9E1E8]">
+                        <input
+                          type="text"
+                          value={newCatName}
+                          onChange={e => setNewCatName(e.target.value)}
+                          placeholder="New folder name"
+                          className="flex-1 border border-[#D9E1E8] px-2 py-1 rounded text-sm text-[#2F3E4E] focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
+                        />
+                        <button
+                          type="submit"
+                          disabled={catSaving || !newCatName.trim()}
+                          className="bg-[#7A8F79] text-white px-3 py-1 rounded text-xs font-semibold hover:bg-[#2F3E4E] transition disabled:opacity-50"
+                        >
+                          {catSaving ? '…' : 'Add'}
+                        </button>
+                      </form>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">
+                  Expiration Date <span className="normal-case font-normal text-[#7A8F79]">(optional)</span>
+                </label>
+                <input
+                  type="date"
+                  value={docExpiry}
+                  onChange={e => setDocExpiry(e.target.value)}
+                  className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">File</label>
+                <input
+                  type="file"
+                  onChange={e => setDocFile(e.target.files?.[0] || null)}
+                  className="w-full text-sm text-[#2F3E4E] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#D9E1E8] file:text-[#2F3E4E] hover:file:bg-[#7A8F79] hover:file:text-white transition"
+                  required
+                />
+              </div>
+
+              {docExpiry && (
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Email Reminders Before Expiry</label>
+                  <div className="flex flex-wrap gap-3">
+                    {[90, 60, 30, 14, 7, 1].map(days => (
+                      <label key={days} className="flex items-center gap-1.5 text-sm text-[#2F3E4E] cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={docReminderDays.includes(days)}
+                          onChange={e => setDocReminderDays(prev =>
+                            e.target.checked ? [...prev, days] : prev.filter(d => d !== days)
+                          )}
+                          className="accent-[#7A8F79]"
+                        />
+                        {days === 1 ? '1 day' : `${days} days`}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="submit"
+                  disabled={docUploading || !docFile || !docTitle}
+                  className="bg-[#7A8F79] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#2F3E4E] transition disabled:opacity-50"
+                >
+                  {docUploading ? 'Uploading…' : 'Upload Document'}
+                </button>
+                {docMessage && <p className="text-sm text-[#7A8F79]">{docMessage}</p>}
+              </div>
+            </form>
+          </div>
+
+          {/* Claim Access */}
+          <Section title="Claims Access — Provider Aliases">
+            <p className="text-xs text-[#7A8F79]">
+              This provider will see any claim where the Provider Name in the CSV matches one of these aliases exactly.
+            </p>
+            <AliasEditor
+              aliases={profile.providerAliases || []}
+              onChange={(aliases) => setProfile({ ...profile, providerAliases: aliases })}
+            />
+            <p className="text-xs text-[#7A8F79] italic">Changes are saved with the Save Profile button.</p>
+          </Section>
+
+          {/* Log Hours */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8] mb-4">
+              Log Hours
+            </h2>
+            <form onSubmit={submitTimeEntry} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Date of Service</label>
+                  <input
+                    type="date"
+                    value={workDate}
+                    onChange={e => setWorkDate(e.target.value)}
+                    required
+                    className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Hours</label>
+                  <input
+                    type="number"
+                    step="0.25"
+                    min="0"
+                    value={workHours}
+                    onChange={e => setWorkHours(e.target.value)}
+                    placeholder="e.g. 8"
+                    required
+                    className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Notes <span className="normal-case font-normal">(optional)</span></label>
+                <input
+                  type="text"
+                  value={workNotes}
+                  onChange={e => setWorkNotes(e.target.value)}
+                  placeholder="e.g. Home visit — patient care"
+                  className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  type="submit"
+                  disabled={workSubmitting || !workDate || !workHours}
+                  className="bg-[#7A8F79] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#2F3E4E] transition disabled:opacity-50"
+                >
+                  {workSubmitting ? 'Adding…' : 'Add Entry'}
+                </button>
+                {workMessage && <p className="text-sm text-[#7A8F79]">{workMessage}</p>}
+              </div>
+            </form>
+          </div>
+
+          {/* Time Log + Invoice Assignment */}
+          <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-[#D9E1E8]">
+              <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79]">
+                Time Log &amp; Invoice Assignment
+              </h2>
+              {pendingEntries.length > 0 && selectedCount === 0 && (
+                <button
+                  onClick={() => setShowInvoiceModal(true)}
+                  className="bg-[#7A8F79] text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-[#2F3E4E] transition"
+                >
+                  Create Invoice ({pendingEntries.length} flagged · ${pendingTotal.toFixed(2)})
+                </button>
+              )}
+            </div>
+
+            {/* Bulk action bar */}
+            {selectedCount > 0 && (
+              <div className="flex items-center gap-3 bg-[#F4F6F5] rounded-lg px-3 py-2">
+                <span className="text-xs font-semibold text-[#2F3E4E]">{selectedCount} selected</span>
+                <button
+                  type="button"
+                  onClick={bulkDelete}
+                  disabled={bulkDeleting}
+                  className="text-xs text-red-500 hover:text-red-700 font-semibold border border-red-200 px-3 py-1 rounded-lg transition disabled:opacity-50"
+                >
+                  {bulkDeleting ? 'Deleting…' : 'Delete'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBulkInvoice}
+                  disabled={bulkFlagging}
+                  className="text-xs bg-[#2F3E4E] text-white font-semibold px-3 py-1 rounded-lg hover:bg-[#7A8F79] transition disabled:opacity-50"
+                >
+                  {bulkFlagging ? 'Preparing…' : 'Create Invoice'}
+                </button>
+              </div>
+            )}
+
+            {entries.length === 0 ? (
+              <p className="text-sm text-[#7A8F79] italic">No time entries yet.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[560px]">
+                  <thead>
+                    <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
+                      <th className="text-left py-2 pr-3 w-8">
+                        <input
+                          type="checkbox"
+                          checked={allNonInvoicedSelected}
+                          onChange={toggleSelectAll}
+                          className="w-4 h-4 accent-[#7A8F79]"
+                          title={allNonInvoicedSelected ? 'Deselect all' : 'Select all'}
+                        />
+                      </th>
+                      <th className="text-left py-2 pr-4">Provider</th>
+                      <th className="text-left py-2 pr-4">Claim Ref #</th>
+                      <th className="text-left py-2 pr-4">Date</th>
+                      <th className="text-right py-2 pr-4">Hrs</th>
+                      <th className="text-left py-2 pr-4">Notes</th>
+                      <th className="text-left py-2">Fee / Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* Invoiced entries — collapsed per invoice */}
+                    {[...invoiceGroupMap.entries()].map(([invoiceId, group]) => {
+                      const dates = group.map(e => new Date(e.workDate).getTime())
+                      const minDate = new Date(Math.min(...dates)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+                      const maxDate = new Date(Math.max(...dates)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+                      const totalFee = group.reduce((s, e) => s + (e.invoiceFeeAmt ?? 0), 0)
+                      const invoiceNum = group[0]?.invoice?.invoiceNumber || invoiceId.slice(0, 8)
+                      const invoiceStatus = group[0]?.invoice?.status || 'Sent'
+                      const firstRef = group.find(e => e.claimRef)?.claimRef
+                      return (
+                        <tr key={invoiceId} className="border-b border-[#D9E1E8] bg-green-50">
+                          <td className="py-2 pr-3">
+                            <span className="block w-4 h-4 rounded bg-green-200" />
+                          </td>
+                          <td className="py-2 pr-4">
+                            <p className="text-xs font-bold text-[#2F3E4E]">{profile.displayName}</p>
+                            <p className="text-[10px] text-green-600 font-mono">{profile.accountNumber || '—'}</p>
+                          </td>
+                          <td className="py-2 pr-4 text-xs text-[#7A8F79]">{firstRef || '—'}</td>
+                          <td className="py-2 pr-4 text-xs text-[#2F3E4E] whitespace-nowrap">
+                            {minDate === maxDate ? minDate : `${minDate} – ${maxDate}`}
+                          </td>
+                          <td className="py-2 pr-4 text-right text-xs text-[#7A8F79]">
+                            {group.reduce((s, e) => s + e.hours, 0)}
+                          </td>
+                          <td className="py-2 pr-4 text-xs text-[#7A8F79] italic">{group.length} entr{group.length === 1 ? 'y' : 'ies'}</td>
+                          <td className="py-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs bg-green-100 text-green-700 font-semibold px-2 py-0.5 rounded-full whitespace-nowrap">
+                                {invoiceNum}
+                              </span>
+                              <span className="text-xs font-bold text-green-700">${totalFee.toFixed(2)}</span>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+
+                    {/* Non-invoiced entries */}
+                    {notInvoicedEntries.map((entry, i) => {
+                      const isSelected = selectedEntries.has(entry.id)
+                      const dateStr = new Date(entry.workDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+                      return (
+                        <tr
+                          key={entry.id}
+                          className={`border-b border-[#D9E1E8] last:border-0 transition-colors ${isSelected ? 'bg-blue-50' : i % 2 === 0 ? '' : 'bg-[#F4F6F5]'}`}
+                        >
+                          <td className="py-2.5 pr-3">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleSelect(entry.id)}
+                              className="w-4 h-4 accent-[#7A8F79]"
+                            />
+                          </td>
+                          <td className="py-2.5 pr-4">
+                            <p className="text-xs font-bold text-blue-600">{profile.displayName}</p>
+                            <p className="text-[10px] text-green-600 font-mono">{profile.accountNumber || '—'}</p>
+                          </td>
+                          <td className="py-2.5 pr-4">
+                            <input
+                              type="text"
+                              value={claimRefs[entry.id] ?? entry.claimRef ?? ''}
+                              onChange={e => setClaimRefs(prev => ({ ...prev, [entry.id]: e.target.value }))}
+                              onBlur={e => saveClaimRef(entry.id, e.target.value)}
+                              placeholder="CLM-001"
+                              className="border border-[#D9E1E8] rounded px-2 py-1 text-xs text-[#2F3E4E] w-24 focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
+                            />
+                          </td>
+                          <td className="py-2.5 pr-4 text-xs text-[#2F3E4E] whitespace-nowrap">{dateStr}</td>
+                          <td className="py-2.5 pr-4 text-right text-xs font-semibold text-[#2F3E4E]">{entry.hours}</td>
+                          <td className="py-2.5 pr-4 text-[#7A8F79] italic text-xs max-w-[100px] truncate">
+                            {entry.notes || '—'}
+                          </td>
+                          <td className="py-2.5">
+                            {entry.readyToInvoice ? (
+                              <div className="flex items-center gap-1.5">
+                                <select
+                                  value={entry.invoiceFeePlan ?? 'A1'}
+                                  onChange={e => toggleInvoiceFlag(entry, true, e.target.value)}
+                                  className="border border-[#D9E1E8] rounded px-1.5 py-1 text-xs text-[#2F3E4E] focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
+                                >
+                                  {FEE_PLANS.map(p => (
+                                    <option key={p.value} value={p.value}>{p.value} — ${p.amount.toFixed(2)}</option>
+                                  ))}
+                                </select>
+                                <span className="text-xs font-bold text-[#2F3E4E]">
+                                  ${(entry.invoiceFeeAmt ?? 0).toFixed(2)}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-[#D9E1E8] italic">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* ── Create Invoice Modal ── */}
@@ -1046,6 +1249,12 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                 className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] resize-none"
               />
             </div>
+
+            {invoiceMessage && (
+              <p className={`text-xs font-semibold ${invoiceMessage.includes('sent') ? 'text-[#7A8F79]' : 'text-red-500'}`}>
+                {invoiceMessage}
+              </p>
+            )}
 
             <div className="flex gap-3 pt-2">
               <button

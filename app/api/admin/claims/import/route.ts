@@ -2,6 +2,22 @@ import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../lib/prisma'
 import { verifyToken } from '../../../../../lib/auth'
 
+// Must stay in sync with EDI route — controls which direction stage can move
+const STAGE_PRIORITY: Record<string, number> = {
+  'Draft': 0,
+  '': 0,
+  'INS-1 Submitted': 1,
+  'INS-2 Submitted': 2,
+  'Resubmitted': 2,
+  'Pending': 3,
+  'Info Requested': 3,
+  'Info Sent': 3,
+  'Appealed': 4,
+  'Rejected': 5,
+  'Paid': 10,
+  'Denied': 10,
+}
+
 function adminOnly(req: Request) {
   const cookie = req.headers.get('cookie') || ''
   const token = cookie.split('auth_token=').pop()?.split(';')[0]
@@ -91,7 +107,18 @@ export async function POST(req: Request) {
     if (claimId) {
       const existing = await prisma.claim.findFirst({ where: { claimId, nurseId } })
       if (existing) {
-        await prisma.claim.update({ where: { id: existing.id }, data })
+        // Don't let CSV overwrite a stage that EDI already advanced to a higher priority
+        const csvPriority = STAGE_PRIORITY[data.claimStage || ''] ?? 0
+        const existingPriority = STAGE_PRIORITY[existing.claimStage || ''] ?? 0
+        const safeStage = csvPriority >= existingPriority ? data.claimStage : existing.claimStage
+
+        // Don't let CSV wipe notes that EDI wrote — only update notes if none exist yet
+        const safeNotes = existing.processingNotes || data.processingNotes
+
+        await prisma.claim.update({
+          where: { id: existing.id },
+          data: { ...data, claimStage: safeStage, processingNotes: safeNotes },
+        })
         updated++
       } else {
         await prisma.claim.create({ data })

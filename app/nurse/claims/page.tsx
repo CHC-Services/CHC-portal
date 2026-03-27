@@ -69,27 +69,232 @@ function StageBadge({ stage }: { stage: string | null }) {
   return <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${color}`}>{stage}</span>
 }
 
-type ClaimGroup = { primary: Claim; originals: Claim[] }
+type ClaimGroup = { primary: Claim; chain: Claim[] }
 
+// Walks the full resubmission chain upward — handles chains of any depth
 function groupClaims(claims: Claim[]): ClaimGroup[] {
-  const superseded = new Set(claims.filter(c => c.resubmissionOf).map(c => c.resubmissionOf!))
   const byClaimId = new Map(claims.filter(c => c.claimId).map(c => [c.claimId!, c]))
+  const superseded = new Set(claims.filter(c => c.resubmissionOf).map(c => c.resubmissionOf!))
   const groups: ClaimGroup[] = []
   for (const c of claims) {
     if (superseded.has(c.claimId || '')) continue
-    const originals = c.resubmissionOf && byClaimId.has(c.resubmissionOf)
-      ? [byClaimId.get(c.resubmissionOf)!]
-      : []
-    groups.push({ primary: c, originals })
+    // Walk backwards through the chain collecting all ancestors
+    const chain: Claim[] = []
+    let current = c
+    while (current.resubmissionOf && byClaimId.has(current.resubmissionOf)) {
+      const ancestor = byClaimId.get(current.resubmissionOf)!
+      chain.push(ancestor)
+      current = ancestor
+    }
+    groups.push({ primary: c, chain })
   }
   return groups
+}
+
+function ClaimRow({ primary: c, chain }: ClaimGroup) {
+  const [expanded, setExpanded] = useState(false)
+
+  const isFinal = ['paid', 'denied', 'rejected', 'finalized'].includes((c.claimStage || '').toLowerCase())
+  const dateLabel = isFinal ? 'Finalized' : 'Last Updated'
+  const dateValue = isFinal
+    ? (c.dateFullyFinalized || c.primaryPaidDate || c.updatedAt)
+    : c.updatedAt
+  const firstNoteLine = c.processingNotes ? c.processingNotes.split('\n').find(l => l.trim()) || null : null
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      {/* ── Compact summary row (always visible, click to expand) ── */}
+      <button
+        onClick={() => setExpanded(e => !e)}
+        className="w-full text-left px-4 pt-3 pb-2.5 hover:bg-[#F4F6F5] transition-colors"
+      >
+        {/* Row 1: resubmit indicator | | | status + chevron */}
+        <div className="grid grid-cols-4 items-center mb-1">
+          <div>
+            {c.resubmissionOf && (
+              <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full whitespace-nowrap">
+                ↻ Resubmission
+              </span>
+            )}
+          </div>
+          <div />
+          <div />
+          <div className="flex justify-end items-center gap-2">
+            <StageBadge stage={c.claimStage} />
+            <span className="text-[#7A8F79] text-[10px]">{expanded ? '▲' : '▼'}</span>
+          </div>
+        </div>
+
+        {/* Row 2: Claim ID | Total Billed label | Total Reimb label | date value */}
+        <div className="grid grid-cols-4 gap-2 items-end">
+          <div>
+            <p className="text-[10px] text-[#7A8F79] leading-tight">Claim ID</p>
+          </div>
+          <div>
+            <p className="text-[10px] text-[#7A8F79] leading-tight">Total Billed</p>
+          </div>
+          <div>
+            <p className="text-[10px] text-[#7A8F79] leading-tight">Total Reimb.</p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs font-semibold text-[#2F3E4E] leading-tight">{fmtDate(dateValue)}</p>
+          </div>
+        </div>
+
+        {/* Row 3: DOS | billed $$ | reimb $$ | date label */}
+        <div className="grid grid-cols-4 gap-2 items-start mt-0.5">
+          <div>
+            <p className="text-xs font-mono font-semibold text-[#2F3E4E] truncate leading-tight">{c.claimId || '—'}</p>
+            <p className="text-[10px] text-[#7A8F79] leading-tight mt-0.5">{fmtDOS(c.dosStart, c.dosStop)}</p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-[#2F3E4E] leading-tight">{fmt(c.totalBilled, '$')}</p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-[#7A8F79] leading-tight">{fmt(c.totalReimbursed, '$')}</p>
+          </div>
+          <div className="text-right">
+            <p className={`text-[10px] leading-tight ${isFinal ? 'text-green-700' : 'text-[#7A8F79]'}`}>{dateLabel}</p>
+          </div>
+        </div>
+
+        {/* Row 4: Processing notes — 1 line preview, spans full width */}
+        {firstNoteLine && (
+          <div className="mt-2 pt-2 border-t border-[#D9E1E8]">
+            <p className="text-[11px] text-[#7A8F79] truncate leading-tight">
+              <span className="font-semibold text-[#7A8F79] uppercase tracking-wide text-[10px]">Note · </span>
+              {firstNoteLine}
+            </p>
+          </div>
+        )}
+      </button>
+
+      {/* ── Expanded details ── */}
+      {expanded && (
+        <div className="border-t border-[#D9E1E8] px-4 py-4 space-y-4 bg-[#FAFBFC]">
+
+          {/* Primary insurance */}
+          {(c.primaryPayer || c.primaryPaidAmt != null) && (
+            <div>
+              <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-2">
+                Primary — {c.primaryPayer || '—'}
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                <div>
+                  <p className="text-xs text-[#7A8F79]">Allowed</p>
+                  <p className="font-semibold text-[#2F3E4E]">{fmt(c.primaryAllowedAmt, '$')}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-[#7A8F79]">Paid</p>
+                  <p className="font-semibold text-[#7A8F79]">{fmt(c.primaryPaidAmt, '$')}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-[#7A8F79]">Paid Date</p>
+                  <p className="font-semibold text-[#2F3E4E]">{fmtDate(c.primaryPaidDate)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-[#7A8F79]">Paid To</p>
+                  <p className="font-semibold text-[#2F3E4E]">{c.primaryPaidTo || '—'}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Secondary insurance */}
+          {(c.secondaryPayer || c.secondaryPaidAmt != null) && (
+            <div className="pt-3 border-t border-[#D9E1E8]">
+              <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-2">
+                Secondary — {c.secondaryPayer || '—'}
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                <div>
+                  <p className="text-xs text-[#7A8F79]">Allowed</p>
+                  <p className="font-semibold text-[#2F3E4E]">{fmt(c.secondaryAllowedAmt, '$')}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-[#7A8F79]">Paid</p>
+                  <p className="font-semibold text-[#7A8F79]">{fmt(c.secondaryPaidAmt, '$')}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-[#7A8F79]">Paid Date</p>
+                  <p className="font-semibold text-[#2F3E4E]">{fmtDate(c.secondaryPaidDate)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-[#7A8F79]">Paid To</p>
+                  <p className="font-semibold text-[#2F3E4E]">{c.secondaryPaidTo || '—'}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Summary */}
+          <div className="pt-3 border-t border-[#D9E1E8] grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+            <div>
+              <p className="text-xs text-[#7A8F79]">Total Billed</p>
+              <p className="font-semibold text-[#2F3E4E]">{fmt(c.totalBilled, '$')}</p>
+            </div>
+            <div>
+              <p className="text-xs text-[#7A8F79]">Total Reimbursed</p>
+              <p className="font-semibold text-[#7A8F79]">{fmt(c.totalReimbursed, '$')}</p>
+            </div>
+            <div>
+              <p className="text-xs text-[#7A8F79]">Remaining Balance</p>
+              <p className={`font-semibold ${(c.remainingBalance || 0) > 0 ? 'text-red-600' : 'text-[#2F3E4E]'}`}>
+                {fmt(c.remainingBalance, '$')}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-[#7A8F79]">Provider</p>
+              <p className="font-semibold text-[#2F3E4E] text-xs">{c.providerName || '—'}</p>
+            </div>
+          </div>
+
+          {/* Full processing notes */}
+          {c.processingNotes && (
+            <div className="pt-3 border-t border-[#D9E1E8]">
+              <p className="text-xs text-[#7A8F79] font-semibold uppercase tracking-wide mb-1">Processing Notes</p>
+              <p className="text-sm text-[#2F3E4E] whitespace-pre-line">{c.processingNotes}</p>
+            </div>
+          )}
+
+          {/* Prior submissions chain */}
+          {chain.length > 0 && (
+            <div className="pt-3 border-t border-[#D9E1E8]">
+              <p className="text-xs text-[#7A8F79] font-semibold uppercase tracking-wide mb-2">
+                Prior Submission{chain.length !== 1 ? 's' : ''} — {chain.length} in chain
+              </p>
+              <div className="space-y-2">
+                {chain.map((orig, i) => (
+                  <div key={orig.id} className="rounded-lg px-3 py-2.5 border-l-4 border-red-200 bg-red-50">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                      <span className="text-[10px] font-semibold text-red-500 uppercase tracking-wide">
+                        #{chain.length - i} — superseded
+                      </span>
+                      <span className="font-mono text-xs text-[#2F3E4E]">{orig.claimId || '—'}</span>
+                      <span className="text-xs text-[#7A8F79]">{fmtDOS(orig.dosStart, orig.dosStop)}</span>
+                      <StageBadge stage={orig.claimStage} />
+                      <span className="text-xs text-[#2F3E4E]">Billed: {fmt(orig.totalBilled, '$')}</span>
+                    </div>
+                    {orig.processingNotes && (
+                      <p className="text-[11px] text-[#7A8F79] mt-1 truncate">
+                        {orig.processingNotes.split('\n').find(l => l.trim())}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function NurseClaimsPage() {
   const [claims, setClaims] = useState<Claim[]>([])
   const [enrolledInBilling, setEnrolledInBilling] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(true)
-  const [expandedOriginals, setExpandedOriginals] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     fetch('/api/nurse/claims', { credentials: 'include' })
@@ -101,8 +306,6 @@ export default function NurseClaimsPage() {
       })
   }, [])
 
-  // Exclude superseded originals — if a claim was resubmitted, only count the resubmission
-  // Exclude superseded originals — if a claim was resubmitted, only count the resubmission
   const resubIds = new Set(claims.filter(c => c.resubmissionOf).map(c => c.resubmissionOf as string))
   const activeClaims = claims.filter(c => !c.claimId || !resubIds.has(c.claimId))
 
@@ -193,164 +396,10 @@ export default function NurseClaimsPage() {
             <p className="text-[#7A8F79] text-sm mt-1">Your claims will appear here once billing is processed.</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {groupClaims(claims).map(({ primary: c, originals }) => {
-              const isExpanded = expandedOriginals.has(c.id)
-              const toggleOriginals = () => setExpandedOriginals(prev => {
-                const next = new Set(prev)
-                if (next.has(c.id)) next.delete(c.id); else next.add(c.id)
-                return next
-              })
-              return (
-              <div key={c.id}>
-              <div className="bg-white rounded-xl shadow-sm p-5">
-
-                {/* Resubmission badge */}
-                {c.resubmissionOf && (
-                  <div className="mb-3 flex items-center gap-2">
-                    <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-                      ↻ Resubmitted Claim
-                    </span>
-                  </div>
-                )}
-
-                {/* Header row */}
-                <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
-                  <div>
-                    <p className="text-xs text-[#7A8F79] font-mono"><span className="font-semibold not-italic">Claim ID:</span> {c.claimId || '—'}</p>
-                    <p className="text-sm font-semibold text-[#2F3E4E] mt-0.5">
-                      DOS: {fmtDOS(c.dosStart, c.dosStop)}
-                    </p>
-                  </div>
-                  <div />
-                </div>
-
-                {/* Primary insurance */}
-                {(c.primaryPayer || c.primaryPaidAmt != null) && (
-                  <div className="mb-3">
-                    <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-2">
-                      Primary — {c.primaryPayer || '—'}
-                    </p>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                      <div>
-                        <p className="text-xs text-[#7A8F79]">Allowed</p>
-                        <p className="font-semibold text-[#2F3E4E]">{fmt(c.primaryAllowedAmt, '$')}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-[#7A8F79]">Paid</p>
-                        <p className="font-semibold text-[#7A8F79]">{fmt(c.primaryPaidAmt, '$')}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-[#7A8F79]">Paid Date</p>
-                        <p className="font-semibold text-[#2F3E4E]">{fmtDate(c.primaryPaidDate)}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-[#7A8F79]">Paid To</p>
-                        <p className="font-semibold text-[#2F3E4E]">{c.primaryPaidTo || '—'}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Secondary insurance */}
-                {(c.secondaryPayer || c.secondaryPaidAmt != null) && (
-                  <div className="mb-3 pt-3 border-t border-[#D9E1E8]">
-                    <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-2">
-                      Secondary — {c.secondaryPayer || '—'}
-                    </p>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                      <div>
-                        <p className="text-xs text-[#7A8F79]">Allowed</p>
-                        <p className="font-semibold text-[#2F3E4E]">{fmt(c.secondaryAllowedAmt, '$')}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-[#7A8F79]">Paid</p>
-                        <p className="font-semibold text-[#7A8F79]">{fmt(c.secondaryPaidAmt, '$')}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-[#7A8F79]">Paid Date</p>
-                        <p className="font-semibold text-[#2F3E4E]">{fmtDate(c.secondaryPaidDate)}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-[#7A8F79]">Paid To</p>
-                        <p className="font-semibold text-[#2F3E4E]">{c.secondaryPaidTo || '—'}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Summary */}
-                {(() => {
-                  const finalStages = ['paid', 'denied', 'rejected', 'finalized']
-                  const isFinal = finalStages.includes((c.claimStage || '').toLowerCase())
-                  const dateLabel = isFinal ? 'Processed Date' : 'Last Updated'
-                  const dateValue = isFinal
-                    ? (c.dateFullyFinalized || c.primaryPaidDate || c.updatedAt)
-                    : c.updatedAt
-                  return (
-                    <div className="pt-3 border-t border-[#D9E1E8] grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                      <div>
-                        <p className="text-xs text-[#7A8F79]">Total Billed</p>
-                        <p className="font-semibold text-[#2F3E4E]">{fmt(c.totalBilled, '$')}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-[#7A8F79]">Total Reimbursed</p>
-                        <p className="font-semibold text-[#7A8F79]">{fmt(c.totalReimbursed, '$')}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-[#7A8F79]">Remaining Balance</p>
-                        <p className={`font-semibold ${(c.remainingBalance || 0) > 0 ? 'text-red-600' : 'text-[#2F3E4E]'}`}>
-                          {fmt(c.remainingBalance, '$')}
-                        </p>
-                      </div>
-                      <div>
-                        <StageBadge stage={c.claimStage} />
-                        <p className="font-semibold text-[#2F3E4E] mt-1">{fmtDate(dateValue)}</p>
-                        <p className={`text-[10px] ${isFinal ? 'text-green-700' : 'text-[#7A8F79]'}`}>{dateLabel}</p>
-                      </div>
-                    </div>
-                  )
-                })()}
-
-                {/* Processing Notes */}
-                {c.processingNotes && (
-                  <div className="mt-3 pt-3 border-t border-[#D9E1E8]">
-                    <p className="text-xs text-[#7A8F79] font-semibold uppercase tracking-wide mb-1">Processing Notes</p>
-                    <p className="text-sm text-[#2F3E4E]">{c.processingNotes}</p>
-                  </div>
-                )}
-
-                {/* Toggle to show original */}
-                {originals.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-[#D9E1E8]">
-                    <button
-                      onClick={toggleOriginals}
-                      className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] flex items-center gap-1.5 transition"
-                    >
-                      <span className="text-[10px]">{isExpanded ? '▲' : '▼'}</span>
-                      {isExpanded ? 'Hide original claim' : 'Show original claim'}
-                    </button>
-                  </div>
-                )}
-
-              </div>
-
-              {/* Collapsed original claim */}
-              {isExpanded && originals.map(orig => (
-                <div key={orig.id} className="mt-1 ml-6 rounded-xl p-4 border-l-4 border-red-200 bg-red-50">
-                  <p className="text-xs font-semibold text-red-500 mb-2">Original claim (superseded)</p>
-                  <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5 text-sm">
-                    <span><span className="text-xs text-[#7A8F79]">Claim ID: </span><span className="font-mono text-xs text-[#2F3E4E]">{orig.claimId || '—'}</span></span>
-                    <span><span className="text-xs text-[#7A8F79]">DOS: </span><span className="text-[#2F3E4E]">{fmtDOS(orig.dosStart, orig.dosStop)}</span></span>
-                    <StageBadge stage={orig.claimStage} />
-                    <span><span className="text-xs text-[#7A8F79]">Billed: </span><span className="font-semibold text-[#2F3E4E]">{fmt(orig.totalBilled, '$')}</span></span>
-                  </div>
-                </div>
-              ))}
-
-              </div>
-              )
-            })}
+          <div className="space-y-2">
+            {groupClaims(claims).map(group => (
+              <ClaimRow key={group.primary.id} {...group} />
+            ))}
           </div>
         )}
 

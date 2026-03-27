@@ -439,7 +439,7 @@ export async function sendEdiSummaryEmail({
   summary,
 }: {
   unmatched: { claimId: string; submittedDate: string | null; status: string; payerName: string | null }[]
-  matched: { claimId: string; changes: string[] }[]
+  matched: { claimId: string; changes: string[]; status: string; payerName: string | null; submittedDate: string | null; errorCode: string | null }[]
   summary: {
     filesUploaded: number
     filesParsed: number
@@ -474,7 +474,11 @@ export async function sendEdiSummaryEmail({
   const matchedRows = matched.map(m => `
     <tr style="border-bottom:1px solid #e5e7eb;">
       <td style="padding:8px 12px;font-family:monospace;font-size:13px;color:#2F3E4E">${m.claimId}</td>
-      <td style="padding:8px 12px;font-size:13px;color:#7A8F79">${m.changes.join(' · ')}</td>
+      <td style="padding:8px 12px;font-size:13px;color:#2F3E4E">${m.submittedDate || '—'}</td>
+      <td style="padding:8px 12px;font-size:13px;font-weight:600;color:${statusColor(m.status)}">${statusLabel(m.status)}</td>
+      <td style="padding:8px 12px;font-size:13px;color:#7A8F79">${m.payerName || '—'}</td>
+      <td style="padding:8px 12px;font-size:13px;color:#7A8F79">${m.errorCode || '—'}</td>
+      <td style="padding:8px 12px;font-size:13px;color:#7A8F79">${m.changes.length > 0 ? m.changes.join(' · ') : 'no changes'}</td>
     </tr>`).join('')
 
   try {
@@ -529,13 +533,18 @@ export async function sendEdiSummaryEmail({
 
           ${matched.length > 0 ? `
           <h3 style="margin:0 0 10px;font-size:14px;color:#2F3E4E;text-transform:uppercase;letter-spacing:.05em">
-            ✓ Updated Claims
+            ✓ Matched Claims — Full Detail
           </h3>
+          <p style="margin:0 0 12px;font-size:13px;color:#7A8F79">All claims found in the EDI files that matched an existing portal record. Notes and stage updates were only applied for non-accepted statuses.</p>
           <table style="width:100%;border-collapse:collapse;margin-bottom:28px">
             <thead>
               <tr style="background:#F4F6F5;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#7A8F79">
                 <th style="padding:8px 12px;text-align:left">Claim ID</th>
-                <th style="padding:8px 12px;text-align:left">Changes</th>
+                <th style="padding:8px 12px;text-align:left">Submit Date</th>
+                <th style="padding:8px 12px;text-align:left">Status</th>
+                <th style="padding:8px 12px;text-align:left">Payer</th>
+                <th style="padding:8px 12px;text-align:left">Error Code</th>
+                <th style="padding:8px 12px;text-align:left">Portal Changes</th>
               </tr>
             </thead>
             <tbody>${matchedRows}</tbody>

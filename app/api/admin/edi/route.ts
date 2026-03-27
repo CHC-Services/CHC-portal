@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
   const deduplicated = deduplicateResults(allResults)
 
   // ── Match against DB claims + update ───────────────────────────────────────
-  const matched: { claimId: string; changes: string[] }[] = []
+  const matched: { claimId: string; changes: string[]; status: string; payerName: string | null; submittedDate: string | null; errorCode: string | null }[] = []
   const unmatched: string[] = []
   // Keep full detail on unmatched for the email report
   const unmatchedDetail: { claimId: string; submittedDate: string | null; status: string; payerName: string | null }[] = []
@@ -140,7 +140,14 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    matched.push({ claimId: result.claimId, changes })
+    matched.push({
+      claimId: result.claimId,
+      changes,
+      status: result.status,
+      payerName: result.payerName,
+      submittedDate: result.submittedDate,
+      errorCode: result.errorCode,
+    })
   }
 
   const summaryPayload = {

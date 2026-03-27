@@ -433,6 +433,74 @@ export async function sendEnrollmentAlert({
   }
 }
 
+export async function sendDocumentExpirationReminder({
+  nurseEmail,
+  nurseName,
+  documentTitle,
+  expiresAt,
+  daysUntilExpiry,
+}: {
+  nurseEmail: string
+  nurseName: string
+  documentTitle: string
+  expiresAt: Date
+  daysUntilExpiry: number
+}): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) return false
+  const resend = new Resend(process.env.RESEND_API_KEY)
+
+  const expDateStr = expiresAt.toLocaleDateString('en-US', {
+    timeZone: 'UTC',
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+  })
+
+  const urgency = daysUntilExpiry <= 7 ? 'urgent' : daysUntilExpiry <= 30 ? 'soon' : 'upcoming'
+  const urgencyColor = urgency === 'urgent' ? '#b91c1c' : urgency === 'soon' ? '#d97706' : '#2F3E4E'
+  const subject = urgency === 'urgent'
+    ? `⚠ URGENT: "${documentTitle}" expires in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''}`
+    : `Reminder: "${documentTitle}" expires in ${daysUntilExpiry} days`
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to: nurseEmail,
+      replyTo: 'support@cominghomecare.com',
+      subject,
+      html: `
+        <div style="font-family:sans-serif;max-width:520px;padding:32px;color:#2F3E4E">
+          <h2 style="margin:0 0 4px;color:${urgencyColor}">Document Expiration Reminder</h2>
+          <p style="margin:0 0 24px;font-size:13px;color:#7A8F79">Coming Home Care Services, LLC</p>
+
+          <div style="background:#f4f6f8;border-radius:10px;padding:20px 24px;margin-bottom:24px">
+            <p style="margin:0 0 8px;font-size:14px">Hi <strong>${nurseName}</strong>,</p>
+            <p style="margin:0 0 16px;font-size:14px">
+              This is a reminder that the following document on file with Coming Home Care will expire soon:
+            </p>
+            <p style="margin:0 0 6px;font-size:15px;font-weight:700;color:#2F3E4E">${documentTitle}</p>
+            <p style="margin:0;font-size:13px;color:${urgencyColor};font-weight:600">
+              Expires: ${expDateStr} (${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''} from now)
+            </p>
+          </div>
+
+          <p style="font-size:13px;color:#2F3E4E;margin-bottom:8px">
+            Please ensure your updated document is submitted to your coordinator before the expiration date to avoid any interruption in services.
+          </p>
+          <p style="font-size:13px;color:#2F3E4E;margin-bottom:24px">
+            If you have questions, reply to this email or contact us at
+            <a href="mailto:support@cominghomecare.com" style="color:#7A8F79">support@cominghomecare.com</a>.
+          </p>
+
+          <hr style="border:none;border-top:1px solid #D9E1E8;margin:24px 0"/>
+          <p style="font-size:11px;color:#aab">Coming Home Care Services, LLC · Automated document reminder</p>
+        </div>
+      `,
+    })
+    return !error
+  } catch {
+    return false
+  }
+}
+
 export async function sendEdiSummaryEmail({
   unmatched,
   matched,

@@ -167,6 +167,17 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   const [pwSaving, setPwSaving] = useState(false)
   const [pwMessage, setPwMessage] = useState('')
 
+  // Documents
+  const [documents, setDocuments] = useState<{id:string;title:string;fileName:string;fileSize:number|null;expiresAt:string|null;createdAt:string;reminderDays:number[]}[]>([])
+  const [docViewing, setDocViewing] = useState<string | null>(null)
+  const [docFile, setDocFile] = useState<File | null>(null)
+  const [docTitle, setDocTitle] = useState('')
+  const [docExpiry, setDocExpiry] = useState('')
+  const [docReminderDays, setDocReminderDays] = useState<number[]>([])
+  const [docUploading, setDocUploading] = useState(false)
+  const [docMessage, setDocMessage] = useState('')
+  const [docDeleting, setDocDeleting] = useState<string | null>(null)
+
   // Time entries + invoicing
   const [entries, setEntries] = useState<TimeEntry[]>([])
   const [claimRefs, setClaimRefs] = useState<Record<string, string>>({})
@@ -176,6 +187,12 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   const [invoiceNotes, setInvoiceNotes] = useState('')
   const [invoiceSending, setInvoiceSending] = useState(false)
   const [invoiceMessage, setInvoiceMessage] = useState('')
+
+  async function fetchDocuments() {
+    const res = await fetch(`/api/admin/documents?nurseId=${id}`, { credentials: 'include' })
+    const data = await res.json()
+    setDocuments(data.documents || [])
+  }
 
   useEffect(() => {
     fetch(`/api/admin/nurses/${id}`, { credentials: 'include' })
@@ -202,7 +219,50 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
           setClaimRefs(refs)
         }
       })
+
+    fetchDocuments()
   }, [id, router])
+
+  async function handleDocUpload(e: React.FormEvent) {
+    e.preventDefault()
+    if (!docFile || !docTitle) return
+    setDocUploading(true)
+    setDocMessage('')
+    const fd = new FormData()
+    fd.append('file', docFile)
+    fd.append('nurseId', id)
+    fd.append('title', docTitle)
+    if (docExpiry) fd.append('expiresAt', docExpiry)
+    if (docReminderDays.length > 0) fd.append('reminderDays', JSON.stringify(docReminderDays))
+    const res = await fetch('/api/admin/documents', { method: 'POST', credentials: 'include', body: fd })
+    const data = await res.json()
+    if (data.ok) {
+      setDocMessage('Document uploaded.')
+      setDocFile(null)
+      setDocTitle('')
+      setDocExpiry('')
+      setDocReminderDays([])
+      fetchDocuments()
+    } else {
+      setDocMessage(data.error || 'Upload failed.')
+    }
+    setDocUploading(false)
+  }
+
+  async function handleDocView(docId: string) {
+    setDocViewing(docId)
+    const res = await fetch(`/api/admin/documents/${docId}`, { credentials: 'include' })
+    const data = await res.json()
+    if (data.url) window.open(data.url, '_blank', 'noopener,noreferrer')
+    setDocViewing(null)
+  }
+
+  async function handleDocDelete(docId: string) {
+    setDocDeleting(docId)
+    await fetch(`/api/admin/documents/${docId}`, { method: 'DELETE', credentials: 'include' })
+    fetchDocuments()
+    setDocDeleting(null)
+  }
 
   async function toggleInvoiceFlag(entry: TimeEntry, checked: boolean, feePlan?: string) {
     const plan = feePlan ?? entry.invoiceFeePlan ?? 'A1'
@@ -726,6 +786,125 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
             </table>
           </div>
         )}
+      </div>
+
+      {/* ── Documents ── */}
+      <div className="max-w-2xl mt-6 bg-white rounded-xl shadow-sm p-6 space-y-4">
+        <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8]">
+          Documents
+        </h2>
+
+        {/* Existing documents list */}
+        {documents.length === 0 ? (
+          <p className="text-sm text-[#7A8F79] italic">No documents uploaded yet.</p>
+        ) : (
+          <div className="space-y-2 mb-4">
+            {documents.map(doc => {
+              const days = doc.expiresAt
+                ? Math.ceil((new Date(doc.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+                : null
+              const expiryColor = days == null ? '' : days < 0 ? 'text-red-600' : days <= 30 ? 'text-orange-500' : 'text-[#7A8F79]'
+              return (
+                <div key={doc.id} className="flex items-center gap-3 p-3 bg-[#F4F6F5] rounded-lg">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-[#2F3E4E] truncate">{doc.title}</p>
+                    <p className="text-[11px] text-[#7A8F79] truncate">{doc.fileName}</p>
+                    {doc.expiresAt && (
+                      <p className={`text-[11px] font-semibold mt-0.5 ${expiryColor}`}>
+                        {days != null && days < 0 ? 'Expired' : `Expires ${new Date(doc.expiresAt).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })}`}
+                        {doc.reminderDays.length > 0 && ` · Reminders: ${doc.reminderDays.join(', ')}d`}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => handleDocView(doc.id)}
+                    disabled={docViewing === doc.id}
+                    className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] border border-[#D9E1E8] px-2 py-1 rounded transition disabled:opacity-50"
+                  >
+                    {docViewing === doc.id ? '…' : 'View'}
+                  </button>
+                  <button
+                    onClick={() => handleDocDelete(doc.id)}
+                    disabled={docDeleting === doc.id}
+                    className="text-xs text-red-400 hover:text-red-600 border border-red-200 px-2 py-1 rounded transition disabled:opacity-50"
+                  >
+                    {docDeleting === doc.id ? '…' : 'Delete'}
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Upload form */}
+        <form onSubmit={handleDocUpload} className="space-y-3 border-t border-[#D9E1E8] pt-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Upload New Document</p>
+
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Document Title</label>
+              <input
+                type="text"
+                value={docTitle}
+                onChange={e => setDocTitle(e.target.value)}
+                placeholder="e.g. Medicaid License 2026"
+                className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                required
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Expiration Date <span className="normal-case font-normal text-[#7A8F79]">(optional)</span></label>
+              <input
+                type="date"
+                value={docExpiry}
+                onChange={e => setDocExpiry(e.target.value)}
+                className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">File</label>
+            <input
+              type="file"
+              onChange={e => setDocFile(e.target.files?.[0] || null)}
+              className="w-full text-sm text-[#2F3E4E] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#D9E1E8] file:text-[#2F3E4E] hover:file:bg-[#7A8F79] hover:file:text-white transition"
+              required
+            />
+          </div>
+
+          {docExpiry && (
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Email Reminders Before Expiry</label>
+              <div className="flex flex-wrap gap-3">
+                {[90, 60, 30, 14, 7, 1].map(days => (
+                  <label key={days} className="flex items-center gap-1.5 text-sm text-[#2F3E4E] cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={docReminderDays.includes(days)}
+                      onChange={e => setDocReminderDays(prev =>
+                        e.target.checked ? [...prev, days] : prev.filter(d => d !== days)
+                      )}
+                      className="accent-[#7A8F79]"
+                    />
+                    {days === 1 ? '1 day' : `${days} days`}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center gap-3">
+            <button
+              type="submit"
+              disabled={docUploading || !docFile || !docTitle}
+              className="bg-[#7A8F79] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#2F3E4E] transition disabled:opacity-50"
+            >
+              {docUploading ? 'Uploading…' : 'Upload Document'}
+            </button>
+            {docMessage && <p className="text-sm text-[#7A8F79]">{docMessage}</p>}
+          </div>
+        </form>
       </div>
 
       {/* ── Create Invoice Modal ── */}

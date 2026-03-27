@@ -108,6 +108,7 @@ model NurseProfile {
   enrollmentLogs EnrollmentLog[]
   invoices       Invoice[]
   reminders      NurseReminder[]
+  documents      NurseDocument[]
 }
 
 model GlobalEvent {
@@ -219,6 +220,26 @@ model AdminIdea {
   updatedAt DateTime @updatedAt
 
   @@index([completed])
+}
+
+model NurseDocument {
+  id              String    @id @default(uuid())
+  nurseId         String
+  nurse           NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
+  title           String
+  fileName        String
+  storageKey      String       // S3 object key — never a public URL
+  fileSize        Int?
+  mimeType        String?
+  uploadedBy      String
+  expiresAt       DateTime?
+  reminderDays    Int[]        @default([])
+  remindersSentDays Int[]      @default([])
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([nurseId])
+  @@index([expiresAt])
 }
 
 model FaqItem {

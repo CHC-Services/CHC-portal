@@ -261,6 +261,27 @@ type ResourceDirectory = {
 
 const resourceDirectories: ResourceDirectory[] = [
   {
+    id: 'claim-forms',
+    icon: '📝',
+    title: 'Claim Forms & Billing References',
+    subtitle: 'Standard forms used when submitting healthcare claims. The CMS-1500 (HCFA) is the universal paper claim form accepted by Medicare, Medicaid, and most commercial insurers including BCBS.',
+    note: 'Most claims submitted through Coming Home Care are filed electronically — you do not need to mail a paper CMS-1500 unless specifically requested by a payer. These downloads are provided as reference tools.',
+    resources: [
+      {
+        label: 'CMS-1500 Claim Form (HCFA)',
+        description: 'The standard paper claim form required by Medicare, Medicaid, and most commercial insurers. Download and print for manual submissions or reference.',
+        href: '/CMS-1500-HCFA.pdf',
+        badge: 'Download PDF',
+      },
+      {
+        label: 'CMS-1500 Field Descriptions',
+        description: 'Line-by-line guide explaining every field on the CMS-1500 form — what each box means, what data goes in it, and common examples.',
+        href: '/CMS-1500-Field-Descriptions.docx',
+        badge: 'Download DOCX',
+      },
+    ],
+  },
+  {
     id: 'etin-renewal',
     icon: '📋',
     title: 'Annual ETIN Renewal',

@@ -139,7 +139,7 @@ export default async function Home() {
     nurseStats = await getNurseStats(user.nurseProfileId)
   }
 
-  const faqs: { id: string; question: string; answer: string; category: string }[] = await getFaqs()
+  const faqs: { id: string; question: string; answer: string; category: string; subcategory: string }[] = await getFaqs()
 
   return (
     <div className="min-h-screen bg-[#D9E1E8]">

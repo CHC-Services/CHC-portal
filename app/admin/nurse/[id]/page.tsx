@@ -291,7 +291,26 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
     if (docReminderDays.length > 0) fd.append('reminderDays', JSON.stringify(docReminderDays))
     try {
       const res = await fetch('/api/admin/documents', { method: 'POST', credentials: 'include', body: fd })
-      const data = await res.json()
+
+      // Safely parse JSON — if the server returned HTML (413/500 page) this won't throw
+      let data: any = null
+      const contentType = res.headers.get('content-type') || ''
+      if (contentType.includes('application/json')) {
+        data = await res.json()
+      } else {
+        // Non-JSON response — surface the HTTP status as the error
+        const text = await res.text().catch(() => '')
+        const statusHint =
+          res.status === 413 ? 'File too large for server upload (max ~4 MB).' :
+          res.status === 401 ? 'Session expired — please reload and log in again.' :
+          res.status === 500 ? `Server error (500). Check server logs.` :
+          `Unexpected server response (${res.status}). ${text.slice(0, 120)}`
+        setDocMessage(`Upload Failed: ${statusHint}`)
+        setDocMessageIsError(true)
+        setDocUploading(false)
+        return
+      }
+
       if (data.ok) {
         setDocMessage('Document uploaded.')
         setDocMessageIsError(false)
@@ -306,7 +325,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
         setDocMessageIsError(true)
       }
     } catch (err: any) {
-      setDocMessage(`Upload Failed: ${err?.message || 'Unknown error.'}`)
+      setDocMessage(`Upload Failed: ${err?.message || 'Network error — check your connection.'}`)
       setDocMessageIsError(true)
     }
     setDocUploading(false)

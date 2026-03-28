@@ -17,7 +17,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const formData = await req.formData()
+  // Parse formData — wrapping separately so a body-too-large or parse error
+  // returns a JSON error instead of an HTML 413/500 page that breaks res.json()
+  let formData: FormData
+  try {
+    formData = await req.formData()
+  } catch (err: any) {
+    const msg = err?.message || String(err)
+    const hint = msg.toLowerCase().includes('size') || msg.toLowerCase().includes('large')
+      ? 'File may be too large (max ~4 MB on this server).'
+      : msg
+    return NextResponse.json({ error: `Could not read upload: ${hint}` }, { status: 413 })
+  }
+
   const file = formData.get('file') as File | null
   const nurseId = formData.get('nurseId') as string | null
   const title = formData.get('title') as string | null
@@ -29,20 +41,32 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
-  const reminderDays: number[] = reminderDaysRaw
-    ? JSON.parse(reminderDaysRaw).map(Number).filter((n: number) => !isNaN(n))
-    : []
+  let reminderDays: number[] = []
+  try {
+    reminderDays = reminderDaysRaw
+      ? JSON.parse(reminderDaysRaw).map(Number).filter((n: number) => !isNaN(n))
+      : []
+  } catch {
+    reminderDays = []
+  }
 
   const safeCategory = category.toLowerCase().replace(/[^a-z0-9]/g, '-')
   const storageKey = `nurse-documents/${nurseId}/${safeCategory}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
-  const buffer = Buffer.from(await file.arrayBuffer())
+
+  let buffer: Buffer
+  try {
+    buffer = Buffer.from(await file.arrayBuffer())
+  } catch (err: any) {
+    return NextResponse.json({ error: `Could not read file: ${err?.message || 'unknown'}` }, { status: 400 })
+  }
 
   try {
     await uploadToS3(storageKey, buffer, file.type || 'application/octet-stream')
   } catch (err: any) {
     console.error('[S3 upload error]', err)
+    const detail = err?.message || err?.Code || err?.name || JSON.stringify(err)
     return NextResponse.json(
-      { error: `S3 upload failed: ${err?.message || err?.Code || 'unknown error'}` },
+      { error: `S3 upload failed: ${detail}` },
       { status: 500 }
     )
   }
@@ -62,7 +86,6 @@ export async function POST(req: Request) {
     },
   })
 
-  // Fire new-document alert if the nurse has that preference enabled
   const nurseProfile = await prisma.nurseProfile.findUnique({
     where: { id: nurseId },
     include: { user: { select: { email: true } } },
@@ -80,7 +103,7 @@ export async function POST(req: Request) {
   return NextResponse.json({ ok: true, document: doc })
 }
 
-// GET /api/admin/documents?nurseId=X — list documents for a nurse (no URLs returned — fetch via /[id]/url)
+// GET /api/admin/documents?nurseId=X
 export async function GET(req: Request) {
   const session = adminOnly(req)
   if (!session || session.role !== 'admin') {

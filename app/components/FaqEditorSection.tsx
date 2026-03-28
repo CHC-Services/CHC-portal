@@ -1,0 +1,493 @@
+'use client'
+
+import { useState, useEffect, useRef } from 'react'
+
+type FaqItem = {
+  id: string
+  question: string
+  answer: string
+  category: string
+  subcategory: string
+  sortOrder: number
+  published: boolean
+}
+
+type SubGroup = { name: string; items: FaqItem[] }
+type CatGroup = { category: string; subcategories: SubGroup[] }
+
+type DragSrc =
+  | { type: 'cat'; catIdx: number }
+  | { type: 'sub'; catIdx: number; subIdx: number }
+  | { type: 'item'; catIdx: number; subIdx: number; itemIdx: number }
+
+const FAQ_CATEGORIES = ['General', 'Billing', 'Claims', 'Enrollment', 'Time Entry', 'Account']
+
+function buildGroups(items: FaqItem[]): CatGroup[] {
+  const sorted = [...items].sort((a, b) => a.sortOrder - b.sortOrder)
+  const catOrder: string[] = []
+  const catMap = new Map<string, { subOrder: string[]; subMap: Map<string, FaqItem[]> }>()
+  for (const item of sorted) {
+    if (!catMap.has(item.category)) {
+      catMap.set(item.category, { subOrder: [], subMap: new Map() })
+      catOrder.push(item.category)
+    }
+    const entry = catMap.get(item.category)!
+    const subKey = item.subcategory || ''
+    if (!entry.subMap.has(subKey)) {
+      entry.subMap.set(subKey, [])
+      entry.subOrder.push(subKey)
+    }
+    entry.subMap.get(subKey)!.push(item)
+  }
+  return catOrder.map(cat => {
+    const entry = catMap.get(cat)!
+    return {
+      category: cat,
+      subcategories: entry.subOrder.map(sub => ({ name: sub, items: entry.subMap.get(sub)! })),
+    }
+  })
+}
+
+function flattenToUpdates(groups: CatGroup[]): { id: string; sortOrder: number }[] {
+  const updates: { id: string; sortOrder: number }[] = []
+  let order = 0
+  for (const cg of groups)
+    for (const sg of cg.subcategories)
+      for (const item of sg.items)
+        updates.push({ id: item.id, sortOrder: order++ })
+  return updates
+}
+
+function moveInArr<T>(arr: T[], from: number, to: number): T[] {
+  const r = [...arr]
+  r.splice(to, 0, r.splice(from, 1)[0])
+  return r
+}
+
+function TBtn({ onActivate, title, children }: { onActivate: () => void; title: string; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onMouseDown={e => { e.preventDefault(); onActivate() }}
+      title={title}
+      className="px-2 py-1 rounded text-xs font-semibold text-[#2F3E4E] hover:bg-[#D9E1E8] transition select-none"
+    >
+      {children}
+    </button>
+  )
+}
+
+export default function FaqEditorSection() {
+  const [items, setItems] = useState<FaqItem[]>([])
+  const [groups, setGroups] = useState<CatGroup[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // Form state
+  const [formOpen, setFormOpen] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [question, setQuestion] = useState('')
+  const [category, setCategory] = useState('General')
+  const [subcategory, setSubcategory] = useState('')
+  const [published, setPublished] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const editorRef = useRef<HTMLDivElement>(null)
+
+  // Drag state
+  const dragSrc = useRef<DragSrc | null>(null)
+  const [dragOverKey, setDragOverKey] = useState<string | null>(null)
+
+  function load() {
+    fetch('/api/faq', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => {
+        const arr: FaqItem[] = Array.isArray(data) ? data : []
+        setItems(arr)
+        setGroups(buildGroups(arr))
+      })
+      .finally(() => setLoading(false))
+  }
+  useEffect(() => { load() }, [])
+
+  // ── Rich text helpers ───────────────────────────────────────────────────────
+  function fmt(cmd: string, val?: string) {
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
+    document.execCommand(cmd, false, val ?? undefined)
+    editorRef.current?.focus()
+  }
+  function insertLink() {
+    const url = prompt('Enter URL (include https://):')
+    if (url) fmt('createLink', url)
+  }
+
+  // ── Form open/close ─────────────────────────────────────────────────────────
+  function openNew() {
+    setEditingId(null)
+    setQuestion('')
+    setCategory('General')
+    setSubcategory('')
+    setPublished(true)
+    setFormOpen(true)
+    setTimeout(() => { if (editorRef.current) editorRef.current.innerHTML = '' }, 0)
+  }
+
+  function openEdit(item: FaqItem) {
+    setEditingId(item.id)
+    setQuestion(item.question)
+    setCategory(item.category)
+    setSubcategory(item.subcategory || '')
+    setPublished(item.published)
+    setFormOpen(true)
+    setTimeout(() => { if (editorRef.current) editorRef.current.innerHTML = item.answer }, 0)
+  }
+
+  function cancel() {
+    setFormOpen(false)
+    setEditingId(null)
+  }
+
+  // ── Save (create or update) ─────────────────────────────────────────────────
+  async function save() {
+    const answer = editorRef.current?.innerHTML?.trim() || ''
+    if (!question.trim() || !answer) return
+    setSaving(true)
+    const body = { question, answer, category, subcategory: subcategory.trim(), published }
+    if (editingId) {
+      await fetch(`/api/faq/${editingId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body),
+      })
+    } else {
+      await fetch('/api/faq', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body),
+      })
+    }
+    setSaving(false)
+    setFormOpen(false)
+    setEditingId(null)
+    load()
+  }
+
+  async function deleteItem(id: string) {
+    if (!confirm('Delete this FAQ item? This cannot be undone.')) return
+    setDeletingId(id)
+    await fetch(`/api/faq/${id}`, { method: 'DELETE', credentials: 'include' })
+    setDeletingId(null)
+    load()
+  }
+
+  async function togglePublished(item: FaqItem) {
+    await fetch(`/api/faq/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ published: !item.published }),
+    })
+    load()
+  }
+
+  // ── Reorder helpers ─────────────────────────────────────────────────────────
+  async function pushReorder(newGroups: CatGroup[]) {
+    setGroups(newGroups)
+    await fetch('/api/faq/reorder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(flattenToUpdates(newGroups)),
+    })
+  }
+
+  // ── Drag handlers ───────────────────────────────────────────────────────────
+  function onDragStart(e: React.DragEvent, src: DragSrc) {
+    dragSrc.current = src
+    e.dataTransfer.effectAllowed = 'move'
+    // minimal ghost image
+    const el = e.currentTarget as HTMLElement
+    e.dataTransfer.setDragImage(el, 12, 12)
+  }
+
+  function onDragOver(e: React.DragEvent, key: string) {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDragOverKey(key)
+  }
+
+  function onDragEnd() {
+    dragSrc.current = null
+    setDragOverKey(null)
+  }
+
+  function onDrop(e: React.DragEvent, target: DragSrc) {
+    e.preventDefault()
+    setDragOverKey(null)
+    const src = dragSrc.current
+    dragSrc.current = null
+    if (!src) return
+
+    if (src.type === 'cat' && target.type === 'cat') {
+      if (src.catIdx === target.catIdx) return
+      pushReorder(moveInArr(groups, src.catIdx, target.catIdx))
+
+    } else if (src.type === 'sub' && target.type === 'sub' && src.catIdx === target.catIdx) {
+      if (src.subIdx === target.subIdx) return
+      const ng = groups.map((cg, ci) =>
+        ci !== src.catIdx ? cg : { ...cg, subcategories: moveInArr(cg.subcategories, src.subIdx, target.subIdx) }
+      )
+      pushReorder(ng)
+
+    } else if (src.type === 'item' && target.type === 'item' && src.catIdx === target.catIdx && src.subIdx === target.subIdx) {
+      if (src.itemIdx === target.itemIdx) return
+      const ng = groups.map((cg, ci) => {
+        if (ci !== src.catIdx) return cg
+        return {
+          ...cg,
+          subcategories: cg.subcategories.map((sg, si) =>
+            si !== src.subIdx ? sg : { ...sg, items: moveInArr(sg.items, src.itemIdx!, target.itemIdx!) }
+          ),
+        }
+      })
+      pushReorder(ng)
+    }
+  }
+
+  // ── Subcategory suggestions for datalist ────────────────────────────────────
+  const subSuggestions = [...new Set(items.filter(i => i.category === category && i.subcategory).map(i => i.subcategory))]
+
+  // ── Render ──────────────────────────────────────────────────────────────────
+  return (
+    <div className="bg-white rounded-xl shadow-sm p-6 space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between pb-2 border-b border-[#D9E1E8]">
+        <div>
+          <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79]">FAQ Manager</h2>
+          {!formOpen && groups.length > 0 && (
+            <p className="text-[11px] text-[#7A8F79] mt-0.5">Drag ⠿ handles to reorder categories, subtopics, and questions.</p>
+          )}
+        </div>
+        {!formOpen && (
+          <button
+            onClick={openNew}
+            className="bg-[#2F3E4E] text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-[#7A8F79] transition"
+          >
+            + Add FAQ Item
+          </button>
+        )}
+      </div>
+
+      {/* ── Editor form ── */}
+      {formOpen && (
+        <div className="border border-[#D9E1E8] rounded-xl p-5 space-y-4 bg-[#F9FAFB]">
+          <p className="text-xs font-semibold uppercase tracking-widest text-[#7A8F79]">
+            {editingId ? 'Edit FAQ Item' : 'New FAQ Item'}
+          </p>
+
+          {/* Question */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Question</label>
+            <input
+              type="text"
+              value={question}
+              onChange={e => setQuestion(e.target.value)}
+              placeholder="e.g. How do I submit my hours?"
+              className="w-full border border-[#D9E1E8] p-2.5 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+            />
+          </div>
+
+          {/* Rich text answer */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Answer</label>
+            <div className="flex flex-wrap items-center gap-1 border border-[#D9E1E8] border-b-0 rounded-t-lg px-2 py-1.5 bg-white">
+              <TBtn onActivate={() => fmt('bold')} title="Bold"><strong>B</strong></TBtn>
+              <TBtn onActivate={() => fmt('italic')} title="Italic"><em>I</em></TBtn>
+              <TBtn onActivate={() => fmt('underline')} title="Underline"><span className="underline">U</span></TBtn>
+              <span className="w-px h-4 bg-[#D9E1E8] mx-1" />
+              <TBtn onActivate={() => fmt('insertUnorderedList')} title="Bullet list">• List</TBtn>
+              <TBtn onActivate={() => fmt('insertOrderedList')} title="Numbered list">1. List</TBtn>
+              <span className="w-px h-4 bg-[#D9E1E8] mx-1" />
+              <TBtn onActivate={insertLink} title="Insert link">🔗 Link</TBtn>
+              <TBtn onActivate={() => fmt('unlink')} title="Remove link">✂ Unlink</TBtn>
+              <span className="w-px h-4 bg-[#D9E1E8] mx-1" />
+              <TBtn onActivate={() => fmt('removeFormat')} title="Clear formatting">✕ Clear</TBtn>
+            </div>
+            <div
+              ref={editorRef}
+              contentEditable
+              suppressContentEditableWarning
+              className="min-h-[120px] border border-[#D9E1E8] rounded-b-lg p-3 text-[#2F3E4E] text-sm focus:outline-none focus:ring-2 focus:ring-[#7A8F79] bg-white"
+            />
+            <p className="text-[10px] text-[#7A8F79] mt-1">Keyboard shortcuts: ⌘/Ctrl+B bold · ⌘/Ctrl+I italic</p>
+          </div>
+
+          {/* Category / Subtopic / Published */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Category</label>
+              <select
+                value={category}
+                onChange={e => { setCategory(e.target.value); setSubcategory('') }}
+                className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] text-sm focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+              >
+                {FAQ_CATEGORIES.map(c => <option key={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">
+                Subtopic <span className="normal-case font-normal text-[#7A8F79]">(optional)</span>
+              </label>
+              <input
+                type="text"
+                list="sub-suggestions"
+                value={subcategory}
+                onChange={e => setSubcategory(e.target.value)}
+                placeholder="e.g. Medicaid, Anthem/BCBS"
+                className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] text-sm focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+              />
+              <datalist id="sub-suggestions">
+                {subSuggestions.map(s => <option key={s} value={s} />)}
+              </datalist>
+            </div>
+            <div className="flex items-center gap-2 pb-1">
+              <input
+                type="checkbox"
+                id="faq-pub"
+                checked={published}
+                onChange={e => setPublished(e.target.checked)}
+                className="accent-[#7A8F79]"
+              />
+              <label htmlFor="faq-pub" className="text-sm text-[#2F3E4E]">Published</label>
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-1">
+            <button onClick={save} disabled={saving} className="bg-[#2F3E4E] text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-50">
+              {saving ? 'Saving…' : editingId ? 'Save Changes' : 'Add Item'}
+            </button>
+            <button onClick={cancel} className="border border-[#D9E1E8] text-[#7A8F79] px-5 py-2 rounded-lg text-sm font-semibold hover:text-[#2F3E4E] transition">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Item list ── */}
+      {loading ? (
+        <p className="text-sm text-[#7A8F79]">Loading…</p>
+      ) : groups.length === 0 ? (
+        <p className="text-sm text-[#7A8F79] italic">No FAQ items yet. Click &ldquo;+ Add FAQ Item&rdquo; to create one.</p>
+      ) : (
+        <div className="space-y-4">
+          {groups.map((cg, catIdx) => {
+            const catKey = `cat:${catIdx}`
+            return (
+              <div
+                key={cg.category}
+                draggable
+                onDragStart={e => onDragStart(e, { type: 'cat', catIdx })}
+                onDragOver={e => onDragOver(e, catKey)}
+                onDragEnd={onDragEnd}
+                onDrop={e => onDrop(e, { type: 'cat', catIdx })}
+                className={`rounded-xl border-2 transition-colors ${dragOverKey === catKey ? 'border-[#7A8F79] bg-[#F4F6F5]' : 'border-transparent'}`}
+              >
+                {/* Category header row */}
+                <div className="flex items-center gap-2 mb-2 px-1">
+                  <span className="cursor-grab active:cursor-grabbing text-[#C0C8C0] select-none text-lg leading-none" title="Drag to reorder category">⠿</span>
+                  <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E]">{cg.category}</p>
+                  <span className="text-[10px] text-[#7A8F79] font-normal normal-case">
+                    ({cg.subcategories.reduce((s, sg) => s + sg.items.length, 0)} items)
+                  </span>
+                </div>
+
+                {/* Subcategory groups */}
+                <div className="space-y-3 pl-5">
+                  {cg.subcategories.map((sg, subIdx) => {
+                    const subKey = `sub:${catIdx}:${subIdx}`
+                    return (
+                      <div
+                        key={sg.name || '__root__'}
+                        draggable
+                        onDragStart={e => { e.stopPropagation(); onDragStart(e, { type: 'sub', catIdx, subIdx }) }}
+                        onDragOver={e => { e.stopPropagation(); onDragOver(e, subKey) }}
+                        onDragEnd={onDragEnd}
+                        onDrop={e => { e.stopPropagation(); onDrop(e, { type: 'sub', catIdx, subIdx }) }}
+                        className={`rounded-lg border transition-colors ${dragOverKey === subKey ? 'border-[#7A8F79] bg-[#F4F6F5]' : 'border-[#E8ECEA]'}`}
+                      >
+                        {/* Subtopic header (only shown when name is non-empty) */}
+                        {sg.name && (
+                          <div className="flex items-center gap-2 px-3 pt-2.5 pb-1">
+                            <span className="cursor-grab active:cursor-grabbing text-[#C0C8C0] select-none" title="Drag to reorder subtopic">⠿</span>
+                            <p className="text-xs font-semibold text-[#7A8F79] italic">{sg.name}</p>
+                          </div>
+                        )}
+
+                        {/* Items */}
+                        <div className={`space-y-1 ${sg.name ? 'px-3 pb-2' : 'p-2'}`}>
+                          {sg.items.map((item, itemIdx) => {
+                            const itemKey = `item:${catIdx}:${subIdx}:${itemIdx}`
+                            return (
+                              <div
+                                key={item.id}
+                                draggable
+                                onDragStart={e => { e.stopPropagation(); onDragStart(e, { type: 'item', catIdx, subIdx, itemIdx }) }}
+                                onDragOver={e => { e.stopPropagation(); onDragOver(e, itemKey) }}
+                                onDragEnd={onDragEnd}
+                                onDrop={e => { e.stopPropagation(); onDrop(e, { type: 'item', catIdx, subIdx, itemIdx }) }}
+                                className={`flex items-start gap-2 rounded-lg p-2.5 transition-colors ${
+                                  dragOverKey === itemKey ? 'bg-[#E8F0E8] border border-[#7A8F79]' :
+                                  item.published ? 'bg-white border border-[#E8ECEA]' : 'bg-[#FDFBF5] border border-dashed border-[#D9C88A]'
+                                }`}
+                              >
+                                <span className="cursor-grab active:cursor-grabbing text-[#C0C8C0] select-none mt-0.5 shrink-0" title="Drag to reorder">⠿</span>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <p className="text-sm font-semibold text-[#2F3E4E] truncate">{item.question}</p>
+                                    {!item.published && (
+                                      <span className="text-[10px] uppercase tracking-wide bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-semibold shrink-0">Draft</span>
+                                    )}
+                                  </div>
+                                  <div
+                                    className="text-xs text-[#7A8F79] line-clamp-1 mt-0.5"
+                                    dangerouslySetInnerHTML={{ __html: item.answer }}
+                                  />
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button
+                                    onClick={() => togglePublished(item)}
+                                    className={`text-[11px] font-semibold px-1.5 py-0.5 rounded transition ${item.published ? 'text-[#7A8F79] hover:text-[#2F3E4E]' : 'text-green-600 hover:text-green-800'}`}
+                                  >
+                                    {item.published ? 'Unpublish' : 'Publish'}
+                                  </button>
+                                  <button
+                                    onClick={() => openEdit(item)}
+                                    className="text-[11px] font-semibold text-[#7A8F79] hover:text-[#2F3E4E] px-1.5 py-0.5 rounded transition"
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    onClick={() => deleteItem(item.id)}
+                                    disabled={deletingId === item.id}
+                                    className="text-[11px] font-semibold text-red-400 hover:text-red-600 px-1.5 py-0.5 rounded transition disabled:opacity-40"
+                                  >
+                                    {deletingId === item.id ? '…' : 'Delete'}
+                                  </button>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}

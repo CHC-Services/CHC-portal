@@ -8,10 +8,12 @@ function getSession(req: Request) {
   return token ? verifyToken(token) : null
 }
 
-// Public: return all published items ordered by sortOrder
-export async function GET() {
+// Public: return published items. Admins also see unpublished ones.
+export async function GET(req: Request) {
+  const session = getSession(req)
+  const isAdmin = session?.role === 'admin'
   const items = await (prisma.faqItem as any).findMany({
-    where: { published: true },
+    where: isAdmin ? {} : { published: true },
     orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
   })
   return NextResponse.json(items)

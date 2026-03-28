@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import AdminNav from '../components/AdminNav'
 import { DateInput, DateInputHandle } from '../components/DateInput'
+import FaqEditorSection from '../components/FaqEditorSection'
 
 type TimeEntry = {
   id: string
@@ -254,6 +255,7 @@ function NurseRow({ nurse, onDeleted, onRefresh }: { nurse: Nurse; onDeleted: ()
   )
 }
 
+
 export default function AdminDashboard() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -486,6 +488,11 @@ export default function AdminDashboard() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* FAQ Manager */}
+      <div className="mt-8">
+        <FaqEditorSection />
       </div>
     </div>
   )

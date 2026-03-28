@@ -122,7 +122,19 @@ export default function LoginPage() {
             </Link>
           </p>
 
-          <div className="mt-10 border-t border-[#D9E1E8] pt-6 text-center">
+          <div className="mt-5 text-center">
+            <p className="text-xs text-[#7A8F79] mb-1">Use Availity for claims submission?</p>
+            <a
+              href="https://essentials.availity.com/static/public/onb/onboarding-ui-apps/availity-fr-ui/#/login"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-semibold text-[#2F3E4E] hover:text-[#7A8F79] underline underline-offset-2 transition"
+            >
+              Log in to Availity Essentials →
+            </a>
+          </div>
+
+          <div className="mt-6 border-t border-[#D9E1E8] pt-6 text-center">
             <p className="text-xs text-[#7A8F79]">Not a provider yet?</p>
             <Link href="/billing" className="text-xs font-semibold text-[#2F3E4E] hover:text-[#7A8F79] underline underline-offset-2 transition">
               Learn about our billing services →

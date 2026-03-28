@@ -227,6 +227,26 @@ By typing my full legal name below, I acknowledge that I have read and agree to 
               onClick={() => set({ carrierCount: 3 })}
             />
           </div>
+          {/* Availity callout — shown for any plan that includes BCBS */}
+          {answers.carrierCount <= 2 && (
+            <div className="mt-5 p-4 bg-blue-50 border border-blue-200 rounded-xl text-sm space-y-1.5">
+              <p className="font-semibold text-[#2F3E4E]">Don't have a clearinghouse yet?</p>
+              <p className="text-xs text-[#7A8F79] leading-relaxed">
+                Submitting BCBS claims electronically requires a clearinghouse or compatible billing software.
+                If you don't already have one, <strong className="text-[#2F3E4E]">Availity Essentials</strong> is
+                a free option used widely by NY home care providers — no subscription required.
+              </p>
+              <a
+                href="https://essentials.availity.com/static/public/onb/onboarding-ui-apps/availity-fr-ui/#/login"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-800 transition"
+              >
+                Register or log in to Availity Essentials →
+              </a>
+            </div>
+          )}
+
           <div className="flex gap-3 mt-6">
             <button type="button" onClick={() => setStep(1)} className="flex-1 border border-[#D9E1E8] text-[#7A8F79] py-3 rounded-xl hover:border-[#7A8F79] transition font-semibold">
               Back

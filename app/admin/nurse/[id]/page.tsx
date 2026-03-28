@@ -177,6 +177,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   const [docReminderDays, setDocReminderDays] = useState<number[]>([])
   const [docUploading, setDocUploading] = useState(false)
   const [docMessage, setDocMessage] = useState('')
+  const [docMessageIsError, setDocMessageIsError] = useState(false)
   const [docDeleting, setDocDeleting] = useState<string | null>(null)
   const [categories, setCategories] = useState<{id:string;name:string}[]>([])
   const [showCatManager, setShowCatManager] = useState(false)
@@ -280,6 +281,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
     if (!docFile || !docTitle) return
     setDocUploading(true)
     setDocMessage('')
+    setDocMessageIsError(false)
     const fd = new FormData()
     fd.append('file', docFile)
     fd.append('nurseId', id)
@@ -292,6 +294,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
       const data = await res.json()
       if (data.ok) {
         setDocMessage('Document uploaded.')
+        setDocMessageIsError(false)
         setDocFile(null)
         setDocTitle('')
         setDocCategory('General')
@@ -299,10 +302,12 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
         setDocReminderDays([])
         fetchDocuments()
       } else {
-        setDocMessage(data.error || 'Upload failed.')
+        setDocMessage(`Upload Failed: ${data.error || 'Unknown error.'}`)
+        setDocMessageIsError(true)
       }
     } catch (err: any) {
-      setDocMessage(err?.message || 'Upload failed.')
+      setDocMessage(`Upload Failed: ${err?.message || 'Unknown error.'}`)
+      setDocMessageIsError(true)
     }
     setDocUploading(false)
   }
@@ -980,7 +985,11 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                 >
                   {docUploading ? 'Uploading…' : 'Upload Document'}
                 </button>
-                {docMessage && <p className="text-sm text-[#7A8F79]">{docMessage}</p>}
+                {docMessage && (
+                  <p className={`text-sm ${docMessageIsError ? 'text-[#9B1C1C]' : 'text-[#7A8F79]'}`}>
+                    {docMessage}
+                  </p>
+                )}
               </div>
             </form>
           </div>

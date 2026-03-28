@@ -32,13 +32,24 @@ export function middleware(req: NextRequest) {
 
     if (pathname.startsWith("/admin") && decoded.role !== "admin") {
       console.log('role mismatch, not admin');
-      return NextResponse.redirect(new URL("/", req.url));
+      return NextResponse.redirect(new URL("/login", req.url));
     }
 
     if (pathname.startsWith("/nurse") && decoded.role !== "nurse") {
       console.log('role mismatch, not nurse');
       return NextResponse.redirect(new URL("/", req.url));
     }
+
+    // Valid session — reset the 24-hour inactivity clock on every page visit
+    const res = NextResponse.next()
+    res.cookies.set('auth_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24,
+    })
+    return res
   }
 
   return NextResponse.next();

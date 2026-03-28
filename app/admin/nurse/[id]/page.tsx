@@ -282,36 +282,60 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
     setDocUploading(true)
     setDocMessage('')
     setDocMessageIsError(false)
-    const fd = new FormData()
-    fd.append('file', docFile)
-    fd.append('nurseId', id)
-    fd.append('title', docTitle)
-    fd.append('category', docCategory)
-    if (docExpiry) fd.append('expiresAt', docExpiry)
-    if (docReminderDays.length > 0) fd.append('reminderDays', JSON.stringify(docReminderDays))
-    try {
-      const res = await fetch('/api/admin/documents', { method: 'POST', credentials: 'include', body: fd })
 
-      // Safely parse JSON — if the server returned HTML (413/500 page) this won't throw
-      let data: any = null
-      const contentType = res.headers.get('content-type') || ''
-      if (contentType.includes('application/json')) {
-        data = await res.json()
-      } else {
-        // Non-JSON response — surface the HTTP status as the error
-        const text = await res.text().catch(() => '')
-        const statusHint =
-          res.status === 413 ? 'File too large for server upload (max ~4 MB).' :
-          res.status === 401 ? 'Session expired — please reload and log in again.' :
-          res.status === 500 ? `Server error (500). Check server logs.` :
-          `Unexpected server response (${res.status}). ${text.slice(0, 120)}`
-        setDocMessage(`Upload Failed: ${statusHint}`)
+    try {
+      // Step 1 — get a presigned PUT URL from the server (tiny JSON request, no file bytes)
+      const presignRes = await fetch('/api/admin/documents/presign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          fileName: docFile.name,
+          contentType: docFile.type || 'application/octet-stream',
+          nurseId: id,
+          category: docCategory,
+        }),
+      })
+      const presignData = await presignRes.json()
+      if (!presignRes.ok) {
+        setDocMessage(`Upload Failed: ${presignData.error || 'Could not get upload URL.'}`)
         setDocMessageIsError(true)
         setDocUploading(false)
         return
       }
 
-      if (data.ok) {
+      // Step 2 — PUT the file directly to S3 (bypasses Vercel, no size limit)
+      const s3Res = await fetch(presignData.uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': docFile.type || 'application/octet-stream' },
+        body: docFile,
+      })
+      if (!s3Res.ok) {
+        setDocMessage(`Upload Failed: S3 rejected the file (${s3Res.status}). Check bucket permissions.`)
+        setDocMessageIsError(true)
+        setDocUploading(false)
+        return
+      }
+
+      // Step 3 — tell the server to save the DB record now that the file is in S3
+      const confirmRes = await fetch('/api/admin/documents/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          nurseId: id,
+          title: docTitle,
+          storageKey: presignData.storageKey,
+          fileName: docFile.name,
+          fileSize: docFile.size,
+          mimeType: docFile.type || null,
+          category: docCategory,
+          expiresAt: docExpiry || null,
+          reminderDays: docReminderDays,
+        }),
+      })
+      const confirmData = await confirmRes.json()
+      if (confirmData.ok) {
         setDocMessage('Document uploaded.')
         setDocMessageIsError(false)
         setDocFile(null)
@@ -321,13 +345,14 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
         setDocReminderDays([])
         fetchDocuments()
       } else {
-        setDocMessage(`Upload Failed: ${data.error || 'Unknown error.'}`)
+        setDocMessage(`Upload Failed: ${confirmData.error || 'File uploaded but record not saved.'}`)
         setDocMessageIsError(true)
       }
     } catch (err: any) {
       setDocMessage(`Upload Failed: ${err?.message || 'Network error — check your connection.'}`)
       setDocMessageIsError(true)
     }
+
     setDocUploading(false)
   }
 

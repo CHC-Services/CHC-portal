@@ -23,11 +23,11 @@ type Nurse = {
 const CATEGORIES = ['General', 'Claims', 'Invoices', 'Events']
 
 const SYSTEM_AUDIENCES = [
-  { value: 'All Users',    label: 'All Users',       desc: 'Every logged-in user' },
-  { value: 'All Nurses',   label: 'All Nurses',      desc: 'All accounts with nurse role' },
-  { value: 'Active Billing', label: 'Active Billing', desc: 'Nurses enrolled in billing services' },
-  { value: 'Non-Provider', label: 'Non-Provider',    desc: 'Nurses not enrolled in billing' },
-  { value: 'Admins',       label: 'Admins',          desc: 'Admin accounts only' },
+  { value: 'All Users',      label: 'All Users',       desc: 'Every logged-in user' },
+  { value: 'All Nurses',     label: 'All Nurses',      desc: 'All accounts with nurse role' },
+  { value: 'Active Billing', label: 'Active Billing',  desc: 'Nurses enrolled in billing services' },
+  { value: 'Non-Provider',   label: 'Non-Provider',    desc: 'Nurses not enrolled in billing' },
+  { value: 'Admins',         label: 'Admins',          desc: 'Admin accounts only' },
 ]
 
 const CATEGORY_STYLE: Record<string, string> = {
@@ -37,48 +37,126 @@ const CATEGORY_STYLE: Record<string, string> = {
   Events:   'bg-amber-50 text-amber-700 border-amber-200',
 }
 
+function AudienceSelector({
+  audiences,
+  nurses,
+  onChange,
+}: {
+  audiences: string[]
+  nurses: Nurse[]
+  onChange: (a: string[]) => void
+}) {
+  function toggle(value: string) {
+    onChange(audiences.includes(value) ? audiences.filter(a => a !== value) : [...audiences, value])
+  }
+  return (
+    <div>
+      <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-2">
+        Audience <span className="normal-case font-normal">(none = draft, not shown)</span>
+      </label>
+      <div className="space-y-1.5 mb-3">
+        {SYSTEM_AUDIENCES.map(a => (
+          <label key={a.value} className="flex items-center gap-3 cursor-pointer group">
+            <input
+              type="checkbox"
+              checked={audiences.includes(a.value)}
+              onChange={() => toggle(a.value)}
+              className="w-4 h-4 accent-[#7A8F79]"
+            />
+            <span>
+              <span className="text-sm font-semibold text-[#2F3E4E] group-hover:text-[#7A8F79] transition">{a.label}</span>
+              <span className="text-xs text-[#7A8F79] ml-2">{a.desc}</span>
+            </span>
+          </label>
+        ))}
+      </div>
+      {nurses.length > 0 && (
+        <>
+          <p className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1.5">Individual Providers</p>
+          <div className="grid grid-cols-2 gap-1.5 max-h-40 overflow-y-auto bg-[#F4F6F5] rounded-lg p-3">
+            {nurses.map(n => {
+              const key = `user:${n.id}`
+              return (
+                <label key={n.id} className="flex items-center gap-2 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={audiences.includes(key)}
+                    onChange={() => toggle(key)}
+                    className="w-4 h-4 accent-[#7A8F79]"
+                  />
+                  <span>
+                    <span className="text-xs font-semibold text-[#2F3E4E]">{n.displayName}</span>
+                    <span className="text-[10px] text-[#7A8F79] block">{n.user.email}</span>
+                  </span>
+                </label>
+              )
+            })}
+          </div>
+        </>
+      )}
+      {audiences.length === 0 && (
+        <p className="mt-2 text-xs font-semibold text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          No audience selected — this message will be saved as a draft and not shown to anyone.
+        </p>
+      )}
+    </div>
+  )
+}
+
 export default function AdminMessagesPage() {
   const router = useRouter()
   const [messages, setMessages] = useState<PortalMessage[]>([])
   const [nurses, setNurses] = useState<Nurse[]>([])
   const [loading, setLoading] = useState(true)
+  const [deleting, setDeleting] = useState<string | null>(null)
+
+  // Create form
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
-  const [deleting, setDeleting] = useState<string | null>(null)
-
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [category, setCategory] = useState('General')
   const [audiences, setAudiences] = useState<string[]>([])
 
+  // Edit state
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editSaving, setEditSaving] = useState(false)
+  const [editTitle, setEditTitle] = useState('')
+  const [editBody, setEditBody] = useState('')
+  const [editCategory, setEditCategory] = useState('General')
+  const [editAudiences, setEditAudiences] = useState<string[]>([])
+
   useEffect(() => {
     const p1 = fetch('/api/admin/messages', { credentials: 'include' })
       .then(r => { if (r.status === 401) { router.push('/login'); return null } return r.json() })
       .then(data => { if (Array.isArray(data)) setMessages(data) })
-
     const p2 = fetch('/api/admin/nurses', { credentials: 'include' })
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setNurses(data) })
-
     Promise.all([p1, p2]).finally(() => setLoading(false))
   }, [router])
 
-  function toggleAudience(value: string) {
-    setAudiences(prev =>
-      prev.includes(value) ? prev.filter(a => a !== value) : [...prev, value]
-    )
+  function resetCreate() {
+    setTitle(''); setBody(''); setCategory('General'); setAudiences([]); setSaveMsg('')
   }
 
-  function resetForm() {
-    setTitle('')
-    setBody('')
-    setCategory('General')
-    setAudiences([])
-    setSaveMsg('')
+  function openEdit(msg: PortalMessage) {
+    setEditingId(msg.id)
+    setEditTitle(msg.title || '')
+    setEditBody(msg.body)
+    setEditCategory(msg.category)
+    setEditAudiences(msg.audiences)
+    // close the create form if open
+    setShowForm(false)
+    resetCreate()
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function cancelEdit() {
+    setEditingId(null)
+  }
+
+  async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     if (!body.trim()) return
     setSaving(true)
@@ -93,10 +171,27 @@ export default function AdminMessagesPage() {
     setSaving(false)
     if (res.ok) {
       setMessages(prev => [data, ...prev])
-      resetForm()
+      resetCreate()
       setShowForm(false)
     } else {
       setSaveMsg(data.error || 'Failed to save message.')
+    }
+  }
+
+  async function handleUpdate(id: string) {
+    if (!editBody.trim()) return
+    setEditSaving(true)
+    const res = await fetch(`/api/admin/messages/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ title: editTitle, body: editBody, category: editCategory, audiences: editAudiences }),
+    })
+    const data = await res.json()
+    setEditSaving(false)
+    if (res.ok) {
+      setMessages(prev => prev.map(m => m.id === id ? { ...m, ...data } : m))
+      setEditingId(null)
     }
   }
 
@@ -104,14 +199,14 @@ export default function AdminMessagesPage() {
     setDeleting(id)
     await fetch(`/api/admin/messages/${id}`, { method: 'DELETE', credentials: 'include' })
     setMessages(prev => prev.filter(m => m.id !== id))
+    if (editingId === id) setEditingId(null)
     setDeleting(null)
   }
 
   function audienceLabel(a: string) {
     if (a.startsWith('user:')) {
-      const nurseId = a.replace('user:', '')
-      const nurse = nurses.find(n => n.id === nurseId)
-      return nurse ? nurse.displayName : nurseId
+      const nurse = nurses.find(n => n.id === a.replace('user:', ''))
+      return nurse ? nurse.displayName : a
     }
     return a
   }
@@ -128,24 +223,23 @@ export default function AdminMessagesPage() {
             <p className="text-sm text-[#7A8F79] mt-1">Post updates for nurses and providers — shown across their portal pages.</p>
           </div>
           <button
-            onClick={() => { setShowForm(!showForm); setSaveMsg('') }}
+            onClick={() => { setShowForm(!showForm); setSaveMsg(''); setEditingId(null) }}
             className="shrink-0 bg-[#2F3E4E] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition"
           >
             {showForm ? 'Cancel' : '+ New Message'}
           </button>
         </div>
 
-        {/* Create form */}
+        {/* ── Create form ── */}
         {showForm && (
-          <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm p-6 mb-6 space-y-5">
+          <form onSubmit={handleCreate} className="bg-white rounded-xl shadow-sm p-6 mb-6 space-y-5">
             <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8]">
               New Portal Message
             </h2>
 
-            {/* Title */}
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">
-                Title <span className="normal-case font-normal">(optional — short headline)</span>
+                Title <span className="normal-case font-normal">(optional)</span>
               </label>
               <input
                 type="text"
@@ -156,7 +250,6 @@ export default function AdminMessagesPage() {
               />
             </div>
 
-            {/* Body */}
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">
                 Message <span className="text-red-500">*</span>
@@ -164,103 +257,35 @@ export default function AdminMessagesPage() {
               <textarea
                 value={body}
                 onChange={e => setBody(e.target.value)}
-                required
-                rows={4}
+                required rows={4}
                 placeholder="Type your update here…"
                 className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] resize-none"
               />
             </div>
 
-            {/* Category */}
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-2">Category</label>
               <div className="flex flex-wrap gap-2">
                 {CATEGORIES.map(c => (
-                  <button
-                    key={c} type="button"
-                    onClick={() => setCategory(c)}
+                  <button key={c} type="button" onClick={() => setCategory(c)}
                     className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition ${
-                      category === c
-                        ? 'bg-[#2F3E4E] text-white border-[#2F3E4E]'
-                        : 'bg-white text-[#7A8F79] border-[#D9E1E8] hover:border-[#7A8F79]'
+                      category === c ? 'bg-[#2F3E4E] text-white border-[#2F3E4E]' : 'bg-white text-[#7A8F79] border-[#D9E1E8] hover:border-[#7A8F79]'
                     }`}
-                  >
-                    {c}
-                  </button>
+                  >{c}</button>
                 ))}
               </div>
-              <p className="text-xs text-[#7A8F79] mt-1.5">
-                This category determines which page the message rises to the top on for nurses.
-              </p>
+              <p className="text-xs text-[#7A8F79] mt-1.5">Category determines which portal page the message rises to the top on.</p>
             </div>
 
-            {/* Audience */}
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-2">
-                Audience <span className="normal-case font-normal">(select one or more — none selected = draft, not shown)</span>
-              </label>
-              <div className="space-y-1.5 mb-3">
-                {SYSTEM_AUDIENCES.map(a => (
-                  <label key={a.value} className="flex items-center gap-3 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={audiences.includes(a.value)}
-                      onChange={() => toggleAudience(a.value)}
-                      className="w-4 h-4 accent-[#7A8F79]"
-                    />
-                    <span>
-                      <span className="text-sm font-semibold text-[#2F3E4E] group-hover:text-[#7A8F79] transition">{a.label}</span>
-                      <span className="text-xs text-[#7A8F79] ml-2">{a.desc}</span>
-                    </span>
-                  </label>
-                ))}
-              </div>
-
-              {nurses.length > 0 && (
-                <>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1.5">Individual Providers</p>
-                  <div className="grid grid-cols-2 gap-1.5 max-h-40 overflow-y-auto bg-[#F4F6F5] rounded-lg p-3">
-                    {nurses.map(n => {
-                      const key = `user:${n.id}`
-                      return (
-                        <label key={n.id} className="flex items-center gap-2 cursor-pointer group">
-                          <input
-                            type="checkbox"
-                            checked={audiences.includes(key)}
-                            onChange={() => toggleAudience(key)}
-                            className="w-4 h-4 accent-[#7A8F79]"
-                          />
-                          <span>
-                            <span className="text-xs font-semibold text-[#2F3E4E]">{n.displayName}</span>
-                            <span className="text-[10px] text-[#7A8F79] block">{n.user.email}</span>
-                          </span>
-                        </label>
-                      )
-                    })}
-                  </div>
-                </>
-              )}
-
-              {audiences.length === 0 && (
-                <p className="mt-2 text-xs font-semibold text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                  No audience selected — this message will be saved as a draft and not shown to anyone.
-                </p>
-              )}
-            </div>
+            <AudienceSelector audiences={audiences} nurses={nurses} onChange={setAudiences} />
 
             <div className="flex gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => { setShowForm(false); resetForm() }}
-                className="flex-1 border border-[#D9E1E8] text-[#7A8F79] py-2 rounded-lg text-sm font-semibold hover:bg-[#F4F6F5] transition"
-              >
+              <button type="button" onClick={() => { setShowForm(false); resetCreate() }}
+                className="flex-1 border border-[#D9E1E8] text-[#7A8F79] py-2 rounded-lg text-sm font-semibold hover:bg-[#F4F6F5] transition">
                 Cancel
               </button>
-              <button
-                type="submit"
-                disabled={saving || !body.trim()}
-                className="flex-1 bg-[#2F3E4E] text-white py-2 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-50"
-              >
+              <button type="submit" disabled={saving || !body.trim()}
+                className="flex-1 bg-[#2F3E4E] text-white py-2 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-50">
                 {saving ? 'Posting…' : audiences.length === 0 ? 'Save as Draft' : 'Post Message'}
               </button>
             </div>
@@ -268,64 +293,133 @@ export default function AdminMessagesPage() {
           </form>
         )}
 
-        {/* Message list */}
+        {/* ── Message list ── */}
         {loading ? (
           <p className="text-sm text-[#7A8F79]">Loading…</p>
         ) : messages.length === 0 ? (
           <div className="bg-white rounded-xl shadow-sm p-10 text-center">
             <p className="text-[#2F3E4E] font-semibold">No messages yet</p>
-            <p className="text-sm text-[#7A8F79] mt-1">Post your first update above — it will appear on your providers' portal pages.</p>
+            <p className="text-sm text-[#7A8F79] mt-1">Post your first update above — it will appear on your providers&apos; portal pages.</p>
           </div>
         ) : (
           <div className="space-y-3">
             {messages.map(msg => {
               const catStyle = CATEGORY_STYLE[msg.category] || CATEGORY_STYLE.General
               const isDraft = msg.audiences.length === 0
+              const isEditing = editingId === msg.id
+
               return (
-                <div key={msg.id} className="bg-white rounded-xl shadow-sm p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-2">
-                        <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${catStyle}`}>
-                          {msg.category}
-                        </span>
-                        {isDraft ? (
-                          <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 border border-gray-200">
-                            Draft — not visible
-                          </span>
-                        ) : (
-                          <div className="flex flex-wrap gap-1">
-                            {msg.audiences.map(a => (
-                              <span key={a} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#D9E1E8] text-[#2F3E4E]">
-                                {audienceLabel(a)}
-                              </span>
-                            ))}
-                          </div>
-                        )}
+                <div key={msg.id} className={`bg-white rounded-xl shadow-sm p-5 transition-shadow ${isEditing ? 'ring-2 ring-[#7A8F79]' : ''}`}>
+                  {isEditing ? (
+                    /* ── Inline edit form ── */
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between pb-2 border-b border-[#D9E1E8]">
+                        <p className="text-xs font-semibold uppercase tracking-widest text-[#7A8F79]">Editing Message</p>
+                        <button onClick={cancelEdit} className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] font-semibold">Cancel</button>
                       </div>
-                      {msg.title && (
-                        <p className="text-sm font-semibold text-[#2F3E4E]">{msg.title}</p>
-                      )}
-                      <p className="text-sm text-[#2F3E4E] leading-relaxed mt-0.5">{msg.body}</p>
-                      <p className="text-[10px] text-[#7A8F79] mt-2">
-                        {new Date(msg.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
-                      </p>
+
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">
+                          Title <span className="normal-case font-normal">(optional)</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={editTitle}
+                          onChange={e => setEditTitle(e.target.value)}
+                          placeholder="e.g. Important Claims Update"
+                          className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">
+                          Message <span className="text-red-500">*</span>
+                        </label>
+                        <textarea
+                          value={editBody}
+                          onChange={e => setEditBody(e.target.value)}
+                          rows={4}
+                          className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] resize-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-2">Category</label>
+                        <div className="flex flex-wrap gap-2">
+                          {CATEGORIES.map(c => (
+                            <button key={c} type="button" onClick={() => setEditCategory(c)}
+                              className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition ${
+                                editCategory === c ? 'bg-[#2F3E4E] text-white border-[#2F3E4E]' : 'bg-white text-[#7A8F79] border-[#D9E1E8] hover:border-[#7A8F79]'
+                              }`}
+                            >{c}</button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <AudienceSelector audiences={editAudiences} nurses={nurses} onChange={setEditAudiences} />
+
+                      <div className="flex gap-3 pt-1">
+                        <button onClick={cancelEdit}
+                          className="flex-1 border border-[#D9E1E8] text-[#7A8F79] py-2 rounded-lg text-sm font-semibold hover:bg-[#F4F6F5] transition">
+                          Cancel
+                        </button>
+                        <button onClick={() => handleUpdate(msg.id)} disabled={editSaving || !editBody.trim()}
+                          className="flex-1 bg-[#2F3E4E] text-white py-2 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-50">
+                          {editSaving ? 'Saving…' : editAudiences.length === 0 ? 'Save as Draft' : 'Save Changes'}
+                        </button>
+                      </div>
                     </div>
-                    <button
-                      onClick={() => handleDelete(msg.id)}
-                      disabled={deleting === msg.id}
-                      className="shrink-0 text-[#D9E1E8] hover:text-red-400 transition text-lg leading-none disabled:opacity-40"
-                      title="Delete message"
-                    >
-                      ✕
-                    </button>
-                  </div>
+                  ) : (
+                    /* ── Read-only view ── */
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-2">
+                          <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${catStyle}`}>
+                            {msg.category}
+                          </span>
+                          {isDraft ? (
+                            <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 border border-gray-200">
+                              Draft — not visible
+                            </span>
+                          ) : (
+                            <div className="flex flex-wrap gap-1">
+                              {msg.audiences.map(a => (
+                                <span key={a} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#D9E1E8] text-[#2F3E4E]">
+                                  {audienceLabel(a)}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        {msg.title && <p className="text-sm font-semibold text-[#2F3E4E]">{msg.title}</p>}
+                        <p className="text-sm text-[#2F3E4E] leading-relaxed mt-0.5 whitespace-pre-wrap">{msg.body}</p>
+                        <p className="text-[10px] text-[#7A8F79] mt-2">
+                          {new Date(msg.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <button
+                          onClick={() => openEdit(msg)}
+                          className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(msg.id)}
+                          disabled={deleting === msg.id}
+                          className="text-[#D9E1E8] hover:text-red-400 transition text-lg leading-none disabled:opacity-40"
+                          title="Delete message"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )
             })}
           </div>
         )}
-
       </div>
     </div>
   )

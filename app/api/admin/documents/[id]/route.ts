@@ -24,7 +24,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   return NextResponse.json({ url })
 }
 
-// PATCH /api/admin/documents/[id] — update visibleToNurse
+// PATCH /api/admin/documents/[id]
+// Accepts any combination of: visibleToNurse, title, category, expiresAt, reminderDays, nurseId
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = adminOnly(req)
   if (!session || session.role !== 'admin') {
@@ -33,10 +34,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const { id } = await params
   const body = await req.json()
-  const doc = await prisma.nurseDocument.update({
-    where: { id },
-    data: { visibleToNurse: body.visibleToNurse === true },
-  })
+
+  const data: Record<string, any> = {}
+  if (body.visibleToNurse !== undefined) data.visibleToNurse = body.visibleToNurse === true
+  if (body.title !== undefined) data.title = body.title
+  if (body.category !== undefined) data.category = body.category
+  if ('expiresAt' in body) data.expiresAt = body.expiresAt ? new Date(body.expiresAt) : null
+  if (body.reminderDays !== undefined) data.reminderDays = Array.isArray(body.reminderDays) ? body.reminderDays.map(Number).filter((n: number) => !isNaN(n)) : []
+  if (body.nurseId !== undefined) data.nurseId = body.nurseId
+
+  const doc = await prisma.nurseDocument.update({ where: { id }, data })
   return NextResponse.json({ ok: true, document: doc })
 }
 

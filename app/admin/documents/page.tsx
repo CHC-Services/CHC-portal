@@ -21,6 +21,23 @@ export default function AdminDocumentsPage() {
   const [libNurseFilter, setLibNurseFilter] = useState('')
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
 
+  // folder management
+  const [newFolderName, setNewFolderName] = useState('')
+  const [folderSaving, setFolderSaving] = useState(false)
+  const [folderDeleting, setFolderDeleting] = useState<string | null>(null)
+  const [folderEditingId, setFolderEditingId] = useState<string | null>(null)
+  const [folderEditName, setFolderEditName] = useState('')
+
+  // edit modal
+  const [editDoc, setEditDoc] = useState<LibDoc | null>(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [editCategory, setEditCategory] = useState('')
+  const [editExpiry, setEditExpiry] = useState('')
+  const [editReminderDays, setEditReminderDays] = useState<number[]>([])
+  const [editNurseId, setEditNurseId] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
+  const [editMessage, setEditMessage] = useState('')
+
   const [selectedNurses, setSelectedNurses] = useState<string[]>([])
   const [docFile, setDocFile] = useState<File | null>(null)
   const [docTitle, setDocTitle] = useState('')
@@ -49,6 +66,85 @@ export default function AdminDocumentsPage() {
           setExpandedFolders(folders)
         }
       })
+  }
+
+  function openEdit(doc: LibDoc) {
+    setEditDoc(doc)
+    setEditTitle(doc.title)
+    setEditCategory(doc.category)
+    setEditExpiry(doc.expiresAt ? doc.expiresAt.slice(0, 10) : '')
+    setEditReminderDays([])
+    setEditNurseId(doc.nurseId)
+    setEditMessage('')
+  }
+
+  async function saveEdit() {
+    if (!editDoc) return
+    setEditSaving(true)
+    setEditMessage('')
+    const res = await fetch(`/api/admin/documents/${editDoc.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        title: editTitle.trim(),
+        category: editCategory.trim(),
+        expiresAt: editExpiry || null,
+        reminderDays: editReminderDays,
+        nurseId: editNurseId,
+      }),
+    })
+    if (res.ok) {
+      setEditDoc(null)
+      fetchLibrary()
+    } else {
+      const data = await res.json()
+      setEditMessage(data.error || 'Save failed.')
+    }
+    setEditSaving(false)
+  }
+
+  async function handleAddFolder(e: React.FormEvent) {
+    e.preventDefault()
+    const name = newFolderName.trim()
+    if (!name) return
+    setFolderSaving(true)
+    const res = await fetch('/api/admin/document-categories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ name }),
+    })
+    if (res.ok) {
+      setNewFolderName('')
+      const data = await fetch('/api/admin/document-categories', { credentials: 'include' }).then(r => r.json())
+      if (Array.isArray(data.categories)) setCategories(data.categories)
+    }
+    setFolderSaving(false)
+  }
+
+  async function handleRenameFolder(id: string) {
+    const name = folderEditName.trim()
+    if (!name) return
+    const res = await fetch(`/api/admin/document-categories/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ name }),
+    })
+    if (res.ok) {
+      setFolderEditingId(null)
+      setFolderEditName('')
+      const data = await fetch('/api/admin/document-categories', { credentials: 'include' }).then(r => r.json())
+      if (Array.isArray(data.categories)) setCategories(data.categories)
+    }
+  }
+
+  async function handleDeleteFolder(id: string) {
+    setFolderDeleting(id)
+    await fetch(`/api/admin/document-categories/${id}`, { method: 'DELETE', credentials: 'include' })
+    setCategories(prev => prev.filter(c => c.id !== id))
+    setFolderDeleting(null)
   }
 
   useEffect(() => {
@@ -375,6 +471,73 @@ export default function AdminDocumentsPage() {
 
       </form>
 
+      {/* ── Folder Manager ── */}
+      <div className="mt-6 bg-white rounded-xl shadow-sm p-6 space-y-3">
+        <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8]">
+          Manage Folders
+        </h2>
+
+        <div className="space-y-1">
+          {categories.length === 0 && (
+            <p className="text-sm text-[#7A8F79] italic">No custom folders yet.</p>
+          )}
+          {categories.map(c => (
+            <div key={c.id} className="flex items-center gap-2 py-1">
+              {folderEditingId === c.id ? (
+                <>
+                  <input
+                    type="text"
+                    value={folderEditName}
+                    onChange={e => setFolderEditName(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleRenameFolder(c.id) } if (e.key === 'Escape') { setFolderEditingId(null) } }}
+                    autoFocus
+                    className="flex-1 border border-[#7A8F79] px-2 py-1 rounded text-sm text-[#2F3E4E] focus:outline-none"
+                  />
+                  <button type="button" onClick={() => handleRenameFolder(c.id)} className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">Save</button>
+                  <button type="button" onClick={() => setFolderEditingId(null)} className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] transition">Cancel</button>
+                </>
+              ) : (
+                <>
+                  <span className="flex-1 text-sm text-[#2F3E4E]">📁 {c.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => { setFolderEditingId(c.id); setFolderEditName(c.name) }}
+                    className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] transition"
+                  >
+                    Rename
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteFolder(c.id)}
+                    disabled={folderDeleting === c.id}
+                    className="text-xs text-red-400 hover:text-red-600 transition disabled:opacity-40"
+                  >
+                    {folderDeleting === c.id ? '…' : 'Delete'}
+                  </button>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <form onSubmit={handleAddFolder} className="flex gap-2 pt-1 border-t border-[#D9E1E8]">
+          <input
+            type="text"
+            value={newFolderName}
+            onChange={e => setNewFolderName(e.target.value)}
+            placeholder="New folder name"
+            className="flex-1 border border-[#D9E1E8] px-3 py-1.5 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+          />
+          <button
+            type="submit"
+            disabled={folderSaving || !newFolderName.trim()}
+            className="bg-[#7A8F79] text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-[#2F3E4E] transition disabled:opacity-50"
+          >
+            {folderSaving ? '…' : 'Add Folder'}
+          </button>
+        </form>
+      </div>
+
       {/* ── Document Library ── */}
       {(() => {
         const fmt = (d: string) => new Date(d).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })
@@ -493,6 +656,12 @@ export default function AdminDocumentsPage() {
                                 >
                                   {libViewing === doc.id ? '…' : 'View'}
                                 </button>
+                                <button
+                                  onClick={() => openEdit(doc)}
+                                  className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] border border-[#D9E1E8] px-2 py-1 rounded transition whitespace-nowrap"
+                                >
+                                  Edit
+                                </button>
                               </div>
                             )
                           })}
@@ -506,6 +675,102 @@ export default function AdminDocumentsPage() {
           </div>
         )
       })()}
+
+      {/* ── Edit Document Modal ── */}
+      {editDoc && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md space-y-4 p-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-[#2F3E4E]">Edit Document</h3>
+              <button onClick={() => setEditDoc(null)} className="text-[#7A8F79] hover:text-[#2F3E4E] text-xl leading-none">×</button>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Title</label>
+              <input
+                type="text"
+                value={editTitle}
+                onChange={e => setEditTitle(e.target.value)}
+                className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Category / Folder</label>
+              <select
+                value={editCategory}
+                onChange={e => setEditCategory(e.target.value)}
+                className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+              >
+                <option value="General">General</option>
+                {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">
+                Expiration Date <span className="normal-case font-normal">(optional)</span>
+              </label>
+              <input
+                type="date"
+                value={editExpiry}
+                onChange={e => setEditExpiry(e.target.value)}
+                className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+              />
+            </div>
+
+            {editExpiry && (
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Email Reminders Before Expiry</label>
+                <div className="flex flex-wrap gap-3">
+                  {[90, 60, 30, 14, 7, 1].map(days => (
+                    <label key={days} className="flex items-center gap-1.5 text-sm text-[#2F3E4E] cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={editReminderDays.includes(days)}
+                        onChange={e => setEditReminderDays(prev =>
+                          e.target.checked ? [...prev, days] : prev.filter(d => d !== days)
+                        )}
+                        className="accent-[#7A8F79]"
+                      />
+                      {days === 1 ? '1 day' : `${days} days`}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Assigned Provider</label>
+              <select
+                value={editNurseId}
+                onChange={e => setEditNurseId(e.target.value)}
+                className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+              >
+                {nurses.map(n => <option key={n.id} value={n.id}>{n.displayName}</option>)}
+              </select>
+            </div>
+
+            {editMessage && <p className="text-sm text-[#9B1C1C]">{editMessage}</p>}
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setEditDoc(null)}
+                className="flex-1 border border-[#D9E1E8] text-[#7A8F79] py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f6f8] transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveEdit}
+                disabled={editSaving || !editTitle.trim()}
+                className="flex-1 bg-[#2F3E4E] text-white py-2 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-50"
+              >
+                {editSaving ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   )

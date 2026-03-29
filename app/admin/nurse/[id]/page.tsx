@@ -1431,7 +1431,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                           <tr key={i} className="border-t border-[#D9E1E8]">
                             <td className="px-4 py-2.5 font-semibold">{fmtI(e.workDate)}</td>
                             <td className="px-4 py-2.5"><span className="bg-[#2F3E4E] text-white text-xs font-bold px-2 py-0.5 rounded">{e.invoiceFeePlan}</span></td>
-                            <td className="px-4 py-2.5 text-[#4a5a6a] hidden sm:table-cell">{FEE_LABELS[e.invoiceFeePlan] || e.invoiceFeePlan}</td>
+                            <td className="px-4 py-2.5 text-[#4a5a6a] hidden sm:table-cell">{e.invoiceFeePlan ? (FEE_LABELS[e.invoiceFeePlan] || e.invoiceFeePlan) : ''}</td>
                             <td className="px-4 py-2.5 text-right font-bold">${(e.invoiceFeeAmt ?? 0).toFixed(2)}</td>
                           </tr>
                         ))}

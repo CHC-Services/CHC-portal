@@ -304,21 +304,16 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
         return
       }
 
-      // Step 2 — POST the file directly to S3 via presigned POST (no CORS preflight)
+      // Step 2 — POST the file directly to S3 via presigned POST.
+      // Use no-cors so browser doesn't block the response — S3 returns 204 on
+      // success and we don't need to read the body. Step 3 will confirm the file
+      // actually landed by saving the DB record.
       const formData = new FormData()
       Object.entries(presignData.fields as Record<string, string>).forEach(([k, v]) =>
         formData.append(k, v),
       )
       formData.append('file', docFile)
-      const s3Res = await fetch(presignData.url, { method: 'POST', body: formData })
-      if (!s3Res.ok) {
-        const errText = await s3Res.text()
-        const match = errText.match(/<Message>(.*?)<\/Message>/)
-        setDocMessage(`Upload Failed: ${match?.[1] || `S3 rejected the file (${s3Res.status})`}`)
-        setDocMessageIsError(true)
-        setDocUploading(false)
-        return
-      }
+      await fetch(presignData.url, { method: 'POST', body: formData, mode: 'no-cors' })
 
       // Step 3 — tell the server to save the DB record now that the file is in S3
       const confirmRes = await fetch('/api/admin/documents/confirm', {

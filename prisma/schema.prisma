@@ -244,6 +244,7 @@ model NurseDocument {
   fileSize        Int?
   mimeType        String?
   uploadedBy      String
+  visibleToNurse  Boolean   @default(false)  // admin must explicitly share with nurse
   expiresAt       DateTime?
   reminderDays    Int[]        @default([])
   remindersSentDays Int[]      @default([])

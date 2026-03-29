@@ -126,6 +126,7 @@ export async function GET(req: Request) {
       mimeType: true,
       expiresAt: true,
       reminderDays: true,
+      visibleToNurse: true,
       createdAt: true,
     },
   })

@@ -41,6 +41,13 @@ export default function ProfilePage() {
   const [reminderAdding, setReminderAdding] = useState(false)
   const [showReminderForm, setShowReminderForm] = useState(false)
 
+  // documents
+  const [documents, setDocuments] = useState<Array<{
+    id: string; title: string; fileName: string; category: string;
+    fileSize: number | null; mimeType: string | null; expiresAt: string | null; createdAt: string
+  }>>([])
+  const [docDownloading, setDocDownloading] = useState<string | null>(null)
+
   useEffect(() => {
     fetch('/api/nurse/profile')
       .then((r) => {
@@ -61,6 +68,10 @@ export default function ProfilePage() {
     fetch('/api/nurse/reminders', { credentials: 'include' })
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setReminders(data) })
+
+    fetch('/api/nurse/documents', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data.documents)) setDocuments(data.documents) })
   }, [router])
 
   async function addReminder(e: React.FormEvent) {
@@ -139,6 +150,23 @@ export default function ProfilePage() {
       setConfirmPassword('')
     } else {
       setPwMessage(data.error || 'Could not change password.')
+    }
+  }
+
+  async function downloadDoc(id: string, fileName: string) {
+    setDocDownloading(id)
+    try {
+      const res = await fetch(`/api/nurse/documents/${id}`, { credentials: 'include' })
+      const data = await res.json()
+      if (data.url) {
+        const a = document.createElement('a')
+        a.href = data.url
+        a.download = fileName
+        a.target = '_blank'
+        a.click()
+      }
+    } finally {
+      setDocDownloading(null)
     }
   }
 
@@ -442,6 +470,45 @@ export default function ProfilePage() {
             )}
           </div>
         </div>
+
+        {/* ── My Documents ── */}
+        {documents.length > 0 && (
+          <div className="bg-white p-6 rounded shadow space-y-4 lg:col-span-3">
+            <h2 className="text-xl font-semibold text-[#2F3E4E]">
+              <span className="text-[#7A8F79] italic">my</span>Documents
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {documents.map(doc => (
+                <div key={doc.id} className="border border-[#D9E1E8] rounded-lg p-4 flex flex-col gap-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-[#2F3E4E] truncate">{doc.title}</p>
+                      <p className="text-xs text-[#7A8F79] truncate">{doc.fileName}</p>
+                    </div>
+                    <span className="flex-shrink-0 text-[10px] uppercase tracking-wide font-semibold bg-[#D9E1E8] text-[#2F3E4E] px-2 py-0.5 rounded">
+                      {doc.category}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-[#7A8F79]">
+                    <span>{new Date(doc.createdAt).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                    {doc.expiresAt && (
+                      <span className="text-amber-600 font-medium">
+                        Exp {new Date(doc.expiresAt).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => downloadDoc(doc.id, doc.fileName)}
+                    disabled={docDownloading === doc.id}
+                    className="mt-auto w-full text-xs font-semibold text-[#2F3E4E] border border-[#D9E1E8] rounded py-1.5 hover:bg-[#D9E1E8] transition disabled:opacity-50"
+                  >
+                    {docDownloading === doc.id ? 'Opening…' : 'View / Download'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ── Col 3: myBilling + Notification Preferences ── */}
         <div className="space-y-6">

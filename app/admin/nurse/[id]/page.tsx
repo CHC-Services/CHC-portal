@@ -168,13 +168,14 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   const [pwMessage, setPwMessage] = useState('')
 
   // Documents
-  const [documents, setDocuments] = useState<{id:string;title:string;fileName:string;category:string;fileSize:number|null;expiresAt:string|null;createdAt:string;reminderDays:number[]}[]>([])
+  const [documents, setDocuments] = useState<{id:string;title:string;fileName:string;category:string;fileSize:number|null;expiresAt:string|null;createdAt:string;reminderDays:number[];visibleToNurse:boolean}[]>([])
   const [docViewing, setDocViewing] = useState<string | null>(null)
   const [docFile, setDocFile] = useState<File | null>(null)
   const [docTitle, setDocTitle] = useState('')
   const [docCategory, setDocCategory] = useState('General')
   const [docExpiry, setDocExpiry] = useState('')
   const [docReminderDays, setDocReminderDays] = useState<number[]>([])
+  const [docVisibleToNurse, setDocVisibleToNurse] = useState(false)
   const [docUploading, setDocUploading] = useState(false)
   const [docMessage, setDocMessage] = useState('')
   const [docMessageIsError, setDocMessageIsError] = useState(false)
@@ -184,6 +185,8 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   const [newCatName, setNewCatName] = useState('')
   const [catSaving, setCatSaving] = useState(false)
   const [catDeleting, setCatDeleting] = useState<string | null>(null)
+  const [catEditingId, setCatEditingId] = useState<string | null>(null)
+  const [catEditName, setCatEditName] = useState('')
 
   // Time entries + invoicing
   const [entries, setEntries] = useState<TimeEntry[]>([])
@@ -254,6 +257,22 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
     if (docCategory === catName) setDocCategory('General')
     fetchCategories()
     setCatDeleting(null)
+  }
+
+  async function handleRenameCategory(catId: string) {
+    const name = catEditName.trim()
+    if (!name) return
+    const res = await fetch(`/api/admin/document-categories/${catId}`, {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    })
+    if (res.ok) {
+      setCatEditingId(null)
+      setCatEditName('')
+      fetchCategories()
+    }
   }
 
   useEffect(() => {
@@ -330,6 +349,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
           category: docCategory,
           expiresAt: docExpiry || null,
           reminderDays: docReminderDays,
+          visibleToNurse: docVisibleToNurse,
         }),
       })
       const confirmData = await confirmRes.json()
@@ -341,6 +361,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
         setDocCategory('General')
         setDocExpiry('')
         setDocReminderDays([])
+        setDocVisibleToNurse(false)
         fetchDocuments()
       } else {
         setDocMessage(`Upload Failed: ${confirmData.error || 'File uploaded but record not saved.'}`)
@@ -883,6 +904,22 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                         )}
                       </div>
                       <button
+                        onClick={async () => {
+                          const next = !doc.visibleToNurse
+                          await fetch(`/api/admin/documents/${doc.id}`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({ visibleToNurse: next }),
+                          })
+                          setDocuments(prev => prev.map(d => d.id === doc.id ? { ...d, visibleToNurse: next } : d))
+                        }}
+                        title={doc.visibleToNurse ? 'Visible to nurse — click to hide' : 'Hidden from nurse — click to share'}
+                        className={`text-xs px-2 py-1 rounded border transition ${doc.visibleToNurse ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100' : 'text-[#7A8F79] border-[#D9E1E8] hover:border-[#7A8F79]'}`}
+                      >
+                        {doc.visibleToNurse ? 'Shared' : 'Share'}
+                      </button>
+                      <button
                         onClick={() => handleDocView(doc.id)}
                         disabled={docViewing === doc.id}
                         className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] border border-[#D9E1E8] px-2 py-1 rounded transition disabled:opacity-50"
@@ -942,16 +979,40 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                       <p className="text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79]">Folder List</p>
                       <div className="space-y-1">
                         {categories.map(c => (
-                          <div key={c.id} className="flex items-center justify-between gap-2 py-0.5">
-                            <span className="text-sm text-[#2F3E4E]">{c.name}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteCategory(c.id, c.name)}
-                              disabled={catDeleting === c.id}
-                              className="text-[11px] text-red-400 hover:text-red-600 transition disabled:opacity-40"
-                            >
-                              {catDeleting === c.id ? '…' : 'Remove'}
-                            </button>
+                          <div key={c.id} className="flex items-center gap-2 py-0.5">
+                            {catEditingId === c.id ? (
+                              <>
+                                <input
+                                  type="text"
+                                  value={catEditName}
+                                  onChange={e => setCatEditName(e.target.value)}
+                                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleRenameCategory(c.id) } if (e.key === 'Escape') { setCatEditingId(null); setCatEditName('') } }}
+                                  autoFocus
+                                  className="flex-1 border border-[#7A8F79] px-2 py-0.5 rounded text-sm text-[#2F3E4E] focus:outline-none"
+                                />
+                                <button type="button" onClick={() => handleRenameCategory(c.id)} className="text-[11px] text-[#7A8F79] hover:text-[#2F3E4E] font-semibold transition">Save</button>
+                                <button type="button" onClick={() => { setCatEditingId(null); setCatEditName('') }} className="text-[11px] text-[#7A8F79] hover:text-[#2F3E4E] transition">Cancel</button>
+                              </>
+                            ) : (
+                              <>
+                                <span className="flex-1 text-sm text-[#2F3E4E]">{c.name}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => { setCatEditingId(c.id); setCatEditName(c.name) }}
+                                  className="text-[11px] text-[#7A8F79] hover:text-[#2F3E4E] transition"
+                                >
+                                  Rename
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteCategory(c.id, c.name)}
+                                  disabled={catDeleting === c.id}
+                                  className="text-[11px] text-red-400 hover:text-red-600 transition disabled:opacity-40"
+                                >
+                                  {catDeleting === c.id ? '…' : 'Remove'}
+                                </button>
+                              </>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -990,12 +1051,21 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
 
               <div className="space-y-1">
                 <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">File</label>
-                <input
-                  type="file"
-                  onChange={e => setDocFile(e.target.files?.[0] || null)}
-                  className="w-full text-sm text-[#2F3E4E] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#D9E1E8] file:text-[#2F3E4E] hover:file:bg-[#7A8F79] hover:file:text-white transition"
-                  required
-                />
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    onChange={e => setDocFile(e.target.files?.[0] || null)}
+                    className="flex-1 text-sm text-[#2F3E4E] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#D9E1E8] file:text-[#2F3E4E] hover:file:bg-[#7A8F79] hover:file:text-white transition"
+                    required
+                  />
+                  <button
+                    type="submit"
+                    disabled={docUploading || !docFile || !docTitle}
+                    className="flex-shrink-0 bg-[#7A8F79] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#2F3E4E] transition disabled:opacity-50"
+                  >
+                    {docUploading ? 'Uploading…' : 'Upload Document'}
+                  </button>
+                </div>
               </div>
 
               {docExpiry && (
@@ -1019,20 +1089,21 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                 </div>
               )}
 
-              <div className="flex items-center gap-3">
-                <button
-                  type="submit"
-                  disabled={docUploading || !docFile || !docTitle}
-                  className="bg-[#7A8F79] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#2F3E4E] transition disabled:opacity-50"
-                >
-                  {docUploading ? 'Uploading…' : 'Upload Document'}
-                </button>
-                {docMessage && (
-                  <p className={`text-sm ${docMessageIsError ? 'text-[#9B1C1C]' : 'text-[#7A8F79]'}`}>
-                    {docMessage}
-                  </p>
-                )}
-              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={docVisibleToNurse}
+                  onChange={e => setDocVisibleToNurse(e.target.checked)}
+                  className="accent-[#7A8F79]"
+                />
+                <span className="text-sm text-[#2F3E4E]">Share with nurse (visible on their profile)</span>
+              </label>
+
+              {docMessage && (
+                <p className={`text-sm ${docMessageIsError ? 'text-[#9B1C1C]' : 'text-[#7A8F79]'}`}>
+                  {docMessage}
+                </p>
+              )}
             </form>
           </div>
 

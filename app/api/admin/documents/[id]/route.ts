@@ -24,6 +24,22 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   return NextResponse.json({ url })
 }
 
+// PATCH /api/admin/documents/[id] — update visibleToNurse
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = adminOnly(req)
+  if (!session || session.role !== 'admin') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const { id } = await params
+  const body = await req.json()
+  const doc = await prisma.nurseDocument.update({
+    where: { id },
+    data: { visibleToNurse: body.visibleToNurse === true },
+  })
+  return NextResponse.json({ ok: true, document: doc })
+}
+
 // DELETE /api/admin/documents/[id] — removes from S3 and DB
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = adminOnly(req)

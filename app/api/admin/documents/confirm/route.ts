@@ -28,6 +28,7 @@ export async function POST(req: Request) {
     category,
     expiresAt,
     reminderDays,
+    visibleToNurse,
   } = await req.json()
 
   if (!nurseId || !title || !storageKey || !fileName) {
@@ -44,6 +45,7 @@ export async function POST(req: Request) {
       fileSize: fileSize ?? null,
       mimeType: mimeType ?? null,
       uploadedBy: session.id,
+      visibleToNurse: visibleToNurse === true,
       expiresAt: expiresAt ? new Date(expiresAt) : null,
       reminderDays: Array.isArray(reminderDays) ? reminderDays.map(Number).filter((n: number) => !isNaN(n)) : [],
     },

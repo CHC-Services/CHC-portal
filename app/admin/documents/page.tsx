@@ -331,212 +331,212 @@ export default function AdminDocumentsPage() {
         </div>
       )}
 
-      <form onSubmit={handleUpload} className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
-        {/* Nurse selector */}
-        <div className="bg-white rounded-xl shadow-sm p-6 space-y-3 lg:col-span-1">
-          <div className="flex items-center justify-between pb-2 border-b border-[#D9E1E8]">
-            <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79]">Assign To</h2>
-            <button
-              type="button"
-              onClick={toggleAll}
-              className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] font-semibold transition"
-            >
-              {allSelected ? 'Deselect All' : 'Select All'}
-            </button>
+        {/* ── Column 1: Assign To + Manage Folders ── */}
+        <div className="space-y-6 lg:col-span-1">
+
+          {/* Assign To */}
+          <div className="bg-white rounded-xl shadow-sm p-6 space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-[#D9E1E8]">
+              <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79]">Assign To</h2>
+              <button
+                type="button"
+                onClick={toggleAll}
+                className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] font-semibold transition"
+              >
+                {allSelected ? 'Deselect All' : 'Select All'}
+              </button>
+            </div>
+            <div className="space-y-1 max-h-80 overflow-y-auto">
+              {nurses.map(nurse => (
+                <label key={nurse.id} className="flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-[#F4F6F5] transition">
+                  <input
+                    type="checkbox"
+                    checked={selectedNurses.includes(nurse.id)}
+                    onChange={() => toggleNurse(nurse.id)}
+                    className="accent-[#7A8F79] w-4 h-4 flex-shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-[#2F3E4E] truncate">{nurse.displayName}</p>
+                    <p className="text-xs text-[#7A8F79] truncate">{nurse.user?.email || ''}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+            {selectedNurses.length > 0 && (
+              <p className="text-xs text-[#7A8F79] pt-1 border-t border-[#D9E1E8]">
+                {selectedNurses.length} provider{selectedNurses.length !== 1 ? 's' : ''} selected
+              </p>
+            )}
           </div>
-          <div className="space-y-1 max-h-80 overflow-y-auto">
-            {nurses.map(nurse => (
-              <label key={nurse.id} className="flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-[#F4F6F5] transition">
-                <input
-                  type="checkbox"
-                  checked={selectedNurses.includes(nurse.id)}
-                  onChange={() => toggleNurse(nurse.id)}
-                  className="accent-[#7A8F79] w-4 h-4 flex-shrink-0"
-                />
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-[#2F3E4E] truncate">{nurse.displayName}</p>
-                  <p className="text-xs text-[#7A8F79] truncate">{nurse.user?.email || ''}</p>
-                </div>
-              </label>
-            ))}
-          </div>
-          {selectedNurses.length > 0 && (
-            <p className="text-xs text-[#7A8F79] pt-1 border-t border-[#D9E1E8]">
-              {selectedNurses.length} provider{selectedNurses.length !== 1 ? 's' : ''} selected
-            </p>
-          )}
-        </div>
 
-        {/* Upload form */}
-        <div className="bg-white rounded-xl shadow-sm p-6 space-y-4 lg:col-span-2">
-          <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8]">Document Details</h2>
-
-          <div className="grid sm:grid-cols-2 gap-4">
+          {/* Manage Folders */}
+          <div className="bg-white rounded-xl shadow-sm p-6 space-y-3">
+            <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8]">
+              Manage Folders
+            </h2>
             <div className="space-y-1">
-              <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Document Title</label>
+              {categories.length === 0 && (
+                <p className="text-sm text-[#7A8F79] italic">No custom folders yet.</p>
+              )}
+              {categories.map(c => (
+                <div key={c.id} className="flex items-center gap-2 py-1">
+                  {folderEditingId === c.id ? (
+                    <>
+                      <input
+                        type="text"
+                        value={folderEditName}
+                        onChange={e => setFolderEditName(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleRenameFolder(c.id) } if (e.key === 'Escape') { setFolderEditingId(null) } }}
+                        autoFocus
+                        className="flex-1 border border-[#7A8F79] px-2 py-1 rounded text-sm text-[#2F3E4E] focus:outline-none"
+                      />
+                      <button type="button" onClick={() => handleRenameFolder(c.id)} className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">Save</button>
+                      <button type="button" onClick={() => setFolderEditingId(null)} className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] transition">Cancel</button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="flex-1 text-sm text-[#2F3E4E]">📁 {c.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => { setFolderEditingId(c.id); setFolderEditName(c.name) }}
+                        className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] transition"
+                      >
+                        Rename
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteFolder(c.id)}
+                        disabled={folderDeleting === c.id}
+                        className="text-xs text-red-400 hover:text-red-600 transition disabled:opacity-40"
+                      >
+                        {folderDeleting === c.id ? '…' : 'Delete'}
+                      </button>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+            <form onSubmit={handleAddFolder} className="flex gap-2 pt-1 border-t border-[#D9E1E8]">
               <input
                 type="text"
-                value={docTitle}
-                onChange={e => setDocTitle(e.target.value)}
-                placeholder="e.g. RN License 2026"
-                required
-                className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Category / Folder</label>
-              <select
-                value={docCategory}
-                onChange={e => setDocCategory(e.target.value)}
-                className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-              >
-                <option value="General">General</option>
-                {categories.map(c => (
-                  <option key={c.id} value={c.name}>{c.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">
-                Expiration Date <span className="normal-case font-normal">(optional)</span>
-              </label>
-              <input
-                type="date"
-                value={docExpiry}
-                onChange={e => setDocExpiry(e.target.value)}
-                className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-              />
-            </div>
-          </div>
-
-          {docExpiry && (
-            <div className="space-y-2">
-              <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Email Reminders Before Expiry</label>
-              <div className="flex flex-wrap gap-3">
-                {[90, 60, 30, 14, 7, 1].map(days => (
-                  <label key={days} className="flex items-center gap-1.5 text-sm text-[#2F3E4E] cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={docReminderDays.includes(days)}
-                      onChange={e => setDocReminderDays(prev =>
-                        e.target.checked ? [...prev, days] : prev.filter(d => d !== days)
-                      )}
-                      className="accent-[#7A8F79]"
-                    />
-                    {days === 1 ? '1 day' : `${days} days`}
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={visibleToNurse}
-              onChange={e => setVisibleToNurse(e.target.checked)}
-              className="accent-[#7A8F79]"
-            />
-            <span className="text-sm text-[#2F3E4E]">Share with nurse (visible on their profile)</span>
-          </label>
-
-          <div className="space-y-1">
-            <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">File</label>
-            <div className="flex items-center gap-2">
-              <input
-                type="file"
-                onChange={e => setDocFile(e.target.files?.[0] || null)}
-                required
-                className="flex-1 text-sm text-[#2F3E4E] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#D9E1E8] file:text-[#2F3E4E] hover:file:bg-[#7A8F79] hover:file:text-white transition"
+                value={newFolderName}
+                onChange={e => setNewFolderName(e.target.value)}
+                placeholder="New folder name"
+                className="flex-1 border border-[#D9E1E8] px-3 py-1.5 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
               />
               <button
                 type="submit"
-                disabled={uploading || !docFile || !docTitle || selectedNurses.length === 0}
-                className="flex-shrink-0 bg-[#7A8F79] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#2F3E4E] transition disabled:opacity-50"
+                disabled={folderSaving || !newFolderName.trim()}
+                className="bg-[#7A8F79] text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-[#2F3E4E] transition disabled:opacity-50"
               >
-                {uploading ? 'Uploading…' : `Upload${selectedNurses.length > 1 ? ` (${selectedNurses.length})` : ''}`}
+                {folderSaving ? '…' : 'Add'}
               </button>
-            </div>
+            </form>
           </div>
 
-          {message && (
-            <p className={`text-sm ${messageIsError ? 'text-[#9B1C1C]' : 'text-[#7A8F79]'}`}>
-              {message}
-            </p>
-          )}
         </div>
 
-      </form>
+        {/* ── Columns 2 & 3: Document Details + Library ── */}
+        <div className="space-y-6 lg:col-span-2">
 
-      {/* ── Folder Manager ── */}
-      <div className="mt-6 bg-white rounded-xl shadow-sm p-6 space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8]">
-          Manage Folders
-        </h2>
+          {/* Document Details upload form */}
+          <form onSubmit={handleUpload} className="bg-white rounded-xl shadow-sm p-6 space-y-4">
+            <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8]">Document Details</h2>
 
-        <div className="space-y-1">
-          {categories.length === 0 && (
-            <p className="text-sm text-[#7A8F79] italic">No custom folders yet.</p>
-          )}
-          {categories.map(c => (
-            <div key={c.id} className="flex items-center gap-2 py-1">
-              {folderEditingId === c.id ? (
-                <>
-                  <input
-                    type="text"
-                    value={folderEditName}
-                    onChange={e => setFolderEditName(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleRenameFolder(c.id) } if (e.key === 'Escape') { setFolderEditingId(null) } }}
-                    autoFocus
-                    className="flex-1 border border-[#7A8F79] px-2 py-1 rounded text-sm text-[#2F3E4E] focus:outline-none"
-                  />
-                  <button type="button" onClick={() => handleRenameFolder(c.id)} className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">Save</button>
-                  <button type="button" onClick={() => setFolderEditingId(null)} className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] transition">Cancel</button>
-                </>
-              ) : (
-                <>
-                  <span className="flex-1 text-sm text-[#2F3E4E]">📁 {c.name}</span>
-                  <button
-                    type="button"
-                    onClick={() => { setFolderEditingId(c.id); setFolderEditName(c.name) }}
-                    className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] transition"
-                  >
-                    Rename
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteFolder(c.id)}
-                    disabled={folderDeleting === c.id}
-                    className="text-xs text-red-400 hover:text-red-600 transition disabled:opacity-40"
-                  >
-                    {folderDeleting === c.id ? '…' : 'Delete'}
-                  </button>
-                </>
-              )}
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Document Title</label>
+                <input
+                  type="text"
+                  value={docTitle}
+                  onChange={e => setDocTitle(e.target.value)}
+                  placeholder="e.g. RN License 2026"
+                  required
+                  className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Category / Folder</label>
+                <select
+                  value={docCategory}
+                  onChange={e => setDocCategory(e.target.value)}
+                  className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                >
+                  <option value="General">General</option>
+                  {categories.map(c => (
+                    <option key={c.id} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">
+                  Expiration Date <span className="normal-case font-normal">(optional)</span>
+                </label>
+                <input
+                  type="date"
+                  value={docExpiry}
+                  onChange={e => setDocExpiry(e.target.value)}
+                  className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                />
+              </div>
             </div>
-          ))}
-        </div>
 
-        <form onSubmit={handleAddFolder} className="flex gap-2 pt-1 border-t border-[#D9E1E8]">
-          <input
-            type="text"
-            value={newFolderName}
-            onChange={e => setNewFolderName(e.target.value)}
-            placeholder="New folder name"
-            className="flex-1 border border-[#D9E1E8] px-3 py-1.5 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-          />
-          <button
-            type="submit"
-            disabled={folderSaving || !newFolderName.trim()}
-            className="bg-[#7A8F79] text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-[#2F3E4E] transition disabled:opacity-50"
-          >
-            {folderSaving ? '…' : 'Add Folder'}
-          </button>
-        </form>
-      </div>
+            {docExpiry && (
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Email Reminders Before Expiry</label>
+                <div className="flex flex-wrap gap-3">
+                  {[90, 60, 30, 14, 7, 1].map(days => (
+                    <label key={days} className="flex items-center gap-1.5 text-sm text-[#2F3E4E] cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={docReminderDays.includes(days)}
+                        onChange={e => setDocReminderDays(prev =>
+                          e.target.checked ? [...prev, days] : prev.filter(d => d !== days)
+                        )}
+                        className="accent-[#7A8F79]"
+                      />
+                      {days === 1 ? '1 day' : `${days} days`}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={visibleToNurse}
+                onChange={e => setVisibleToNurse(e.target.checked)}
+                className="accent-[#7A8F79]"
+              />
+              <span className="text-sm text-[#2F3E4E]">Share with nurse (visible on their profile)</span>
+            </label>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">File</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  onChange={e => setDocFile(e.target.files?.[0] || null)}
+                  required
+                  className="flex-1 text-sm text-[#2F3E4E] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#D9E1E8] file:text-[#2F3E4E] hover:file:bg-[#7A8F79] hover:file:text-white transition"
+                />
+                <button
+                  type="submit"
+                  disabled={uploading || !docFile || !docTitle || selectedNurses.length === 0}
+                  className="flex-shrink-0 bg-[#7A8F79] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#2F3E4E] transition disabled:opacity-50"
+                >
+                  {uploading ? 'Uploading…' : `Upload${selectedNurses.length > 1 ? ` (${selectedNurses.length})` : ''}`}
+                </button>
+              </div>
+            </div>
+
+            {message && (
+              <p className={`text-sm ${messageIsError ? 'text-[#9B1C1C]' : 'text-[#7A8F79]'}`}>{message}</p>
+            )}
+          </form>
 
       {/* ── Document Library ── */}
       {(() => {
@@ -675,6 +675,9 @@ export default function AdminDocumentsPage() {
           </div>
         )
       })()}
+
+        </div> {/* closes lg:col-span-2 */}
+      </div> {/* closes outer 3-col grid */}
 
       {/* ── Edit Document Modal ── */}
       {editDoc && (

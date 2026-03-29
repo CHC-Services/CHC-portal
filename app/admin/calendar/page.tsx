@@ -82,7 +82,7 @@ export default function AdminCalendarPage() {
         <div className="flex items-center gap-4 mb-6">
           <Link href="/admin" className="text-[#7A8F79] hover:text-[#2F3E4E] text-sm">← Admin</Link>
           <div>
-            <h1 className="text-3xl font-bold text-[#2F3E4E]">Shared Calendar</h1>
+            <h1 className="text-3xl font-bold text-[#2F3E4E]"><span className="text-[#7A8F79] italic">ad</span>Calendar</h1>
             <p className="text-xs text-[#7A8F79] mt-0.5">Events here appear on every provider's calendar.</p>
           </div>
           <button

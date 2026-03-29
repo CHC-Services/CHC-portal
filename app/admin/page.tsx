@@ -356,7 +356,7 @@ export default function AdminDashboard() {
 
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-[#2F3E4E]">Admin Dashboard</h1>
+        <h1 className="text-3xl font-bold text-[#2F3E4E]"><span className="text-[#7A8F79] italic">ad</span>Roster</h1>
         <p className="text-sm text-[#7A8F79] mt-1">
           {now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </p>

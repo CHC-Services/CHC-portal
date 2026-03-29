@@ -89,7 +89,7 @@ export default function AdminEmailPage() {
       <div className="max-w-3xl mx-auto">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-[#2F3E4E]">
-            <span className="text-[#7A8F79] italic">admin</span>Email
+            <span className="text-[#7A8F79] italic">ad</span>Email
           </h1>
           <p className="text-sm text-[#7A8F79] mt-1">Compose and send a message to one or more providers.</p>
         </div>

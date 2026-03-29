@@ -4,12 +4,16 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 const links = [
-  { label: 'Roster',          href: '/admin' },
-  { label: 'Claims',          href: '/admin/claims' },
-  { label: 'Billing Summary', href: '/admin/billing' },
-  { label: 'Calendar',        href: '/admin/calendar' },
-  { label: 'Add Provider',    href: '/admin#add-provider' },
-  { label: 'myIdeas',         href: '/admin/ideas' },
+  { prefix: 'ad', label: 'Roster',   href: '/admin' },
+  { prefix: 'ad', label: 'Claims',   href: '/admin/claims' },
+  { prefix: 'ad', label: 'Billing',  href: '/admin/billing' },
+  { prefix: 'ad', label: 'Calendar', href: '/admin/calendar' },
+  { prefix: 'ad', label: 'Docs',     href: '/admin/documents' },
+  { prefix: 'ad', label: 'Messages', href: '/admin/messages' },
+  { prefix: 'ad', label: 'Email',    href: '/admin/email' },
+  { prefix: 'ad', label: 'FAQ',      href: '/admin/faq' },
+  { prefix: 'ad', label: 'Ideas',    href: '/admin/ideas' },
+  { prefix: '',   label: 'Add Provider', href: '/admin#add-provider' },
 ]
 
 export default function AdminNav() {
@@ -31,6 +35,9 @@ export default function AdminNav() {
                 : 'bg-white text-[#2F3E4E] border border-[#D9E1E8] hover:border-[#7A8F79] hover:text-[#7A8F79]'
             }`}
           >
+            {link.prefix && (
+              <span className="italic text-[#7A8F79]">{link.prefix}</span>
+            )}
             {link.label}
           </Link>
         )

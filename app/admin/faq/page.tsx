@@ -126,7 +126,7 @@ export default function AdminFaqPage() {
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-[#2F3E4E]">
-              <span className="text-[#7A8F79] italic">FAQ</span> Manager
+              <span className="text-[#7A8F79] italic">ad</span>FAQ
             </h1>
             <p className="text-sm text-[#7A8F79] mt-1">Add, edit, reorder, and publish FAQ items visible on the public FAQ page.</p>
           </div>

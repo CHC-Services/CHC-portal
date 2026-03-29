@@ -20,6 +20,7 @@ export async function POST(req: Request) {
 
   const {
     nurseId,
+    nurseIds,
     title,
     storageKey,
     fileName,
@@ -31,39 +32,53 @@ export async function POST(req: Request) {
     visibleToNurse,
   } = await req.json()
 
-  if (!nurseId || !title || !storageKey || !fileName) {
+  // Support single nurseId or array of nurseIds
+  const targets: string[] = Array.isArray(nurseIds) && nurseIds.length > 0
+    ? nurseIds
+    : nurseId ? [nurseId] : []
+
+  if (!targets.length || !title || !storageKey || !fileName) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
-  const doc = await prisma.nurseDocument.create({
-    data: {
-      nurseId,
-      title,
-      fileName,
-      storageKey,
-      category: category || 'General',
-      fileSize: fileSize ?? null,
-      mimeType: mimeType ?? null,
-      uploadedBy: session.id,
-      visibleToNurse: visibleToNurse === true,
-      expiresAt: expiresAt ? new Date(expiresAt) : null,
-      reminderDays: Array.isArray(reminderDays) ? reminderDays.map(Number).filter((n: number) => !isNaN(n)) : [],
-    },
-  })
+  const sanitizedReminderDays = Array.isArray(reminderDays)
+    ? reminderDays.map(Number).filter((n: number) => !isNaN(n))
+    : []
 
-  const nurseProfile = await prisma.nurseProfile.findUnique({
-    where: { id: nurseId },
+  const docs = await Promise.all(targets.map(nid =>
+    prisma.nurseDocument.create({
+      data: {
+        nurseId: nid,
+        title,
+        fileName,
+        storageKey,
+        category: category || 'General',
+        fileSize: fileSize ?? null,
+        mimeType: mimeType ?? null,
+        uploadedBy: session.id,
+        visibleToNurse: visibleToNurse === true,
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
+        reminderDays: sanitizedReminderDays,
+      },
+    })
+  ))
+
+  // Send notification emails to nurses who have it enabled
+  const profiles = await prisma.nurseProfile.findMany({
+    where: { id: { in: targets } },
     include: { user: { select: { email: true } } },
   })
-  if (nurseProfile?.notifyNewDocument && nurseProfile.user?.email) {
-    sendNewDocumentAlert({
-      nurseEmail: nurseProfile.user.email,
-      nurseName: nurseProfile.displayName,
-      documentTitle: title,
-      category: category || 'General',
-      uploadedAt: doc.createdAt,
-    }).catch(() => {})
+  for (const nurseProfile of profiles) {
+    if (nurseProfile.notifyNewDocument && nurseProfile.user?.email) {
+      sendNewDocumentAlert({
+        nurseEmail: nurseProfile.user.email,
+        nurseName: nurseProfile.displayName,
+        documentTitle: title,
+        category: category || 'General',
+        uploadedAt: docs[0].createdAt,
+      }).catch(() => {})
+    }
   }
 
-  return NextResponse.json({ ok: true, document: doc })
+  return NextResponse.json({ ok: true, count: docs.length })
 }

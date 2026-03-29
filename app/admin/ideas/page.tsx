@@ -103,7 +103,7 @@ export default function AdminIdeasPage() {
 
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-[#2F3E4E]">
-          <span className="text-[#7A8F79] italic">my</span>Ideas
+          <span className="text-[#7A8F79] italic">ad</span>Ideas
         </h1>
         <p className="text-sm text-[#7A8F79] mt-1">Tasks, reminders, and site notes — all in one place.</p>
       </div>

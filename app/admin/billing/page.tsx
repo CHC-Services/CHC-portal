@@ -100,7 +100,7 @@ export default function AdminBillingPage() {
       <AdminNav />
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-[#2F3E4E]">
-          <span className="text-[#7A8F79] italic">my</span>Billing Summary
+          <span className="text-[#7A8F79] italic">ad</span>Billing
         </h1>
         <p className="text-sm text-[#7A8F79] mt-1">Review submitted hours and lock entries once billed.</p>
       </div>

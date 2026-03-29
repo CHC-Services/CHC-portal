@@ -219,7 +219,7 @@ export default function AdminMessagesPage() {
         <div className="flex items-center gap-4 mb-8">
           <Link href="/admin" className="text-[#7A8F79] hover:text-[#2F3E4E] text-sm">← Admin</Link>
           <div className="flex-1">
-            <h1 className="text-3xl font-bold text-[#2F3E4E]">Portal Messaging</h1>
+            <h1 className="text-3xl font-bold text-[#2F3E4E]"><span className="text-[#7A8F79] italic">ad</span>Messages</h1>
             <p className="text-sm text-[#7A8F79] mt-1">Post updates for nurses and providers — shown across their portal pages.</p>
           </div>
           <button

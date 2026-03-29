@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { verifyToken } from '../../../../../lib/auth'
-import { getPresignedUploadUrl } from '../../../../../lib/s3'
+import { getPresignedPost } from '../../../../../lib/s3'
 
 function adminOnly(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -10,7 +10,7 @@ function adminOnly(req: Request) {
 
 // POST /api/admin/documents/presign
 // Body: { fileName, contentType, nurseId, category }
-// Returns: { uploadUrl, storageKey }
+// Returns: { url, fields, storageKey }
 export async function POST(req: Request) {
   const session = adminOnly(req)
   if (!session || session.role !== 'admin') {
@@ -27,11 +27,11 @@ export async function POST(req: Request) {
   const storageKey = `nurse-documents/${nurseId}/${safeCategory}/${Date.now()}-${safeName}`
 
   try {
-    const uploadUrl = await getPresignedUploadUrl(
+    const { url, fields } = await getPresignedPost(
       storageKey,
       contentType || 'application/octet-stream',
     )
-    return NextResponse.json({ uploadUrl, storageKey })
+    return NextResponse.json({ url, fields, storageKey })
   } catch (err: any) {
     console.error('[S3 presign error]', err)
     return NextResponse.json(

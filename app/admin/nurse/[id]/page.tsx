@@ -284,7 +284,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
     setDocMessageIsError(false)
 
     try {
-      // Step 1 — get a presigned PUT URL from the server (tiny JSON request, no file bytes)
+      // Step 1 — get a presigned POST policy from the server (tiny JSON request, no file bytes)
       const presignRes = await fetch('/api/admin/documents/presign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -304,14 +304,17 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
         return
       }
 
-      // Step 2 — PUT the file directly to S3 (bypasses Vercel, no size limit)
-      const s3Res = await fetch(presignData.uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': docFile.type || 'application/octet-stream' },
-        body: docFile,
-      })
+      // Step 2 — POST the file directly to S3 via presigned POST (no CORS preflight)
+      const formData = new FormData()
+      Object.entries(presignData.fields as Record<string, string>).forEach(([k, v]) =>
+        formData.append(k, v),
+      )
+      formData.append('file', docFile)
+      const s3Res = await fetch(presignData.url, { method: 'POST', body: formData })
       if (!s3Res.ok) {
-        setDocMessage(`Upload Failed: S3 rejected the file (${s3Res.status}). Check bucket permissions.`)
+        const errText = await s3Res.text()
+        const match = errText.match(/<Message>(.*?)<\/Message>/)
+        setDocMessage(`Upload Failed: ${match?.[1] || `S3 rejected the file (${s3Res.status})`}`)
         setDocMessageIsError(true)
         setDocUploading(false)
         return

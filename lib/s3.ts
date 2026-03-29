@@ -1,5 +1,6 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import { createPresignedPost } from '@aws-sdk/s3-presigned-post'
 
 const clientConfig = {
   region: process.env.AWS_REGION!,
@@ -41,26 +42,26 @@ export async function deleteFromS3(key: string): Promise<void> {
 }
 
 /**
- * Generate a short-lived presigned PUT URL so the browser can upload directly
- * to S3 without routing the file bytes through Next.js / Vercel.
- * Expiry: 15 minutes. The URL is single-use and scoped to one object key.
+ * Generate a short-lived presigned POST policy so the browser can upload
+ * directly to S3 without routing bytes through Next.js / Vercel.
+ * Uses multipart/form-data POST — no CORS preflight is triggered.
+ * Returns { url, fields } — browser POSTs form data to url with fields included.
  */
-export async function getPresignedUploadUrl(
+export async function getPresignedPost(
   key: string,
   contentType: string,
   expiresInSeconds = 900,
-): Promise<string> {
-  // No SSE or checksum headers — browser PUTs can't sign or compute them.
-  // AWS encrypts by default at the bucket level (AES-256) for all new buckets.
-  return getSignedUrl(
-    s3Presign,
-    new PutObjectCommand({
-      Bucket: BUCKET,
-      Key: key,
-      ContentType: contentType,
-    }),
-    { expiresIn: expiresInSeconds },
-  )
+): Promise<{ url: string; fields: Record<string, string> }> {
+  return createPresignedPost(s3Presign, {
+    Bucket: BUCKET,
+    Key: key,
+    Conditions: [
+      ['content-length-range', 0, 52428800], // 50MB max
+      ['eq', '$Content-Type', contentType],
+    ],
+    Fields: { 'Content-Type': contentType },
+    Expires: expiresInSeconds,
+  })
 }
 
 /**

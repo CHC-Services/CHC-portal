@@ -5,12 +5,15 @@ import { useRouter } from 'next/navigation'
 import AdminNav from '../../components/AdminNav'
 
 type Nurse = { id: string; displayName: string; user: { email: string; name: string } | null }
+type QueueDoc = { id: string; title: string; fileName: string; category: string; fileSize: number | null; createdAt: string; nurseId: string; nurse: { displayName: string } }
 
 export default function AdminDocumentsPage() {
   const router = useRouter()
   const [nurses, setNurses] = useState<Nurse[]>([])
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([])
   const [loading, setLoading] = useState(true)
+  const [queue, setQueue] = useState<QueueDoc[]>([])
+  const [queueViewing, setQueueViewing] = useState<string | null>(null)
 
   const [selectedNurses, setSelectedNurses] = useState<string[]>([])
   const [docFile, setDocFile] = useState<File | null>(null)
@@ -23,6 +26,12 @@ export default function AdminDocumentsPage() {
   const [message, setMessage] = useState('')
   const [messageIsError, setMessageIsError] = useState(false)
 
+  function fetchQueue() {
+    fetch('/api/admin/documents/queue', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data.docs)) setQueue(data.docs) })
+  }
+
   useEffect(() => {
     Promise.all([
       fetch('/api/admin/nurses', { credentials: 'include' }).then(r => {
@@ -34,6 +43,7 @@ export default function AdminDocumentsPage() {
       if (Array.isArray(nursesData)) setNurses(nursesData)
       if (Array.isArray(catsData?.categories)) setCategories(catsData.categories)
     }).finally(() => setLoading(false))
+    fetchQueue()
   }, [router])
 
   function toggleNurse(id: string) {
@@ -138,6 +148,72 @@ export default function AdminDocumentsPage() {
       </div>
 
       <AdminNav />
+
+      {/* Provider-Uploaded Document Queue */}
+      {queue.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm p-6 space-y-4 mb-6">
+          <div className="flex items-center justify-between pb-2 border-b border-[#D9E1E8]">
+            <div className="flex items-center gap-3">
+              <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79]">Provider Document Queue</h2>
+              <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full">{queue.length} pending</span>
+            </div>
+            <button
+              onClick={async () => {
+                await fetch('/api/admin/documents/queue', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ all: true }) })
+                setQueue([])
+              }}
+              className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] font-semibold transition"
+            >
+              Mark All Reviewed
+            </button>
+          </div>
+          <div className="space-y-2">
+            {queue.map(doc => (
+              <div key={doc.id} className="flex items-center gap-3 p-3 bg-[#F4F6F5] rounded-lg">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-semibold text-[#2F3E4E] truncate">{doc.title}</p>
+                    <span className="text-[10px] font-semibold bg-[#D9E1E8] text-[#2F3E4E] px-1.5 py-0.5 rounded-full">{doc.category}</span>
+                  </div>
+                  <p className="text-xs text-[#7A8F79]">
+                    {doc.nurse.displayName} · {new Date(doc.createdAt).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })}
+                  </p>
+                  <p className="text-[11px] text-[#7A8F79] truncate">{doc.fileName}</p>
+                </div>
+                <a
+                  href={`/admin/nurse/${doc.nurseId}`}
+                  className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] border border-[#D9E1E8] px-2 py-1 rounded transition"
+                >
+                  View Profile
+                </a>
+                <button
+                  onClick={async () => {
+                    // Open presigned download URL
+                    setQueueViewing(doc.id)
+                    const res = await fetch(`/api/admin/documents/${doc.id}`, { credentials: 'include' })
+                    const data = await res.json()
+                    if (data.url) window.open(data.url, '_blank')
+                    setQueueViewing(null)
+                  }}
+                  disabled={queueViewing === doc.id}
+                  className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] border border-[#D9E1E8] px-2 py-1 rounded transition disabled:opacity-50"
+                >
+                  {queueViewing === doc.id ? '…' : 'View'}
+                </button>
+                <button
+                  onClick={async () => {
+                    await fetch('/api/admin/documents/queue', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ id: doc.id }) })
+                    setQueue(prev => prev.filter(d => d.id !== doc.id))
+                  }}
+                  className="text-xs text-green-600 hover:text-green-800 border border-green-200 px-2 py-1 rounded transition"
+                >
+                  ✓ Done
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleUpload} className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 

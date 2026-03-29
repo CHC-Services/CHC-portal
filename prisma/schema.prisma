@@ -244,7 +244,10 @@ model NurseDocument {
   fileSize        Int?
   mimeType        String?
   uploadedBy      String
+  nurseUploaded   Boolean   @default(false)  // true when nurse uploaded it themselves
   visibleToNurse  Boolean   @default(false)  // admin must explicitly share with nurse
+  sharedWithAdmin Boolean   @default(false)  // nurse chose to share with admin
+  adminReviewed   Boolean   @default(false)  // admin has acknowledged the shared doc
   expiresAt       DateTime?
   reminderDays    Int[]        @default([])
   remindersSentDays Int[]      @default([])

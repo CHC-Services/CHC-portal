@@ -48,6 +48,16 @@ export default function ProfilePage() {
   }>>([])
   const [docDownloading, setDocDownloading] = useState<string | null>(null)
 
+  // upload form
+  const [upFile, setUpFile] = useState<File | null>(null)
+  const [upTitle, setUpTitle] = useState('')
+  const [upCategory, setUpCategory] = useState('General')
+  const [upUploading, setUpUploading] = useState(false)
+  const [upMessage, setUpMessage] = useState('')
+  const [upMessageIsError, setUpMessageIsError] = useState(false)
+  const [showSharePrompt, setShowSharePrompt] = useState(false)
+  const [pendingUpload, setPendingUpload] = useState<{ presignData: any; file: File; title: string; category: string } | null>(null)
+
   useEffect(() => {
     fetch('/api/nurse/profile')
       .then((r) => {
@@ -168,6 +178,89 @@ export default function ProfilePage() {
     } finally {
       setDocDownloading(null)
     }
+  }
+
+  async function handleUploadSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!upFile || !upTitle) return
+    setUpUploading(true)
+    setUpMessage('')
+    setUpMessageIsError(false)
+    try {
+      const presignRes = await fetch('/api/nurse/documents/presign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ fileName: upFile.name, contentType: upFile.type || 'application/octet-stream', category: upCategory }),
+      })
+      const presignData = await presignRes.json()
+      if (!presignRes.ok) {
+        setUpMessage(`Upload Failed: ${presignData.error || 'Could not get upload URL.'}`)
+        setUpMessageIsError(true)
+        setUpUploading(false)
+        return
+      }
+      // Show share prompt before sending to S3
+      setPendingUpload({ presignData, file: upFile, title: upTitle, category: upCategory })
+      setShowSharePrompt(true)
+    } catch (err: any) {
+      setUpMessage(`Upload Failed: ${err?.message || 'Network error.'}`)
+      setUpMessageIsError(true)
+    }
+    setUpUploading(false)
+  }
+
+  async function completeUpload(sharedWithAdmin: boolean) {
+    if (!pendingUpload) return
+    const { presignData, file, title, category } = pendingUpload
+    setShowSharePrompt(false)
+    setPendingUpload(null)
+    setUpUploading(true)
+    try {
+      // PUT to S3
+      const formData = new FormData()
+      Object.entries(presignData.fields as Record<string, string>).forEach(([k, v]) => formData.append(k, v))
+      formData.append('file', file)
+      await fetch(presignData.url, { method: 'POST', body: formData, mode: 'no-cors' })
+
+      // Confirm
+      const confirmRes = await fetch('/api/nurse/documents/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          nurseId: presignData.nurseId,
+          title,
+          storageKey: presignData.storageKey,
+          fileName: file.name,
+          fileSize: file.size,
+          mimeType: file.type || null,
+          category,
+          sharedWithAdmin,
+        }),
+      })
+      const confirmData = await confirmRes.json()
+      if (confirmData.ok) {
+        setUpMessage(sharedWithAdmin
+          ? 'Document uploaded and shared with Coming Home Care for review.'
+          : 'Document uploaded successfully.')
+        setUpMessageIsError(false)
+        setUpFile(null)
+        setUpTitle('')
+        setUpCategory('General')
+        // Refresh docs list
+        fetch('/api/nurse/documents', { credentials: 'include' })
+          .then(r => r.json())
+          .then(data => { if (Array.isArray(data.documents)) setDocuments(data.documents) })
+      } else {
+        setUpMessage(`Upload Failed: ${confirmData.error || 'File uploaded but record not saved.'}`)
+        setUpMessageIsError(true)
+      }
+    } catch (err: any) {
+      setUpMessage(`Upload Failed: ${err?.message || 'Network error.'}`)
+      setUpMessageIsError(true)
+    }
+    setUpUploading(false)
   }
 
   if (loading) {
@@ -472,11 +565,12 @@ export default function ProfilePage() {
         </div>
 
         {/* ── My Documents ── */}
-        {documents.length > 0 && (
-          <div className="bg-white p-6 rounded shadow space-y-4 lg:col-span-3">
-            <h2 className="text-xl font-semibold text-[#2F3E4E]">
-              <span className="text-[#7A8F79] italic">my</span>Documents
-            </h2>
+        <div className="bg-white p-6 rounded shadow space-y-4 lg:col-span-3">
+          <h2 className="text-xl font-semibold text-[#2F3E4E]">
+            <span className="text-[#7A8F79] italic">my</span>Documents
+          </h2>
+
+          {documents.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {documents.map(doc => (
                 <div key={doc.id} className="border border-[#D9E1E8] rounded-lg p-4 flex flex-col gap-2">
@@ -506,6 +600,82 @@ export default function ProfilePage() {
                   </button>
                 </div>
               ))}
+            </div>
+          ) : (
+            <p className="text-sm text-[#7A8F79] italic">No documents yet.</p>
+          )}
+
+          {/* Upload form */}
+          <form onSubmit={handleUploadSubmit} className="border-t border-[#D9E1E8] pt-4 space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Upload a Document</p>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Title</label>
+                <input
+                  type="text"
+                  value={upTitle}
+                  onChange={e => setUpTitle(e.target.value)}
+                  placeholder="e.g. RN License 2026"
+                  required
+                  className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Category</label>
+                <select
+                  value={upCategory}
+                  onChange={e => setUpCategory(e.target.value)}
+                  className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                >
+                  {['General', 'License', 'Insurance', 'Contract', 'Tax', 'Other'].map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="file"
+                onChange={e => setUpFile(e.target.files?.[0] || null)}
+                required
+                className="flex-1 text-sm text-[#2F3E4E] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#D9E1E8] file:text-[#2F3E4E] hover:file:bg-[#7A8F79] hover:file:text-white transition"
+              />
+              <button
+                type="submit"
+                disabled={upUploading || !upFile || !upTitle}
+                className="flex-shrink-0 bg-[#7A8F79] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#2F3E4E] transition disabled:opacity-50"
+              >
+                {upUploading ? 'Uploading…' : 'Upload'}
+              </button>
+            </div>
+            {upMessage && (
+              <p className={`text-sm ${upMessageIsError ? 'text-[#9B1C1C]' : 'text-[#7A8F79]'}`}>{upMessage}</p>
+            )}
+          </form>
+        </div>
+
+        {/* Share confirmation modal */}
+        {showSharePrompt && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
+              <h3 className="text-lg font-bold text-[#2F3E4E]">Share with Coming Home Care?</h3>
+              <p className="text-sm text-[#7A8F79] leading-relaxed">
+                Would you like this file to be viewable by Coming Home Care admin for enrollment, billing, or other service needs?
+              </p>
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => completeUpload(false)}
+                  className="flex-1 border border-[#D9E1E8] text-[#2F3E4E] py-2.5 rounded-xl text-sm font-semibold hover:bg-[#F4F6F5] transition"
+                >
+                  No, keep private
+                </button>
+                <button
+                  onClick={() => completeUpload(true)}
+                  className="flex-1 bg-[#2F3E4E] text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-[#7A8F79] transition"
+                >
+                  Yes, share for review
+                </button>
+              </div>
             </div>
           </div>
         )}

@@ -12,7 +12,7 @@ export async function GET(req: Request) {
   if (!profile) return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
 
   const documents = await prisma.nurseDocument.findMany({
-    where: { nurseId: profile.id, visibleToNurse: true },
+    where: { nurseId: profile.id, OR: [{ visibleToNurse: true }, { nurseUploaded: true }] },
     orderBy: { createdAt: 'desc' },
     select: {
       id: true,

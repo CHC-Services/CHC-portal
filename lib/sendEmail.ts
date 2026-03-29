@@ -760,3 +760,48 @@ export async function sendNewClaimAlert({
     return false
   }
 }
+
+export async function sendNurseSharedDocumentAlert({
+  nurseName,
+  documentTitle,
+  category,
+  uploadedAt,
+}: {
+  nurseName: string
+  documentTitle: string
+  category: string
+  uploadedAt: Date
+}): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) return false
+  const resend = new Resend(process.env.RESEND_API_KEY)
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to: ALERT_TO,
+      subject: `New Document Shared for Review — ${nurseName}`,
+      html: `
+        <div style="font-family:sans-serif;max-width:520px;padding:32px;color:#2F3E4E">
+          <h2 style="margin:0 0 8px;color:#2F3E4E">Document Shared for Review</h2>
+          <p style="margin:0 0 20px;color:#7A8F79;font-size:14px">
+            A provider has uploaded a document and shared it with Coming Home Care for enrollment, billing, or service review.
+          </p>
+          <div style="background:#f4f6f8;border-radius:10px;padding:20px 24px;margin-bottom:24px">
+            <p style="margin:0 0 8px;font-size:14px"><strong>Provider:</strong> ${nurseName}</p>
+            <p style="margin:0 0 8px;font-size:14px"><strong>Document:</strong> ${documentTitle}</p>
+            <p style="margin:0 0 8px;font-size:14px"><strong>Category:</strong> ${category}</p>
+            <p style="margin:0;font-size:14px"><strong>Uploaded:</strong> ${uploadedAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+          </div>
+          <a href="${PORTAL_URL}/admin/documents"
+             style="display:inline-block;background:#2F3E4E;color:white;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600">
+            Review in Admin Portal →
+          </a>
+          <hr style="border:none;border-top:1px solid #D9E1E8;margin:24px 0"/>
+          <p style="font-size:11px;color:#aab">Coming Home Care Services, LLC · Automated document alert</p>
+        </div>
+      `,
+    })
+    return !error
+  } catch {
+    return false
+  }
+}

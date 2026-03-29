@@ -6,6 +6,7 @@ import AdminNav from '../../components/AdminNav'
 
 type Nurse = { id: string; displayName: string; user: { email: string; name: string } | null }
 type QueueDoc = { id: string; title: string; fileName: string; category: string; fileSize: number | null; createdAt: string; nurseId: string; nurse: { displayName: string } }
+type LibDoc = { id: string; title: string; fileName: string; category: string; fileSize: number | null; mimeType: string | null; expiresAt: string | null; createdAt: string; nurseId: string; nurseUploaded: boolean; sharedWithAdmin: boolean; nurse: { displayName: string } }
 
 export default function AdminDocumentsPage() {
   const router = useRouter()
@@ -14,6 +15,11 @@ export default function AdminDocumentsPage() {
   const [loading, setLoading] = useState(true)
   const [queue, setQueue] = useState<QueueDoc[]>([])
   const [queueViewing, setQueueViewing] = useState<string | null>(null)
+  const [library, setLibrary] = useState<LibDoc[]>([])
+  const [libViewing, setLibViewing] = useState<string | null>(null)
+  const [libSearch, setLibSearch] = useState('')
+  const [libNurseFilter, setLibNurseFilter] = useState('')
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
 
   const [selectedNurses, setSelectedNurses] = useState<string[]>([])
   const [docFile, setDocFile] = useState<File | null>(null)
@@ -32,6 +38,19 @@ export default function AdminDocumentsPage() {
       .then(data => { if (Array.isArray(data.docs)) setQueue(data.docs) })
   }
 
+  function fetchLibrary() {
+    fetch('/api/admin/documents?all=1', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data.documents)) {
+          setLibrary(data.documents)
+          // Default all folders open
+          const folders = new Set(data.documents.map((d: LibDoc) => d.category) as string[])
+          setExpandedFolders(folders)
+        }
+      })
+  }
+
   useEffect(() => {
     Promise.all([
       fetch('/api/admin/nurses', { credentials: 'include' }).then(r => {
@@ -44,6 +63,7 @@ export default function AdminDocumentsPage() {
       if (Array.isArray(catsData?.categories)) setCategories(catsData.categories)
     }).finally(() => setLoading(false))
     fetchQueue()
+    fetchLibrary()
   }, [router])
 
   function toggleNurse(id: string) {
@@ -354,6 +374,139 @@ export default function AdminDocumentsPage() {
         </div>
 
       </form>
+
+      {/* ── Document Library ── */}
+      {(() => {
+        const fmt = (d: string) => new Date(d).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })
+        const fmtSize = (b: number | null) => !b ? '' : b < 1024 ? `${b} B` : b < 1048576 ? `${(b/1024).toFixed(0)} KB` : `${(b/1048576).toFixed(1)} MB`
+
+        const filtered = library.filter(d => {
+          const matchNurse = !libNurseFilter || d.nurseId === libNurseFilter
+          const matchSearch = !libSearch || d.title.toLowerCase().includes(libSearch.toLowerCase()) || d.fileName.toLowerCase().includes(libSearch.toLowerCase()) || d.nurse.displayName.toLowerCase().includes(libSearch.toLowerCase())
+          return matchNurse && matchSearch
+        })
+
+        // Group by category
+        const folders: Record<string, LibDoc[]> = {}
+        filtered.forEach(d => {
+          if (!folders[d.category]) folders[d.category] = []
+          folders[d.category].push(d)
+        })
+
+        return (
+          <div className="mt-6 bg-white rounded-xl shadow-sm p-6 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-[#D9E1E8]">
+              <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79]">
+                Document Library
+                <span className="ml-2 text-[#2F3E4E] normal-case font-normal">({library.length} total)</span>
+              </h2>
+              <button onClick={fetchLibrary} className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] transition font-semibold">↻ Refresh</button>
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-wrap gap-3">
+              <input
+                type="text"
+                value={libSearch}
+                onChange={e => setLibSearch(e.target.value)}
+                placeholder="Search title, file, or provider…"
+                className="flex-1 min-w-48 border border-[#D9E1E8] px-3 py-1.5 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+              />
+              <select
+                value={libNurseFilter}
+                onChange={e => setLibNurseFilter(e.target.value)}
+                className="border border-[#D9E1E8] px-3 py-1.5 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+              >
+                <option value="">All Providers</option>
+                {nurses.map(n => <option key={n.id} value={n.id}>{n.displayName}</option>)}
+              </select>
+            </div>
+
+            {filtered.length === 0 ? (
+              <p className="text-sm text-[#7A8F79] italic">No documents found.</p>
+            ) : (
+              <div className="space-y-3">
+                {Object.entries(folders).sort(([a], [b]) => a.localeCompare(b)).map(([folder, docs]) => {
+                  const open = expandedFolders.has(folder)
+                  return (
+                    <div key={folder} className="border border-[#D9E1E8] rounded-xl overflow-hidden">
+                      {/* Folder header */}
+                      <button
+                        type="button"
+                        onClick={() => setExpandedFolders(prev => {
+                          const next = new Set(prev)
+                          open ? next.delete(folder) : next.add(folder)
+                          return next
+                        })}
+                        className="w-full flex items-center justify-between px-4 py-3 bg-[#F4F6F5] hover:bg-[#eef0f2] transition text-left"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">{open ? '📂' : '📁'}</span>
+                          <span className="text-sm font-semibold text-[#2F3E4E]">{folder}</span>
+                          <span className="text-xs text-[#7A8F79]">{docs.length} file{docs.length !== 1 ? 's' : ''}</span>
+                        </div>
+                        <span className="text-[#7A8F79] text-xs">{open ? '▲' : '▼'}</span>
+                      </button>
+
+                      {/* Folder contents */}
+                      {open && (
+                        <div className="divide-y divide-[#D9E1E8]">
+                          {docs.map(doc => {
+                            const expDays = doc.expiresAt ? Math.ceil((new Date(doc.expiresAt).getTime() - Date.now()) / 86400000) : null
+                            return (
+                              <div key={doc.id} className="flex items-center gap-3 px-4 py-3 hover:bg-[#FAFBFC] transition">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <p className="text-sm font-semibold text-[#2F3E4E] truncate">{doc.title}</p>
+                                    {doc.nurseUploaded && doc.sharedWithAdmin && (
+                                      <span className="text-[10px] font-semibold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">Shared by nurse</span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-[#7A8F79] truncate">
+                                    {doc.nurse.displayName} · {doc.fileName} {doc.fileSize ? `· ${fmtSize(doc.fileSize)}` : ''}
+                                  </p>
+                                  <div className="flex gap-3 text-[11px] mt-0.5">
+                                    <span className="text-[#7A8F79]">Uploaded {fmt(doc.createdAt)}</span>
+                                    {expDays !== null && (
+                                      <span className={expDays < 0 ? 'text-red-600 font-semibold' : expDays <= 30 ? 'text-orange-500 font-semibold' : 'text-[#7A8F79]'}>
+                                        {expDays < 0 ? 'Expired' : `Expires in ${expDays}d`}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <a
+                                  href={`/admin/nurse/${doc.nurseId}`}
+                                  className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] border border-[#D9E1E8] px-2 py-1 rounded transition whitespace-nowrap"
+                                >
+                                  Profile
+                                </a>
+                                <button
+                                  onClick={async () => {
+                                    setLibViewing(doc.id)
+                                    const res = await fetch(`/api/admin/documents/${doc.id}`, { credentials: 'include' })
+                                    const data = await res.json()
+                                    if (data.url) window.open(data.url, '_blank')
+                                    setLibViewing(null)
+                                  }}
+                                  disabled={libViewing === doc.id}
+                                  className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] border border-[#D9E1E8] px-2 py-1 rounded transition disabled:opacity-50 whitespace-nowrap"
+                                >
+                                  {libViewing === doc.id ? '…' : 'View'}
+                                </button>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
     </div>
   )
 }

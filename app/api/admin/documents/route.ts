@@ -103,7 +103,8 @@ export async function POST(req: Request) {
   return NextResponse.json({ ok: true, document: doc })
 }
 
-// GET /api/admin/documents?nurseId=X
+// GET /api/admin/documents?nurseId=X  — single nurse docs
+// GET /api/admin/documents?all=1      — every doc across all nurses
 export async function GET(req: Request) {
   const session = adminOnly(req)
   if (!session || session.role !== 'admin') {
@@ -112,11 +113,13 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url)
   const nurseId = searchParams.get('nurseId')
-  if (!nurseId) return NextResponse.json({ error: 'nurseId required' }, { status: 400 })
+  const all = searchParams.get('all') === '1'
+
+  if (!nurseId && !all) return NextResponse.json({ error: 'nurseId or all required' }, { status: 400 })
 
   const documents = await prisma.nurseDocument.findMany({
-    where: { nurseId },
-    orderBy: { createdAt: 'desc' },
+    where: nurseId ? { nurseId } : undefined,
+    orderBy: [{ category: 'asc' }, { createdAt: 'desc' }],
     select: {
       id: true,
       title: true,
@@ -127,7 +130,11 @@ export async function GET(req: Request) {
       expiresAt: true,
       reminderDays: true,
       visibleToNurse: true,
+      nurseUploaded: true,
+      sharedWithAdmin: true,
       createdAt: true,
+      nurseId: true,
+      nurse: { select: { displayName: true } },
     },
   })
 

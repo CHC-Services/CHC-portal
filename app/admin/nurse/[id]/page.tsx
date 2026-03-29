@@ -192,6 +192,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   const [entries, setEntries] = useState<TimeEntry[]>([])
   const [claimRefs, setClaimRefs] = useState<Record<string, string>>({})
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
+  const [showInvoicePreview, setShowInvoicePreview] = useState(false)
   const [invoiceDueTerm, setInvoiceDueTerm] = useState('30')
   const [invoiceNotes, setInvoiceNotes] = useState('')
   const [invoiceSending, setInvoiceSending] = useState(false)
@@ -578,6 +579,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
     setBulkFlagging(false)
     setSelectedEntries(new Set())
     await fetchEntries()
+    setShowInvoicePreview(false)
     setShowInvoiceModal(true)
   }
 
@@ -1343,63 +1345,141 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
       </div>
 
       {/* ── Create Invoice Modal ── */}
-      {showInvoiceModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md space-y-4">
-            <h3 className="text-lg font-bold text-[#2F3E4E]">Create Invoice</h3>
-            <p className="text-sm text-[#7A8F79]">
-              {pendingEntries.length} entries · <strong className="text-[#2F3E4E]">${pendingTotal.toFixed(2)} total</strong>
-            </p>
+      {showInvoiceModal && (() => {
+        const dueDate = invoiceDueTerm === 'ASAP' ? null : new Date(Date.now() + Number(invoiceDueTerm) * 86400000)
+        const fmtI = (d: string | Date) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+        const FEE_LABELS: Record<string,string> = { A1: 'Medicaid — Single Payer', A2: 'Commercial — Single Payer', B: 'Dual Payer', C: '3+ Payer' }
+        return (
+          <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
 
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Due Terms</label>
-              <select
-                value={invoiceDueTerm}
-                onChange={e => setInvoiceDueTerm(e.target.value)}
-                className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E]"
-              >
-                <option value="30">Net 30 — due in 30 days</option>
-                <option value="60">Net 60 — due in 60 days</option>
-                <option value="90">Net 90 — due in 90 days</option>
-                <option value="ASAP">ASAP — due immediately</option>
-              </select>
-            </div>
+              {/* Modal header */}
+              <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-[#D9E1E8]">
+                <h3 className="text-lg font-bold text-[#2F3E4E]">Create Invoice</h3>
+                <div className="flex items-center gap-1 bg-[#F4F6F5] rounded-lg p-1">
+                  <button onClick={() => setShowInvoicePreview(false)} className={`px-3 py-1 rounded text-xs font-semibold transition ${!showInvoicePreview ? 'bg-white shadow text-[#2F3E4E]' : 'text-[#7A8F79]'}`}>Edit</button>
+                  <button onClick={() => setShowInvoicePreview(true)}  className={`px-3 py-1 rounded text-xs font-semibold transition ${showInvoicePreview  ? 'bg-white shadow text-[#2F3E4E]' : 'text-[#7A8F79]'}`}>Preview</button>
+                </div>
+              </div>
 
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Notes (optional)</label>
-              <textarea
-                value={invoiceNotes}
-                onChange={e => setInvoiceNotes(e.target.value)}
-                rows={3}
-                placeholder="Any additional notes for the nurse…"
-                className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] resize-none"
-              />
-            </div>
+              {!showInvoicePreview ? (
+                /* ── Edit form ── */
+                <div className="p-6 space-y-4">
+                  <p className="text-sm text-[#7A8F79]">
+                    {pendingEntries.length} entries · <strong className="text-[#2F3E4E]">${pendingTotal.toFixed(2)} total</strong>
+                  </p>
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Due Terms</label>
+                    <select value={invoiceDueTerm} onChange={e => setInvoiceDueTerm(e.target.value)} className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E]">
+                      <option value="30">Net 30 — due in 30 days</option>
+                      <option value="60">Net 60 — due in 60 days</option>
+                      <option value="90">Net 90 — due in 90 days</option>
+                      <option value="ASAP">ASAP — due immediately</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Notes (optional)</label>
+                    <textarea value={invoiceNotes} onChange={e => setInvoiceNotes(e.target.value)} rows={3} placeholder="Any additional notes for the nurse…" className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] resize-none" />
+                  </div>
+                  {invoiceMessage && (
+                    <p className={`text-xs font-semibold ${invoiceMessage.includes('sent') ? 'text-[#7A8F79]' : 'text-red-500'}`}>{invoiceMessage}</p>
+                  )}
+                  <div className="flex gap-3 pt-2">
+                    <button onClick={() => setShowInvoiceModal(false)} className="flex-1 border border-[#D9E1E8] text-[#7A8F79] py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f6f8] transition">Cancel</button>
+                    <button onClick={createInvoice} disabled={invoiceSending} className="flex-1 bg-[#2F3E4E] text-white py-2 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-50">
+                      {invoiceSending ? 'Sending…' : 'Send Invoice'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* ── Invoice preview ── */
+                <div className="p-6 space-y-5 text-[#2F3E4E]">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-xl font-black tracking-tight">Coming Home Care Services, LLC</p>
+                      <p className="text-xs text-[#7A8F79] mt-0.5">cominghomecare.com · support@cominghomecare.com</p>
+                    </div>
+                    <span className="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1 rounded-full">PREVIEW</span>
+                  </div>
 
-            {invoiceMessage && (
-              <p className={`text-xs font-semibold ${invoiceMessage.includes('sent') ? 'text-[#7A8F79]' : 'text-red-500'}`}>
-                {invoiceMessage}
-              </p>
-            )}
+                  <div className="grid grid-cols-2 gap-4 bg-[#F4F6F5] rounded-xl p-4 text-sm">
+                    <div>
+                      <p className="text-xs text-[#7A8F79] uppercase tracking-widest font-semibold mb-0.5">Bill To</p>
+                      <p className="font-semibold">{profile.displayName}</p>
+                      <p className="text-[#7A8F79]">{profile.user?.email || ''}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-[#7A8F79] uppercase tracking-widest font-semibold mb-0.5">Invoice</p>
+                      <p className="font-semibold text-[#7A8F79] italic">CHC-{new Date().getFullYear()}-XXXX</p>
+                      <p className="text-xs text-[#7A8F79] mt-1">Issued {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                      <p className="text-xs text-[#7A8F79]">Due {dueDate ? fmtI(dueDate.toISOString()) : 'Immediately'}</p>
+                    </div>
+                  </div>
 
-            <div className="flex gap-3 pt-2">
-              <button
-                onClick={() => setShowInvoiceModal(false)}
-                className="flex-1 border border-[#D9E1E8] text-[#7A8F79] py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f6f8] transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={createInvoice}
-                disabled={invoiceSending}
-                className="flex-1 bg-[#2F3E4E] text-white py-2 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-50"
-              >
-                {invoiceSending ? 'Sending…' : 'Send Invoice'}
-              </button>
+                  <div className="rounded-xl overflow-hidden border border-[#D9E1E8]">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-[#f4f6f8]">
+                          <th className="text-left px-4 py-2 text-xs font-semibold text-[#7A8F79] uppercase tracking-wide">Date</th>
+                          <th className="text-left px-4 py-2 text-xs font-semibold text-[#7A8F79] uppercase tracking-wide">Plan</th>
+                          <th className="text-left px-4 py-2 text-xs font-semibold text-[#7A8F79] uppercase tracking-wide hidden sm:table-cell">Description</th>
+                          <th className="text-right px-4 py-2 text-xs font-semibold text-[#7A8F79] uppercase tracking-wide">Fee</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pendingEntries.map((e, i) => (
+                          <tr key={i} className="border-t border-[#D9E1E8]">
+                            <td className="px-4 py-2.5 font-semibold">{fmtI(e.workDate)}</td>
+                            <td className="px-4 py-2.5"><span className="bg-[#2F3E4E] text-white text-xs font-bold px-2 py-0.5 rounded">{e.invoiceFeePlan}</span></td>
+                            <td className="px-4 py-2.5 text-[#4a5a6a] hidden sm:table-cell">{FEE_LABELS[e.invoiceFeePlan] || e.invoiceFeePlan}</td>
+                            <td className="px-4 py-2.5 text-right font-bold">${(e.invoiceFeeAmt ?? 0).toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="border-t-2 border-[#2F3E4E] bg-[#f4f6f8]">
+                          <td colSpan={3} className="px-4 py-3 text-xs font-bold uppercase tracking-widest text-[#7A8F79]">Total Due</td>
+                          <td className="px-4 py-3 text-right text-xl font-black">${pendingTotal.toFixed(2)}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+
+                  {invoiceNotes && (
+                    <div className="bg-[#f4f6f8] border-l-4 border-[#7A8F79] rounded-r-lg px-4 py-3">
+                      <p className="text-xs text-[#4a5a6a]"><strong>Note:</strong> {invoiceNotes}</p>
+                    </div>
+                  )}
+
+                  <div className="bg-[#f4f6f8] rounded-xl p-4">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-[#7A8F79] mb-3">Payment Methods</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { label: '💚 Venmo', value: '@AlexMcGann' },
+                        { label: '💚 Zelle', value: 'support@cominghomecare.com' },
+                        { label: '💚 CashApp', value: '$myInvoiceCHC' },
+                        { label: '🍎 Apple Pay', value: 'support@cominghomecare.com' },
+                      ].map(m => (
+                        <div key={m.label} className="bg-white rounded-lg px-3 py-2 border border-[#D9E1E8]">
+                          <p className="text-xs font-bold">{m.label}</p>
+                          <p className="text-xs text-[#7A8F79] mt-0.5">{m.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button onClick={() => setShowInvoiceModal(false)} className="flex-1 border border-[#D9E1E8] text-[#7A8F79] py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f6f8] transition">Cancel</button>
+                    <button onClick={createInvoice} disabled={invoiceSending} className="flex-1 bg-[#2F3E4E] text-white py-2 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-50">
+                      {invoiceSending ? 'Sending…' : 'Send Invoice'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
     </div>
   )

@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect, use, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AdminNav from '../../../components/AdminNav'
+import { DateInput, DateInputHandle } from '../../../components/DateInput'
 
 type Profile = Record<string, any>
 
@@ -205,6 +206,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
 
   // Log hours form
   const [workDate, setWorkDate] = useState('')
+  const workDateRef = useRef<DateInputHandle>(null)
   const [workHours, setWorkHours] = useState('')
   const [workNotes, setWorkNotes] = useState('')
   const [workSubmitting, setWorkSubmitting] = useState(false)
@@ -524,6 +526,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
       setWorkHours('')
       setWorkNotes('')
       fetchEntries()
+      requestAnimationFrame(() => workDateRef.current?.focus())
     } else {
       setWorkMessage(data.error || 'Failed to add entry.')
     }
@@ -1130,12 +1133,10 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Date of Service</label>
-                  <input
-                    type="date"
+                  <DateInput
+                    ref={workDateRef}
                     value={workDate}
-                    onChange={e => setWorkDate(e.target.value)}
-                    required
-                    className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                    onChange={setWorkDate}
                   />
                 </div>
                 <div className="space-y-1">

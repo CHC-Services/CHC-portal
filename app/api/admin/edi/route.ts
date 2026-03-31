@@ -65,6 +65,7 @@ export async function POST(req: NextRequest) {
   if (!files.length) {
     return NextResponse.json({ error: 'No files uploaded' }, { status: 400 })
   }
+  const dryRun = formData.get('dryRun') === 'true'
 
   // ── Parse all files ────────────────────────────────────────────────────────
   const allResults: EdiClaimResult[] = []
@@ -133,7 +134,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (Object.keys(updateData).length > 0) {
+    if (!dryRun && Object.keys(updateData).length > 0) {
       await prisma.claim.update({
         where: { id: claim.id },
         data: updateData,
@@ -164,6 +165,7 @@ export async function POST(req: NextRequest) {
     unmatched: unmatchedDetail,
     matched,
     summary: summaryPayload,
+    dryRun,
   }).catch(() => {})
 
   return NextResponse.json({
@@ -171,5 +173,6 @@ export async function POST(req: NextRequest) {
     matched,
     unmatched,
     skippedFiles,
+    dryRun,
   })
 }

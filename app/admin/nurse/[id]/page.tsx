@@ -204,6 +204,28 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   const [bulkDeleting, setBulkDeleting] = useState(false)
   const [bulkFlagging, setBulkFlagging] = useState(false)
 
+  // Receipts & Statements
+  type InvoiceRecord = {
+    id: string
+    invoiceNumber: string
+    totalAmount: number
+    paidAmount: number
+    status: string
+    sentAt: string
+    dueDate: string
+    payments: { id: string; receiptNumber: string; amount: number; method: string | null; note: string | null; appliedAt: string; s3Key: string | null }[]
+    entries: { id: string }[]
+  }
+  const [invoiceHistory, setInvoiceHistory] = useState<InvoiceRecord[]>([])
+  const [receiptYearFilter, setReceiptYearFilter] = useState<string>('all')
+  const [statementOpening, setStatementOpening] = useState(false)
+
+  async function fetchInvoiceHistory() {
+    const res = await fetch(`/api/admin/nurses/${id}/invoices`, { credentials: 'include' })
+    const data = await res.json()
+    if (Array.isArray(data.invoices)) setInvoiceHistory(data.invoices)
+  }
+
   // Log hours form
   const [workDate, setWorkDate] = useState('')
   const workDateRef = useRef<DateInputHandle>(null)
@@ -296,6 +318,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
     fetchEntries()
     fetchDocuments()
     fetchCategories()
+    fetchInvoiceHistory()
   }, [id, router])
 
   async function handleDocUpload(e: React.FormEvent) {
@@ -436,6 +459,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
       setShowInvoiceModal(false)
       setInvoiceNotes('')
       fetchEntries()
+      fetchInvoiceHistory()
     } else {
       setInvoiceMessage(data.error || 'Failed to create invoice.')
     }
@@ -789,6 +813,125 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
               </p>
             )}
           </div>
+
+          {/* Receipts & Statements */}
+          {(() => {
+            const fmt = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+
+            // Collect all years present in invoice history
+            const years = Array.from(new Set(
+              invoiceHistory.map(inv => new Date(inv.sentAt).getFullYear().toString())
+            )).sort((a, b) => Number(b) - Number(a))
+
+            // All receipts (payments) across all invoices, optionally filtered by year
+            const allReceipts = invoiceHistory.flatMap(inv =>
+              inv.payments.map(p => ({ ...p, invoiceNumber: inv.invoiceNumber, invoiceId: inv.id }))
+            ).filter(p => {
+              if (receiptYearFilter === 'all') return true
+              return new Date(p.appliedAt).getFullYear().toString() === receiptYearFilter
+            }).sort((a, b) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime())
+
+            const totalReceived = allReceipts.reduce((s, p) => s + p.amount, 0)
+
+            return (
+              <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-[#D9E1E8]">
+                  <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79]">
+                    Receipts &amp; Statements
+                  </h2>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* Year filter pills */}
+                    <button
+                      onClick={() => setReceiptYearFilter('all')}
+                      className={`text-xs px-2.5 py-1 rounded-full font-semibold transition ${receiptYearFilter === 'all' ? 'bg-[#2F3E4E] text-white' : 'bg-[#F4F6F5] text-[#7A8F79] hover:bg-[#D9E1E8]'}`}
+                    >All</button>
+                    {years.map(y => (
+                      <button
+                        key={y}
+                        onClick={() => setReceiptYearFilter(y)}
+                        className={`text-xs px-2.5 py-1 rounded-full font-semibold transition ${receiptYearFilter === y ? 'bg-[#2F3E4E] text-white' : 'bg-[#F4F6F5] text-[#7A8F79] hover:bg-[#D9E1E8]'}`}
+                      >{y}</button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Summary strip */}
+                <div className="flex items-center gap-6 text-sm">
+                  <div>
+                    <span className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Receipts</span>
+                    <p className="text-xl font-bold text-[#2F3E4E]">{allReceipts.length}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Total Received</span>
+                    <p className="text-xl font-bold text-green-600">${totalReceived.toFixed(2)}</p>
+                  </div>
+                  <div className="ml-auto flex gap-2 flex-wrap justify-end">
+                    {/* Combined statement buttons */}
+                    {receiptYearFilter !== 'all' ? (
+                      <button
+                        onClick={() => {
+                          setStatementOpening(true)
+                          window.open(`/api/admin/invoices/${id}/statement?year=${receiptYearFilter}`, '_blank')
+                          setStatementOpening(false)
+                        }}
+                        className="text-xs bg-[#7A8F79] text-white px-3 py-1.5 rounded-lg font-semibold hover:bg-[#2F3E4E] transition"
+                      >
+                        📄 {receiptYearFilter} Combined Statement
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setStatementOpening(true)
+                          window.open(`/api/admin/invoices/${id}/statement`, '_blank')
+                          setStatementOpening(false)
+                        }}
+                        className="text-xs bg-[#7A8F79] text-white px-3 py-1.5 rounded-lg font-semibold hover:bg-[#2F3E4E] transition"
+                      >
+                        📄 Full Statement (All Years)
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Receipts list */}
+                {allReceipts.length === 0 ? (
+                  <p className="text-sm text-[#7A8F79] italic">No payment receipts recorded{receiptYearFilter !== 'all' ? ` for ${receiptYearFilter}` : ''} yet.</p>
+                ) : (
+                  <div className="divide-y divide-[#D9E1E8] border border-[#D9E1E8] rounded-xl overflow-hidden">
+                    {allReceipts.map(p => (
+                      <div key={p.id} className="flex items-center gap-3 px-4 py-3 hover:bg-[#FAFBFC] transition">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-bold text-[#2F3E4E] font-mono">{p.receiptNumber}</span>
+                            <span className="text-[10px] font-semibold bg-[#D9E1E8] text-[#2F3E4E] px-1.5 py-0.5 rounded-full">{p.method || 'Other'}</span>
+                            <span className="text-xs text-[#7A8F79]">→ {p.invoiceNumber}</span>
+                          </div>
+                          <div className="flex items-center gap-3 mt-0.5">
+                            <span className="text-xs text-[#7A8F79]">{fmt(p.appliedAt)}</span>
+                            {p.note && <span className="text-xs text-[#7A8F79] italic truncate max-w-48">{p.note}</span>}
+                          </div>
+                        </div>
+                        <span className="text-sm font-bold text-green-600 whitespace-nowrap">${p.amount.toFixed(2)}</span>
+                        <button
+                          onClick={() => window.open(`/api/admin/invoices/${p.invoiceId}/statement`, '_blank')}
+                          className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] border border-[#D9E1E8] px-2 py-1 rounded transition whitespace-nowrap"
+                        >
+                          View Invoice
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Year-end combine hint */}
+                {years.length > 0 && receiptYearFilter === 'all' && (
+                  <p className="text-xs text-[#7A8F79] italic">
+                    Tip: Select a year above to download a single combined statement for tax purposes.
+                  </p>
+                )}
+              </div>
+            )
+          })()}
 
           {/* Individual Provider Information */}
           <Section title="Individual Provider Information">

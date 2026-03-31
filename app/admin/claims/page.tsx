@@ -174,11 +174,13 @@ export default function AdminClaimsPage() {
   // EDI upload state
   const [ediDragging, setEdiDragging] = useState(false)
   const [ediUploading, setEdiUploading] = useState(false)
+  const [ediDryRun, setEdiDryRun] = useState(false)
   const [ediResult, setEdiResult] = useState<{
     summary: { filesUploaded: number; filesParsed: number; filesSkipped: number; claimsFound: number; claimsMatched: number; claimsUnmatched: number }
     matched: { claimId: string; changes: string[] }[]
     unmatched: string[]
     skippedFiles: string[]
+    dryRun: boolean
   } | null>(null)
 
   async function loadClaims() {
@@ -218,11 +220,12 @@ export default function AdminClaimsPage() {
     setEdiResult(null)
     const form = new FormData()
     arr.forEach(f => form.append('files', f))
+    form.append('dryRun', String(ediDryRun))
     const res = await fetch('/api/admin/edi', { method: 'POST', credentials: 'include', body: form })
     const data = await res.json()
     setEdiResult(data)
     setEdiUploading(false)
-    loadClaims()
+    if (!ediDryRun) loadClaims()
   }
 
   const stages = [...new Set(claims.map(c => c.claimStage).filter(Boolean))] as string[]
@@ -289,44 +292,89 @@ export default function AdminClaimsPage() {
         )}
 
         {/* EDI drop zone */}
-        <div
-          onDragOver={e => { e.preventDefault(); setEdiDragging(true) }}
-          onDragLeave={() => setEdiDragging(false)}
-          onDrop={e => { e.preventDefault(); setEdiDragging(false); handleEdiUpload(e.dataTransfer.files) }}
-          className={`mb-4 rounded-xl border-2 border-dashed px-6 py-5 text-center transition cursor-default ${
-            ediDragging ? 'border-[#7A8F79] bg-[#f0f4f0]' : 'border-[#D9E1E8] bg-white'
-          }`}
-        >
-          {ediUploading ? (
-            <p className="text-sm text-[#7A8F79] font-semibold animate-pulse">Processing files…</p>
-          ) : (
-            <>
-              <p className="text-sm font-semibold text-[#2F3E4E]">
-                📂 Drop Availity EDI files here to auto-update claims
+        <div className="mb-4 bg-white rounded-xl border-2 border-dashed border-[#D9E1E8] overflow-hidden">
+          {/* Mode toggle */}
+          <div className="flex border-b border-[#D9E1E8]">
+            <button
+              type="button"
+              onClick={() => setEdiDryRun(false)}
+              className={`flex-1 px-4 py-2.5 text-xs font-semibold transition text-center ${
+                !ediDryRun
+                  ? 'bg-[#2F3E4E] text-white'
+                  : 'text-[#7A8F79] hover:bg-[#F4F6F5]'
+              }`}
+            >
+              ✅ Update live claims
+            </button>
+            <button
+              type="button"
+              onClick={() => setEdiDryRun(true)}
+              className={`flex-1 px-4 py-2.5 text-xs font-semibold transition text-center border-l border-[#D9E1E8] ${
+                ediDryRun
+                  ? 'bg-amber-500 text-white'
+                  : 'text-[#7A8F79] hover:bg-[#F4F6F5]'
+              }`}
+            >
+              👁 Preview only — email summary, no changes
+            </button>
+          </div>
+
+          {/* Drop area */}
+          <div
+            onDragOver={e => { e.preventDefault(); setEdiDragging(true) }}
+            onDragLeave={() => setEdiDragging(false)}
+            onDrop={e => { e.preventDefault(); setEdiDragging(false); handleEdiUpload(e.dataTransfer.files) }}
+            className={`px-6 py-5 text-center transition cursor-default ${ediDragging ? 'bg-[#f0f4f0]' : ''}`}
+          >
+            {ediUploading ? (
+              <p className="text-sm text-[#7A8F79] font-semibold animate-pulse">
+                {ediDryRun ? 'Analyzing files (preview)…' : 'Processing files…'}
               </p>
-              <p className="text-xs text-[#7A8F79] mt-1">
-                Accepts .ebr · .dpr · .ibr files — patient names and payer claim numbers are never read or stored
-              </p>
-              <p className="text-xs text-[#7A8F79]/60 mt-1">Max upload size: 4.5MB per batch</p>
-              <label className="mt-3 inline-block cursor-pointer text-xs font-semibold text-[#7A8F79] underline underline-offset-2 hover:text-[#2F3E4E] transition">
-                or click to select files
-                <input
-                  type="file"
-                  multiple
-                  accept=".ebr,.dpr,.ibr,.ebt,.ibt,.dpt,.99t,.277ibr,.277dpr,.277ebr"
-                  className="hidden"
-                  onChange={e => e.target.files && handleEdiUpload(e.target.files)}
-                />
-              </label>
-            </>
-          )}
+            ) : (
+              <>
+                <p className="text-sm font-semibold text-[#2F3E4E]">
+                  {ediDryRun
+                    ? '👁 Drop EDI files to preview — no claim lines will be changed'
+                    : '📂 Drop Availity EDI files here to auto-update claims'}
+                </p>
+                {ediDryRun && (
+                  <p className="text-xs font-semibold text-amber-600 mt-1">
+                    Preview mode — results emailed to you, portal unchanged
+                  </p>
+                )}
+                <p className="text-xs text-[#7A8F79] mt-1">
+                  Accepts .ebr · .dpr · .ibr files — patient names and payer claim numbers are never read or stored
+                </p>
+                <p className="text-xs text-[#7A8F79]/60 mt-1">Max upload size: 4.5MB per batch</p>
+                <label className="mt-3 inline-block cursor-pointer text-xs font-semibold text-[#7A8F79] underline underline-offset-2 hover:text-[#2F3E4E] transition">
+                  or click to select files
+                  <input
+                    type="file"
+                    multiple
+                    accept=".ebr,.dpr,.ibr,.ebt,.ibt,.dpt,.99t,.277ibr,.277dpr,.277ebr"
+                    className="hidden"
+                    onChange={e => e.target.files && handleEdiUpload(e.target.files)}
+                  />
+                </label>
+              </>
+            )}
+          </div>
         </div>
 
         {/* EDI results */}
         {ediResult && (
-          <div className="mb-6 bg-white rounded-xl shadow-sm p-5">
+          <div className={`mb-6 rounded-xl shadow-sm p-5 ${ediResult.dryRun ? 'bg-amber-50 border border-amber-200' : 'bg-white'}`}>
             <div className="flex items-center justify-between mb-3">
-              <p className="font-semibold text-[#2F3E4E]">EDI Upload Results</p>
+              <div className="flex items-center gap-2">
+                <p className="font-semibold text-[#2F3E4E]">
+                  {ediResult.dryRun ? '👁 EDI Preview Results' : 'EDI Upload Results'}
+                </p>
+                {ediResult.dryRun && (
+                  <span className="text-xs font-bold bg-amber-400 text-amber-900 px-2 py-0.5 rounded-full">
+                    NO CHANGES MADE · Summary emailed
+                  </span>
+                )}
+              </div>
               <button onClick={() => setEdiResult(null)} className="text-xs text-[#7A8F79] hover:text-[#2F3E4E]">✕ Dismiss</button>
             </div>
 
@@ -341,8 +389,8 @@ export default function AdminClaimsPage() {
               <span className="text-xs font-semibold px-3 py-1 rounded-full bg-[#D9E1E8] text-[#2F3E4E]">
                 {ediResult.summary.claimsFound} claims found in files
               </span>
-              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-green-100 text-green-800">
-                ✓ {ediResult.summary.claimsMatched} matched & updated
+              <span className={`text-xs font-semibold px-3 py-1 rounded-full ${ediResult.dryRun ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'}`}>
+                {ediResult.dryRun ? '👁' : '✓'} {ediResult.summary.claimsMatched} {ediResult.dryRun ? 'would be updated' : 'matched & updated'}
               </span>
               {ediResult.summary.claimsUnmatched > 0 && (
                 <span className="text-xs font-semibold px-3 py-1 rounded-full bg-yellow-100 text-yellow-800">
@@ -354,7 +402,9 @@ export default function AdminClaimsPage() {
             {/* Matched detail */}
             {ediResult.matched.length > 0 && (
               <div className="mb-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-2">Updated</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-2">
+                  {ediResult.dryRun ? 'Would Update (preview)' : 'Updated'}
+                </p>
                 <div className="space-y-1 max-h-40 overflow-y-auto">
                   {ediResult.matched.map(m => (
                     <div key={m.claimId} className="flex items-center gap-3 text-xs">

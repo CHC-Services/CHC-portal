@@ -145,8 +145,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   })
   if (!nurse) return NextResponse.json({ error: 'Nurse not found' }, { status: 404 })
 
+  const year = searchParams.get('year')
   const where: any = { nurseId }
   if (filter === 'outstanding') where.status = { in: ['Sent', 'Partial', 'Overdue', 'Pending'] }
+  if (year) {
+    where.sentAt = {
+      gte: new Date(`${year}-01-01T00:00:00.000Z`),
+      lt:  new Date(`${Number(year) + 1}-01-01T00:00:00.000Z`),
+    }
+  }
 
   const invoices = await (prisma.invoice.findMany as any)({
     where,
@@ -157,10 +164,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     },
   })
 
+  const statementLabel = year ? `${year} Year-End Statement` : new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+
   const html = buildStatementHtml(
     { displayName: nurse.displayName, email: nurse.user.email, accountNumber: nurse.accountNumber },
     invoices,
-    new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    statementLabel
   )
 
   return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } })

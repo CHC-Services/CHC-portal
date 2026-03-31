@@ -101,6 +101,7 @@ export default function AdminInvoicingPage() {
   const [s3Saving, setS3Saving] = useState<string | null>(null)
 
   // Payment tab state
+  const [payNurseFilter, setPayNurseFilter] = useState('')
   const [payInvoiceId, setPayInvoiceId] = useState('')
   const [payAmount, setPayAmount] = useState('')
   const [payMethod, setPayMethod] = useState('Venmo')
@@ -604,6 +605,19 @@ export default function AdminInvoicingPage() {
             </h2>
             <form onSubmit={applyPayment} className="space-y-3">
               <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wide text-[#7A8F79] mb-1">Provider</label>
+                <select
+                  value={payNurseFilter}
+                  onChange={e => { setPayNurseFilter(e.target.value); setPayInvoiceId('') }}
+                  className="w-full border border-[#D9E1E8] rounded-lg px-2 py-1.5 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                >
+                  <option value="">— All providers —</option>
+                  {uniqueNurses.map(n => (
+                    <option key={n.id} value={n.id}>{n.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
                 <label className="block text-[10px] font-bold uppercase tracking-wide text-[#7A8F79] mb-1">Invoice</label>
                 <select
                   value={payInvoiceId}
@@ -612,7 +626,7 @@ export default function AdminInvoicingPage() {
                 >
                   <option value="">— Select invoice —</option>
                   {invoices
-                    .filter(i => !['Paid','WrittenOff'].includes(i.status))
+                    .filter(i => !['Paid','WrittenOff'].includes(i.status) && (!payNurseFilter || i.nurseId === payNurseFilter))
                     .map(inv => {
                       const balance = inv.totalAmount - (inv.paidAmount || 0)
                       return (

@@ -207,13 +207,15 @@ model Invoice {
 }
 
 model Payment {
-  id        String   @id @default(uuid())
-  invoiceId String
-  amount    Float
-  method    String?  // Venmo | Zelle | CashApp | ApplePay | Check | ACH | Other
-  note      String?
-  appliedAt DateTime @default(now())
-  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  id            String   @id @default(uuid())
+  invoiceId     String
+  receiptNumber String   @unique
+  amount        Float
+  method        String?  // Venmo | Zelle | CashApp | ApplePay | Check | ACH | Other
+  note          String?
+  s3Key         String?
+  appliedAt     DateTime @default(now())
+  invoice       Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 }
 
 model PortalMessage {

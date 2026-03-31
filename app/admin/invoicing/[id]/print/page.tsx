@@ -4,7 +4,7 @@ import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
 
 type Entry = { workDate: string; invoiceFeePlan?: string; invoiceFeeAmt?: number }
-type Payment = { id: string; amount: number; method?: string; note?: string; appliedAt: string }
+type Payment = { id: string; receiptNumber: string; amount: number; method?: string; note?: string; s3Key?: string; appliedAt: string }
 type Invoice = {
   invoiceNumber: string
   nurseName: string
@@ -212,7 +212,8 @@ export default function PrintInvoicePage({ params }: { params: Promise<{ id: str
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-green-50">
-                      <th className="text-left px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-green-700">Payment Date</th>
+                      <th className="text-left px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-green-700">Receipt #</th>
+                      <th className="text-left px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-green-700">Date</th>
                       <th className="text-left px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-green-700">Method</th>
                       <th className="text-left px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-green-700">Note</th>
                       <th className="text-right px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-green-700">Amount</th>
@@ -221,6 +222,7 @@ export default function PrintInvoicePage({ params }: { params: Promise<{ id: str
                   <tbody>
                     {invoice.payments.map((p, i) => (
                       <tr key={p.id} className={`border-t border-[#D9E1E8] ${i % 2 === 0 ? 'bg-white' : 'bg-green-50/30'}`}>
+                        <td className="px-4 py-2 font-mono text-xs text-[#7A8F79]">{p.receiptNumber}</td>
                         <td className="px-4 py-2 text-[#2F3E4E]">{fmt(p.appliedAt)}</td>
                         <td className="px-4 py-2 text-[#7A8F79]">{p.method || '—'}</td>
                         <td className="px-4 py-2 text-[#7A8F79] italic">{p.note || '—'}</td>
@@ -230,7 +232,7 @@ export default function PrintInvoicePage({ params }: { params: Promise<{ id: str
                   </tbody>
                   <tfoot>
                     <tr className="border-t-2 border-green-600 bg-green-50">
-                      <td colSpan={3} className="px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-green-700">
+                      <td colSpan={4} className="px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-green-700">
                         {balance <= 0 ? 'Paid in Full' : 'Balance Due'}
                       </td>
                       <td className={`px-4 py-2.5 text-right text-xl font-black ${balance <= 0 ? 'text-green-600' : 'text-red-500'}`}>

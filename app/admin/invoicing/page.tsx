@@ -28,9 +28,11 @@ type Invoice = {
 type Payment = {
   id: string
   invoiceId: string
+  receiptNumber: string
   amount: number
   method?: string
   note?: string
+  s3Key?: string
   appliedAt: string
 }
 
@@ -176,7 +178,8 @@ export default function AdminInvoicingPage() {
     setPaySubmitting(false)
     if (res.ok) {
       const inv = invoices.find(i => i.id === payInvoiceId)
-      setPayMsg(`Payment of $${parseFloat(payAmount).toFixed(2)} applied to ${inv?.invoiceNumber}. Status: ${data.newStatus}.`)
+      const s3Note = data.s3Key ? ' Receipt saved to S3.' : ''
+      setPayMsg(`Payment applied — Receipt ${data.receiptNumber} · ${inv?.invoiceNumber} · Status: ${data.newStatus}.${s3Note}`)
       setPayAmount('')
       setPayNote('')
       await loadAll()
@@ -510,10 +513,17 @@ export default function AdminInvoicingPage() {
                                     <tbody>
                                       {inv.payments.map(p => (
                                         <tr key={p.id} className="border-b border-blue-100 last:border-0">
+                                          <td className="py-1 pr-2 font-mono text-[#7A8F79] text-[10px]">{p.receiptNumber}</td>
                                           <td className="py-1 pr-2 text-green-700 font-semibold">{currency(p.amount)}</td>
                                           <td className="py-1 pr-2 text-[#7A8F79]">{p.method || '—'}</td>
                                           <td className="py-1 pr-2 text-[#7A8F79]">{p.note || ''}</td>
                                           <td className="py-1 pr-2 text-[#7A8F79] whitespace-nowrap">{fmt(p.appliedAt)}</td>
+                                          <td className="py-1 pr-2">
+                                            {p.s3Key
+                                              ? <span title={`S3: ${p.s3Key}`} className="text-green-500 text-[11px]">☁️</span>
+                                              : <span className="text-[#D9E1E8] text-[11px]" title="Not in S3">☁️</span>
+                                            }
+                                          </td>
                                           <td className="py-1">
                                             <button
                                               onClick={() => deletePayment(inv.id, p.id)}
@@ -686,11 +696,13 @@ export default function AdminInvoicingPage() {
                 .slice(0, 30)
                 .map(p => (
                   <div key={p.id} className="flex items-center gap-2 py-1.5 border-b border-[#D9E1E8] last:border-0 text-xs">
-                    <span className="text-green-600 font-bold w-16 shrink-0">{currency(p.amount)}</span>
+                    <span className="font-mono text-[#7A8F79] text-[10px] shrink-0 w-28">{p.receiptNumber}</span>
+                    <span className="text-green-600 font-bold w-14 shrink-0">{currency(p.amount)}</span>
                     <span className="text-[#7A8F79] w-14 shrink-0">{p.method || '—'}</span>
                     <span className="flex-1 text-[#2F3E4E] truncate">{(p as any).nurseName} · {(p as any).invoiceNumber}</span>
                     {p.note && <span className="text-[#7A8F79] italic truncate max-w-[80px]">{p.note}</span>}
                     <span className="text-[#7A8F79] whitespace-nowrap shrink-0">{fmt(p.appliedAt)}</span>
+                    {p.s3Key && <span title={`S3: ${p.s3Key}`} className="text-green-500 shrink-0">☁️</span>}
                     <button
                       onClick={() => deletePayment((p as any).invoiceId, p.id)}
                       className="text-red-400 hover:text-red-600 transition shrink-0"

@@ -61,6 +61,7 @@ export async function POST(req: Request) {
       totalAmount,
       dueTerm,
       dueDate,
+      status: 'Sent',
       notes: notes || null,
       nurseEmail: nurse.user.email,
       nurseName: nurse.displayName,

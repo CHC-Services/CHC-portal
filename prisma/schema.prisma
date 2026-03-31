@@ -187,20 +187,33 @@ model Invoice {
   nurseId       String
   invoiceNumber String   @unique
   totalAmount   Float
+  paidAmount    Float    @default(0)
   dueTerm       String   // '30' | '60' | '90' | 'ASAP'
   dueDate       DateTime
-  status        String   @default("Pending") // Pending | Paid | Overdue | Cancelled
+  status        String   @default("Sent") // Sent | Partial | Paid | Disputed | WrittenOff | Overdue
   notes         String?
   nurseEmail    String
   nurseName     String
   sentAt        DateTime @default(now())
   paidAt        DateTime?
+  s3Key         String?
 
-  entries TimeEntry[]
-  nurse   NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
+  entries  TimeEntry[]
+  payments Payment[]
+  nurse    NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Payment {
+  id        String   @id @default(uuid())
+  invoiceId String
+  amount    Float
+  method    String?  // Venmo | Zelle | CashApp | ApplePay | Check | ACH | Other
+  note      String?
+  appliedAt DateTime @default(now())
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 }
 
 model PortalMessage {

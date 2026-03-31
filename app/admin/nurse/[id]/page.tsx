@@ -1366,9 +1366,42 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
               {!showInvoicePreview ? (
                 /* ── Edit form ── */
                 <div className="p-6 space-y-4">
-                  <p className="text-sm text-[#7A8F79]">
-                    {pendingEntries.length} entries · <strong className="text-[#2F3E4E]">${pendingTotal.toFixed(2)} total</strong>
-                  </p>
+                  {/* Per-entry fee plan selectors */}
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-2">
+                      Fee Plan per Entry
+                    </label>
+                    <div className="rounded-lg border border-[#D9E1E8] overflow-hidden">
+                      {pendingEntries.map((e, i) => (
+                        <div
+                          key={e.id}
+                          className={`flex items-center gap-3 px-3 py-2 ${i % 2 === 0 ? 'bg-white' : 'bg-[#F4F6F5]'}`}
+                        >
+                          <span className="text-xs text-[#2F3E4E] w-28 shrink-0 whitespace-nowrap">
+                            {new Date(e.workDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
+                          </span>
+                          <select
+                            value={e.invoiceFeePlan ?? 'A1'}
+                            onChange={ev => toggleInvoiceFlag(e, true, ev.target.value)}
+                            className="flex-1 border border-[#D9E1E8] rounded px-2 py-1 text-xs text-[#2F3E4E] focus:outline-none focus:ring-1 focus:ring-[#7A8F79] bg-white"
+                          >
+                            {FEE_PLANS.map(p => (
+                              <option key={p.value} value={p.value}>
+                                {p.value} — {p.label.replace(/^[A-Z\d]+ — /, '')} · ${p.amount.toFixed(2)}
+                              </option>
+                            ))}
+                          </select>
+                          <span className="text-xs font-bold text-[#2F3E4E] w-12 text-right shrink-0">
+                            ${(e.invoiceFeeAmt ?? 0).toFixed(2)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-right text-xs font-bold text-[#2F3E4E] mt-1.5 pr-1">
+                      Total: ${pendingTotal.toFixed(2)}
+                    </p>
+                  </div>
+
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Due Terms</label>
                     <select value={invoiceDueTerm} onChange={e => setInvoiceDueTerm(e.target.value)} className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E]">

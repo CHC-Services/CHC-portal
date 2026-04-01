@@ -19,6 +19,7 @@ type Nurse = {
   displayName: string
   accountNumber: string | null
   npiNumber: string | null
+  invoiceBalance: number
   user: { email: string; name: string }
   timeEntries: TimeEntry[]
 }
@@ -116,6 +117,12 @@ function NurseRow({ nurse, onDeleted, onRefresh }: { nurse: Nurse; onDeleted: ()
           </div>
         </div>
         <div className="flex items-center gap-6 text-sm">
+          <div className="text-right hidden sm:block">
+            <p className="text-xs text-[#7A8F79] uppercase tracking-wide">Balance</p>
+            <p className={`font-bold ${nurse.invoiceBalance > 0 ? 'text-red-500' : 'text-[#7A8F79]'}`}>
+              ${(nurse.invoiceBalance || 0).toFixed(2)}
+            </p>
+          </div>
           <div className="text-right hidden sm:block">
             <p className="text-xs text-[#7A8F79] uppercase tracking-wide">Unbilled</p>
             <p className={`font-bold ${unbilledHours > 0 ? 'text-orange-500' : 'text-[#7A8F79]'}`}>{unbilledHours} hrs</p>

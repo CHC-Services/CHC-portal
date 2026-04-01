@@ -14,12 +14,20 @@ export async function GET(req: Request) {
   const nurses = await prisma.nurseProfile.findMany({
     include: {
       user: { select: { email: true, name: true } },
-      timeEntries: {
-        orderBy: { workDate: 'desc' }
-      }
+      timeEntries: { orderBy: { workDate: 'desc' } },
+      invoices: { select: { totalAmount: true, paidAmount: true, status: true } },
     },
     orderBy: { displayName: 'asc' }
   })
 
-  return NextResponse.json(nurses)
+  const result = nurses.map((n: any) => {
+    const invoiceBalance = n.invoices.reduce((sum: number, inv: any) => {
+      if (inv.status === 'WrittenOff' || inv.status === 'Cancelled') return sum
+      return sum + (inv.totalAmount - (inv.paidAmount || 0))
+    }, 0)
+    const { invoices, ...rest } = n
+    return { ...rest, invoiceBalance }
+  })
+
+  return NextResponse.json(result)
 }

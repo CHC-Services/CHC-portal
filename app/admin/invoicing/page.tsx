@@ -279,6 +279,14 @@ export default function AdminInvoicingPage() {
             {t}
           </button>
         ))}
+        <a
+          href="/admin/invoicing/template"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-4 py-1.5 rounded-lg text-sm font-semibold border border-dashed border-[#7A8F79] text-[#7A8F79] hover:bg-[#7A8F79] hover:text-white transition"
+        >
+          Template
+        </a>
       </div>
 
       {loading && <p className="text-sm text-[#7A8F79] py-4">Loading…</p>}

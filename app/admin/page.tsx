@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import AdminNav from '../components/AdminNav'
 import { DateInput, DateInputHandle } from '../components/DateInput'
-import FaqEditorSection from '../components/FaqEditorSection'
 
 type TimeEntry = {
   id: string
@@ -497,10 +496,6 @@ export default function AdminDashboard() {
         )}
       </div>
 
-      {/* FAQ Manager */}
-      <div className="mt-8">
-        <FaqEditorSection />
-      </div>
     </div>
   )
 }

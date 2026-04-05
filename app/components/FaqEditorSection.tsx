@@ -119,6 +119,23 @@ export default function FaqEditorSection() {
     const url = prompt('Enter URL (include https://):')
     if (url) fmt('createLink', url)
   }
+  function applyFontSize(size: string) {
+    // execCommand fontSize uses 1-7 scale; we map via a workaround using CSS
+    const sel = window.getSelection()
+    if (!sel || sel.rangeCount === 0) return
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
+    document.execCommand('fontSize', false, '7')
+    // Replace the font size=7 elements with a span carrying the desired px size
+    const editor = editorRef.current
+    if (!editor) return
+    editor.querySelectorAll('font[size="7"]').forEach(el => {
+      const span = document.createElement('span')
+      span.style.fontSize = size
+      span.innerHTML = (el as HTMLElement).innerHTML
+      el.replaceWith(span)
+    })
+    editorRef.current?.focus()
+  }
 
   // ── Form open/close ─────────────────────────────────────────────────────────
   function openNew() {
@@ -302,16 +319,69 @@ export default function FaqEditorSection() {
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Answer</label>
             <div className="flex flex-wrap items-center gap-1 border border-[#D9E1E8] border-b-0 rounded-t-lg px-2 py-1.5 bg-white">
+              {/* Font family */}
+              <select
+                onMouseDown={e => e.preventDefault()}
+                onChange={e => { fmt('fontName', e.target.value); editorRef.current?.focus() }}
+                defaultValue=""
+                className="text-xs border border-[#D9E1E8] rounded px-1 py-0.5 text-[#2F3E4E] focus:outline-none focus:ring-1 focus:ring-[#7A8F79] cursor-pointer"
+                title="Font family"
+              >
+                <option value="" disabled>Font</option>
+                <option value="Arial, sans-serif">Arial</option>
+                <option value="Georgia, serif">Georgia</option>
+                <option value="'Times New Roman', serif">Times New Roman</option>
+                <option value="'Courier New', monospace">Courier New</option>
+                <option value="Verdana, sans-serif">Verdana</option>
+                <option value="Trebuchet MS, sans-serif">Trebuchet</option>
+              </select>
+
+              {/* Font size */}
+              <select
+                onMouseDown={e => e.preventDefault()}
+                onChange={e => { applyFontSize(e.target.value); (e.target as HTMLSelectElement).value = '' }}
+                defaultValue=""
+                className="text-xs border border-[#D9E1E8] rounded px-1 py-0.5 text-[#2F3E4E] focus:outline-none focus:ring-1 focus:ring-[#7A8F79] cursor-pointer"
+                title="Font size"
+              >
+                <option value="" disabled>Size</option>
+                <option value="11px">11</option>
+                <option value="12px">12</option>
+                <option value="14px">14</option>
+                <option value="16px">16</option>
+                <option value="18px">18</option>
+                <option value="20px">20</option>
+                <option value="24px">24</option>
+                <option value="28px">28</option>
+                <option value="32px">32</option>
+              </select>
+
+              {/* Font color */}
+              <label
+                className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-semibold text-[#2F3E4E] hover:bg-[#D9E1E8] transition cursor-pointer select-none"
+                title="Font color"
+                onMouseDown={e => e.preventDefault()}
+              >
+                <span className="text-xs">A</span>
+                <input
+                  type="color"
+                  defaultValue="#2F3E4E"
+                  onChange={e => fmt('foreColor', e.target.value)}
+                  className="w-4 h-4 p-0 border-0 bg-transparent cursor-pointer"
+                />
+              </label>
+
+              <span className="w-px h-4 bg-[#D9E1E8] mx-0.5" />
               <TBtn onActivate={() => fmt('bold')} title="Bold"><strong>B</strong></TBtn>
               <TBtn onActivate={() => fmt('italic')} title="Italic"><em>I</em></TBtn>
               <TBtn onActivate={() => fmt('underline')} title="Underline"><span className="underline">U</span></TBtn>
-              <span className="w-px h-4 bg-[#D9E1E8] mx-1" />
+              <span className="w-px h-4 bg-[#D9E1E8] mx-0.5" />
               <TBtn onActivate={() => fmt('insertUnorderedList')} title="Bullet list">• List</TBtn>
               <TBtn onActivate={() => fmt('insertOrderedList')} title="Numbered list">1. List</TBtn>
-              <span className="w-px h-4 bg-[#D9E1E8] mx-1" />
+              <span className="w-px h-4 bg-[#D9E1E8] mx-0.5" />
               <TBtn onActivate={insertLink} title="Insert link">🔗 Link</TBtn>
               <TBtn onActivate={() => fmt('unlink')} title="Remove link">✂ Unlink</TBtn>
-              <span className="w-px h-4 bg-[#D9E1E8] mx-1" />
+              <span className="w-px h-4 bg-[#D9E1E8] mx-0.5" />
               <TBtn onActivate={() => fmt('removeFormat')} title="Clear formatting">✕ Clear</TBtn>
             </div>
             <div

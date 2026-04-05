@@ -191,8 +191,8 @@ export default function AdminClaimsPage() {
     dryRun: boolean
   } | null>(null)
 
-  // EOB state — keyed by Claim.id (DB UUID)
-  const [eobMap, setEobMap] = useState<Record<string, EobDoc>>({})
+  // EOB state — keyed by Claim.id (DB UUID), supports multiple EOBs per claim
+  const [eobMap, setEobMap] = useState<Record<string, EobDoc[]>>({})
   const [eobUploading, setEobUploading] = useState<string | null>(null)  // claim DB id
   const [eobDeleting, setEobDeleting] = useState<string | null>(null)    // doc id
 
@@ -200,9 +200,12 @@ export default function AdminClaimsPage() {
     const res = await fetch('/api/admin/documents?all=1&category=EOB', { credentials: 'include' })
     const data = await res.json()
     if (Array.isArray(data.documents)) {
-      const map: Record<string, EobDoc> = {}
+      const map: Record<string, EobDoc[]> = {}
       for (const doc of data.documents) {
-        if (doc.claimId) map[doc.claimId] = { id: doc.id, fileName: doc.fileName, claimId: doc.claimId, nurseId: doc.nurseId }
+        if (doc.claimId) {
+          if (!map[doc.claimId]) map[doc.claimId] = []
+          map[doc.claimId].push({ id: doc.id, fileName: doc.fileName, claimId: doc.claimId, nurseId: doc.nurseId })
+        }
       }
       setEobMap(map)
     }
@@ -260,8 +263,11 @@ export default function AdminClaimsPage() {
     setEobDeleting(docId)
     await fetch(`/api/admin/documents/${docId}`, { method: 'DELETE', credentials: 'include' })
     setEobMap(prev => {
-      const next = { ...prev }
-      Object.keys(next).forEach(k => { if (next[k].id === docId) delete next[k] })
+      const next: Record<string, EobDoc[]> = {}
+      for (const [k, arr] of Object.entries(prev)) {
+        const filtered = arr.filter(d => d.id !== docId)
+        if (filtered.length > 0) next[k] = filtered
+      }
       return next
     })
     setEobDeleting(null)
@@ -602,50 +608,45 @@ export default function AdminClaimsPage() {
                     <Fragment key={c.id}>
                       <tr className="hover:bg-[#F4F6F5] transition">
                         <td className="px-4 py-3">
-                          {(() => {
-                            const eob = eobMap[c.id]
-                            if (eob) {
-                              return (
-                                <div className="flex items-center gap-1">
-                                  <button
-                                    onClick={async () => {
-                                      const res = await fetch(`/api/admin/documents/${eob.id}`, { credentials: 'include' })
-                                      const data = await res.json()
-                                      if (data.url) window.open(data.url, '_blank')
-                                    }}
-                                    title={eob.fileName}
-                                    className="text-[10px] font-semibold text-green-700 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded hover:bg-green-100 transition whitespace-nowrap"
-                                  >
-                                    📎 EOB
-                                  </button>
-                                  <button
-                                    onClick={() => deleteEob(eob.id)}
-                                    disabled={eobDeleting === eob.id}
-                                    title="Delete EOB"
-                                    className="text-[10px] text-red-400 hover:text-red-600 border border-red-100 px-1 py-0.5 rounded transition disabled:opacity-40"
-                                  >
-                                    {eobDeleting === eob.id ? '…' : '✕'}
-                                  </button>
-                                </div>
-                              )
-                            }
-                            return (
-                              <label className={`cursor-pointer text-[10px] font-semibold text-[#7A8F79] border border-dashed border-[#D9E1E8] px-1.5 py-0.5 rounded hover:border-[#7A8F79] hover:text-[#2F3E4E] transition whitespace-nowrap ${eobUploading === c.id ? 'opacity-50 cursor-default' : ''}`}>
-                                {eobUploading === c.id ? '…' : '+ EOB'}
-                                <input
-                                  type="file"
-                                  className="hidden"
-                                  disabled={eobUploading === c.id}
-                                  accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif"
-                                  onChange={e => {
-                                    const file = e.target.files?.[0]
-                                    if (file) handleEobUpload(c, file)
-                                    e.target.value = ''
+                          <div className="flex flex-col gap-1 min-w-[72px]">
+                            {(eobMap[c.id] || []).map((eob, i) => (
+                              <div key={eob.id} className="flex items-center gap-1">
+                                <button
+                                  onClick={async () => {
+                                    const res = await fetch(`/api/admin/documents/${eob.id}`, { credentials: 'include' })
+                                    const data = await res.json()
+                                    if (data.url) window.open(data.url, '_blank')
                                   }}
-                                />
-                              </label>
-                            )
-                          })()}
+                                  title={eob.fileName}
+                                  className="text-[10px] font-semibold text-green-700 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded hover:bg-green-100 transition whitespace-nowrap"
+                                >
+                                  📎 EOB {(eobMap[c.id] || []).length > 1 ? i + 1 : ''}
+                                </button>
+                                <button
+                                  onClick={() => deleteEob(eob.id)}
+                                  disabled={eobDeleting === eob.id}
+                                  title="Delete EOB"
+                                  className="text-[10px] text-red-400 hover:text-red-600 border border-red-100 px-1 py-0.5 rounded transition disabled:opacity-40"
+                                >
+                                  {eobDeleting === eob.id ? '…' : '✕'}
+                                </button>
+                              </div>
+                            ))}
+                            <label className={`cursor-pointer text-[10px] font-semibold text-[#7A8F79] border border-dashed border-[#D9E1E8] px-1.5 py-0.5 rounded hover:border-[#7A8F79] hover:text-[#2F3E4E] transition whitespace-nowrap ${eobUploading === c.id ? 'opacity-50 cursor-default' : ''}`}>
+                              {eobUploading === c.id ? '…' : '+ EOB'}
+                              <input
+                                type="file"
+                                className="hidden"
+                                disabled={eobUploading === c.id}
+                                accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif"
+                                onChange={e => {
+                                  const file = e.target.files?.[0]
+                                  if (file) handleEobUpload(c, file)
+                                  e.target.value = ''
+                                }}
+                              />
+                            </label>
+                          </div>
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1">

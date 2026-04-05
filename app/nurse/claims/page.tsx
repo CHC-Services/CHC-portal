@@ -91,31 +91,33 @@ function groupClaims(claims: Claim[]): ClaimGroup[] {
   return groups
 }
 
-function ClaimRow({ primary: c, chain, eobDoc }: ClaimGroup & { eobDoc: { id: string; fileName: string } | null }) {
+function ClaimRow({ primary: c, chain, eobDocs }: ClaimGroup & { eobDocs: { id: string; fileName: string }[] }) {
   const [expanded, setExpanded] = useState(false)
-  const [eobUrl, setEobUrl] = useState<string | null>(null)
+  // Track which EOB is open: { doc, url, loading }
+  const [activeEob, setActiveEob] = useState<{ id: string; fileName: string } | null>(null)
+  const [eobUrlCache, setEobUrlCache] = useState<Record<string, string>>({})
   const [eobLoading, setEobLoading] = useState(false)
-  const [showEobModal, setShowEobModal] = useState(false)
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
-  async function openEob() {
-    if (!eobDoc) return
-    setShowEobModal(true)
-    if (eobUrl) return  // already fetched, reuse cached URL
+  async function openEob(doc: { id: string; fileName: string }) {
+    setActiveEob(doc)
+    if (eobUrlCache[doc.id]) return  // already cached
     setEobLoading(true)
-    const res = await fetch(`/api/nurse/documents/${eobDoc.id}`, { credentials: 'include' })
+    const res = await fetch(`/api/nurse/documents/${doc.id}`, { credentials: 'include' })
     const data = await res.json()
-    if (data.url) setEobUrl(data.url)
+    if (data.url) setEobUrlCache(prev => ({ ...prev, [doc.id]: data.url }))
     setEobLoading(false)
   }
 
+  const activeUrl = activeEob ? (eobUrlCache[activeEob.id] ?? null) : null
+
   async function saveToDevice() {
-    if (!eobUrl) return
-    const resp = await fetch(eobUrl)
+    if (!activeUrl || !activeEob) return
+    const resp = await fetch(activeUrl)
     const blob = await resp.blob()
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
-    link.download = eobDoc?.fileName || 'EOB.pdf'
+    link.download = activeEob.fileName || 'EOB.pdf'
     link.click()
     URL.revokeObjectURL(link.href)
   }
@@ -210,13 +212,18 @@ function ClaimRow({ primary: c, chain, eobDoc }: ClaimGroup & { eobDoc: { id: st
                 <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold">
                   Primary — {c.primaryPayer || '—'}
                 </p>
-                {eobDoc && (
-                  <button
-                    onClick={openEob}
-                    className="flex items-center gap-1 text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] border border-[#D9E1E8] hover:border-[#7A8F79] px-2.5 py-1 rounded-lg transition"
-                  >
-                    📎 View EOB
-                  </button>
+                {eobDocs.length > 0 && (
+                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                    {eobDocs.map((doc, i) => (
+                      <button
+                        key={doc.id}
+                        onClick={() => openEob(doc)}
+                        className="flex items-center gap-1 text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] border border-[#D9E1E8] hover:border-[#7A8F79] px-2.5 py-1 rounded-lg transition"
+                      >
+                        📎 {eobDocs.length > 1 ? `EOB ${i + 1}` : 'View EOB'}
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
@@ -329,8 +336,8 @@ function ClaimRow({ primary: c, chain, eobDoc }: ClaimGroup & { eobDoc: { id: st
       )}
 
       {/* EOB Viewer Modal */}
-      {showEobModal && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-black/60" onClick={e => { if (e.target === e.currentTarget) setShowEobModal(false) }}>
+      {activeEob && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-black/60" onClick={e => { if (e.target === e.currentTarget) setActiveEob(null) }}>
           <div className="flex flex-col bg-white rounded-t-2xl mt-10 mx-2 sm:mx-auto sm:w-full sm:max-w-4xl flex-1 overflow-hidden shadow-2xl">
 
             {/* Modal header */}
@@ -339,9 +346,26 @@ function ClaimRow({ primary: c, chain, eobDoc }: ClaimGroup & { eobDoc: { id: st
                 <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold">Explanation of Benefits</p>
                 <p className="text-sm font-semibold text-[#2F3E4E]">
                   {c.claimId ? `Claim ${c.claimId}` : 'EOB Document'}{c.primaryPayer ? ` — ${c.primaryPayer}` : ''}
+                  {eobDocs.length > 1 && <span className="ml-2 text-xs font-normal text-[#7A8F79]">{activeEob.fileName}</span>}
                 </p>
               </div>
-              <button onClick={() => setShowEobModal(false)} className="text-[#7A8F79] hover:text-[#2F3E4E] text-2xl leading-none ml-4">×</button>
+              <div className="flex items-center gap-3 ml-4">
+                {/* Switch between EOBs if multiple */}
+                {eobDocs.length > 1 && (
+                  <div className="flex gap-1">
+                    {eobDocs.map((doc, i) => (
+                      <button
+                        key={doc.id}
+                        onClick={() => openEob(doc)}
+                        className={`text-xs px-2 py-1 rounded font-semibold transition ${activeEob.id === doc.id ? 'bg-[#2F3E4E] text-white' : 'bg-[#F4F6F5] text-[#7A8F79] hover:bg-[#D9E1E8]'}`}
+                      >
+                        EOB {i + 1}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <button onClick={() => setActiveEob(null)} className="text-[#7A8F79] hover:text-[#2F3E4E] text-2xl leading-none">×</button>
+              </div>
             </div>
 
             {/* Document viewer */}
@@ -350,10 +374,10 @@ function ClaimRow({ primary: c, chain, eobDoc }: ClaimGroup & { eobDoc: { id: st
                 <div className="flex items-center justify-center h-full">
                   <p className="text-[#7A8F79] font-semibold animate-pulse">Loading document…</p>
                 </div>
-              ) : eobUrl ? (
+              ) : activeUrl ? (
                 <iframe
                   ref={iframeRef}
-                  src={eobUrl}
+                  src={activeUrl}
                   className="w-full h-full border-0"
                   title="EOB Document"
                 />
@@ -368,14 +392,14 @@ function ClaimRow({ primary: c, chain, eobDoc }: ClaimGroup & { eobDoc: { id: st
             <div className="flex items-center justify-end gap-3 px-5 py-3 border-t border-[#D9E1E8] bg-white flex-shrink-0">
               <button
                 onClick={printEob}
-                disabled={!eobUrl}
+                disabled={!activeUrl}
                 className="flex items-center gap-1.5 border border-[#D9E1E8] text-[#2F3E4E] px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#F4F6F5] transition disabled:opacity-40"
               >
                 🖨 Print
               </button>
               <button
                 onClick={saveToDevice}
-                disabled={!eobUrl}
+                disabled={!activeUrl}
                 className="flex items-center gap-1.5 bg-[#2F3E4E] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-40"
               >
                 ⬇ Save to Device
@@ -392,8 +416,8 @@ export default function NurseClaimsPage() {
   const [claims, setClaims] = useState<Claim[]>([])
   const [enrolledInBilling, setEnrolledInBilling] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(true)
-  // Map from Claim.id (DB UUID) → { id: docId, fileName }
-  const [eobMap, setEobMap] = useState<Record<string, { id: string; fileName: string }>>({})
+  // Map from Claim.id (DB UUID) → array of EOB docs (supports multiple per claim)
+  const [eobMap, setEobMap] = useState<Record<string, { id: string; fileName: string }[]>>({})
 
   useEffect(() => {
     fetch('/api/nurse/claims', { credentials: 'include' })
@@ -407,10 +431,11 @@ export default function NurseClaimsPage() {
     fetch('/api/nurse/documents', { credentials: 'include' })
       .then(r => r.json())
       .then(data => {
-        const map: Record<string, { id: string; fileName: string }> = {}
+        const map: Record<string, { id: string; fileName: string }[]> = {}
         for (const doc of data.documents || []) {
           if (doc.category === 'EOB' && doc.claimId) {
-            map[doc.claimId] = { id: doc.id, fileName: doc.fileName }
+            if (!map[doc.claimId]) map[doc.claimId] = []
+            map[doc.claimId].push({ id: doc.id, fileName: doc.fileName })
           }
         }
         setEobMap(map)
@@ -509,7 +534,7 @@ export default function NurseClaimsPage() {
         ) : (
           <div className="space-y-2">
             {groupClaims(claims).map(group => (
-              <ClaimRow key={group.primary.id} {...group} eobDoc={eobMap[group.primary.id] ?? null} />
+              <ClaimRow key={group.primary.id} {...group} eobDocs={eobMap[group.primary.id] ?? []} />
             ))}
           </div>
         )}

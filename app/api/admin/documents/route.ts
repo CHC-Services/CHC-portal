@@ -114,11 +114,15 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const nurseId = searchParams.get('nurseId')
   const all = searchParams.get('all') === '1'
+  const categoryFilter = searchParams.get('category')
 
   if (!nurseId && !all) return NextResponse.json({ error: 'nurseId or all required' }, { status: 400 })
 
+  const where: Record<string, any> = nurseId ? { nurseId } : {}
+  if (categoryFilter) where.category = categoryFilter
+
   const documents = await prisma.nurseDocument.findMany({
-    where: nurseId ? { nurseId } : undefined,
+    where,
     orderBy: [{ category: 'asc' }, { createdAt: 'desc' }],
     select: {
       id: true,
@@ -132,6 +136,7 @@ export async function GET(req: Request) {
       visibleToNurse: true,
       nurseUploaded: true,
       sharedWithAdmin: true,
+      claimId: true,
       createdAt: true,
       nurseId: true,
       nurse: { select: { displayName: true } },

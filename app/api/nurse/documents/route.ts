@@ -23,6 +23,7 @@ export async function GET(req: Request) {
       mimeType: true,
       expiresAt: true,
       createdAt: true,
+      claimId: true,
       // storageKey intentionally excluded — never sent to client
     },
   })

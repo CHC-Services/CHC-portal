@@ -30,6 +30,7 @@ export async function POST(req: Request) {
     expiresAt,
     reminderDays,
     visibleToNurse,
+    claimId,
   } = await req.json()
 
   // Support single nurseId or array of nurseIds
@@ -57,6 +58,7 @@ export async function POST(req: Request) {
         mimeType: mimeType ?? null,
         uploadedBy: session.id,
         visibleToNurse: visibleToNurse === true,
+        claimId: claimId ?? null,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
         reminderDays: sanitizedReminderDays,
       },

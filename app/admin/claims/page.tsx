@@ -3,8 +3,16 @@
 import { useState, useEffect, useRef, Fragment } from 'react'
 import AdminNav from '../../components/AdminNav'
 
+type EobDoc = {
+  id: string
+  fileName: string
+  claimId: string   // = Claim.id (DB UUID)
+  nurseId: string
+}
+
 type Claim = {
   id: string
+  nurseId: string
   claimId: string | null
   providerName: string | null
   dosStart: string | null
@@ -183,6 +191,82 @@ export default function AdminClaimsPage() {
     dryRun: boolean
   } | null>(null)
 
+  // EOB state — keyed by Claim.id (DB UUID)
+  const [eobMap, setEobMap] = useState<Record<string, EobDoc>>({})
+  const [eobUploading, setEobUploading] = useState<string | null>(null)  // claim DB id
+  const [eobDeleting, setEobDeleting] = useState<string | null>(null)    // doc id
+
+  async function loadEobs() {
+    const res = await fetch('/api/admin/documents?all=1&category=EOB', { credentials: 'include' })
+    const data = await res.json()
+    if (Array.isArray(data.documents)) {
+      const map: Record<string, EobDoc> = {}
+      for (const doc of data.documents) {
+        if (doc.claimId) map[doc.claimId] = { id: doc.id, fileName: doc.fileName, claimId: doc.claimId, nurseId: doc.nurseId }
+      }
+      setEobMap(map)
+    }
+  }
+
+  async function handleEobUpload(claim: Claim, file: File) {
+    setEobUploading(claim.id)
+    try {
+      // Step 1 — presign
+      const presignRes = await fetch('/api/admin/documents/presign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ fileName: file.name, contentType: file.type || 'application/octet-stream', nurseId: claim.nurseId, category: 'EOB' }),
+      })
+      const presign = await presignRes.json()
+      if (!presignRes.ok) throw new Error(presign.error || 'Presign failed')
+
+      // Step 2 — upload to S3
+      const form = new FormData()
+      Object.entries(presign.fields as Record<string, string>).forEach(([k, v]) => form.append(k, v))
+      form.append('file', file)
+      await fetch(presign.url, { method: 'POST', body: form, mode: 'no-cors' })
+
+      // Step 3 — confirm record with claimId + visibleToNurse
+      const providerName = claim.providerName || claim.nurse?.displayName || 'Provider'
+      const confirmRes = await fetch('/api/admin/documents/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          nurseId: claim.nurseId,
+          claimId: claim.id,
+          title: `EOB — ${claim.claimId || providerName}`,
+          storageKey: presign.storageKey,
+          fileName: file.name,
+          fileSize: file.size,
+          mimeType: file.type || null,
+          category: 'EOB',
+          visibleToNurse: true,
+        }),
+      })
+      const confirmData = await confirmRes.json()
+      if (confirmData.ok) {
+        await loadEobs()
+      }
+    } catch (err) {
+      console.error('EOB upload error:', err)
+    }
+    setEobUploading(null)
+  }
+
+  async function deleteEob(docId: string) {
+    if (!confirm('Delete this EOB? This cannot be undone.')) return
+    setEobDeleting(docId)
+    await fetch(`/api/admin/documents/${docId}`, { method: 'DELETE', credentials: 'include' })
+    setEobMap(prev => {
+      const next = { ...prev }
+      Object.keys(next).forEach(k => { if (next[k].id === docId) delete next[k] })
+      return next
+    })
+    setEobDeleting(null)
+  }
+
   async function loadClaims() {
     setLoading(true)
     const res = await fetch('/api/admin/claims', { credentials: 'include' })
@@ -191,7 +275,7 @@ export default function AdminClaimsPage() {
     setLoading(false)
   }
 
-  useEffect(() => { loadClaims() }, [])
+  useEffect(() => { loadClaims(); loadEobs() }, [])
 
   async function handleFileImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -483,6 +567,7 @@ export default function AdminClaimsPage() {
             <table className="w-full text-sm text-left">
               <thead className="bg-[#F4F6F5] text-xs uppercase tracking-widest text-[#7A8F79]">
                 <tr>
+                  <th className="px-4 py-3">EOB</th>
                   <th className="px-4 py-3">Link</th>
                   <th className="px-4 py-3">Provider</th>
                   <th className="px-4 py-3">Claim ID</th>
@@ -516,6 +601,52 @@ export default function AdminClaimsPage() {
                   return (
                     <Fragment key={c.id}>
                       <tr className="hover:bg-[#F4F6F5] transition">
+                        <td className="px-4 py-3">
+                          {(() => {
+                            const eob = eobMap[c.id]
+                            if (eob) {
+                              return (
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={async () => {
+                                      const res = await fetch(`/api/admin/documents/${eob.id}`, { credentials: 'include' })
+                                      const data = await res.json()
+                                      if (data.url) window.open(data.url, '_blank')
+                                    }}
+                                    title={eob.fileName}
+                                    className="text-[10px] font-semibold text-green-700 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded hover:bg-green-100 transition whitespace-nowrap"
+                                  >
+                                    📎 EOB
+                                  </button>
+                                  <button
+                                    onClick={() => deleteEob(eob.id)}
+                                    disabled={eobDeleting === eob.id}
+                                    title="Delete EOB"
+                                    className="text-[10px] text-red-400 hover:text-red-600 border border-red-100 px-1 py-0.5 rounded transition disabled:opacity-40"
+                                  >
+                                    {eobDeleting === eob.id ? '…' : '✕'}
+                                  </button>
+                                </div>
+                              )
+                            }
+                            return (
+                              <label className={`cursor-pointer text-[10px] font-semibold text-[#7A8F79] border border-dashed border-[#D9E1E8] px-1.5 py-0.5 rounded hover:border-[#7A8F79] hover:text-[#2F3E4E] transition whitespace-nowrap ${eobUploading === c.id ? 'opacity-50 cursor-default' : ''}`}>
+                                {eobUploading === c.id ? '…' : '+ EOB'}
+                                <input
+                                  type="file"
+                                  className="hidden"
+                                  disabled={eobUploading === c.id}
+                                  accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif"
+                                  onChange={e => {
+                                    const file = e.target.files?.[0]
+                                    if (file) handleEobUpload(c, file)
+                                    e.target.value = ''
+                                  }}
+                                />
+                              </label>
+                            )
+                          })()}
+                        </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1">
                             <LinkButton claim={c} onLinked={loadClaims} />
@@ -551,6 +682,7 @@ export default function AdminClaimsPage() {
                       </tr>
                       {isExpanded && originals.map(orig => (
                         <tr key={orig.id} className="bg-red-50 text-xs text-[#7A8F79] border-l-4 border-red-200">
+                          <td className="px-4 py-2"></td>
                           <td className="px-4 py-2 text-[10px] text-red-400 font-semibold whitespace-nowrap">Original</td>
                           <td className="px-4 py-2">{orig.providerName || orig.nurse?.displayName}</td>
                           <td className="px-4 py-2 font-mono">{orig.claimId || '—'}</td>

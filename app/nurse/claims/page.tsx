@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import PortalMessages from '../../components/PortalMessages'
 
 type Claim = {
@@ -91,8 +91,38 @@ function groupClaims(claims: Claim[]): ClaimGroup[] {
   return groups
 }
 
-function ClaimRow({ primary: c, chain }: ClaimGroup) {
+function ClaimRow({ primary: c, chain, eobDoc }: ClaimGroup & { eobDoc: { id: string; fileName: string } | null }) {
   const [expanded, setExpanded] = useState(false)
+  const [eobUrl, setEobUrl] = useState<string | null>(null)
+  const [eobLoading, setEobLoading] = useState(false)
+  const [showEobModal, setShowEobModal] = useState(false)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+
+  async function openEob() {
+    if (!eobDoc) return
+    setShowEobModal(true)
+    if (eobUrl) return  // already fetched, reuse cached URL
+    setEobLoading(true)
+    const res = await fetch(`/api/nurse/documents/${eobDoc.id}`, { credentials: 'include' })
+    const data = await res.json()
+    if (data.url) setEobUrl(data.url)
+    setEobLoading(false)
+  }
+
+  async function saveToDevice() {
+    if (!eobUrl) return
+    const resp = await fetch(eobUrl)
+    const blob = await resp.blob()
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = eobDoc?.fileName || 'EOB.pdf'
+    link.click()
+    URL.revokeObjectURL(link.href)
+  }
+
+  function printEob() {
+    iframeRef.current?.contentWindow?.print()
+  }
 
   const isFinal = ['paid', 'denied', 'rejected', 'finalized'].includes((c.claimStage || '').toLowerCase())
   const dateLabel = isFinal ? 'Finalized' : 'Last Updated'
@@ -176,9 +206,19 @@ function ClaimRow({ primary: c, chain }: ClaimGroup) {
           {/* Primary insurance */}
           {(c.primaryPayer || c.primaryPaidAmt != null) && (
             <div>
-              <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-2">
-                Primary — {c.primaryPayer || '—'}
-              </p>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold">
+                  Primary — {c.primaryPayer || '—'}
+                </p>
+                {eobDoc && (
+                  <button
+                    onClick={openEob}
+                    className="flex items-center gap-1 text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] border border-[#D9E1E8] hover:border-[#7A8F79] px-2.5 py-1 rounded-lg transition"
+                  >
+                    📎 View EOB
+                  </button>
+                )}
+              </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
                 <div>
                   <p className="text-xs text-[#7A8F79]">Allowed</p>
@@ -287,6 +327,63 @@ function ClaimRow({ primary: c, chain }: ClaimGroup) {
           )}
         </div>
       )}
+
+      {/* EOB Viewer Modal */}
+      {showEobModal && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-black/60" onClick={e => { if (e.target === e.currentTarget) setShowEobModal(false) }}>
+          <div className="flex flex-col bg-white rounded-t-2xl mt-10 mx-2 sm:mx-auto sm:w-full sm:max-w-4xl flex-1 overflow-hidden shadow-2xl">
+
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-[#D9E1E8] flex-shrink-0">
+              <div>
+                <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold">Explanation of Benefits</p>
+                <p className="text-sm font-semibold text-[#2F3E4E]">
+                  {c.claimId ? `Claim ${c.claimId}` : 'EOB Document'}{c.primaryPayer ? ` — ${c.primaryPayer}` : ''}
+                </p>
+              </div>
+              <button onClick={() => setShowEobModal(false)} className="text-[#7A8F79] hover:text-[#2F3E4E] text-2xl leading-none ml-4">×</button>
+            </div>
+
+            {/* Document viewer */}
+            <div className="flex-1 overflow-hidden bg-[#F4F6F5]">
+              {eobLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-[#7A8F79] font-semibold animate-pulse">Loading document…</p>
+                </div>
+              ) : eobUrl ? (
+                <iframe
+                  ref={iframeRef}
+                  src={eobUrl}
+                  className="w-full h-full border-0"
+                  title="EOB Document"
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-[#7A8F79]">Could not load document.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Action footer */}
+            <div className="flex items-center justify-end gap-3 px-5 py-3 border-t border-[#D9E1E8] bg-white flex-shrink-0">
+              <button
+                onClick={printEob}
+                disabled={!eobUrl}
+                className="flex items-center gap-1.5 border border-[#D9E1E8] text-[#2F3E4E] px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#F4F6F5] transition disabled:opacity-40"
+              >
+                🖨 Print
+              </button>
+              <button
+                onClick={saveToDevice}
+                disabled={!eobUrl}
+                className="flex items-center gap-1.5 bg-[#2F3E4E] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-40"
+              >
+                ⬇ Save to Device
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -295,6 +392,8 @@ export default function NurseClaimsPage() {
   const [claims, setClaims] = useState<Claim[]>([])
   const [enrolledInBilling, setEnrolledInBilling] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(true)
+  // Map from Claim.id (DB UUID) → { id: docId, fileName }
+  const [eobMap, setEobMap] = useState<Record<string, { id: string; fileName: string }>>({})
 
   useEffect(() => {
     fetch('/api/nurse/claims', { credentials: 'include' })
@@ -303,6 +402,18 @@ export default function NurseClaimsPage() {
         setClaims(data.claims || [])
         setEnrolledInBilling(data.enrolledInBilling ?? null)
         setLoading(false)
+      })
+
+    fetch('/api/nurse/documents', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => {
+        const map: Record<string, { id: string; fileName: string }> = {}
+        for (const doc of data.documents || []) {
+          if (doc.category === 'EOB' && doc.claimId) {
+            map[doc.claimId] = { id: doc.id, fileName: doc.fileName }
+          }
+        }
+        setEobMap(map)
       })
   }, [])
 
@@ -398,7 +509,7 @@ export default function NurseClaimsPage() {
         ) : (
           <div className="space-y-2">
             {groupClaims(claims).map(group => (
-              <ClaimRow key={group.primary.id} {...group} />
+              <ClaimRow key={group.primary.id} {...group} eobDoc={eobMap[group.primary.id] ?? null} />
             ))}
           </div>
         )}

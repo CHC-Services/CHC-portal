@@ -263,6 +263,7 @@ model NurseDocument {
   visibleToNurse  Boolean   @default(false)  // admin must explicitly share with nurse
   sharedWithAdmin Boolean   @default(false)  // nurse chose to share with admin
   adminReviewed   Boolean   @default(false)  // admin has acknowledged the shared doc
+  claimId         String?   // links to Claim.id for EOB documents
   expiresAt       DateTime?
   reminderDays    Int[]        @default([])
   remindersSentDays Int[]      @default([])
@@ -271,6 +272,7 @@ model NurseDocument {
 
   @@index([nurseId])
   @@index([expiresAt])
+  @@index([claimId])
 }
 
 model FaqItem {

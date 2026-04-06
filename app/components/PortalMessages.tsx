@@ -47,8 +47,8 @@ export default function PortalMessages({ priority }: { priority?: string }) {
 
   return (
     <div className="mb-6 bg-white rounded-xl shadow-sm border border-[#D9E1E8] overflow-hidden">
-      <div className="px-5 py-3 border-b border-[#7A8F79] flex items-center gap-2 bg-[#7A8F79]">
-        <span className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E]">Portal Updates</span>
+      <div className="px-5 py-3 border-b border-[#5C2A2A] flex items-center gap-2 bg-[#5C2A2A]">
+        <span className="text-xs font-bold uppercase tracking-widest text-white">Portal Updates</span>
         <span className="bg-[#2F3E4E] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
           {messages.length}
         </span>

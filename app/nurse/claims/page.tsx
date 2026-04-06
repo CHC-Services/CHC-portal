@@ -416,6 +416,7 @@ export default function NurseClaimsPage() {
   const [claims, setClaims] = useState<Claim[]>([])
   const [enrolledInBilling, setEnrolledInBilling] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(true)
+  const [filterYear, setFilterYear] = useState('')
   // Map from Claim.id (DB UUID) → array of EOB docs (supports multiple per claim)
   const [eobMap, setEobMap] = useState<Record<string, { id: string; fileName: string }[]>>({})
 
@@ -442,8 +443,12 @@ export default function NurseClaimsPage() {
       })
   }, [])
 
-  const resubIds = new Set(claims.filter(c => c.resubmissionOf).map(c => c.resubmissionOf as string))
-  const activeClaims = claims.filter(c => !c.claimId || !resubIds.has(c.claimId))
+  const yearFilteredClaims = filterYear
+    ? claims.filter(c => c.dosStart && new Date(c.dosStart).getUTCFullYear().toString() === filterYear)
+    : claims
+
+  const resubIds = new Set(yearFilteredClaims.filter(c => c.resubmissionOf).map(c => c.resubmissionOf as string))
+  const activeClaims = yearFilteredClaims.filter(c => !c.claimId || !resubIds.has(c.claimId))
 
   const totalBilled = activeClaims.reduce((s, c) => s + (c.totalBilled || 0), 0)
   const totalReimbursed = activeClaims.reduce((s, c) => s + (c.totalReimbursed || 0), 0)
@@ -502,20 +507,39 @@ export default function NurseClaimsPage() {
         )}
 
         {claims.length > 0 && (
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <div className="bg-white rounded-xl p-4 shadow-sm">
-              <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold">Total Claims</p>
-              <p className="text-2xl font-bold text-[#2F3E4E] mt-1">{activeClaims.length}</p>
+          <>
+            {/* Year filter */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              {(['', '2024', '2025', '2026', '2027', '2028', '2029', '2030'] as const).map(y => (
+                <button
+                  key={y || 'all'}
+                  onClick={() => setFilterYear(y)}
+                  className={`text-xs px-3 py-1.5 rounded-full font-semibold transition ${
+                    filterYear === y
+                      ? 'bg-[#2F3E4E] text-white'
+                      : 'bg-white text-[#7A8F79] hover:bg-[#D9E1E8]'
+                  }`}
+                >
+                  {y || 'All'}
+                </button>
+              ))}
             </div>
-            <div className="bg-white rounded-xl p-4 shadow-sm">
-              <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold">Total Billed</p>
-              <p className="text-2xl font-bold text-[#2F3E4E] mt-1">{fmt(totalBilled, '$')}</p>
+
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="bg-white rounded-xl p-4 shadow-sm">
+                <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold">Total Claims</p>
+                <p className="text-2xl font-bold text-[#2F3E4E] mt-1">{activeClaims.length}</p>
+              </div>
+              <div className="bg-white rounded-xl p-4 shadow-sm">
+                <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold">Total Billed</p>
+                <p className="text-2xl font-bold text-[#2F3E4E] mt-1">{fmt(totalBilled, '$')}</p>
+              </div>
+              <div className="bg-white rounded-xl p-4 shadow-sm">
+                <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold">Total Reimbursed</p>
+                <p className="text-2xl font-bold text-[#7A8F79] mt-1">{fmt(totalReimbursed, '$')}</p>
+              </div>
             </div>
-            <div className="bg-white rounded-xl p-4 shadow-sm">
-              <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold">Total Reimbursed</p>
-              <p className="text-2xl font-bold text-[#7A8F79] mt-1">{fmt(totalReimbursed, '$')}</p>
-            </div>
-          </div>
+          </>
         )}
 
         {loading ? (
@@ -531,9 +555,14 @@ export default function NurseClaimsPage() {
             <p className="text-[#2F3E4E] font-semibold">No claims on file yet</p>
             <p className="text-[#7A8F79] text-sm mt-1">Your claims will appear here once billing is processed.</p>
           </div>
+        ) : yearFilteredClaims.length === 0 ? (
+          <div className="bg-white rounded-xl shadow-sm p-8 text-center">
+            <p className="text-[#2F3E4E] font-semibold">No claims found for {filterYear}</p>
+            <p className="text-[#7A8F79] text-sm mt-1">Select a different year or "All" to see all claims.</p>
+          </div>
         ) : (
           <div className="space-y-2">
-            {groupClaims(claims).map(group => (
+            {groupClaims(yearFilteredClaims).map(group => (
               <ClaimRow key={group.primary.id} {...group} eobDocs={eobMap[group.primary.id] ?? []} />
             ))}
           </div>

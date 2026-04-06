@@ -215,6 +215,9 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   const [sortField, setSortField] = useState<'date' | 'hours' | 'notes'>('date')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
+  // Claims year filter
+  const [claimsYear, setClaimsYear] = useState('')
+
   // Receipts & Statements
   type InvoiceRecord = {
     id: string
@@ -736,7 +739,10 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   if (loading) return <div className="p-8 text-[#7A8F79]">Loading…</div>
 
   // ── Derived values for claims tab ──
-  const nurseClaims = claims.filter(c => c.nurseId === id)
+  const allNurseClaims = claims.filter(c => c.nurseId === id)
+  const nurseClaims = claimsYear
+    ? allNurseClaims.filter(c => c.dosStart && new Date(c.dosStart).getUTCFullYear().toString() === claimsYear)
+    : allNurseClaims
   const totalBilled = nurseClaims.reduce((s: number, c: any) => s + (c.totalBilled ?? 0), 0)
   const paidReimbursement = nurseClaims.reduce((s: number, c: any) => s + (c.primaryPaidAmt ?? 0) + (c.secondaryPaidAmt ?? 0), 0)
   const owedReimbursement = nurseClaims.reduce((s: number, c: any) => s + (c.remainingBalance ?? 0), 0)
@@ -1299,13 +1305,32 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
 
           {/* Full-width: Claims table */}
           <div className="lg:col-span-3 bg-white rounded-xl shadow-sm p-6 space-y-4">
-            <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8]">
-              Claims — {profile.displayName}
-            </h2>
+            <div className="flex items-center justify-between flex-wrap gap-3 pb-2 border-b border-[#D9E1E8]">
+              <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79]">
+                Claims — {profile.displayName}
+              </h2>
+              <div className="flex flex-wrap gap-1.5">
+                {(['', '2024', '2025', '2026', '2027', '2028', '2029', '2030'] as const).map(y => (
+                  <button
+                    key={y || 'all'}
+                    onClick={() => setClaimsYear(y)}
+                    className={`text-xs px-2.5 py-1 rounded-full font-semibold transition ${
+                      claimsYear === y
+                        ? 'bg-[#2F3E4E] text-white'
+                        : 'bg-[#F4F6F5] text-[#7A8F79] hover:bg-[#D9E1E8]'
+                    }`}
+                  >
+                    {y || 'All'}
+                  </button>
+                ))}
+              </div>
+            </div>
             {claimsLoading ? (
               <p className="text-sm text-[#7A8F79] italic">Loading claims…</p>
-            ) : nurseClaims.length === 0 ? (
+            ) : allNurseClaims.length === 0 ? (
               <p className="text-sm text-[#7A8F79] italic">No claims found for this provider.</p>
+            ) : nurseClaims.length === 0 ? (
+              <p className="text-sm text-[#7A8F79] italic">No claims found for {claimsYear}.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-xs min-w-[900px]">

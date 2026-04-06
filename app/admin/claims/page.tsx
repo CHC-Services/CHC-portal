@@ -175,6 +175,7 @@ export default function AdminClaimsPage() {
   const [importResult, setImportResult] = useState<{ created: number; updated: number; skipped: number } | null>(null)
   const [search, setSearch] = useState('')
   const [filterStage, setFilterStage] = useState('')
+  const [filterYear, setFilterYear] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
   const [expandedOriginals, setExpandedOriginals] = useState<Set<string>>(new Set())
@@ -328,7 +329,8 @@ export default function AdminClaimsPage() {
       (c.primaryPayer || '').toLowerCase().includes(search.toLowerCase()) ||
       (c.secondaryPayer || '').toLowerCase().includes(search.toLowerCase())
     const matchStage = !filterStage || c.claimStage === filterStage
-    return matchSearch && matchStage
+    const matchYear = !filterYear || (c.dosStart ? new Date(c.dosStart).getUTCFullYear().toString() === filterYear : false)
+    return matchSearch && matchStage && matchYear
   })
 
   // Exclude superseded originals from totals — only count the most recent submission
@@ -558,6 +560,16 @@ export default function AdminClaimsPage() {
           >
             <option value="">All Stages</option>
             {stages.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <select
+            value={filterYear}
+            onChange={e => setFilterYear(e.target.value)}
+            className="border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+          >
+            <option value="">All Years</option>
+            {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => (
+              <option key={y} value={y}>{y}</option>
+            ))}
           </select>
         </div>
 

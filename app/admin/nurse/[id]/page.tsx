@@ -204,6 +204,17 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   const [bulkDeleting, setBulkDeleting] = useState(false)
   const [bulkFlagging, setBulkFlagging] = useState(false)
 
+  // Tab navigation
+  const [activeTab, setActiveTab] = useState('profile')
+
+  // Claims (filtered for this nurse)
+  const [claims, setClaims] = useState<any[]>([])
+  const [claimsLoading, setClaimsLoading] = useState(false)
+
+  // Time log sort
+  const [sortField, setSortField] = useState<'date' | 'hours' | 'notes'>('date')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
   // Receipts & Statements
   type InvoiceRecord = {
     id: string
@@ -220,10 +231,105 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   const [receiptYearFilter, setReceiptYearFilter] = useState<string>('all')
   const [statementOpening, setStatementOpening] = useState(false)
 
+  // Invoice preview modal
+  const [previewInvoice, setPreviewInvoice] = useState<InvoiceRecord | null>(null)
+  const [previewDetail, setPreviewDetail] = useState<any | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewSending, setPreviewSending] = useState(false)
+  const [previewMessage, setPreviewMessage] = useState('')
+
+  // Activity log modal
+  const [showActivityLog, setShowActivityLog] = useState(false)
+  const [invoiceActivity, setInvoiceActivity] = useState<{id:string;action:string;documentType:string;reference:string|null;note:string|null;createdAt:string}[]>([])
+  const [activityLoading, setActivityLoading] = useState(false)
+
+  async function fetchClaims() {
+    setClaimsLoading(true)
+    const res = await fetch('/api/admin/claims', { credentials: 'include' })
+    const data = await res.json()
+    if (Array.isArray(data.claims)) setClaims(data.claims)
+    setClaimsLoading(false)
+  }
+
   async function fetchInvoiceHistory() {
     const res = await fetch(`/api/admin/nurses/${id}/invoices`, { credentials: 'include' })
     const data = await res.json()
     if (Array.isArray(data.invoices)) setInvoiceHistory(data.invoices)
+  }
+
+  async function fetchActivity() {
+    setActivityLoading(true)
+    const res = await fetch(`/api/admin/nurses/${id}/invoice-activity`, { credentials: 'include' })
+    const data = await res.json()
+    if (Array.isArray(data.activities)) setInvoiceActivity(data.activities)
+    setActivityLoading(false)
+  }
+
+  async function logActivity(action: string, documentType: string, reference?: string, invoiceId?: string) {
+    await fetch(`/api/admin/nurses/${id}/invoice-activity`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ action, documentType, reference, invoiceId }),
+    })
+    // Refresh log in background if modal is open
+    fetchActivity()
+  }
+
+  async function openInvoicePreview(inv: InvoiceRecord) {
+    setPreviewMessage('')
+    setPreviewInvoice(inv)
+    setPreviewLoading(true)
+    setPreviewDetail(null)
+    const res = await fetch(`/api/admin/invoices/${inv.id}`, { credentials: 'include' })
+    const data = await res.json()
+    setPreviewDetail(data)
+    setPreviewLoading(false)
+  }
+
+  async function sendInvoiceEmail(inv: InvoiceRecord) {
+    setPreviewSending(true)
+    setPreviewMessage('')
+    const res = await fetch(`/api/admin/invoices/${inv.id}/html`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({}),
+    })
+    if (res.ok) {
+      setPreviewMessage('Invoice emailed successfully.')
+      await logActivity('Email', 'Invoice', inv.invoiceNumber, inv.id)
+    } else {
+      setPreviewMessage('Failed to send email.')
+    }
+    setPreviewSending(false)
+  }
+
+  async function printInvoice(inv: InvoiceRecord) {
+    window.open(`/api/admin/invoices/${inv.id}/html`, '_blank')
+    await logActivity('Print', 'Invoice', inv.invoiceNumber, inv.id)
+  }
+
+  async function sendStatement(filter: string, yearLabel?: string) {
+    setStatementOpening(true)
+    const res = await fetch(`/api/admin/nurses/${id}/statement`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ filter }),
+    })
+    if (res.ok) {
+      await logActivity('Email', 'Statement', yearLabel || 'Full Statement')
+    }
+    setStatementOpening(false)
+  }
+
+  function printStatement(yearParam?: string) {
+    const url = yearParam
+      ? `/api/admin/invoices/${id}/statement?year=${yearParam}`
+      : `/api/admin/invoices/${id}/statement`
+    window.open(url, '_blank')
+    logActivity('Print', 'Statement', yearParam ? `${yearParam} Statement` : 'Full Statement')
   }
 
   // Log hours form
@@ -319,6 +425,8 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
     fetchDocuments()
     fetchCategories()
     fetchInvoiceHistory()
+    fetchClaims()
+    fetchActivity()
   }, [id, router])
 
   async function handleDocUpload(e: React.FormEvent) {
@@ -627,31 +735,176 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
 
   if (loading) return <div className="p-8 text-[#7A8F79]">Loading…</div>
 
+  // ── Derived values for claims tab ──
+  const nurseClaims = claims.filter(c => c.nurseId === id)
+  const totalBilled = nurseClaims.reduce((s: number, c: any) => s + (c.totalBilled ?? 0), 0)
+  const paidReimbursement = nurseClaims.reduce((s: number, c: any) => s + (c.primaryPaidAmt ?? 0) + (c.secondaryPaidAmt ?? 0), 0)
+  const owedReimbursement = nurseClaims.reduce((s: number, c: any) => s + (c.remainingBalance ?? 0), 0)
+
+  // ── Sorted time entries for proHours ──
+  function sortedEntries(list: TimeEntry[]) {
+    return [...list].sort((a, b) => {
+      let cmp = 0
+      if (sortField === 'date') cmp = new Date(a.workDate).getTime() - new Date(b.workDate).getTime()
+      else if (sortField === 'hours') cmp = a.hours - b.hours
+      else if (sortField === 'notes') cmp = (a.notes || '').localeCompare(b.notes || '')
+      return sortDir === 'asc' ? cmp : -cmp
+    })
+  }
+
+  function SortTh({ field, label }: { field: typeof sortField; label: string }) {
+    const active = sortField === field
+    return (
+      <th
+        className="text-left py-2 pr-4 cursor-pointer select-none"
+        onClick={() => { if (active) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortField(field); setSortDir('asc') } }}
+      >
+        <span className={`flex items-center gap-1 ${active ? 'text-[#2F3E4E]' : 'text-[#7A8F79]'}`}>
+          {label}
+          {active ? (sortDir === 'asc' ? ' ↑' : ' ↓') : <span className="text-[#D9E1E8]"> ↕</span>}
+        </span>
+      </th>
+    )
+  }
+
+  const TABS = [
+    { id: 'profile',    label: 'proFile' },
+    { id: 'hours',      label: 'proHours' },
+    { id: 'claims',     label: 'proClaims' },
+    { id: 'invoicing',  label: 'proInvoicing' },
+    { id: 'docs',       label: 'proDocs' },
+  ]
+
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">
       <AdminNav />
 
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
+      {/* ── Row 1: Back to Roster ── */}
+      <div className="mb-2">
         <Link href="/admin" className="text-[#7A8F79] hover:text-[#2F3E4E] text-sm">
           ← Back to Roster
         </Link>
-        <div>
-          <h1 className="text-3xl font-bold text-[#2F3E4E]">{profile.displayName}</h1>
-          {profile.accountNumber && (
-            <p className="text-sm font-mono text-[#7A8F79]">{profile.accountNumber}</p>
-          )}
-        </div>
       </div>
 
-      {/* 2-column layout */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+      {/* ── Row 2: Provider name + account number ── */}
+      <div className="flex items-baseline gap-4 mb-5">
+        <h1 className="text-3xl font-bold text-[#2F3E4E]">{profile.displayName}</h1>
+        {profile.accountNumber && (
+          <span className="text-2xl font-mono font-bold text-[#7A8F79]">#{profile.accountNumber}</span>
+        )}
+      </div>
 
-        {/* ── LEFT COLUMN ── */}
-        <div className="space-y-6">
+      {/* ── Sub-nav ── */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        {TABS.map(tab => {
+          const active = activeTab === tab.id
+          const pro = tab.label.slice(0, 3)
+          const rest = tab.label.slice(3)
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-5 py-2 rounded-lg text-sm font-semibold transition ${
+                active
+                  ? 'bg-white text-[#2F3E4E] shadow'
+                  : 'bg-[#2F3E4E] text-white hover:bg-[#3d5166]'
+              }`}
+            >
+              <span className={`italic ${active ? 'text-[#7A8F79]' : 'text-[#7A8F79]'}`}>{pro}</span>
+              {rest}
+            </button>
+          )
+        })}
+      </div>
 
-          {/* Portal Access */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
+      {/* ══════════════════════════════════════════════════
+          proFile tab
+      ══════════════════════════════════════════════════ */}
+      {activeTab === 'profile' && (
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+
+          {/* ── Col 1: Individual Provider Info + Business Provider Info ── */}
+          <div className="space-y-6">
+
+            {/* Individual Provider Information */}
+            <Section title="Individual Provider Information">
+              <div className="grid grid-cols-3 gap-3">
+                <Field label="First Name"     field="firstName"     profile={profile} setProfile={setProfile} />
+                <Field label="MI"             field="middleInitial" profile={profile} setProfile={setProfile} />
+                <Field label="Last Name"      field="lastName"      profile={profile} setProfile={setProfile} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Phone"          field="phone"         profile={profile} setProfile={setProfile} />
+                <Field label="Email"          field="user.email"    profile={profile} setProfile={setProfile} type="email" />
+              </div>
+              <Field label="Home Address"     field="address"       profile={profile} setProfile={setProfile} />
+              <div className="grid grid-cols-3 gap-3">
+                <Field label="City"           field="city"          profile={profile} setProfile={setProfile} />
+                <Field label="State"          field="state"         profile={profile} setProfile={setProfile} />
+                <Field label="ZIP"            field="zip"           profile={profile} setProfile={setProfile} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Date of Birth"  field="dob"           profile={profile} setProfile={setProfile} type="date" />
+                <Field label="SSN"            field="ssn"           profile={profile} setProfile={setProfile} sensitive />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="NPI"            field="npiNumber"     profile={profile} setProfile={setProfile} />
+                <Field label="Medicaid ID"    field="medicaidNumber" profile={profile} setProfile={setProfile} />
+              </div>
+              <Field label="BCBS Payor ID"    field="bcbsPayorId"   profile={profile} setProfile={setProfile} />
+            </Section>
+
+            {/* Business Provider Information */}
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={!!profile.hasBusinessProvider}
+                  onChange={(e) => setProfile({ ...profile, hasBusinessProvider: e.target.checked })}
+                  className="w-4 h-4 accent-[#7A8F79]"
+                />
+                <span className="font-semibold text-[#2F3E4E]">This provider has a separate Business entity</span>
+              </label>
+              {profile.hasBusinessProvider && (
+                <div className="mt-6 space-y-4">
+                  <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8]">
+                    Business Provider Information
+                  </h2>
+                  <Field label="Entity Name"       field="bizEntityName"      profile={profile} setProfile={setProfile} />
+                  <Field label="Service Address"   field="bizServiceAddress"  profile={profile} setProfile={setProfile} />
+                  <Field label="Business Email"    field="bizEmail"           profile={profile} setProfile={setProfile} type="email" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="EIN"             field="ein"                profile={profile} setProfile={setProfile} sensitive />
+                    <Field label="FEIN"            field="fein"               profile={profile} setProfile={setProfile} sensitive />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="Business NPI"    field="bizNpi"             profile={profile} setProfile={setProfile} />
+                    <Field label="Business Medicaid ID" field="bizMedicaidId" profile={profile} setProfile={setProfile} />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={save}
+              disabled={saving}
+              className="w-full bg-[#2F3E4E] text-white py-3 rounded-xl hover:bg-[#7A8F79] transition font-semibold disabled:opacity-50"
+            >
+              {saving ? 'Saving…' : 'Save Profile'}
+            </button>
+            {message && (
+              <p className={`text-sm text-center font-medium ${message.includes('Error') ? 'text-red-500' : 'text-[#7A8F79]'}`}>
+                {message}
+              </p>
+            )}
+          </div>
+
+          {/* ── Col 2: Portal Access + Payment Information ── */}
+          <div className="space-y-6">
+
+            {/* Portal Access */}
+            <div className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8] mb-4">
               Portal Access
             </h2>
@@ -787,246 +1040,545 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
             </div>
           </div>
 
-          {/* Invoice Summary */}
+            {/* Payment Information */}
+            <Section title="Payment Information">
+              <Field label="Bank Name"         field="bankName"       profile={profile} setProfile={setProfile} />
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Routing #"       field="bankRouting"    profile={profile} setProfile={setProfile} sensitive />
+                <Field label="Account #"       field="bankAccount"    profile={profile} setProfile={setProfile} sensitive />
+              </div>
+            </Section>
+
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════
+          proHours tab
+      ══════════════════════════════════════════════════ */}
+      {activeTab === 'hours' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+
+          {/* Col 1: Log Hours */}
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8] mb-4">
-              Invoice Summary
+              Log Hours
             </h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-[#F4F6F5] rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-[#2F3E4E]">{invoiceGroupMap.size}</p>
-                <p className="text-xs text-[#7A8F79] mt-1 font-semibold uppercase tracking-wide">Invoices Created</p>
+            <form onSubmit={submitTimeEntry} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Date of Service</label>
+                  <DateInput ref={workDateRef} value={workDate} onChange={setWorkDate} />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Hours</label>
+                  <input
+                    type="number"
+                    step="0.25"
+                    min="0"
+                    value={workHours}
+                    onChange={e => setWorkHours(e.target.value)}
+                    placeholder="e.g. 8"
+                    required
+                    className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                  />
+                </div>
               </div>
-              <div className={`rounded-lg p-4 text-center ${pendingEntries.length > 0 ? 'bg-amber-50' : 'bg-[#F4F6F5]'}`}>
-                <p className={`text-3xl font-bold ${pendingEntries.length > 0 ? 'text-amber-600' : 'text-[#2F3E4E]'}`}>
-                  {pendingEntries.length}
-                </p>
-                <p className="text-xs text-[#7A8F79] mt-1 font-semibold uppercase tracking-wide">Outstanding</p>
-                {pendingEntries.length > 0 && (
-                  <p className="text-xs font-bold text-amber-600 mt-0.5">${pendingTotal.toFixed(2)}</p>
-                )}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Notes <span className="normal-case font-normal">(optional)</span></label>
+                <input
+                  type="text"
+                  value={workNotes}
+                  onChange={e => setWorkNotes(e.target.value)}
+                  placeholder="e.g. Home visit — patient care"
+                  className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                />
               </div>
+              <div className="flex items-center gap-3">
+                <button
+                  type="submit"
+                  disabled={workSubmitting || !workDate || !workHours}
+                  className="bg-[#7A8F79] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#2F3E4E] transition disabled:opacity-50"
+                >
+                  {workSubmitting ? 'Adding…' : 'Add Entry'}
+                </button>
+                {workMessage && <p className="text-sm text-[#7A8F79]">{workMessage}</p>}
+              </div>
+            </form>
+          </div>
+
+          {/* Col 2+3: Time Log & Invoice Assignment */}
+          <div className="lg:col-span-2 bg-white rounded-xl shadow-sm p-6 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-[#D9E1E8]">
+              <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79]">
+                Time Log &amp; Invoice Assignment
+              </h2>
+              {pendingEntries.length > 0 && selectedCount === 0 && (
+                <button
+                  onClick={() => setShowInvoiceModal(true)}
+                  className="bg-[#7A8F79] text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-[#2F3E4E] transition"
+                >
+                  Create Invoice ({pendingEntries.length} flagged · ${pendingTotal.toFixed(2)})
+                </button>
+              )}
             </div>
-            {invoiceMessage && (
-              <p className={`mt-3 text-xs font-semibold ${invoiceMessage.includes('sent') ? 'text-[#7A8F79]' : 'text-red-500'}`}>
-                {invoiceMessage}
-              </p>
+
+            {/* Bulk action bar */}
+            {selectedCount > 0 && (
+              <div className="flex items-center gap-3 bg-[#F4F6F5] rounded-lg px-3 py-2">
+                <span className="text-xs font-semibold text-[#2F3E4E]">{selectedCount} selected</span>
+                <button
+                  type="button"
+                  onClick={bulkDelete}
+                  disabled={bulkDeleting}
+                  className="text-xs text-red-500 hover:text-red-700 font-semibold border border-red-200 px-3 py-1 rounded-lg transition disabled:opacity-50"
+                >
+                  {bulkDeleting ? 'Deleting…' : 'Delete'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBulkInvoice}
+                  disabled={bulkFlagging}
+                  className="text-xs bg-[#2F3E4E] text-white font-semibold px-3 py-1 rounded-lg hover:bg-[#7A8F79] transition disabled:opacity-50"
+                >
+                  {bulkFlagging ? 'Preparing…' : 'Create Invoice'}
+                </button>
+              </div>
+            )}
+
+            {entries.length === 0 ? (
+              <p className="text-sm text-[#7A8F79] italic">No time entries yet.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[560px]">
+                  <thead>
+                    <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
+                      <th className="text-left py-2 pr-3 w-8">
+                        <input
+                          type="checkbox"
+                          checked={allNonInvoicedSelected}
+                          onChange={toggleSelectAll}
+                          className="w-4 h-4 accent-[#7A8F79]"
+                          title={allNonInvoicedSelected ? 'Deselect all' : 'Select all'}
+                        />
+                      </th>
+                      <SortTh field="date" label="Date" />
+                      <th className="text-left py-2 pr-4">Claim Ref #</th>
+                      <SortTh field="hours" label="Hrs" />
+                      <SortTh field="notes" label="Notes" />
+                      <th className="text-left py-2">Fee / Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...invoiceGroupMap.entries()].map(([invoiceId, group]) => {
+                      const dates = group.map(e => new Date(e.workDate).getTime())
+                      const minDate = new Date(Math.min(...dates)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+                      const maxDate = new Date(Math.max(...dates)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+                      const totalFee = group.reduce((s, e) => s + (e.invoiceFeeAmt ?? 0), 0)
+                      const invoiceNum = group[0]?.invoice?.invoiceNumber || invoiceId.slice(0, 8)
+                      const firstRef = group.find(e => e.claimRef)?.claimRef
+                      return (
+                        <tr key={invoiceId} className="border-b border-[#D9E1E8] bg-green-50">
+                          <td className="py-2 pr-3"><span className="block w-4 h-4 rounded bg-green-200" /></td>
+                          <td className="py-2 pr-4 text-xs text-[#2F3E4E] whitespace-nowrap">
+                            {minDate === maxDate ? minDate : `${minDate} – ${maxDate}`}
+                          </td>
+                          <td className="py-2 pr-4 text-xs text-[#7A8F79]">{firstRef || '—'}</td>
+                          <td className="py-2 pr-4 text-right text-xs text-[#7A8F79]">{group.reduce((s, e) => s + e.hours, 0)}</td>
+                          <td className="py-2 pr-4 text-xs text-[#7A8F79] italic">{group.length} entr{group.length === 1 ? 'y' : 'ies'}</td>
+                          <td className="py-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs bg-green-100 text-green-700 font-semibold px-2 py-0.5 rounded-full whitespace-nowrap">{invoiceNum}</span>
+                              <span className="text-xs font-bold text-green-700">${totalFee.toFixed(2)}</span>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                    {sortedEntries(notInvoicedEntries).map((entry, i) => {
+                      const isSelected = selectedEntries.has(entry.id)
+                      const dateStr = new Date(entry.workDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+                      return (
+                        <tr
+                          key={entry.id}
+                          className={`border-b border-[#D9E1E8] last:border-0 transition-colors ${isSelected ? 'bg-blue-50' : i % 2 === 0 ? '' : 'bg-[#F4F6F5]'}`}
+                        >
+                          <td className="py-2.5 pr-3">
+                            <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(entry.id)} className="w-4 h-4 accent-[#7A8F79]" />
+                          </td>
+                          <td className="py-2.5 pr-4 text-xs text-[#2F3E4E] whitespace-nowrap">{dateStr}</td>
+                          <td className="py-2.5 pr-4">
+                            <input
+                              type="text"
+                              value={claimRefs[entry.id] ?? entry.claimRef ?? ''}
+                              onChange={e => setClaimRefs(prev => ({ ...prev, [entry.id]: e.target.value }))}
+                              onBlur={e => saveClaimRef(entry.id, e.target.value)}
+                              placeholder="CLM-001"
+                              className="border border-[#D9E1E8] rounded px-2 py-1 text-xs text-[#2F3E4E] w-24 focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
+                            />
+                          </td>
+                          <td className="py-2.5 pr-4 text-right text-xs font-semibold text-[#2F3E4E]">{entry.hours}</td>
+                          <td className="py-2.5 pr-4 text-[#7A8F79] italic text-xs max-w-[120px] truncate">{entry.notes || '—'}</td>
+                          <td className="py-2.5">
+                            {entry.readyToInvoice ? (
+                              <div className="flex items-center gap-1.5">
+                                <select
+                                  value={entry.invoiceFeePlan ?? 'A1'}
+                                  onChange={e => toggleInvoiceFlag(entry, true, e.target.value)}
+                                  className="border border-[#D9E1E8] rounded px-1.5 py-1 text-xs text-[#2F3E4E] focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
+                                >
+                                  {FEE_PLANS.map(p => (
+                                    <option key={p.value} value={p.value}>{p.value} — ${p.amount.toFixed(2)}</option>
+                                  ))}
+                                </select>
+                                <span className="text-xs font-bold text-[#2F3E4E]">${(entry.invoiceFeeAmt ?? 0).toFixed(2)}</span>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-[#D9E1E8] italic">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}{/* end proHours tab */}
+
+      {/* ══════════════════════════════════════════════════
+          proClaims tab
+      ══════════════════════════════════════════════════ */}
+      {activeTab === 'claims' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+
+          {/* Col 1: Claims Access Aliases */}
+          <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
+            <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8]">
+              Claims Access — Provider Aliases
+            </h2>
+            <p className="text-xs text-[#7A8F79]">
+              This provider will see any claim where the Provider Name in the CSV matches one of these aliases exactly.
+            </p>
+            <AliasEditor
+              aliases={profile.providerAliases || []}
+              onChange={(aliases) => setProfile({ ...profile, providerAliases: aliases })}
+            />
+            <p className="text-xs text-[#7A8F79] italic">Changes are saved with the Save Profile button.</p>
+            <button
+              type="button"
+              onClick={save}
+              disabled={saving}
+              className="w-full bg-[#2F3E4E] text-white py-2 rounded-lg hover:bg-[#7A8F79] transition text-sm font-semibold disabled:opacity-50"
+            >
+              {saving ? 'Saving…' : 'Save Aliases'}
+            </button>
+          </div>
+
+          {/* Col 2+3: Metric cards */}
+          <div className="lg:col-span-2 grid grid-cols-2 gap-4">
+            <div className="bg-white rounded-xl shadow-sm p-6 text-center">
+              <p className="text-3xl font-bold text-[#2F3E4E]">{nurseClaims.length}</p>
+              <p className="text-xs text-[#7A8F79] mt-1 font-semibold uppercase tracking-wide">Total Claims</p>
+            </div>
+            <div className="bg-white rounded-xl shadow-sm p-6 text-center">
+              <p className="text-3xl font-bold text-[#2F3E4E]">${totalBilled.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              <p className="text-xs text-[#7A8F79] mt-1 font-semibold uppercase tracking-wide">Total Billed</p>
+            </div>
+            <div className="bg-white rounded-xl shadow-sm p-6 text-center">
+              <p className="text-3xl font-bold text-green-600">${paidReimbursement.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              <p className="text-xs text-[#7A8F79] mt-1 font-semibold uppercase tracking-wide">Paid Reimbursement</p>
+            </div>
+            <div className="bg-white rounded-xl shadow-sm p-6 text-center">
+              <p className="text-3xl font-bold text-amber-600">${owedReimbursement.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              <p className="text-xs text-[#7A8F79] mt-1 font-semibold uppercase tracking-wide">Owed Reimbursement</p>
+            </div>
+          </div>
+
+          {/* Full-width: Claims table */}
+          <div className="lg:col-span-3 bg-white rounded-xl shadow-sm p-6 space-y-4">
+            <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8]">
+              Claims — {profile.displayName}
+            </h2>
+            {claimsLoading ? (
+              <p className="text-sm text-[#7A8F79] italic">Loading claims…</p>
+            ) : nurseClaims.length === 0 ? (
+              <p className="text-sm text-[#7A8F79] italic">No claims found for this provider.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs min-w-[900px]">
+                  <thead>
+                    <tr className="text-[#7A8F79] uppercase tracking-wide border-b border-[#D9E1E8]">
+                      <th className="text-left py-2 pr-3">Claim ID</th>
+                      <th className="text-left py-2 pr-3">DOS Start</th>
+                      <th className="text-left py-2 pr-3">DOS Stop</th>
+                      <th className="text-left py-2 pr-3">Stage</th>
+                      <th className="text-right py-2 pr-3">Total Billed</th>
+                      <th className="text-left py-2 pr-3">Primary Payer</th>
+                      <th className="text-right py-2 pr-3">Primary Paid</th>
+                      <th className="text-left py-2 pr-3">Secondary Payer</th>
+                      <th className="text-right py-2 pr-3">Secondary Paid</th>
+                      <th className="text-right py-2">Remaining</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {nurseClaims.map((c: any, i: number) => {
+                      const fmt = (d: string | null) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '—'
+                      const money = (v: number | null) => v != null ? `$${v.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '—'
+                      const stageColor = (s: string) => {
+                        if (['Paid', 'Finalized'].includes(s)) return 'bg-green-100 text-green-700'
+                        if (['Denied', 'Rejected'].includes(s)) return 'bg-red-100 text-red-700'
+                        if (s === 'Pending') return 'bg-yellow-100 text-yellow-700'
+                        if (['INS-1 Submitted', 'INS-2 Submitted', 'Resubmitted'].includes(s)) return 'bg-blue-100 text-blue-700'
+                        if (s === 'Info Requested') return 'bg-orange-100 text-orange-700'
+                        if (s === 'Appealed') return 'bg-purple-100 text-purple-700'
+                        return 'bg-gray-100 text-gray-600'
+                      }
+                      return (
+                        <tr key={c.id} className={`border-b border-[#D9E1E8] last:border-0 ${i % 2 === 0 ? '' : 'bg-[#F4F6F5]'}`}>
+                          <td className="py-2 pr-3 font-mono text-[#2F3E4E]">{c.claimId || '—'}</td>
+                          <td className="py-2 pr-3 whitespace-nowrap">{fmt(c.dosStart)}</td>
+                          <td className="py-2 pr-3 whitespace-nowrap">{fmt(c.dosStop)}</td>
+                          <td className="py-2 pr-3">
+                            <span className={`px-2 py-0.5 rounded-full font-semibold text-[10px] whitespace-nowrap ${stageColor(c.claimStage || '')}`}>
+                              {c.claimStage || '—'}
+                            </span>
+                          </td>
+                          <td className="py-2 pr-3 text-right font-semibold">{money(c.totalBilled)}</td>
+                          <td className="py-2 pr-3 max-w-[120px] truncate">{c.primaryPayer || '—'}</td>
+                          <td className="py-2 pr-3 text-right text-green-600 font-semibold">{money(c.primaryPaidAmt)}</td>
+                          <td className="py-2 pr-3 max-w-[120px] truncate">{c.secondaryPayer || '—'}</td>
+                          <td className="py-2 pr-3 text-right text-green-600 font-semibold">{money(c.secondaryPaidAmt)}</td>
+                          <td className="py-2 text-right font-bold text-amber-600">{money(c.remainingBalance)}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
 
-          {/* Receipts & Statements */}
-          {(() => {
-            const fmt = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+        </div>
+      )}{/* end proClaims tab */}
 
-            // Collect all years present in invoice history
-            const years = Array.from(new Set(
-              invoiceHistory.map(inv => new Date(inv.sentAt).getFullYear().toString())
-            )).sort((a, b) => Number(b) - Number(a))
+      {/* ══════════════════════════════════════════════════
+          proInvoicing tab
+      ══════════════════════════════════════════════════ */}
+      {activeTab === 'invoicing' && (() => {
+        const fmtD = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+        const invoicedTotal = invoiceHistory.reduce((s, inv) => s + inv.totalAmount, 0)
+        const outstandingInvoices = invoiceHistory.filter(inv => ['Sent','Partial','Overdue','Pending'].includes(inv.status))
+        const outstandingTotal = outstandingInvoices.reduce((s, inv) => s + (inv.totalAmount - (inv.paidAmount || 0)), 0)
+        const statusColor = (s: string) => {
+          if (s === 'Paid') return 'bg-green-100 text-green-700'
+          if (['Sent','Pending'].includes(s)) return 'bg-blue-100 text-blue-700'
+          if (s === 'Partial') return 'bg-amber-100 text-amber-700'
+          if (['Overdue','Disputed'].includes(s)) return 'bg-red-100 text-red-700'
+          if (s === 'WrittenOff') return 'bg-gray-100 text-gray-500'
+          return 'bg-gray-100 text-gray-600'
+        }
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
-            // All receipts (payments) across all invoices, optionally filtered by year
-            const allReceipts = invoiceHistory.flatMap(inv =>
-              inv.payments.map(p => ({ ...p, invoiceNumber: inv.invoiceNumber, invoiceId: inv.id }))
-            ).filter(p => {
-              if (receiptYearFilter === 'all') return true
-              return new Date(p.appliedAt).getFullYear().toString() === receiptYearFilter
-            }).sort((a, b) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime())
+            {/* ── Col 1: Invoice Summary + Receipts & Statements ── */}
+            <div className="space-y-6">
 
-            const totalReceived = allReceipts.reduce((s, p) => s + p.amount, 0)
-
-            return (
+              {/* Invoice Summary */}
               <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
-                <div className="flex items-center justify-between pb-2 border-b border-[#D9E1E8]">
-                  <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79]">
-                    Receipts &amp; Statements
-                  </h2>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {/* Year filter pills */}
-                    <button
-                      onClick={() => setReceiptYearFilter('all')}
-                      className={`text-xs px-2.5 py-1 rounded-full font-semibold transition ${receiptYearFilter === 'all' ? 'bg-[#2F3E4E] text-white' : 'bg-[#F4F6F5] text-[#7A8F79] hover:bg-[#D9E1E8]'}`}
-                    >All</button>
-                    {years.map(y => (
-                      <button
-                        key={y}
-                        onClick={() => setReceiptYearFilter(y)}
-                        className={`text-xs px-2.5 py-1 rounded-full font-semibold transition ${receiptYearFilter === y ? 'bg-[#2F3E4E] text-white' : 'bg-[#F4F6F5] text-[#7A8F79] hover:bg-[#D9E1E8]'}`}
-                      >{y}</button>
-                    ))}
+                <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8]">
+                  Invoice Summary
+                </h2>
+                <div className="space-y-3">
+                  <div className="bg-[#F4F6F5] rounded-lg p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Invoices Created</p>
+                    <p className="text-2xl font-bold text-[#2F3E4E] mt-1">{invoiceHistory.length}</p>
+                    <p className="text-sm font-semibold text-[#7A8F79] mt-0.5">${invoicedTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                  </div>
+                  <div className={`rounded-lg p-4 ${outstandingInvoices.length > 0 ? 'bg-amber-50' : 'bg-[#F4F6F5]'}`}>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Outstanding</p>
+                    <p className={`text-2xl font-bold mt-1 ${outstandingInvoices.length > 0 ? 'text-amber-600' : 'text-[#2F3E4E]'}`}>
+                      {outstandingInvoices.length}
+                    </p>
+                    <p className={`text-sm font-semibold mt-0.5 ${outstandingInvoices.length > 0 ? 'text-[#7A8F79]' : 'text-[#7A8F79]'}`}>
+                      ${outstandingTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    </p>
                   </div>
                 </div>
-
-                {/* Summary strip */}
-                <div className="flex items-center gap-6 text-sm">
-                  <div>
-                    <span className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Receipts</span>
-                    <p className="text-xl font-bold text-[#2F3E4E]">{allReceipts.length}</p>
-                  </div>
-                  <div>
-                    <span className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Total Received</span>
-                    <p className="text-xl font-bold text-green-600">${totalReceived.toFixed(2)}</p>
-                  </div>
-                  <div className="ml-auto flex gap-2 flex-wrap justify-end">
-                    {/* Combined statement buttons */}
-                    {receiptYearFilter !== 'all' ? (
-                      <button
-                        onClick={() => {
-                          setStatementOpening(true)
-                          window.open(`/api/admin/invoices/${id}/statement?year=${receiptYearFilter}`, '_blank')
-                          setStatementOpening(false)
-                        }}
-                        className="text-xs bg-[#7A8F79] text-white px-3 py-1.5 rounded-lg font-semibold hover:bg-[#2F3E4E] transition"
-                      >
-                        📄 {receiptYearFilter} Combined Statement
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          setStatementOpening(true)
-                          window.open(`/api/admin/invoices/${id}/statement`, '_blank')
-                          setStatementOpening(false)
-                        }}
-                        className="text-xs bg-[#7A8F79] text-white px-3 py-1.5 rounded-lg font-semibold hover:bg-[#2F3E4E] transition"
-                      >
-                        📄 Full Statement (All Years)
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Receipts list */}
-                {allReceipts.length === 0 ? (
-                  <p className="text-sm text-[#7A8F79] italic">No payment receipts recorded{receiptYearFilter !== 'all' ? ` for ${receiptYearFilter}` : ''} yet.</p>
-                ) : (
-                  <div className="divide-y divide-[#D9E1E8] border border-[#D9E1E8] rounded-xl overflow-hidden">
-                    {allReceipts.map(p => (
-                      <div key={p.id} className="flex items-center gap-3 px-4 py-3 hover:bg-[#FAFBFC] transition">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-bold text-[#2F3E4E] font-mono">{p.receiptNumber}</span>
-                            <span className="text-[10px] font-semibold bg-[#D9E1E8] text-[#2F3E4E] px-1.5 py-0.5 rounded-full">{p.method || 'Other'}</span>
-                            <span className="text-xs text-[#7A8F79]">→ {p.invoiceNumber}</span>
-                          </div>
-                          <div className="flex items-center gap-3 mt-0.5">
-                            <span className="text-xs text-[#7A8F79]">{fmt(p.appliedAt)}</span>
-                            {p.note && <span className="text-xs text-[#7A8F79] italic truncate max-w-48">{p.note}</span>}
-                          </div>
-                        </div>
-                        <span className="text-sm font-bold text-green-600 whitespace-nowrap">${p.amount.toFixed(2)}</span>
-                        <button
-                          onClick={() => window.open(`/api/admin/invoices/${p.invoiceId}/statement`, '_blank')}
-                          className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] border border-[#D9E1E8] px-2 py-1 rounded transition whitespace-nowrap"
-                        >
-                          View Invoice
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Year-end combine hint */}
-                {years.length > 0 && receiptYearFilter === 'all' && (
-                  <p className="text-xs text-[#7A8F79] italic">
-                    Tip: Select a year above to download a single combined statement for tax purposes.
+                {invoiceMessage && (
+                  <p className={`text-xs font-semibold ${invoiceMessage.includes('sent') ? 'text-[#7A8F79]' : 'text-red-500'}`}>
+                    {invoiceMessage}
                   </p>
                 )}
               </div>
-            )
-          })()}
 
-          {/* Individual Provider Information */}
-          <Section title="Individual Provider Information">
-            <div className="grid grid-cols-3 gap-3">
-              <Field label="First Name"     field="firstName"     profile={profile} setProfile={setProfile} />
-              <Field label="MI"             field="middleInitial" profile={profile} setProfile={setProfile} />
-              <Field label="Last Name"      field="lastName"      profile={profile} setProfile={setProfile} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Phone"          field="phone"         profile={profile} setProfile={setProfile} />
-              <Field label="Email"          field="user.email"    profile={profile} setProfile={setProfile} type="email" />
-            </div>
-            <Field label="Home Address"     field="address"       profile={profile} setProfile={setProfile} />
-            <div className="grid grid-cols-3 gap-3">
-              <Field label="City"           field="city"          profile={profile} setProfile={setProfile} />
-              <Field label="State"          field="state"         profile={profile} setProfile={setProfile} />
-              <Field label="ZIP"            field="zip"           profile={profile} setProfile={setProfile} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Date of Birth"  field="dob"           profile={profile} setProfile={setProfile} type="date" />
-              <Field label="SSN"            field="ssn"           profile={profile} setProfile={setProfile} sensitive />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="NPI"            field="npiNumber"     profile={profile} setProfile={setProfile} />
-              <Field label="Medicaid ID"    field="medicaidNumber" profile={profile} setProfile={setProfile} />
-            </div>
-            <Field label="BCBS Payor ID"    field="bcbsPayorId"   profile={profile} setProfile={setProfile} />
-          </Section>
+              {/* Receipts & Statements */}
+              {(() => {
+                const years = Array.from(new Set(
+                  invoiceHistory.map(inv => new Date(inv.sentAt).getFullYear().toString())
+                )).sort((a, b) => Number(b) - Number(a))
+                const allReceipts = invoiceHistory.flatMap(inv =>
+                  inv.payments.map(p => ({ ...p, invoiceNumber: inv.invoiceNumber, invoiceId: inv.id }))
+                ).filter(p => {
+                  if (receiptYearFilter === 'all') return true
+                  return new Date(p.appliedAt).getFullYear().toString() === receiptYearFilter
+                }).sort((a, b) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime())
+                const totalReceived = allReceipts.reduce((s, p) => s + p.amount, 0)
+                return (
+                  <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#D9E1E8]">
+                      <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79]">
+                        Receipts &amp; Statements
+                      </h2>
+                      <button
+                        onClick={() => { setShowActivityLog(true); fetchActivity() }}
+                        className="text-[10px] text-[#7A8F79] hover:text-[#2F3E4E] underline transition"
+                      >
+                        View Send Log
+                      </button>
+                    </div>
 
-          {/* Business Provider toggle */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={!!profile.hasBusinessProvider}
-                onChange={(e) => setProfile({ ...profile, hasBusinessProvider: e.target.checked })}
-                className="w-4 h-4 accent-[#7A8F79]"
-              />
-              <span className="font-semibold text-[#2F3E4E]">This provider has a separate Business entity</span>
-            </label>
+                    {/* Year filters */}
+                    <div className="flex flex-wrap gap-1.5">
+                      <button
+                        onClick={() => setReceiptYearFilter('all')}
+                        className={`text-xs px-2.5 py-1 rounded-full font-semibold transition ${receiptYearFilter === 'all' ? 'bg-[#2F3E4E] text-white' : 'bg-[#F4F6F5] text-[#7A8F79] hover:bg-[#D9E1E8]'}`}
+                      >All</button>
+                      {years.map(y => (
+                        <button
+                          key={y}
+                          onClick={() => setReceiptYearFilter(y)}
+                          className={`text-xs px-2.5 py-1 rounded-full font-semibold transition ${receiptYearFilter === y ? 'bg-[#2F3E4E] text-white' : 'bg-[#F4F6F5] text-[#7A8F79] hover:bg-[#D9E1E8]'}`}
+                        >{y}</button>
+                      ))}
+                    </div>
 
-            {profile.hasBusinessProvider && (
-              <div className="mt-6 space-y-4">
-                <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8]">
-                  Business Provider Information
-                </h2>
-                <Field label="Entity Name"       field="bizEntityName"      profile={profile} setProfile={setProfile} />
-                <Field label="Service Address"   field="bizServiceAddress"  profile={profile} setProfile={setProfile} />
-                <Field label="Business Email"    field="bizEmail"           profile={profile} setProfile={setProfile} type="email" />
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="EIN"             field="ein"                profile={profile} setProfile={setProfile} sensitive />
-                  <Field label="FEIN"            field="fein"               profile={profile} setProfile={setProfile} sensitive />
+                    <div className="flex items-center gap-4 text-sm">
+                      <div>
+                        <span className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Receipts</span>
+                        <p className="text-lg font-bold text-[#2F3E4E]">{allReceipts.length}</p>
+                      </div>
+                      <div>
+                        <span className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Total Received</span>
+                        <p className="text-lg font-bold text-green-600">${totalReceived.toFixed(2)}</p>
+                      </div>
+                    </div>
+
+                    {/* Statement action buttons */}
+                    <div className="flex flex-col gap-2">
+                      {receiptYearFilter !== 'all' ? (
+                        <button
+                          onClick={() => printStatement(receiptYearFilter)}
+                          className="text-xs bg-[#F4F6F5] text-[#2F3E4E] px-3 py-1.5 rounded-lg font-semibold hover:bg-[#D9E1E8] transition text-left"
+                        >
+                          🖨 Print {receiptYearFilter} Statement
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => printStatement()}
+                          className="text-xs bg-[#F4F6F5] text-[#2F3E4E] px-3 py-1.5 rounded-lg font-semibold hover:bg-[#D9E1E8] transition text-left"
+                        >
+                          🖨 Print Full Statement
+                        </button>
+                      )}
+                    </div>
+
+                    {allReceipts.length === 0 ? (
+                      <p className="text-sm text-[#7A8F79] italic">No payment receipts recorded yet.</p>
+                    ) : (
+                      <div className="divide-y divide-[#D9E1E8] border border-[#D9E1E8] rounded-xl overflow-hidden">
+                        {allReceipts.map(p => (
+                          <div key={p.id} className="flex items-center gap-3 px-4 py-3 hover:bg-[#FAFBFC] transition">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-xs font-bold text-[#2F3E4E] font-mono">{p.receiptNumber}</span>
+                                <span className="text-[10px] font-semibold bg-[#D9E1E8] text-[#2F3E4E] px-1.5 py-0.5 rounded-full">{p.method || 'Other'}</span>
+                                <span className="text-[10px] text-[#7A8F79]">→ {p.invoiceNumber}</span>
+                              </div>
+                              <span className="text-[10px] text-[#7A8F79]">{fmtD(p.appliedAt)}</span>
+                            </div>
+                            <span className="text-sm font-bold text-green-600 whitespace-nowrap">${p.amount.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
+            </div>
+
+            {/* ── Col 2+3: Invoice list ── */}
+            <div className="lg:col-span-2 bg-white rounded-xl shadow-sm p-6 space-y-4">
+              <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8]">
+                Invoices — {profile.displayName}
+              </h2>
+              {invoiceHistory.length === 0 ? (
+                <p className="text-sm text-[#7A8F79] italic">No invoices created yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {invoiceHistory.map(inv => {
+                    const balance = inv.totalAmount - (inv.paidAmount || 0)
+                    return (
+                      <div key={inv.id} className="border border-[#D9E1E8] rounded-xl overflow-hidden">
+                        <div className="flex items-center justify-between px-4 py-3 bg-[#F4F6F5]">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <span className="font-mono font-bold text-sm text-[#2F3E4E]">{inv.invoiceNumber}</span>
+                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusColor(inv.status)}`}>
+                              {inv.status}
+                            </span>
+                            <span className="text-xs text-[#7A8F79]">Issued {fmtD(inv.sentAt)}</span>
+                            <span className="text-xs text-[#7A8F79]">Due {fmtD(inv.dueDate)}</span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0 ml-2">
+                            <span className="text-sm font-bold text-[#2F3E4E]">${inv.totalAmount.toFixed(2)}</span>
+                            {balance > 0 && (
+                              <span className="text-xs font-semibold text-amber-600">({balance.toFixed(2)} owed)</span>
+                            )}
+                            <button
+                              onClick={() => openInvoicePreview(inv)}
+                              className="text-xs bg-[#2F3E4E] text-white px-3 py-1 rounded-lg font-semibold hover:bg-[#7A8F79] transition"
+                            >
+                              Preview
+                            </button>
+                          </div>
+                        </div>
+                        {inv.entries.length > 0 && (
+                          <div className="px-4 py-2 flex items-center gap-2 flex-wrap">
+                            <span className="text-[10px] text-[#7A8F79] font-semibold uppercase tracking-wide">
+                              {inv.entries.length} entr{inv.entries.length === 1 ? 'y' : 'ies'}
+                            </span>
+                            {inv.payments.length > 0 && inv.payments.map(p => (
+                              <span key={p.id} className="text-[10px] bg-green-50 text-green-700 font-semibold px-2 py-0.5 rounded-full">
+                                {p.receiptNumber} · ${p.amount.toFixed(2)} via {p.method || 'Other'}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Business NPI"    field="bizNpi"             profile={profile} setProfile={setProfile} />
-                  <Field label="Business Medicaid ID" field="bizMedicaidId" profile={profile} setProfile={setProfile} />
-                </div>
-              </div>
-            )}
+              )}
+            </div>
+
           </div>
+        )
+      })()}
+      {/* end proInvoicing tab */}
 
-          {/* Payment Information */}
-          <Section title="Payment Information">
-            <Field label="Bank Name"         field="bankName"       profile={profile} setProfile={setProfile} />
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Routing #"       field="bankRouting"    profile={profile} setProfile={setProfile} sensitive />
-              <Field label="Account #"       field="bankAccount"    profile={profile} setProfile={setProfile} sensitive />
-            </div>
-          </Section>
-
-          <button
-            type="button"
-            onClick={save}
-            disabled={saving}
-            className="w-full bg-[#2F3E4E] text-white py-3 rounded-xl hover:bg-[#7A8F79] transition font-semibold disabled:opacity-50"
-          >
-            {saving ? 'Saving…' : 'Save Profile'}
-          </button>
-
-          {message && (
-            <p className={`text-sm text-center font-medium ${message.includes('Error') ? 'text-red-500' : 'text-[#7A8F79]'}`}>
-              {message}
-            </p>
-          )}
-        </div>
-
-        {/* ── RIGHT COLUMN ── */}
+      {/* ══════════════════════════════════════════════════
+          proDocs tab
+      ══════════════════════════════════════════════════ */}
+      {activeTab === 'docs' && (
         <div className="space-y-6">
 
-          {/* Document Uploads */}
+          {/* Document Library */}
           <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
             <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8]">
-              Document Uploads
+              Document Library — {profile.displayName}
             </h2>
-
             {documents.length === 0 ? (
               <p className="text-sm text-[#7A8F79] italic">No documents uploaded yet.</p>
             ) : (
@@ -1086,10 +1638,14 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                 })}
               </div>
             )}
+          </div>
 
-            <form onSubmit={handleDocUpload} className="space-y-3 border-t border-[#D9E1E8] pt-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Upload New Document</p>
-
+          {/* Upload New Document */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8] mb-4">
+              Upload New Document
+            </h2>
+            <form onSubmit={handleDocUpload} className="space-y-3">
               <div className="grid sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Document Title</label>
@@ -1184,7 +1740,6 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                   )}
                 </div>
               </div>
-
               <div className="space-y-1">
                 <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">
                   Expiration Date <span className="normal-case font-normal text-[#7A8F79]">(optional)</span>
@@ -1196,7 +1751,6 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                   className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
                 />
               </div>
-
               <div className="space-y-1">
                 <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">File</label>
                 <div className="flex items-center gap-2">
@@ -1215,7 +1769,6 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                   </button>
                 </div>
               </div>
-
               {docExpiry && (
                 <div className="space-y-2">
                   <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Email Reminders Before Expiry</label>
@@ -1236,7 +1789,6 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                   </div>
                 </div>
               )}
-
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
@@ -1246,7 +1798,6 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                 />
                 <span className="text-sm text-[#2F3E4E]">Share with nurse (visible on their profile)</span>
               </label>
-
               {docMessage && (
                 <p className={`text-sm ${docMessageIsError ? 'text-[#9B1C1C]' : 'text-[#7A8F79]'}`}>
                   {docMessage}
@@ -1255,238 +1806,150 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
             </form>
           </div>
 
-          {/* Claim Access */}
-          <Section title="Claims Access — Provider Aliases">
-            <p className="text-xs text-[#7A8F79]">
-              This provider will see any claim where the Provider Name in the CSV matches one of these aliases exactly.
-            </p>
-            <AliasEditor
-              aliases={profile.providerAliases || []}
-              onChange={(aliases) => setProfile({ ...profile, providerAliases: aliases })}
-            />
-            <p className="text-xs text-[#7A8F79] italic">Changes are saved with the Save Profile button.</p>
-          </Section>
+        </div>
+      )}{/* end proDocs tab */}
 
-          {/* Log Hours */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8] mb-4">
-              Log Hours
-            </h2>
-            <form onSubmit={submitTimeEntry} className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Date of Service</label>
-                  <DateInput
-                    ref={workDateRef}
-                    value={workDate}
-                    onChange={setWorkDate}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Hours</label>
-                  <input
-                    type="number"
-                    step="0.25"
-                    min="0"
-                    value={workHours}
-                    onChange={e => setWorkHours(e.target.value)}
-                    placeholder="e.g. 8"
-                    required
-                    className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-                  />
-                </div>
+      {/* ── Invoice Preview Modal ── */}
+      {previewInvoice && (() => {
+        const fmtI = (d: string | Date) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+        const FEE_LABELS: Record<string,string> = { A1: 'Medicaid — Single Payer', A2: 'Commercial — Single Payer', B: 'Dual Payer', C: '3+ Payer' }
+        const det = previewDetail
+        return (
+          <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-[#D9E1E8]">
+                <h3 className="text-lg font-bold text-[#2F3E4E]">{previewInvoice.invoiceNumber}</h3>
+                <button onClick={() => { setPreviewInvoice(null); setPreviewDetail(null); setPreviewMessage('') }} className="text-[#7A8F79] hover:text-[#2F3E4E] text-xl leading-none">×</button>
               </div>
-              <div className="space-y-1">
-                <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Notes <span className="normal-case font-normal">(optional)</span></label>
-                <input
-                  type="text"
-                  value={workNotes}
-                  onChange={e => setWorkNotes(e.target.value)}
-                  placeholder="e.g. Home visit — patient care"
-                  className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-                />
+
+              <div className="p-6 space-y-5 text-[#2F3E4E]">
+                {previewLoading ? (
+                  <p className="text-sm text-[#7A8F79] italic text-center py-8">Loading…</p>
+                ) : det ? (
+                  <>
+                    {/* Header */}
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-xl font-black tracking-tight">Coming Home Care Services, LLC</p>
+                        <p className="text-xs text-[#7A8F79] mt-0.5">cominghomecare.com · support@cominghomecare.com</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-[#7A8F79] uppercase tracking-widest font-semibold mb-0.5">Invoice</p>
+                        <p className="font-semibold text-[#7A8F79] italic">{previewInvoice.invoiceNumber}</p>
+                        <p className="text-xs text-[#7A8F79] mt-1">Issued {fmtI(previewInvoice.sentAt)}</p>
+                        <p className="text-xs text-[#7A8F79]">Due {fmtI(previewInvoice.dueDate)}</p>
+                      </div>
+                    </div>
+
+                    <div className="bg-[#f4f6f8] rounded-lg px-4 py-3">
+                      <p className="text-xs font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Bill To</p>
+                      <p className="font-semibold text-[#2F3E4E]">{previewInvoice?.invoiceNumber ? det.nurseName : profile.displayName}</p>
+                      <p className="text-xs text-[#7A8F79]">{det.nurseEmail}</p>
+                    </div>
+
+                    <div className="rounded-xl overflow-hidden border border-[#D9E1E8]">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-[#f4f6f8]">
+                            <th className="text-left px-4 py-2 text-xs font-semibold text-[#7A8F79] uppercase tracking-wide">Date</th>
+                            <th className="text-left px-4 py-2 text-xs font-semibold text-[#7A8F79] uppercase tracking-wide">Plan</th>
+                            <th className="text-left px-4 py-2 text-xs font-semibold text-[#7A8F79] uppercase tracking-wide hidden sm:table-cell">Description</th>
+                            <th className="text-right px-4 py-2 text-xs font-semibold text-[#7A8F79] uppercase tracking-wide">Fee</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(det.entries || []).map((e: any, i: number) => (
+                            <tr key={i} className="border-t border-[#D9E1E8]">
+                              <td className="px-4 py-2.5 font-semibold">{fmtI(e.workDate)}</td>
+                              <td className="px-4 py-2.5"><span className="bg-[#2F3E4E] text-white text-xs font-bold px-2 py-0.5 rounded">{e.invoiceFeePlan}</span></td>
+                              <td className="px-4 py-2.5 text-[#4a5a6a] hidden sm:table-cell">{FEE_LABELS[e.invoiceFeePlan] || e.invoiceFeePlan}</td>
+                              <td className="px-4 py-2.5 text-right font-bold">${(e.invoiceFeeAmt ?? 0).toFixed(2)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t-2 border-[#2F3E4E] bg-[#f4f6f8]">
+                            <td colSpan={3} className="px-4 py-3 text-xs font-bold uppercase tracking-widest text-[#7A8F79]">Total Due</td>
+                            <td className="px-4 py-3 text-right text-xl font-black">${previewInvoice.totalAmount.toFixed(2)}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+
+                    {det.payments && det.payments.length > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Payments Applied</p>
+                        {det.payments.map((p: any) => (
+                          <div key={p.id} className="flex justify-between text-sm px-1">
+                            <span className="text-[#7A8F79]">{p.receiptNumber} · {p.method || 'Other'} · {fmtI(p.appliedAt)}</span>
+                            <span className="font-semibold text-green-600">−${p.amount.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {previewMessage && (
+                      <p className={`text-xs font-semibold text-center ${previewMessage.includes('success') ? 'text-[#7A8F79]' : 'text-red-500'}`}>{previewMessage}</p>
+                    )}
+
+                    <div className="flex gap-3 pt-2 border-t border-[#D9E1E8]">
+                      <button
+                        onClick={() => { setPreviewInvoice(null); setPreviewDetail(null); setPreviewMessage('') }}
+                        className="flex-1 border border-[#D9E1E8] text-[#7A8F79] py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f6f8] transition"
+                      >Cancel</button>
+                      <button
+                        onClick={() => printInvoice(previewInvoice)}
+                        className="flex-1 bg-[#F4F6F5] text-[#2F3E4E] py-2 rounded-lg text-sm font-semibold hover:bg-[#D9E1E8] transition"
+                      >🖨 Print</button>
+                      <button
+                        onClick={() => sendInvoiceEmail(previewInvoice)}
+                        disabled={previewSending}
+                        className="flex-1 bg-[#2F3E4E] text-white py-2 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-50"
+                      >{previewSending ? 'Sending…' : '✉ Send'}</button>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm text-red-500 italic">Failed to load invoice details.</p>
+                )}
               </div>
-              <div className="flex items-center gap-3">
-                <button
-                  type="submit"
-                  disabled={workSubmitting || !workDate || !workHours}
-                  className="bg-[#7A8F79] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#2F3E4E] transition disabled:opacity-50"
-                >
-                  {workSubmitting ? 'Adding…' : 'Add Entry'}
-                </button>
-                {workMessage && <p className="text-sm text-[#7A8F79]">{workMessage}</p>}
-              </div>
-            </form>
+            </div>
           </div>
+        )
+      })()}
 
-          {/* Time Log + Invoice Assignment */}
-          <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-[#D9E1E8]">
-              <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79]">
-                Time Log &amp; Invoice Assignment
-              </h2>
-              {pendingEntries.length > 0 && selectedCount === 0 && (
-                <button
-                  onClick={() => setShowInvoiceModal(true)}
-                  className="bg-[#7A8F79] text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-[#2F3E4E] transition"
-                >
-                  Create Invoice ({pendingEntries.length} flagged · ${pendingTotal.toFixed(2)})
-                </button>
+      {/* ── Activity Log Modal ── */}
+      {showActivityLog && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-[#D9E1E8]">
+              <h3 className="text-base font-bold text-[#2F3E4E]">Send &amp; Print Log</h3>
+              <button onClick={() => setShowActivityLog(false)} className="text-[#7A8F79] hover:text-[#2F3E4E] text-xl leading-none">×</button>
+            </div>
+            <div className="p-6 space-y-3">
+              {activityLoading ? (
+                <p className="text-sm text-[#7A8F79] italic text-center py-6">Loading…</p>
+              ) : invoiceActivity.length === 0 ? (
+                <p className="text-sm text-[#7A8F79] italic">No activity recorded yet.</p>
+              ) : (
+                invoiceActivity.map(a => (
+                  <div key={a.id} className="flex items-start gap-3 py-2 border-b border-[#F4F6F5] last:border-0">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full mt-0.5 ${a.action === 'Email' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
+                      {a.action}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-[#2F3E4E]">{a.documentType}{a.reference ? ` — ${a.reference}` : ''}</p>
+                      {a.note && <p className="text-xs text-[#7A8F79]">{a.note}</p>}
+                      <p className="text-[10px] text-[#7A8F79] mt-0.5">
+                        {new Date(a.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </div>
+                ))
               )}
             </div>
-
-            {/* Bulk action bar */}
-            {selectedCount > 0 && (
-              <div className="flex items-center gap-3 bg-[#F4F6F5] rounded-lg px-3 py-2">
-                <span className="text-xs font-semibold text-[#2F3E4E]">{selectedCount} selected</span>
-                <button
-                  type="button"
-                  onClick={bulkDelete}
-                  disabled={bulkDeleting}
-                  className="text-xs text-red-500 hover:text-red-700 font-semibold border border-red-200 px-3 py-1 rounded-lg transition disabled:opacity-50"
-                >
-                  {bulkDeleting ? 'Deleting…' : 'Delete'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleBulkInvoice}
-                  disabled={bulkFlagging}
-                  className="text-xs bg-[#2F3E4E] text-white font-semibold px-3 py-1 rounded-lg hover:bg-[#7A8F79] transition disabled:opacity-50"
-                >
-                  {bulkFlagging ? 'Preparing…' : 'Create Invoice'}
-                </button>
-              </div>
-            )}
-
-            {entries.length === 0 ? (
-              <p className="text-sm text-[#7A8F79] italic">No time entries yet.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm min-w-[560px]">
-                  <thead>
-                    <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
-                      <th className="text-left py-2 pr-3 w-8">
-                        <input
-                          type="checkbox"
-                          checked={allNonInvoicedSelected}
-                          onChange={toggleSelectAll}
-                          className="w-4 h-4 accent-[#7A8F79]"
-                          title={allNonInvoicedSelected ? 'Deselect all' : 'Select all'}
-                        />
-                      </th>
-                      <th className="text-left py-2 pr-4">Provider</th>
-                      <th className="text-left py-2 pr-4">Claim Ref #</th>
-                      <th className="text-left py-2 pr-4">Date</th>
-                      <th className="text-right py-2 pr-4">Hrs</th>
-                      <th className="text-left py-2 pr-4">Notes</th>
-                      <th className="text-left py-2">Fee / Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {/* Invoiced entries — collapsed per invoice */}
-                    {[...invoiceGroupMap.entries()].map(([invoiceId, group]) => {
-                      const dates = group.map(e => new Date(e.workDate).getTime())
-                      const minDate = new Date(Math.min(...dates)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
-                      const maxDate = new Date(Math.max(...dates)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
-                      const totalFee = group.reduce((s, e) => s + (e.invoiceFeeAmt ?? 0), 0)
-                      const invoiceNum = group[0]?.invoice?.invoiceNumber || invoiceId.slice(0, 8)
-                      const invoiceStatus = group[0]?.invoice?.status || 'Sent'
-                      const firstRef = group.find(e => e.claimRef)?.claimRef
-                      return (
-                        <tr key={invoiceId} className="border-b border-[#D9E1E8] bg-green-50">
-                          <td className="py-2 pr-3">
-                            <span className="block w-4 h-4 rounded bg-green-200" />
-                          </td>
-                          <td className="py-2 pr-4">
-                            <p className="text-xs font-bold text-[#2F3E4E]">{profile.displayName}</p>
-                            <p className="text-[10px] text-green-600 font-mono">{profile.accountNumber || '—'}</p>
-                          </td>
-                          <td className="py-2 pr-4 text-xs text-[#7A8F79]">{firstRef || '—'}</td>
-                          <td className="py-2 pr-4 text-xs text-[#2F3E4E] whitespace-nowrap">
-                            {minDate === maxDate ? minDate : `${minDate} – ${maxDate}`}
-                          </td>
-                          <td className="py-2 pr-4 text-right text-xs text-[#7A8F79]">
-                            {group.reduce((s, e) => s + e.hours, 0)}
-                          </td>
-                          <td className="py-2 pr-4 text-xs text-[#7A8F79] italic">{group.length} entr{group.length === 1 ? 'y' : 'ies'}</td>
-                          <td className="py-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs bg-green-100 text-green-700 font-semibold px-2 py-0.5 rounded-full whitespace-nowrap">
-                                {invoiceNum}
-                              </span>
-                              <span className="text-xs font-bold text-green-700">${totalFee.toFixed(2)}</span>
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    })}
-
-                    {/* Non-invoiced entries */}
-                    {notInvoicedEntries.map((entry, i) => {
-                      const isSelected = selectedEntries.has(entry.id)
-                      const dateStr = new Date(entry.workDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
-                      return (
-                        <tr
-                          key={entry.id}
-                          className={`border-b border-[#D9E1E8] last:border-0 transition-colors ${isSelected ? 'bg-blue-50' : i % 2 === 0 ? '' : 'bg-[#F4F6F5]'}`}
-                        >
-                          <td className="py-2.5 pr-3">
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => toggleSelect(entry.id)}
-                              className="w-4 h-4 accent-[#7A8F79]"
-                            />
-                          </td>
-                          <td className="py-2.5 pr-4">
-                            <p className="text-xs font-bold text-blue-600">{profile.displayName}</p>
-                            <p className="text-[10px] text-green-600 font-mono">{profile.accountNumber || '—'}</p>
-                          </td>
-                          <td className="py-2.5 pr-4">
-                            <input
-                              type="text"
-                              value={claimRefs[entry.id] ?? entry.claimRef ?? ''}
-                              onChange={e => setClaimRefs(prev => ({ ...prev, [entry.id]: e.target.value }))}
-                              onBlur={e => saveClaimRef(entry.id, e.target.value)}
-                              placeholder="CLM-001"
-                              className="border border-[#D9E1E8] rounded px-2 py-1 text-xs text-[#2F3E4E] w-24 focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
-                            />
-                          </td>
-                          <td className="py-2.5 pr-4 text-xs text-[#2F3E4E] whitespace-nowrap">{dateStr}</td>
-                          <td className="py-2.5 pr-4 text-right text-xs font-semibold text-[#2F3E4E]">{entry.hours}</td>
-                          <td className="py-2.5 pr-4 text-[#7A8F79] italic text-xs max-w-[100px] truncate">
-                            {entry.notes || '—'}
-                          </td>
-                          <td className="py-2.5">
-                            {entry.readyToInvoice ? (
-                              <div className="flex items-center gap-1.5">
-                                <select
-                                  value={entry.invoiceFeePlan ?? 'A1'}
-                                  onChange={e => toggleInvoiceFlag(entry, true, e.target.value)}
-                                  className="border border-[#D9E1E8] rounded px-1.5 py-1 text-xs text-[#2F3E4E] focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
-                                >
-                                  {FEE_PLANS.map(p => (
-                                    <option key={p.value} value={p.value}>{p.value} — ${p.amount.toFixed(2)}</option>
-                                  ))}
-                                </select>
-                                <span className="text-xs font-bold text-[#2F3E4E]">
-                                  ${(entry.invoiceFeeAmt ?? 0).toFixed(2)}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-xs text-[#D9E1E8] italic">—</span>
-                            )}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
           </div>
         </div>
-      </div>
+      )}
 
       {/* ── Create Invoice Modal ── */}
       {showInvoiceModal && (() => {

@@ -107,13 +107,14 @@ model NurseProfile {
   notifyNewDocument       Boolean @default(true)  // alert when admin uploads a document
   notifyNewClaim          Boolean @default(true)  // alert when a new claim is added
 
-  user           User            @relation(fields: [userId], references: [id])
-  timeEntries    TimeEntry[]
-  claims         Claim[]
-  enrollmentLogs EnrollmentLog[]
-  invoices       Invoice[]
-  reminders      NurseReminder[]
-  documents      NurseDocument[]
+  user             User               @relation(fields: [userId], references: [id])
+  timeEntries      TimeEntry[]
+  claims           Claim[]
+  enrollmentLogs   EnrollmentLog[]
+  invoices         Invoice[]
+  reminders        NurseReminder[]
+  documents        NurseDocument[]
+  invoiceActivities InvoiceActivity[]
 }
 
 model GlobalEvent {
@@ -198,9 +199,10 @@ model Invoice {
   paidAt        DateTime?
   s3Key         String?
 
-  entries  TimeEntry[]
-  payments Payment[]
-  nurse    NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
+  entries           TimeEntry[]
+  payments          Payment[]
+  activities        InvoiceActivity[]
+  nurse             NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -216,6 +218,20 @@ model Payment {
   s3Key         String?
   appliedAt     DateTime @default(now())
   invoice       Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+model InvoiceActivity {
+  id           String   @id @default(uuid())
+  nurseId      String
+  invoiceId    String?
+  action       String   // 'Email' | 'Print'
+  documentType String   // 'Invoice' | 'Statement' | 'Receipt'
+  reference    String?  // e.g. invoice number, receipt number, or "Full Statement"
+  note         String?
+  createdAt    DateTime @default(now())
+
+  nurse   NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
+  invoice Invoice?     @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
 }
 
 model PortalMessage {

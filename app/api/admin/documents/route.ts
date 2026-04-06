@@ -90,14 +90,25 @@ export async function POST(req: Request) {
     where: { id: nurseId },
     include: { user: { select: { email: true } } },
   })
-  if (nurseProfile?.notifyNewDocument && nurseProfile.user?.email) {
-    sendNewDocumentAlert({
-      nurseEmail: nurseProfile.user.email,
-      nurseName: nurseProfile.displayName,
-      documentTitle: title,
-      category,
-      uploadedAt: doc.createdAt,
-    }).catch(() => {})
+  if (nurseProfile?.notifyNewDocument) {
+    const bulkSetting = await prisma.systemSetting.findUnique({ where: { key: 'bulkImportMode' } })
+    if (bulkSetting?.value === 'true') {
+      prisma.pendingNotification.create({
+        data: {
+          nurseId,
+          type: 'document',
+          payload: { documentTitle: title, category },
+        },
+      }).catch(() => {})
+    } else if (nurseProfile.user?.email) {
+      sendNewDocumentAlert({
+        nurseEmail: nurseProfile.user.email,
+        nurseName: nurseProfile.displayName,
+        documentTitle: title,
+        category,
+        uploadedAt: doc.createdAt,
+      }).catch(() => {})
+    }
   }
 
   return NextResponse.json({ ok: true, document: doc })

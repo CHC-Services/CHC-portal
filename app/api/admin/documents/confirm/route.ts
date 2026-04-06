@@ -65,13 +65,26 @@ export async function POST(req: Request) {
     })
   ))
 
-  // Send notification emails to nurses who have it enabled
+  // Check global bulk import mode
+  const bulkSetting = await prisma.systemSetting.findUnique({ where: { key: 'bulkImportMode' } })
+  const bulkMode = bulkSetting?.value === 'true'
+
+  // Send (or queue) notification for each affected nurse
   const profiles = await prisma.nurseProfile.findMany({
     where: { id: { in: targets } },
     include: { user: { select: { email: true } } },
   })
   for (const nurseProfile of profiles) {
-    if (nurseProfile.notifyNewDocument && nurseProfile.user?.email) {
+    if (!nurseProfile.notifyNewDocument) continue
+    if (bulkMode) {
+      prisma.pendingNotification.create({
+        data: {
+          nurseId: nurseProfile.id,
+          type: 'document',
+          payload: { documentTitle: title, category: category || 'General' },
+        },
+      }).catch(() => {})
+    } else if (nurseProfile.user?.email) {
       sendNewDocumentAlert({
         nurseEmail: nurseProfile.user.email,
         nurseName: nurseProfile.displayName,

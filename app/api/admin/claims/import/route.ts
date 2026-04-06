@@ -138,6 +138,26 @@ export async function POST(req: Request) {
 
 async function fireClaimAlert(nurseId: string, claim: { claimId: string | null; dosStart: Date | null; dosStop: Date | null; totalBilled: number | null }) {
   try {
+    // Check global bulk import mode — if ON, queue instead of sending immediately
+    const setting = await prisma.systemSetting.findUnique({ where: { key: 'bulkImportMode' } })
+    if (setting?.value === 'true') {
+      if (claim.claimId) {
+        await prisma.pendingNotification.create({
+          data: {
+            nurseId,
+            type: 'claim',
+            payload: {
+              claimId: claim.claimId,
+              dosStart: claim.dosStart?.toISOString() ?? null,
+              dosStop: claim.dosStop?.toISOString() ?? null,
+              totalBilled: claim.totalBilled,
+            },
+          },
+        })
+      }
+      return
+    }
+
     const profile = await prisma.nurseProfile.findUnique({
       where: { id: nurseId },
       include: { user: { select: { email: true } } },

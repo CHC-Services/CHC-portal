@@ -814,3 +814,116 @@ export async function sendNurseSharedDocumentAlert({
     return false
   }
 }
+
+// Sent to each nurse when admin turns off Bulk Import Mode
+// summarizes all queued claims + documents that would have triggered individual alerts
+export async function sendBulkImportSummary({
+  nurseEmail,
+  nurseName,
+  claims,
+  documents,
+}: {
+  nurseEmail: string
+  nurseName: string
+  claims: { claimId: string; dosStart: Date | null; dosStop: Date | null; totalBilled: number | null }[]
+  documents: { documentTitle: string; category: string }[]
+}): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) return false
+  const resend = new Resend(process.env.RESEND_API_KEY)
+
+  function fmtDate(d: Date | null) {
+    if (!d) return '—'
+    return d.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })
+  }
+  function fmtDOS(start: Date | null, stop: Date | null) {
+    if (!start) return '—'
+    if (!stop) return fmtDate(start)
+    if (start.getUTCFullYear() !== stop.getUTCFullYear()) return `${fmtDate(start)} – ${fmtDate(stop)}`
+    if (start.getUTCMonth() !== stop.getUTCMonth())
+      return `${start.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' })} – ${fmtDate(stop)}`
+    return `${start.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short' })} ${start.getUTCDate()}–${stop.getUTCDate()}, ${start.getUTCFullYear()}`
+  }
+  function fmtMoney(n: number | null) {
+    if (n == null) return '—'
+    return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  }
+
+  const claimRows = claims.map(c => `
+    <tr style="border-bottom:1px solid #e5e7eb">
+      <td style="padding:8px 0;font-family:monospace;font-size:13px;color:#2F3E4E;font-weight:700">${c.claimId}</td>
+      <td style="padding:8px 16px;font-size:13px;color:#2F3E4E">${fmtDOS(c.dosStart, c.dosStop)}</td>
+      <td style="padding:8px 0;font-size:13px;color:#2F3E4E;font-weight:600;text-align:right">${fmtMoney(c.totalBilled)}</td>
+    </tr>`).join('')
+
+  const docRows = documents.map(d => `
+    <tr style="border-bottom:1px solid #e5e7eb">
+      <td style="padding:8px 0;font-size:13px;font-weight:600;color:#2F3E4E">${d.documentTitle}</td>
+      <td style="padding:8px 0 8px 16px;font-size:13px;color:#7A8F79">${d.category}</td>
+    </tr>`).join('')
+
+  const parts: string[] = []
+  if (claims.length > 0) parts.push(`${claims.length} new claim${claims.length !== 1 ? 's' : ''}`)
+  if (documents.length > 0) parts.push(`${documents.length} new document${documents.length !== 1 ? 's' : ''}`)
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to: nurseEmail,
+      replyTo: 'support@cominghomecare.com',
+      subject: `CHC Portal Update — ${parts.join(' & ')} added to your account`,
+      html: `
+        <div style="font-family:sans-serif;max-width:560px;padding:32px;color:#2F3E4E">
+          <h2 style="margin:0 0 4px;color:#2F3E4E">Portal Update Summary</h2>
+          <p style="margin:0 0 24px;font-size:13px;color:#7A8F79">Coming Home Care Services, LLC</p>
+
+          <div style="background:#f4f6f8;border-radius:10px;padding:20px 24px;margin-bottom:24px">
+            <p style="margin:0 0 16px;font-size:14px">Hi <strong>${nurseName}</strong>,</p>
+            <p style="margin:0;font-size:14px;color:#2F3E4E">
+              The following items were recently added to your account. You can view all details in the portal.
+            </p>
+          </div>
+
+          ${claims.length > 0 ? `
+          <h3 style="margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#7A8F79">
+            New Claims (${claims.length})
+          </h3>
+          <table style="width:100%;border-collapse:collapse;margin-bottom:28px">
+            <thead>
+              <tr style="background:#F4F6F5;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#7A8F79">
+                <th style="padding:8px 0;text-align:left;font-weight:700">Claim ID</th>
+                <th style="padding:8px 16px;text-align:left;font-weight:700">Date of Service</th>
+                <th style="padding:8px 0;text-align:right;font-weight:700">Total Billed</th>
+              </tr>
+            </thead>
+            <tbody>${claimRows}</tbody>
+          </table>` : ''}
+
+          ${documents.length > 0 ? `
+          <h3 style="margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#7A8F79">
+            New Documents (${documents.length})
+          </h3>
+          <table style="width:100%;border-collapse:collapse;margin-bottom:28px">
+            <thead>
+              <tr style="background:#F4F6F5;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#7A8F79">
+                <th style="padding:8px 0;text-align:left;font-weight:700">Document</th>
+                <th style="padding:8px 0 8px 16px;text-align:left;font-weight:700">Category</th>
+              </tr>
+            </thead>
+            <tbody>${docRows}</tbody>
+          </table>` : ''}
+
+          <a href="${PORTAL_URL}/nurse"
+             style="display:inline-block;background:#2F3E4E;color:white;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:600;margin-bottom:24px">
+            View in Portal →
+          </a>
+
+          <hr style="border:none;border-top:1px solid #D9E1E8;margin:24px 0"/>
+          <p style="font-size:11px;color:#aab">Coming Home Care Services, LLC · Automated portal update summary</p>
+        </div>
+      `,
+    })
+    return !error
+  } catch {
+    return false
+  }
+}

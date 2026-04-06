@@ -180,6 +180,15 @@ export default function AdminClaimsPage() {
 
   const [expandedOriginals, setExpandedOriginals] = useState<Set<string>>(new Set())
 
+  // Bulk import mode
+  const [bulkMode, setBulkMode] = useState(false)
+  const [bulkModeLoading, setBulkModeLoading] = useState(false)
+  const [bulkFlushMsg, setBulkFlushMsg] = useState<string | null>(null)
+
+  // Inline editing
+  const [editCell, setEditCell] = useState<{ id: string; field: string } | null>(null)
+  const [editVal, setEditVal] = useState('')
+
   // EDI upload state
   const [ediDragging, setEdiDragging] = useState(false)
   const [ediUploading, setEdiUploading] = useState(false)
@@ -282,7 +291,67 @@ export default function AdminClaimsPage() {
     setLoading(false)
   }
 
-  useEffect(() => { loadClaims(); loadEobs() }, [])
+  // Load initial bulk mode setting
+  useEffect(() => {
+    fetch('/api/admin/system-settings', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : {})
+      .then((s: Record<string, string>) => { if (s.bulkImportMode === 'true') setBulkMode(true) })
+      .catch(() => {})
+    loadClaims()
+    loadEobs()
+  }, [])
+
+  async function toggleBulkMode() {
+    const next = !bulkMode
+    setBulkModeLoading(true)
+    setBulkFlushMsg(null)
+    // Save the new mode
+    await fetch('/api/admin/system-settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ key: 'bulkImportMode', value: String(next) }),
+    })
+    if (!next) {
+      // Turning OFF — flush queued notifications
+      const res = await fetch('/api/admin/notifications/flush', {
+        method: 'POST',
+        credentials: 'include',
+      })
+      const data = await res.json()
+      if (data.sent > 0) {
+        setBulkFlushMsg(`Summary sent to ${data.sent} provider${data.sent !== 1 ? 's' : ''}.`)
+      } else if (data.message) {
+        setBulkFlushMsg('No pending notifications to send.')
+      } else {
+        setBulkFlushMsg('Notifications flushed.')
+      }
+    }
+    setBulkMode(next)
+    setBulkModeLoading(false)
+  }
+
+  // Inline editing helpers
+  function startEdit(id: string, field: string, currentVal: string) {
+    setEditCell({ id, field })
+    setEditVal(currentVal)
+  }
+
+  async function commitEdit() {
+    if (!editCell) return
+    const { id, field } = editCell
+    setEditCell(null)
+    // Optimistic update in local state
+    setClaims(prev => prev.map(c => c.id !== id ? c : { ...c, [field]: editVal || null }))
+    await fetch(`/api/admin/claims/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ [field]: editVal }),
+    }).catch(() => {})
+  }
+
+  function cancelEdit() { setEditCell(null) }
 
   async function handleFileImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -352,7 +421,24 @@ export default function AdminClaimsPage() {
             <h1 className="text-2xl font-bold text-[#2F3E4E]"><span className="text-[#7A8F79] italic">ad</span>Claims</h1>
             <p className="text-sm text-[#7A8F79] mt-0.5">Import from CSV or manage claims below.</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Bulk Import Mode toggle */}
+            <button
+              onClick={toggleBulkMode}
+              disabled={bulkModeLoading}
+              title={bulkMode
+                ? 'Bulk Import Mode is ON — individual emails are paused. Click to turn off and send summary emails.'
+                : 'Turn on Bulk Import Mode to pause individual alert emails during a large import.'}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border transition disabled:opacity-60 ${
+                bulkMode
+                  ? 'bg-amber-500 border-amber-600 text-white hover:bg-amber-600'
+                  : 'bg-white border-[#D9E1E8] text-[#7A8F79] hover:border-[#7A8F79] hover:text-[#2F3E4E]'
+              }`}
+            >
+              <span className={`w-2 h-2 rounded-full ${bulkMode ? 'bg-white' : 'bg-[#D9E1E8]'}`} />
+              {bulkModeLoading ? '…' : bulkMode ? 'Bulk Mode ON' : 'Bulk Mode'}
+            </button>
+
             <a
               href="https://essentials.availity.com/static/public/onb/onboarding-ui-apps/availity-fr-ui/#/login"
               target="_blank"
@@ -370,6 +456,20 @@ export default function AdminClaimsPage() {
             </label>
           </div>
         </div>
+
+        {/* Bulk mode banner */}
+        {bulkMode && (
+          <div className="bg-amber-50 border border-amber-300 rounded-xl px-5 py-3 mb-4 flex items-center gap-3">
+            <span className="text-amber-700 font-bold text-sm">⏸ Bulk Import Mode is ON</span>
+            <span className="text-amber-700 text-sm">Individual claim and document alert emails are paused. Turn off Bulk Mode when your import is complete to send one summary per provider.</span>
+          </div>
+        )}
+        {bulkFlushMsg && !bulkMode && (
+          <div className="bg-green-50 border border-green-300 rounded-xl px-5 py-3 mb-4 flex items-center justify-between gap-3">
+            <span className="text-green-700 font-semibold text-sm">✓ {bulkFlushMsg}</span>
+            <button onClick={() => setBulkFlushMsg(null)} className="text-green-600 text-xs hover:text-green-800">✕</button>
+          </div>
+        )}
 
         {/* Import result */}
         {importResult && (
@@ -670,28 +770,124 @@ export default function AdminClaimsPage() {
                             )}
                           </div>
                         </td>
-                        <td className="px-4 py-3 font-semibold text-[#2F3E4E] whitespace-nowrap">{c.providerName || c.nurse?.displayName}</td>
-                        <td className="px-4 py-3 text-[#7A8F79] font-mono text-xs">
-                          {c.resubmissionOf && <span className="block text-blue-500 text-[10px] mb-0.5">↻ resubmission</span>}
-                          {c.claimId || '—'}
+                        {/* Provider — editable text */}
+                        <td className="px-4 py-3 font-semibold text-[#2F3E4E] whitespace-nowrap" onDoubleClick={() => startEdit(c.id, 'providerName', c.providerName || '')}>
+                          {editCell?.id === c.id && editCell.field === 'providerName'
+                            ? <input autoFocus className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-sm w-32 focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
+                            : <span title="Double-click to edit">{c.providerName || c.nurse?.displayName}</span>}
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-xs text-[#2F3E4E]">{fmtDOS(c.dosStart, c.dosStop)}</td>
-                        <td className="px-4 py-3"><StageBadge stage={c.claimStage} /></td>
-                        <td className="px-4 py-3 text-right text-[#2F3E4E]">{fmt(c.totalBilled, '$')}</td>
-                        <td className="px-4 py-3 border-l border-[#D9E1E8] text-[#2F3E4E]">{c.primaryPayer || '—'}</td>
-                        <td className="px-4 py-3 text-right text-[#2F3E4E]">{fmt(c.primaryAllowedAmt, '$')}</td>
-                        <td className="px-4 py-3 text-right font-semibold text-[#7A8F79]">{fmt(c.primaryPaidAmt, '$')}</td>
-                        <td className="px-4 py-3 text-xs text-[#7A8F79] whitespace-nowrap">{fmtDate(c.primaryPaidDate)}</td>
-                        <td className="px-4 py-3 text-xs text-[#2F3E4E]">{c.primaryPaidTo || '—'}</td>
-                        <td className="px-4 py-3 border-l border-[#D9E1E8] text-[#2F3E4E]">{c.secondaryPayer || '—'}</td>
-                        <td className="px-4 py-3 text-right text-[#2F3E4E]">{fmt(c.secondaryAllowedAmt, '$')}</td>
-                        <td className="px-4 py-3 text-right font-semibold text-[#7A8F79]">{fmt(c.secondaryPaidAmt, '$')}</td>
-                        <td className="px-4 py-3 text-xs text-[#7A8F79] whitespace-nowrap">{fmtDate(c.secondaryPaidDate)}</td>
-                        <td className="px-4 py-3 text-xs text-[#2F3E4E]">{c.secondaryPaidTo || '—'}</td>
-                        <td className="px-4 py-3 border-l border-[#D9E1E8] text-right font-semibold text-[#7A8F79]">{fmt(c.totalReimbursed, '$')}</td>
-                        <td className={`px-4 py-3 text-right font-semibold ${(c.remainingBalance || 0) > 0 ? 'text-red-600' : 'text-[#2F3E4E]'}`}>{fmt(c.remainingBalance, '$')}</td>
-                        <td className="px-4 py-3 text-xs text-[#7A8F79] whitespace-nowrap">{fmtDate(c.dateFullyFinalized)}</td>
-                        <td className="px-4 py-3 text-xs text-[#7A8F79] max-w-xs truncate">{c.processingNotes || '—'}</td>
+                        {/* Claim ID — editable text */}
+                        <td className="px-4 py-3 text-[#7A8F79] font-mono text-xs" onDoubleClick={() => startEdit(c.id, 'claimId', c.claimId || '')}>
+                          {c.resubmissionOf && <span className="block text-blue-500 text-[10px] mb-0.5">↻ resubmission</span>}
+                          {editCell?.id === c.id && editCell.field === 'claimId'
+                            ? <input autoFocus className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs font-mono w-28 focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
+                            : <span title="Double-click to edit">{c.claimId || '—'}</span>}
+                        </td>
+                        {/* DOS — editable date pair (dosStart/dosStop) */}
+                        <td className="px-4 py-3 whitespace-nowrap text-xs text-[#2F3E4E]" onDoubleClick={() => startEdit(c.id, 'dosStart', c.dosStart ? new Date(c.dosStart).toISOString().slice(0,10) : '')}>
+                          {editCell?.id === c.id && editCell.field === 'dosStart'
+                            ? <input autoFocus type="date" className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
+                            : <span title="Double-click to edit DOS Start">{fmtDOS(c.dosStart, c.dosStop)}</span>}
+                        </td>
+                        {/* Stage — editable select */}
+                        <td className="px-4 py-3" onDoubleClick={() => startEdit(c.id, 'claimStage', c.claimStage || '')}>
+                          {editCell?.id === c.id && editCell.field === 'claimStage'
+                            ? <select autoFocus className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Escape') cancelEdit() }}>
+                                <option value="">—</option>
+                                {['Draft','INS-1 Submitted','Resubmitted','Pending','Info Requested','Info Sent','INS-2 Submitted','Appealed','Paid','Denied','Rejected'].map(s => <option key={s} value={s}>{s}</option>)}
+                              </select>
+                            : <span title="Double-click to edit"><StageBadge stage={c.claimStage} /></span>}
+                        </td>
+                        {/* Total Billed — editable number */}
+                        <td className="px-4 py-3 text-right text-[#2F3E4E]" onDoubleClick={() => startEdit(c.id, 'totalBilled', c.totalBilled != null ? String(c.totalBilled) : '')}>
+                          {editCell?.id === c.id && editCell.field === 'totalBilled'
+                            ? <input autoFocus type="number" step="0.01" className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs text-right w-24 focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
+                            : <span title="Double-click to edit">{fmt(c.totalBilled, '$')}</span>}
+                        </td>
+                        {/* Primary Payer */}
+                        <td className="px-4 py-3 border-l border-[#D9E1E8] text-[#2F3E4E]" onDoubleClick={() => startEdit(c.id, 'primaryPayer', c.primaryPayer || '')}>
+                          {editCell?.id === c.id && editCell.field === 'primaryPayer'
+                            ? <input autoFocus className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs w-28 focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
+                            : <span title="Double-click to edit">{c.primaryPayer || '—'}</span>}
+                        </td>
+                        {/* Primary Allowed */}
+                        <td className="px-4 py-3 text-right text-[#2F3E4E]" onDoubleClick={() => startEdit(c.id, 'primaryAllowedAmt', c.primaryAllowedAmt != null ? String(c.primaryAllowedAmt) : '')}>
+                          {editCell?.id === c.id && editCell.field === 'primaryAllowedAmt'
+                            ? <input autoFocus type="number" step="0.01" className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs text-right w-20 focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
+                            : <span title="Double-click to edit">{fmt(c.primaryAllowedAmt, '$')}</span>}
+                        </td>
+                        {/* Primary Paid */}
+                        <td className="px-4 py-3 text-right font-semibold text-[#7A8F79]" onDoubleClick={() => startEdit(c.id, 'primaryPaidAmt', c.primaryPaidAmt != null ? String(c.primaryPaidAmt) : '')}>
+                          {editCell?.id === c.id && editCell.field === 'primaryPaidAmt'
+                            ? <input autoFocus type="number" step="0.01" className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs text-right w-20 focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
+                            : <span title="Double-click to edit">{fmt(c.primaryPaidAmt, '$')}</span>}
+                        </td>
+                        {/* Primary Paid Date */}
+                        <td className="px-4 py-3 text-xs text-[#7A8F79] whitespace-nowrap" onDoubleClick={() => startEdit(c.id, 'primaryPaidDate', c.primaryPaidDate ? new Date(c.primaryPaidDate).toISOString().slice(0,10) : '')}>
+                          {editCell?.id === c.id && editCell.field === 'primaryPaidDate'
+                            ? <input autoFocus type="date" className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
+                            : <span title="Double-click to edit">{fmtDate(c.primaryPaidDate)}</span>}
+                        </td>
+                        {/* Primary Paid To */}
+                        <td className="px-4 py-3 text-xs text-[#2F3E4E]" onDoubleClick={() => startEdit(c.id, 'primaryPaidTo', c.primaryPaidTo || '')}>
+                          {editCell?.id === c.id && editCell.field === 'primaryPaidTo'
+                            ? <input autoFocus className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs w-24 focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
+                            : <span title="Double-click to edit">{c.primaryPaidTo || '—'}</span>}
+                        </td>
+                        {/* Secondary Payer */}
+                        <td className="px-4 py-3 border-l border-[#D9E1E8] text-[#2F3E4E]" onDoubleClick={() => startEdit(c.id, 'secondaryPayer', c.secondaryPayer || '')}>
+                          {editCell?.id === c.id && editCell.field === 'secondaryPayer'
+                            ? <input autoFocus className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs w-28 focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
+                            : <span title="Double-click to edit">{c.secondaryPayer || '—'}</span>}
+                        </td>
+                        {/* Secondary Allowed */}
+                        <td className="px-4 py-3 text-right text-[#2F3E4E]" onDoubleClick={() => startEdit(c.id, 'secondaryAllowedAmt', c.secondaryAllowedAmt != null ? String(c.secondaryAllowedAmt) : '')}>
+                          {editCell?.id === c.id && editCell.field === 'secondaryAllowedAmt'
+                            ? <input autoFocus type="number" step="0.01" className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs text-right w-20 focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
+                            : <span title="Double-click to edit">{fmt(c.secondaryAllowedAmt, '$')}</span>}
+                        </td>
+                        {/* Secondary Paid */}
+                        <td className="px-4 py-3 text-right font-semibold text-[#7A8F79]" onDoubleClick={() => startEdit(c.id, 'secondaryPaidAmt', c.secondaryPaidAmt != null ? String(c.secondaryPaidAmt) : '')}>
+                          {editCell?.id === c.id && editCell.field === 'secondaryPaidAmt'
+                            ? <input autoFocus type="number" step="0.01" className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs text-right w-20 focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
+                            : <span title="Double-click to edit">{fmt(c.secondaryPaidAmt, '$')}</span>}
+                        </td>
+                        {/* Secondary Paid Date */}
+                        <td className="px-4 py-3 text-xs text-[#7A8F79] whitespace-nowrap" onDoubleClick={() => startEdit(c.id, 'secondaryPaidDate', c.secondaryPaidDate ? new Date(c.secondaryPaidDate).toISOString().slice(0,10) : '')}>
+                          {editCell?.id === c.id && editCell.field === 'secondaryPaidDate'
+                            ? <input autoFocus type="date" className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
+                            : <span title="Double-click to edit">{fmtDate(c.secondaryPaidDate)}</span>}
+                        </td>
+                        {/* Secondary Paid To */}
+                        <td className="px-4 py-3 text-xs text-[#2F3E4E]" onDoubleClick={() => startEdit(c.id, 'secondaryPaidTo', c.secondaryPaidTo || '')}>
+                          {editCell?.id === c.id && editCell.field === 'secondaryPaidTo'
+                            ? <input autoFocus className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs w-24 focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
+                            : <span title="Double-click to edit">{c.secondaryPaidTo || '—'}</span>}
+                        </td>
+                        {/* Total Reimbursed */}
+                        <td className="px-4 py-3 border-l border-[#D9E1E8] text-right font-semibold text-[#7A8F79]" onDoubleClick={() => startEdit(c.id, 'totalReimbursed', c.totalReimbursed != null ? String(c.totalReimbursed) : '')}>
+                          {editCell?.id === c.id && editCell.field === 'totalReimbursed'
+                            ? <input autoFocus type="number" step="0.01" className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs text-right w-20 focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
+                            : <span title="Double-click to edit">{fmt(c.totalReimbursed, '$')}</span>}
+                        </td>
+                        {/* Remaining Balance */}
+                        <td className={`px-4 py-3 text-right font-semibold ${(c.remainingBalance || 0) > 0 ? 'text-red-600' : 'text-[#2F3E4E]'}`} onDoubleClick={() => startEdit(c.id, 'remainingBalance', c.remainingBalance != null ? String(c.remainingBalance) : '')}>
+                          {editCell?.id === c.id && editCell.field === 'remainingBalance'
+                            ? <input autoFocus type="number" step="0.01" className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs text-right w-20 focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
+                            : <span title="Double-click to edit">{fmt(c.remainingBalance, '$')}</span>}
+                        </td>
+                        {/* Date Fully Finalized */}
+                        <td className="px-4 py-3 text-xs text-[#7A8F79] whitespace-nowrap" onDoubleClick={() => startEdit(c.id, 'dateFullyFinalized', c.dateFullyFinalized ? new Date(c.dateFullyFinalized).toISOString().slice(0,10) : '')}>
+                          {editCell?.id === c.id && editCell.field === 'dateFullyFinalized'
+                            ? <input autoFocus type="date" className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
+                            : <span title="Double-click to edit">{fmtDate(c.dateFullyFinalized)}</span>}
+                        </td>
+                        {/* Processing Notes */}
+                        <td className="px-4 py-3 text-xs text-[#7A8F79] max-w-xs truncate" onDoubleClick={() => startEdit(c.id, 'processingNotes', c.processingNotes || '')}>
+                          {editCell?.id === c.id && editCell.field === 'processingNotes'
+                            ? <input autoFocus className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs w-48 focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
+                            : <span title="Double-click to edit">{c.processingNotes || '—'}</span>}
+                        </td>
                       </tr>
                       {isExpanded && originals.map(orig => (
                         <tr key={orig.id} className="bg-red-50 text-xs text-[#7A8F79] border-l-4 border-red-200">

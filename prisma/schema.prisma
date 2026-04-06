@@ -291,6 +291,22 @@ model NurseDocument {
   @@index([claimId])
 }
 
+model SystemSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model PendingNotification {
+  id        String   @id @default(uuid())
+  nurseId   String
+  type      String   // 'claim' | 'document'
+  payload   Json     // { claimId?, documentTitle?, category?, dosStart?, dosStop?, totalBilled? }
+  createdAt DateTime @default(now())
+
+  @@index([nurseId])
+}
+
 model FaqItem {
   id          String   @id @default(uuid())
   question    String

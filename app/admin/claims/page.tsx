@@ -189,6 +189,13 @@ export default function AdminClaimsPage() {
   const [editCell, setEditCell] = useState<{ id: string; field: string } | null>(null)
   const [editVal, setEditVal] = useState('')
 
+  // Add Claim modal
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [nurses, setNurses] = useState<{ id: string; displayName: string; providerAliases: string[] }[]>([])
+  const [addForm, setAddForm] = useState<Record<string, string>>({ claimStage: 'Draft' })
+  const [adding, setAdding] = useState(false)
+  const [addError, setAddError] = useState<string | null>(null)
+
   // EDI upload state
   const [ediDragging, setEdiDragging] = useState(false)
   const [ediUploading, setEdiUploading] = useState(false)
@@ -291,11 +298,16 @@ export default function AdminClaimsPage() {
     setLoading(false)
   }
 
-  // Load initial bulk mode setting
+  // Load initial state
   useEffect(() => {
     fetch('/api/admin/system-settings', { credentials: 'include' })
       .then(r => r.ok ? r.json() : {})
       .then((s: Record<string, string>) => { if (s.bulkImportMode === 'true') setBulkMode(true) })
+      .catch(() => {})
+    // Fetch nurse list for Add Claim dropdown
+    fetch('/api/admin/nurses', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : { nurses: [] })
+      .then(d => setNurses((d.nurses || []).map((n: any) => ({ id: n.id, displayName: n.displayName, providerAliases: n.providerAliases || [] }))))
       .catch(() => {})
     loadClaims()
     loadEobs()
@@ -352,6 +364,30 @@ export default function AdminClaimsPage() {
   }
 
   function cancelEdit() { setEditCell(null) }
+
+  function openAddModal() {
+    setAddForm({ claimStage: 'Draft' })
+    setAddError(null)
+    setShowAddModal(true)
+  }
+
+  async function submitClaim(e: React.FormEvent) {
+    e.preventDefault()
+    if (!addForm.nurseId) { setAddError('Provider is required.'); return }
+    setAdding(true)
+    setAddError(null)
+    const res = await fetch('/api/admin/claims', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(addForm),
+    })
+    const data = await res.json()
+    if (!res.ok) { setAddError(data.error || 'Failed to create claim.'); setAdding(false); return }
+    setClaims(prev => [data.claim, ...prev])
+    setShowAddModal(false)
+    setAdding(false)
+  }
 
   async function handleFileImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -450,6 +486,15 @@ export default function AdminClaimsPage() {
               </svg>
               Availity
             </a>
+            <button
+              onClick={openAddModal}
+              className="flex items-center gap-1.5 bg-[#7A8F79] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#2F3E4E] transition"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add Claim
+            </button>
             <input ref={fileRef} type="file" accept=".csv" onChange={handleFileImport} className="hidden" id="csv-upload" />
             <label htmlFor="csv-upload" className="cursor-pointer bg-[#2F3E4E] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition">
               {importing ? 'Importing…' : 'Import CSV'}
@@ -923,6 +968,179 @@ export default function AdminClaimsPage() {
         )}
 
       </div>
+
+      {/* Add Claim Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 overflow-y-auto py-8 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#D9E1E8]">
+              <h2 className="text-lg font-bold text-[#2F3E4E]">Add Claim Manually</h2>
+              <button onClick={() => setShowAddModal(false)} className="text-[#7A8F79] hover:text-[#2F3E4E] text-xl leading-none">✕</button>
+            </div>
+
+            <form onSubmit={submitClaim} className="px-6 py-5 space-y-6">
+
+              {addError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-2">{addError}</div>
+              )}
+
+              {/* Provider + Claim ID + Stage */}
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-[#7A8F79] mb-3">Claim Info</p>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="col-span-1">
+                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Provider <span className="text-red-500">*</span></label>
+                    <select
+                      required
+                      value={addForm.nurseId || ''}
+                      onChange={e => setAddForm(f => ({ ...f, nurseId: e.target.value, providerName: nurses.find(n => n.id === e.target.value)?.displayName || '' }))}
+                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                    >
+                      <option value="">Select provider…</option>
+                      {nurses.map(n => <option key={n.id} value={n.id}>{n.displayName}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Claim ID</label>
+                    <input type="text" value={addForm.claimId || ''} onChange={e => setAddForm(f => ({ ...f, claimId: e.target.value }))}
+                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Claim Stage</label>
+                    <select value={addForm.claimStage || 'Draft'} onChange={e => setAddForm(f => ({ ...f, claimStage: e.target.value }))}
+                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]">
+                      {['Draft','INS-1 Submitted','Resubmitted','Pending','Info Requested','Info Sent','INS-2 Submitted','Appealed','Paid','Denied','Rejected'].map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">DOS Start</label>
+                    <input type="date" value={addForm.dosStart || ''} onChange={e => setAddForm(f => ({ ...f, dosStart: e.target.value }))}
+                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">DOS Stop</label>
+                    <input type="date" value={addForm.dosStop || ''} onChange={e => setAddForm(f => ({ ...f, dosStop: e.target.value }))}
+                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Total Billed</label>
+                    <input type="number" step="0.01" min="0" value={addForm.totalBilled || ''} onChange={e => setAddForm(f => ({ ...f, totalBilled: e.target.value }))}
+                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Primary Insurance */}
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-[#7A8F79] mb-3 border-t border-[#D9E1E8] pt-4">Primary Insurance</p>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="col-span-1">
+                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Payer</label>
+                    <input type="text" value={addForm.primaryPayer || ''} onChange={e => setAddForm(f => ({ ...f, primaryPayer: e.target.value }))}
+                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Allowed Amt</label>
+                    <input type="number" step="0.01" min="0" value={addForm.primaryAllowedAmt || ''} onChange={e => setAddForm(f => ({ ...f, primaryAllowedAmt: e.target.value }))}
+                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Paid Amt</label>
+                    <input type="number" step="0.01" min="0" value={addForm.primaryPaidAmt || ''} onChange={e => setAddForm(f => ({ ...f, primaryPaidAmt: e.target.value }))}
+                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Paid Date</label>
+                    <input type="date" value={addForm.primaryPaidDate || ''} onChange={e => setAddForm(f => ({ ...f, primaryPaidDate: e.target.value }))}
+                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Paid To</label>
+                    <input type="text" value={addForm.primaryPaidTo || ''} onChange={e => setAddForm(f => ({ ...f, primaryPaidTo: e.target.value }))}
+                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Secondary Insurance */}
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-[#7A8F79] mb-3 border-t border-[#D9E1E8] pt-4">Secondary Insurance</p>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="col-span-1">
+                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Payer</label>
+                    <input type="text" value={addForm.secondaryPayer || ''} onChange={e => setAddForm(f => ({ ...f, secondaryPayer: e.target.value }))}
+                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Allowed Amt</label>
+                    <input type="number" step="0.01" min="0" value={addForm.secondaryAllowedAmt || ''} onChange={e => setAddForm(f => ({ ...f, secondaryAllowedAmt: e.target.value }))}
+                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Paid Amt</label>
+                    <input type="number" step="0.01" min="0" value={addForm.secondaryPaidAmt || ''} onChange={e => setAddForm(f => ({ ...f, secondaryPaidAmt: e.target.value }))}
+                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Paid Date</label>
+                    <input type="date" value={addForm.secondaryPaidDate || ''} onChange={e => setAddForm(f => ({ ...f, secondaryPaidDate: e.target.value }))}
+                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Paid To</label>
+                    <input type="text" value={addForm.secondaryPaidTo || ''} onChange={e => setAddForm(f => ({ ...f, secondaryPaidTo: e.target.value }))}
+                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Summary */}
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-[#7A8F79] mb-3 border-t border-[#D9E1E8] pt-4">Summary</p>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Total Reimbursed</label>
+                    <input type="number" step="0.01" min="0" value={addForm.totalReimbursed || ''} onChange={e => setAddForm(f => ({ ...f, totalReimbursed: e.target.value }))}
+                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Remaining Balance</label>
+                    <input type="number" step="0.01" min="0" value={addForm.remainingBalance || ''} onChange={e => setAddForm(f => ({ ...f, remainingBalance: e.target.value }))}
+                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Date Fully Finalized</label>
+                    <input type="date" value={addForm.dateFullyFinalized || ''} onChange={e => setAddForm(f => ({ ...f, dateFullyFinalized: e.target.value }))}
+                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                  </div>
+                  <div className="col-span-3">
+                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Processing Notes</label>
+                    <textarea rows={2} value={addForm.processingNotes || ''} onChange={e => setAddForm(f => ({ ...f, processingNotes: e.target.value }))}
+                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] resize-none" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-end gap-3 border-t border-[#D9E1E8] pt-5">
+                <button type="button" onClick={() => setShowAddModal(false)}
+                  className="px-5 py-2 rounded-lg border border-[#D9E1E8] text-sm font-semibold text-[#7A8F79] hover:text-[#2F3E4E] hover:border-[#7A8F79] transition">
+                  Cancel
+                </button>
+                <button type="submit" disabled={adding}
+                  className="px-5 py-2 rounded-lg bg-[#2F3E4E] text-white text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-60">
+                  {adding ? 'Saving…' : 'Add Claim'}
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

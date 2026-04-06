@@ -191,7 +191,6 @@ export default function AdminClaimsPage() {
 
   // Add Claim modal
   const [showAddModal, setShowAddModal] = useState(false)
-  const [nurses, setNurses] = useState<{ id: string; displayName: string; providerAliases: string[] }[]>([])
   const [addForm, setAddForm] = useState<Record<string, string>>({ claimStage: 'Draft' })
   const [adding, setAdding] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
@@ -304,11 +303,6 @@ export default function AdminClaimsPage() {
       .then(r => r.ok ? r.json() : {})
       .then((s: Record<string, string>) => { if (s.bulkImportMode === 'true') setBulkMode(true) })
       .catch(() => {})
-    // Fetch nurse list for Add Claim dropdown
-    fetch('/api/admin/nurses', { credentials: 'include' })
-      .then(r => r.ok ? r.json() : { nurses: [] })
-      .then(d => setNurses((d.nurses || []).map((n: any) => ({ id: n.id, displayName: n.displayName, providerAliases: n.providerAliases || [] }))))
-      .catch(() => {})
     loadClaims()
     loadEobs()
   }, [])
@@ -373,7 +367,7 @@ export default function AdminClaimsPage() {
 
   async function submitClaim(e: React.FormEvent) {
     e.preventDefault()
-    if (!addForm.nurseId) { setAddError('Provider is required.'); return }
+    if (!addForm.providerName?.trim()) { setAddError('Provider name is required.'); return }
     setAdding(true)
     setAddError(null)
     const res = await fetch('/api/admin/claims', {
@@ -990,16 +984,15 @@ export default function AdminClaimsPage() {
                 <p className="text-xs font-bold uppercase tracking-widest text-[#7A8F79] mb-3">Claim Info</p>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="col-span-1">
-                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Provider <span className="text-red-500">*</span></label>
-                    <select
+                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Provider Name <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
                       required
-                      value={addForm.nurseId || ''}
-                      onChange={e => setAddForm(f => ({ ...f, nurseId: e.target.value, providerName: nurses.find(n => n.id === e.target.value)?.displayName || '' }))}
+                      placeholder="e.g. Janine Barone"
+                      value={addForm.providerName || ''}
+                      onChange={e => setAddForm(f => ({ ...f, providerName: e.target.value }))}
                       className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-                    >
-                      <option value="">Select provider…</option>
-                      {nurses.map(n => <option key={n.id} value={n.id}>{n.displayName}</option>)}
-                    </select>
+                    />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Claim ID</label>

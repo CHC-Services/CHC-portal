@@ -282,7 +282,7 @@ export default function ProfilePage() {
         <div className="bg-[#2F3E4E] text-white rounded-xl px-6 py-4 flex items-center justify-between mb-6">
           <div>
             <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold">Account Number</p>
-            <p className="text-2xl font-bold tracking-widest mt-0.5">{profile.accountNumber}</p>
+            <p className="text-2xl font-bold tracking-widest mt-0.5"> #{profile.accountNumber}</p>
           </div>
           <div className="w-10 h-10 rounded-full bg-[#7A8F79] flex items-center justify-center text-white font-bold text-lg">
             {(profile.displayName || '?').charAt(0).toUpperCase()}
@@ -291,10 +291,10 @@ export default function ProfilePage() {
       )}
 
       {/* 3-column layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
 
         {/* ── Col 1: Personal Information ── */}
-        <form onSubmit={handleSubmit} className="bg-white p-6 rounded shadow space-y-4">
+        <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow p-6 space-y-4">
           <h2 className="text-xl font-semibold text-[#2F3E4E]">Personal Information</h2>
 
           <div className="space-y-1">
@@ -305,7 +305,7 @@ export default function ProfilePage() {
               type="text"
               value={user?.email || ''}
               disabled
-              className="w-full border border-[#D9E1E8] p-2 rounded bg-gray-100 text-[#2F3E4E]"
+              className="w-full border border-[#D9E1E8] p-2 rounded-lg bg-gray-100 text-[#2F3E4E]"
             />
           </div>
 
@@ -315,7 +315,7 @@ export default function ProfilePage() {
               type="text"
               value={profile.displayName || ''}
               onChange={(e) => setProfile({ ...profile, displayName: e.target.value })}
-              className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
+              className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]"
             />
           </div>
 
@@ -326,7 +326,7 @@ export default function ProfilePage() {
               placeholder="Street address"
               value={profile.address || ''}
               onChange={(e) => setProfile({ ...profile, address: e.target.value })}
-              className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
+              className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]"
             />
           </div>
 
@@ -338,7 +338,7 @@ export default function ProfilePage() {
                 placeholder="City"
                 value={profile.city || ''}
                 onChange={(e) => setProfile({ ...profile, city: e.target.value })}
-                className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
+                className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]"
               />
             </div>
             <div className="space-y-1">
@@ -348,7 +348,7 @@ export default function ProfilePage() {
                 placeholder="State"
                 value={profile.state || ''}
                 onChange={(e) => setProfile({ ...profile, state: e.target.value })}
-                className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
+                className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]"
               />
             </div>
             <div className="space-y-1">
@@ -358,7 +358,7 @@ export default function ProfilePage() {
                 placeholder="ZIP"
                 value={profile.zip || ''}
                 onChange={(e) => setProfile({ ...profile, zip: e.target.value })}
-                className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
+                className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]"
               />
             </div>
             <div className="space-y-1">
@@ -367,7 +367,7 @@ export default function ProfilePage() {
                 type="text"
                 value={profile.npiNumber || ''}
                 onChange={(e) => setProfile({ ...profile, npiNumber: e.target.value })}
-                className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
+                className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]"
               />
             </div>
           </div>
@@ -378,7 +378,7 @@ export default function ProfilePage() {
               type="text"
               value={profile.medicaidNumber || ''}
               onChange={(e) => setProfile({ ...profile, medicaidNumber: e.target.value })}
-              className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
+              className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]"
             />
           </div>
 
@@ -388,13 +388,13 @@ export default function ProfilePage() {
               value={profile.billingInfo || ''}
               onChange={(e) => setProfile({ ...profile, billingInfo: e.target.value })}
               rows={3}
-              className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E] resize-none"
+              className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] resize-none"
             />
           </div>
 
           <button
             type="submit"
-            className="w-full bg-[#2F3E4E] text-white p-2 rounded hover:bg-[#7A8F79] transition font-semibold"
+            className="w-85 bg-[#2F3E4E] text-white p-2 rounded-lg hover:bg-[#7A8F79] transition font-semibold"
           >
             Save Changes
           </button>
@@ -402,34 +402,34 @@ export default function ProfilePage() {
         </form>
 
         {/* ── Col 2: Change Password + myRenewals ── */}
-        <div className="space-y-6">
+        <div className="space-y-5">
 
-          <form onSubmit={changePassword} className="bg-white p-6 rounded shadow space-y-4">
+          <form onSubmit={changePassword} className="bg-white rounded-xl shadow p-6 space-y-4">
             <h2 className="text-xl font-semibold text-[#2F3E4E]">Change Password</h2>
             <input
               type="password"
               placeholder="Current password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
+              className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]"
             />
             <input
               type="password"
               placeholder="New password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
+              className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]"
             />
             <input
               type="password"
               placeholder="Confirm new password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full border border-[#D9E1E8] p-2 rounded text-[#2F3E4E]"
+              className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]"
             />
             <button
               type="submit"
-              className="w-full bg-[#2F3E4E] text-white p-2 rounded hover:bg-[#7A8F79] transition font-semibold"
+              className="w-full bg-[#2F3E4E] text-white p-2 rounded-lg hover:bg-[#7A8F79] transition font-semibold"
             >
               Update Password
             </button>
@@ -564,8 +564,11 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* ── My Documents ── */}
-        <div className="bg-white p-6 rounded shadow space-y-4 lg:col-span-3">
+        {/* ── Col 3: myDocuments + myBilling + Notification Preferences ── */}
+        <div className="space-y-5">
+
+        {/* myDocuments */}
+        <div className="bg-white rounded-xl shadow p-6 space-y-4">
           <h2 className="text-xl font-semibold text-[#2F3E4E]">
             <span className="text-[#7A8F79] italic">my</span>Documents
           </h2>
@@ -680,11 +683,9 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* ── Col 3: myBilling + Notification Preferences ── */}
-        <div className="space-y-6">
           <BillingSection profile={profile} onUnenroll={() => setProfile({ ...profile, enrolledInBilling: false })} />
 
-          <div className="bg-white p-6 rounded shadow space-y-5">
+          <div className="bg-white rounded-xl shadow p-6 space-y-5">
             <div>
               <h2 className="text-xl font-semibold text-[#2F3E4E]">Notification Preferences</h2>
               <p className="text-xs text-[#7A8F79] mt-0.5">Choose which emails you'd like to receive.</p>

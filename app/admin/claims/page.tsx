@@ -394,19 +394,47 @@ export default function AdminClaimsPage() {
     if (!file) return
     setImporting(true)
     setImportResult(null)
-    const text = await file.text()
-    const rows = parseCSV(text)
 
-    // Send in batches of 25 to stay well within Vercel's timeout
-    const BATCH_SIZE = 25
+    // Step 1: fetch nurse profiles once for client-side matching (avoids per-batch DB call)
+    let profiles: { id: string; displayName: string; firstName: string | null; lastName: string | null; providerAliases: string[] }[] = []
+    try {
+      const pr = await fetch('/api/admin/nurses/profiles', { credentials: 'include' })
+      if (pr.ok) profiles = await pr.json()
+    } catch {}
+
+    function findNurseId(providerName: string): string | null {
+      if (!providerName) return null
+      const lower = providerName.toLowerCase().trim()
+      const match = profiles.find(p => {
+        const full = `${p.firstName || ''} ${p.lastName || ''}`.toLowerCase().trim()
+        const display = (p.displayName || '').toLowerCase().trim()
+        const aliases = (p.providerAliases || []).map((a: string) => a.toLowerCase().trim())
+        return full === lower || display === lower || aliases.includes(lower)
+      })
+      return match?.id ?? null
+    }
+
+    // Step 2: parse CSV and attach nurseId to each row
+    const text = await file.text()
+    const rawRows = parseCSV(text)
+    let clientSkipped = 0
+    const matchedRows = rawRows.reduce<(Record<string, string> & { _nurseId: string })[]>((acc, row) => {
+      const nurseId = findNurseId(row['Provider Name'] || '')
+      if (!nurseId) { clientSkipped++; return acc }
+      acc.push({ ...row, _nurseId: nurseId })
+      return acc
+    }, [])
+
+    // Step 3: send pre-matched rows in batches of 10
+    const BATCH_SIZE = 10
     let totalCreated = 0
     let totalUpdated = 0
-    let totalSkipped = 0
+    let totalSkipped = clientSkipped
     let batchError: string | null = null
     const allAffectedNurseIds = new Set<string>()
 
-    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-      const batch = rows.slice(i, i + BATCH_SIZE)
+    for (let i = 0; i < matchedRows.length; i += BATCH_SIZE) {
+      const batch = matchedRows.slice(i, i + BATCH_SIZE)
       try {
         const res = await fetch('/api/admin/claims/import', {
           method: 'POST',
@@ -430,7 +458,7 @@ export default function AdminClaimsPage() {
       }
     }
 
-    // After all batches — flush notifications for affected nurses only (one summary email per nurse)
+    // Step 4: flush — one summary email per affected nurse
     if (!batchError && allAffectedNurseIds.size > 0) {
       await fetch('/api/admin/notifications/flush', {
         method: 'POST',

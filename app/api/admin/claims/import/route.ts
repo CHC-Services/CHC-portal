@@ -44,38 +44,16 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json()
-  const { rows } = body as { rows: Record<string, string>[] }
+  // Client pre-matches provider names to nurseIds — rows include _nurseId
+  const { rows } = body as { rows: (Record<string, string> & { _nurseId: string })[] }
 
   if (!rows || !Array.isArray(rows) || rows.length === 0) {
     return NextResponse.json({ error: 'No rows provided' }, { status: 400 })
   }
 
-  // ── 1. Load nurse profiles ────────────────────────────────────────────────
-  const profiles = await prisma.nurseProfile.findMany({
-    select: {
-      id: true, displayName: true, firstName: true, lastName: true,
-      providerAliases: true, notifyNewClaim: true,
-      user: { select: { email: true } },
-    },
-  })
-
-  // Build in-memory nurse lookup (no per-row DB call)
-  type Profile = typeof profiles[number]
-  function findNurse(providerName: string): Profile | null {
-    if (!providerName) return null
-    const lower = providerName.toLowerCase().trim()
-    return profiles.find(p => {
-      const full = `${p.firstName || ''} ${p.lastName || ''}`.toLowerCase().trim()
-      const display = (p.displayName || '').toLowerCase().trim()
-      const aliases = (p.providerAliases || []).map((a: string) => a.toLowerCase().trim())
-      return full === lower || display === lower || aliases.includes(lower)
-    }) ?? null
-  }
-
-  // ── 2. Parse every row into typed data ────────────────────────────────────
+  // ── 1. Parse every row into typed data (no DB call needed — nurseId from client) ──
   type RowData = {
     nurseId: string
-    profile: Profile
     claimId: string | null
     data: Record<string, any>
   }
@@ -84,16 +62,15 @@ export async function POST(req: Request) {
   let skipped = 0
 
   for (const row of rows) {
-    const providerName = row['Provider Name'] || ''
-    const profile = findNurse(providerName)
-    if (!profile) { skipped++; continue }
+    const nurseId = row._nurseId
+    if (!nurseId) { skipped++; continue }
 
+    const providerName = row['Provider Name'] || ''
     parsed.push({
-      nurseId: profile.id,
-      profile,
+      nurseId,
       claimId: row['Claim ID'] || null,
       data: {
-        nurseId:             profile.id,
+        nurseId,
         claimId:             row['Claim ID'] || null,
         providerName:        providerName || null,
         dosStart:            parseDate(row['DOS Start'] || ''),
@@ -133,7 +110,6 @@ export async function POST(req: Request) {
   const existingMap = new Map(existingClaims.map(c => [`${c.claimId}|${c.nurseId}`, c]))
 
   // ── 4. Separate into creates vs updates ───────────────────────────────────
-  type NewClaim = { nurseId: string; claimId: string | null; dosStart: Date | null; dosStop: Date | null; totalBilled: number | null; profile: Profile }
   const toCreate: RowData[] = []
   const toUpdate: { id: string; data: Record<string, any> }[] = []
 

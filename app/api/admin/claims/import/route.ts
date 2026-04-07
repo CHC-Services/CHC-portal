@@ -159,42 +159,41 @@ export async function POST(req: Request) {
     }
   }
 
-  // ── 5. Batch create + parallel update ────────────────────────────────────
-  // createMany can't return IDs on all DBs, so we create individually but in parallel
-  const [createdClaims] = await Promise.all([
-    Promise.all(toCreate.map(r =>
-      (prisma.claim.create as any)({
-        data: r.data,
-        select: { id: true, claimId: true, dosStart: true, dosStop: true, totalBilled: true, nurseId: true },
-      })
-    )),
-    Promise.all(toUpdate.map(u =>
-      prisma.claim.update({ where: { id: u.id }, data: u.data })
-    )),
+  // ── 5. Bulk create + parallel update ─────────────────────────────────────
+  // createMany = single INSERT statement (much faster than N parallel creates)
+  const [createResult] = await Promise.all([
+    (prisma.claim.createMany as any)({ data: toCreate.map(r => r.data), skipDuplicates: true }),
+    // Limit update concurrency to 5 at a time to stay within connection pool limits
+    (async () => {
+      for (let i = 0; i < toUpdate.length; i += 5) {
+        await Promise.all(toUpdate.slice(i, i + 5).map(u =>
+          prisma.claim.update({ where: { id: u.id }, data: u.data })
+        ))
+      }
+    })(),
   ])
 
-  const created = createdClaims.length
+  const created: number = createResult.count ?? toCreate.length
   const updated = toUpdate.length
 
-  // ── 6. Queue all new claim notifications (always batched — flushed by client after import) ──
-  const toQueue = createdClaims.filter(claim => claim.claimId)
+  // ── 6. Queue notifications — built from in-memory data (no extra DB round-trip) ──
+  const toQueue = toCreate.filter(r => r.claimId)
   if (toQueue.length > 0) {
     await prisma.pendingNotification.createMany({
-      data: toQueue.map(claim => ({
-        nurseId: claim.nurseId,
+      data: toQueue.map(r => ({
+        nurseId: r.nurseId,
         type: 'claim',
         payload: {
-          claimId: claim.claimId!,
-          dosStart: claim.dosStart?.toISOString() ?? null,
-          dosStop: claim.dosStop?.toISOString() ?? null,
-          totalBilled: claim.totalBilled,
+          claimId: r.claimId!,
+          dosStart: r.data.dosStart?.toISOString?.() ?? null,
+          dosStop:  r.data.dosStop?.toISOString?.()  ?? null,
+          totalBilled: r.data.totalBilled ?? null,
         },
       })),
     })
   }
 
-  // Return affected nurseIds so client can flush only those nurses
-  const affectedNurseIds = [...new Set(toQueue.map(c => c.nurseId))]
+  const affectedNurseIds = [...new Set(toQueue.map(r => r.nurseId))]
 
   return NextResponse.json({ ok: true, created, updated, skipped, affectedNurseIds })
 }

@@ -51,7 +51,13 @@ export default function PrintInvoicePage({ params }: { params: Promise<{ id: str
         if (!r.ok) throw new Error('Not found')
         return r.json()
       })
-      .then(data => { if (data) setInvoice(data) })
+      .then(data => {
+        if (data) {
+          setInvoice(data)
+          // Auto-trigger print dialog after a short render delay
+          setTimeout(() => window.print(), 400)
+        }
+      })
       .catch(() => setError('Invoice not found'))
       .finally(() => setLoading(false))
   }, [id, router])

@@ -20,7 +20,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  // Optional: restrict flush to specific nurseIds (used by CSV import to avoid touching
+  // document notifications queued under bulk mode)
+  const body = await req.json().catch(() => ({}))
+  const filterNurseIds: string[] | undefined = Array.isArray(body.nurseIds) ? body.nurseIds : undefined
+
   const pending = await prisma.pendingNotification.findMany({
+    where: filterNurseIds ? { nurseId: { in: filterNurseIds } } : undefined,
     orderBy: { createdAt: 'asc' },
   })
 

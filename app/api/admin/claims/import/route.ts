@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../lib/prisma'
 import { verifyToken } from '../../../../../lib/auth'
-import { sendNewClaimAlert } from '../../../../../lib/sendEmail'
 
 export const maxDuration = 60 // seconds — requires Vercel Pro or higher
 
@@ -51,18 +50,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'No rows provided' }, { status: 400 })
   }
 
-  // ── 1. Single query: bulk mode + profiles ─────────────────────────────────
-  const [bulkSetting, profiles] = await Promise.all([
-    prisma.systemSetting.findUnique({ where: { key: 'bulkImportMode' } }),
-    prisma.nurseProfile.findMany({
-      select: {
-        id: true, displayName: true, firstName: true, lastName: true,
-        providerAliases: true, notifyNewClaim: true,
-        user: { select: { email: true } },
-      },
-    }),
-  ])
-  const bulkMode = bulkSetting?.value === 'true'
+  // ── 1. Load nurse profiles ────────────────────────────────────────────────
+  const profiles = await prisma.nurseProfile.findMany({
+    select: {
+      id: true, displayName: true, firstName: true, lastName: true,
+      providerAliases: true, notifyNewClaim: true,
+      user: { select: { email: true } },
+    },
+  })
 
   // Build in-memory nurse lookup (no per-row DB call)
   type Profile = typeof profiles[number]
@@ -181,43 +176,25 @@ export async function POST(req: Request) {
   const created = createdClaims.length
   const updated = toUpdate.length
 
-  // ── 6. Handle notifications (bulk queue or fire-and-forget) ───────────────
-  const newClaimsWithProfile = createdClaims.map((claim, i) => ({
-    claim,
-    profile: toCreate[i].profile,
-  }))
-
-  if (bulkMode) {
-    // Collect only rows that have a claimId to reference in the summary
-    const toQueue = newClaimsWithProfile.filter(({ claim }) => claim.claimId)
-    if (toQueue.length > 0) {
-      await prisma.pendingNotification.createMany({
-        data: toQueue.map(({ claim }) => ({
-          nurseId: claim.nurseId,
-          type: 'claim',
-          payload: {
-            claimId: claim.claimId!,
-            dosStart: claim.dosStart?.toISOString() ?? null,
-            dosStop: claim.dosStop?.toISOString() ?? null,
-            totalBilled: claim.totalBilled,
-          },
-        })),
-      })
-    }
-  } else {
-    // Fire-and-forget emails — never await, never block
-    for (const { claim, profile } of newClaimsWithProfile) {
-      if (!profile.notifyNewClaim || !profile.user?.email || !claim.claimId) continue
-      sendNewClaimAlert({
-        nurseEmail: profile.user.email,
-        nurseName: profile.displayName,
-        claimId: claim.claimId,
-        dosStart: claim.dosStart,
-        dosStop: claim.dosStop,
-        totalBilled: claim.totalBilled,
-      }).catch(() => {})
-    }
+  // ── 6. Queue all new claim notifications (always batched — flushed by client after import) ──
+  const toQueue = createdClaims.filter(claim => claim.claimId)
+  if (toQueue.length > 0) {
+    await prisma.pendingNotification.createMany({
+      data: toQueue.map(claim => ({
+        nurseId: claim.nurseId,
+        type: 'claim',
+        payload: {
+          claimId: claim.claimId!,
+          dosStart: claim.dosStart?.toISOString() ?? null,
+          dosStop: claim.dosStop?.toISOString() ?? null,
+          totalBilled: claim.totalBilled,
+        },
+      })),
+    })
   }
 
-  return NextResponse.json({ ok: true, created, updated, skipped })
+  // Return affected nurseIds so client can flush only those nurses
+  const affectedNurseIds = [...new Set(toQueue.map(c => c.nurseId))]
+
+  return NextResponse.json({ ok: true, created, updated, skipped, affectedNurseIds })
 }

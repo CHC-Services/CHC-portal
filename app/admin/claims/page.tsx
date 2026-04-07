@@ -397,12 +397,13 @@ export default function AdminClaimsPage() {
     const text = await file.text()
     const rows = parseCSV(text)
 
-    // Send in batches of 50 to avoid Vercel timeout + body size limits
-    const BATCH_SIZE = 50
+    // Send in batches of 25 to stay well within Vercel's timeout
+    const BATCH_SIZE = 25
     let totalCreated = 0
     let totalUpdated = 0
     let totalSkipped = 0
     let batchError: string | null = null
+    const allAffectedNurseIds = new Set<string>()
 
     for (let i = 0; i < rows.length; i += BATCH_SIZE) {
       const batch = rows.slice(i, i + BATCH_SIZE)
@@ -422,10 +423,21 @@ export default function AdminClaimsPage() {
         totalCreated += data.created || 0
         totalUpdated += data.updated || 0
         totalSkipped += data.skipped || 0
+        ;(data.affectedNurseIds || []).forEach((id: string) => allAffectedNurseIds.add(id))
       } catch (err) {
         batchError = `Network error on batch ${Math.floor(i / BATCH_SIZE) + 1}`
         break
       }
+    }
+
+    // After all batches — flush notifications for affected nurses only (one summary email per nurse)
+    if (!batchError && allAffectedNurseIds.size > 0) {
+      await fetch('/api/admin/notifications/flush', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ nurseIds: [...allAffectedNurseIds] }),
+      }).catch(() => {})
     }
 
     setImportResult(

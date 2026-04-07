@@ -188,6 +188,7 @@ export default function AdminClaimsPage() {
   // Inline editing
   const [editCell, setEditCell] = useState<{ id: string; field: string } | null>(null)
   const [editVal, setEditVal] = useState('')
+  const [editVal2, setEditVal2] = useState('') // used for dosStop when editing dosStart
 
   // Add Claim modal
   const [showAddModal, setShowAddModal] = useState(false)
@@ -338,22 +339,27 @@ export default function AdminClaimsPage() {
   }
 
   // Inline editing helpers
-  function startEdit(id: string, field: string, currentVal: string) {
+  function startEdit(id: string, field: string, currentVal: string, currentVal2 = '') {
     setEditCell({ id, field })
     setEditVal(currentVal)
+    setEditVal2(currentVal2)
   }
 
   async function commitEdit() {
     if (!editCell) return
     const { id, field } = editCell
     setEditCell(null)
+    // For DOS, save both start and stop together
+    const body = field === 'dosStart'
+      ? { dosStart: editVal, dosStop: editVal2 }
+      : { [field]: editVal }
     // Optimistic update in local state
-    setClaims(prev => prev.map(c => c.id !== id ? c : { ...c, [field]: editVal || null }))
+    setClaims(prev => prev.map(c => c.id !== id ? c : { ...c, ...body }))
     await fetch(`/api/admin/claims/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ [field]: editVal }),
+      body: JSON.stringify(body),
     }).catch(() => {})
   }
 
@@ -822,11 +828,15 @@ export default function AdminClaimsPage() {
                             ? <input autoFocus className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs font-mono w-28 focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
                             : <span title="Double-click to edit">{c.claimId || '—'}</span>}
                         </td>
-                        {/* DOS — editable date pair (dosStart/dosStop) */}
-                        <td className="px-4 py-3 whitespace-nowrap text-xs text-[#2F3E4E]" onDoubleClick={() => startEdit(c.id, 'dosStart', c.dosStart ? new Date(c.dosStart).toISOString().slice(0,10) : '')}>
+                        {/* DOS — editable date pair (dosStart + dosStop together) */}
+                        <td className="px-4 py-3 whitespace-nowrap text-xs text-[#2F3E4E]" onDoubleClick={() => startEdit(c.id, 'dosStart', c.dosStart ? new Date(c.dosStart).toISOString().slice(0,10) : '', c.dosStop ? new Date(c.dosStop).toISOString().slice(0,10) : '')}>
                           {editCell?.id === c.id && editCell.field === 'dosStart'
-                            ? <input autoFocus type="date" className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
-                            : <span title="Double-click to edit DOS Start">{fmtDOS(c.dosStart, c.dosStop)}</span>}
+                            ? <div className="flex items-center gap-1">
+                                <input autoFocus type="date" className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
+                                <span className="text-[#7A8F79]">–</span>
+                                <input type="date" className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs focus:outline-none" value={editVal2} onChange={e => setEditVal2(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
+                              </div>
+                            : <span title="Double-click to edit">{fmtDOS(c.dosStart, c.dosStop)}</span>}
                         </td>
                         {/* Stage — editable select */}
                         <td className="px-4 py-3" onDoubleClick={() => startEdit(c.id, 'claimStage', c.claimStage || '')}>

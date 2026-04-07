@@ -172,7 +172,7 @@ export default function AdminClaimsPage() {
   const [claims, setClaims] = useState<Claim[]>([])
   const [loading, setLoading] = useState(true)
   const [importing, setImporting] = useState(false)
-  const [importResult, setImportResult] = useState<{ created: number; updated: number; skipped: number } | null>(null)
+  const [importResult, setImportResult] = useState<{ created: number; updated: number; skipped: number; error?: string } | null>(null)
   const [search, setSearch] = useState('')
   const [filterStage, setFilterStage] = useState('')
   const [filterYear, setFilterYear] = useState('')
@@ -396,14 +396,43 @@ export default function AdminClaimsPage() {
     setImportResult(null)
     const text = await file.text()
     const rows = parseCSV(text)
-    const res = await fetch('/api/admin/claims/import', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ rows })
-    })
-    const data = await res.json()
-    setImportResult(data)
+
+    // Send in batches of 50 to avoid Vercel timeout + body size limits
+    const BATCH_SIZE = 50
+    let totalCreated = 0
+    let totalUpdated = 0
+    let totalSkipped = 0
+    let batchError: string | null = null
+
+    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+      const batch = rows.slice(i, i + BATCH_SIZE)
+      try {
+        const res = await fetch('/api/admin/claims/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ rows: batch }),
+        })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          batchError = err.error || `Batch ${Math.floor(i / BATCH_SIZE) + 1} failed (${res.status})`
+          break
+        }
+        const data = await res.json()
+        totalCreated += data.created || 0
+        totalUpdated += data.updated || 0
+        totalSkipped += data.skipped || 0
+      } catch (err) {
+        batchError = `Network error on batch ${Math.floor(i / BATCH_SIZE) + 1}`
+        break
+      }
+    }
+
+    setImportResult(
+      batchError
+        ? { created: totalCreated, updated: totalUpdated, skipped: totalSkipped, error: batchError }
+        : { created: totalCreated, updated: totalUpdated, skipped: totalSkipped }
+    )
     setImporting(false)
     if (fileRef.current) fileRef.current.value = ''
     loadClaims()
@@ -518,12 +547,15 @@ export default function AdminClaimsPage() {
 
         {/* Import result */}
         {importResult && (
-          <div className="bg-white border border-[#7A8F79] rounded-xl p-4 mb-4 text-sm text-[#2F3E4E] flex gap-6">
-            <span>✓ Import complete</span>
-            <span className="text-green-700 font-semibold">{importResult.created} created</span>
-            <span className="text-blue-700 font-semibold">{importResult.updated} updated</span>
+          <div className={`border rounded-xl p-4 mb-4 text-sm flex flex-wrap gap-4 ${importResult.error ? 'bg-red-50 border-red-300 text-red-800' : 'bg-white border-[#7A8F79] text-[#2F3E4E]'}`}>
+            <span className="font-semibold">{importResult.error ? '⚠ Partial import' : '✓ Import complete'}</span>
+            {importResult.created > 0 && <span className="text-green-700 font-semibold">{importResult.created} created</span>}
+            {importResult.updated > 0 && <span className="text-blue-700 font-semibold">{importResult.updated} updated</span>}
             {importResult.skipped > 0 && (
               <span className="text-red-600 font-semibold">{importResult.skipped} skipped — provider name not matched</span>
+            )}
+            {importResult.error && (
+              <span className="text-red-700 font-semibold">Error: {importResult.error}</span>
             )}
           </div>
         )}

@@ -3,6 +3,8 @@ import { prisma } from '../../../../../lib/prisma'
 import { verifyToken } from '../../../../../lib/auth'
 import { sendNewClaimAlert } from '../../../../../lib/sendEmail'
 
+export const maxDuration = 60 // seconds — requires Vercel Pro or higher
+
 const STAGE_PRIORITY: Record<string, number> = {
   'Draft': 0,
   '': 0,

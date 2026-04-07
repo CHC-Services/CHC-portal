@@ -62,24 +62,32 @@ export async function POST(req: Request) {
       continue
     }
 
-    // Parse claim payloads safely
-    const claims = eligibleClaims.map(n => {
+    // Parse claim payloads — deduplicate by claimId so re-uploads don't double-send
+    const seenClaimIds = new Set<string>()
+    const claims = eligibleClaims.reduce<{ claimId: string; dosStart: Date | null; dosStop: Date | null; totalBilled: number | null }[]>((acc, n) => {
       const p = n.payload as Record<string, any>
-      return {
-        claimId: p.claimId || '—',
+      const claimId = p.claimId || '—'
+      if (seenClaimIds.has(claimId)) return acc
+      seenClaimIds.add(claimId)
+      acc.push({
+        claimId,
         dosStart: p.dosStart ? new Date(p.dosStart) : null,
         dosStop: p.dosStop ? new Date(p.dosStop) : null,
         totalBilled: typeof p.totalBilled === 'number' ? p.totalBilled : null,
-      }
-    })
+      })
+      return acc
+    }, [])
 
-    const documents = eligibleDocs.map(n => {
+    // Parse document payloads — deduplicate by title+category
+    const seenDocs = new Set<string>()
+    const documents = eligibleDocs.reduce<{ documentTitle: string; category: string }[]>((acc, n) => {
       const p = n.payload as Record<string, any>
-      return {
-        documentTitle: p.documentTitle || 'Untitled',
-        category: p.category || 'General',
-      }
-    })
+      const key = `${p.documentTitle}|${p.category}`
+      if (seenDocs.has(key)) return acc
+      seenDocs.add(key)
+      acc.push({ documentTitle: p.documentTitle || 'Untitled', category: p.category || 'General' })
+      return acc
+    }, [])
 
     sendBulkImportSummary({
       nurseEmail: email,

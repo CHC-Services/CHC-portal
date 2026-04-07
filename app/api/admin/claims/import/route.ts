@@ -50,12 +50,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'No rows provided' }, { status: 400 })
   }
 
+  // Check bulk mode ONCE up front — not once per row
+  const bulkSetting = await prisma.systemSetting.findUnique({ where: { key: 'bulkImportMode' } })
+  const bulkMode = bulkSetting?.value === 'true'
+
   // Build provider name → nurseId lookup using providerAliases
   const profiles = await prisma.nurseProfile.findMany({
-    select: { id: true, displayName: true, firstName: true, lastName: true, providerAliases: true }
+    select: { id: true, displayName: true, firstName: true, lastName: true, providerAliases: true,
+              notifyNewClaim: true, user: { select: { email: true } } }
   })
 
-  function findNurse(providerName: string): string | null {
+  function findNurse(providerName: string): typeof profiles[number] | null {
     if (!providerName) return null
     const lower = providerName.toLowerCase().trim()
     return profiles.find(p => {
@@ -63,22 +68,26 @@ export async function POST(req: Request) {
       const display = (p.displayName || '').toLowerCase().trim()
       const aliases = (p.providerAliases || []).map((a: string) => a.toLowerCase().trim())
       return full === lower || display === lower || aliases.includes(lower)
-    })?.id ?? null
+    }) ?? null
   }
 
   let created = 0
   let updated = 0
   let skipped = 0
 
+  // Collect pending notifications to batch-insert after the loop
+  const pendingToQueue: { nurseId: string; claimId: string; dosStart: Date | null; dosStop: Date | null; totalBilled: number | null }[] = []
+
   for (const row of rows) {
     const providerName = row['Provider Name'] || ''
-    const nurseId = findNurse(providerName)
+    const profile = findNurse(providerName)
 
-    if (!nurseId) {
+    if (!profile) {
       skipped++
       continue
     }
 
+    const nurseId = profile.id
     const claimId = row['Claim ID'] || null
 
     const data = {
@@ -108,12 +117,9 @@ export async function POST(req: Request) {
     if (claimId) {
       const existing = await prisma.claim.findFirst({ where: { claimId, nurseId } })
       if (existing) {
-        // Don't let CSV overwrite a stage that EDI already advanced to a higher priority
         const csvPriority = STAGE_PRIORITY[data.claimStage || ''] ?? 0
         const existingPriority = STAGE_PRIORITY[existing.claimStage || ''] ?? 0
         const safeStage = csvPriority >= existingPriority ? data.claimStage : existing.claimStage
-
-        // Don't let CSV wipe notes that EDI wrote — only update notes if none exist yet
         const safeNotes = existing.processingNotes || data.processingNotes
 
         await prisma.claim.update({
@@ -124,54 +130,54 @@ export async function POST(req: Request) {
       } else {
         const newClaim = await prisma.claim.create({ data })
         created++
-        fireClaimAlert(nurseId, newClaim)
+        // Queue or fire alert — no extra DB call per row
+        if (bulkMode) {
+          pendingToQueue.push({ nurseId, claimId: newClaim.claimId!, dosStart: newClaim.dosStart, dosStop: newClaim.dosStop, totalBilled: newClaim.totalBilled })
+        } else {
+          fireClaimAlert(profile, newClaim)
+        }
       }
     } else {
       const newClaim = await prisma.claim.create({ data })
       created++
-      fireClaimAlert(nurseId, newClaim)
+      if (bulkMode) {
+        // No claimId to reference — skip queuing (nothing meaningful to notify about)
+      } else {
+        fireClaimAlert(profile, newClaim)
+      }
     }
+  }
+
+  // Batch-insert all pending notifications in one go
+  if (pendingToQueue.length > 0) {
+    await prisma.pendingNotification.createMany({
+      data: pendingToQueue.map(n => ({
+        nurseId: n.nurseId,
+        type: 'claim',
+        payload: {
+          claimId: n.claimId,
+          dosStart: n.dosStart?.toISOString() ?? null,
+          dosStop: n.dosStop?.toISOString() ?? null,
+          totalBilled: n.totalBilled,
+        },
+      })),
+    })
   }
 
   return NextResponse.json({ ok: true, created, updated, skipped })
 }
 
-async function fireClaimAlert(nurseId: string, claim: { claimId: string | null; dosStart: Date | null; dosStop: Date | null; totalBilled: number | null }) {
-  try {
-    // Check global bulk import mode — if ON, queue instead of sending immediately
-    const setting = await prisma.systemSetting.findUnique({ where: { key: 'bulkImportMode' } })
-    if (setting?.value === 'true') {
-      if (claim.claimId) {
-        await prisma.pendingNotification.create({
-          data: {
-            nurseId,
-            type: 'claim',
-            payload: {
-              claimId: claim.claimId,
-              dosStart: claim.dosStart?.toISOString() ?? null,
-              dosStop: claim.dosStop?.toISOString() ?? null,
-              totalBilled: claim.totalBilled,
-            },
-          },
-        })
-      }
-      return
-    }
-
-    const profile = await prisma.nurseProfile.findUnique({
-      where: { id: nurseId },
-      include: { user: { select: { email: true } } },
-    })
-    if (!profile?.notifyNewClaim || !profile.user?.email || !claim.claimId) return
-    sendNewClaimAlert({
-      nurseEmail: profile.user.email,
-      nurseName: profile.displayName,
-      claimId: claim.claimId,
-      dosStart: claim.dosStart,
-      dosStop: claim.dosStop,
-      totalBilled: claim.totalBilled,
-    }).catch(() => {})
-  } catch {
-    // fire-and-forget — never block the import
-  }
+function fireClaimAlert(
+  profile: { id: string; displayName: string; notifyNewClaim: boolean; user: { email: string } | null },
+  claim: { claimId: string | null; dosStart: Date | null; dosStop: Date | null; totalBilled: number | null }
+) {
+  if (!profile.notifyNewClaim || !profile.user?.email || !claim.claimId) return
+  sendNewClaimAlert({
+    nurseEmail: profile.user.email,
+    nurseName: profile.displayName,
+    claimId: claim.claimId,
+    dosStart: claim.dosStart,
+    dosStop: claim.dosStop,
+    totalBilled: claim.totalBilled,
+  }).catch(() => {})
 }

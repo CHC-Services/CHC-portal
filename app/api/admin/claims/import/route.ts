@@ -44,14 +44,30 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json()
-  // Client pre-matches provider names to nurseIds — rows include _nurseId
-  const { rows } = body as { rows: (Record<string, string> & { _nurseId: string })[] }
+  const { rows } = body as { rows: Record<string, string>[] }
 
   if (!rows || !Array.isArray(rows) || rows.length === 0) {
     return NextResponse.json({ error: 'No rows provided' }, { status: 400 })
   }
 
-  // ── 1. Parse every row into typed data (no DB call needed — nurseId from client) ──
+  // ── 1. Load nurse profiles for name matching ──────────────────────────────
+  const profiles = await prisma.nurseProfile.findMany({
+    select: { id: true, displayName: true, firstName: true, lastName: true, providerAliases: true },
+  })
+
+  function findNurseId(providerName: string): string | null {
+    if (!providerName) return null
+    const lower = providerName.toLowerCase().trim()
+    const match = profiles.find(p => {
+      const full = `${p.firstName || ''} ${p.lastName || ''}`.toLowerCase().trim()
+      const display = (p.displayName || '').toLowerCase().trim()
+      const aliases = (p.providerAliases || []).map((a: string) => a.toLowerCase().trim())
+      return full === lower || display === lower || aliases.includes(lower)
+    })
+    return match?.id ?? null
+  }
+
+  // ── 2. Parse every row into typed data ────────────────────────────────────
   type RowData = {
     nurseId: string
     claimId: string | null
@@ -62,10 +78,10 @@ export async function POST(req: Request) {
   let skipped = 0
 
   for (const row of rows) {
-    const nurseId = row._nurseId
+    const providerName = row['Provider Name'] || ''
+    const nurseId = findNurseId(providerName)
     if (!nurseId) { skipped++; continue }
 
-    const providerName = row['Provider Name'] || ''
     parsed.push({
       nurseId,
       claimId: row['Claim ID'] || null,

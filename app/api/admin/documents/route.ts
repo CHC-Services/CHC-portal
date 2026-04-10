@@ -93,13 +93,13 @@ export async function POST(req: Request) {
   if (nurseProfile?.notifyNewDocument) {
     const bulkSetting = await prisma.systemSetting.findUnique({ where: { key: 'bulkImportMode' } })
     if (bulkSetting?.value === 'true') {
-      prisma.pendingNotification.create({
+      await prisma.pendingNotification.create({
         data: {
           nurseId,
           type: 'document',
           payload: { documentTitle: title, category },
         },
-      }).catch(() => {})
+      })
     } else if (nurseProfile.user?.email) {
       sendNewDocumentAlert({
         nurseEmail: nurseProfile.user.email,

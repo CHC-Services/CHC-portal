@@ -77,13 +77,13 @@ export async function POST(req: Request) {
   for (const nurseProfile of profiles) {
     if (!nurseProfile.notifyNewDocument) continue
     if (bulkMode) {
-      prisma.pendingNotification.create({
+      await prisma.pendingNotification.create({
         data: {
           nurseId: nurseProfile.id,
           type: 'document',
           payload: { documentTitle: title, category: category || 'General' },
         },
-      }).catch(() => {})
+      })
     } else if (nurseProfile.user?.email) {
       sendNewDocumentAlert({
         nurseEmail: nurseProfile.user.email,

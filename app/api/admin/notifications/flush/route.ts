@@ -95,14 +95,14 @@ export async function POST(req: Request) {
       return acc
     }, [])
 
-    sendBulkImportSummary({
+    const ok = await sendBulkImportSummary({
       nurseEmail: email,
       nurseName: profile.displayName,
       claims,
       documents,
-    }).catch(() => {})
+    })
 
-    sent++
+    if (ok) sent++; else skipped++
   }
 
   // Clear all pending notifications regardless of whether email was sent

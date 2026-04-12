@@ -1,6 +1,6 @@
 'use client'
 
-import { fmtPhone } from '../../../lib/formatPhone'
+import { fmtPhone } from '../../../../lib/formatPhone'
 
 const FEE_LABELS: Record<string, string> = {
   A1: 'Medicaid — Single Payer',

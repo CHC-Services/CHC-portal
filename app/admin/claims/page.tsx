@@ -488,8 +488,8 @@ export default function AdminClaimsPage() {
       }
     }
 
-    // Flush — one summary email per affected nurse
-    if (!batchError && allAffectedNurseIds.size > 0) {
+    // Flush — one summary email per affected nurse (skip if bulk mode is ON; admin will flush manually)
+    if (!batchError && allAffectedNurseIds.size > 0 && !bulkMode) {
       await fetch('/api/admin/notifications/flush', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

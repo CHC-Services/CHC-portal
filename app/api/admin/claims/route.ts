@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../../lib/prisma'
 import { verifyToken } from '../../../../lib/auth'
+import { runClaimReminders } from '../../../../lib/runClaimReminders'
 
 function adminOnly(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -87,6 +88,9 @@ export async function POST(req: Request) {
       nurse: { select: { displayName: true, accountNumber: true } },
     },
   })
+
+  // Check if this new claim (or any existing ones) now qualify for a prompt-pay reminder
+  runClaimReminders().catch(() => {})
 
   return NextResponse.json({ ok: true, claim })
 }

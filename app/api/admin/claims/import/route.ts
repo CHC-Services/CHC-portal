@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../lib/prisma'
 import { verifyToken } from '../../../../../lib/auth'
+import { runClaimReminders } from '../../../../../lib/runClaimReminders'
 
 export const maxDuration = 60 // seconds — requires Vercel Pro or higher
 
@@ -187,6 +188,10 @@ export async function POST(req: Request) {
   }
 
   const affectedNurseIds = [...new Set(toQueue.map(r => r.nurseId))]
+
+  // Run prompt-pay reminder check across all claims (catches manually-added claims
+  // and any updated rows whose submitDate may now qualify)
+  runClaimReminders().catch(() => {})
 
   return NextResponse.json({ ok: true, created, updated, skipped, affectedNurseIds })
 }

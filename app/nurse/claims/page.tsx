@@ -3,6 +3,31 @@
 import { useState, useEffect, useRef } from 'react'
 import PortalMessages from '../../components/PortalMessages'
 
+// ── Search helper — checks every string/number field on a claim ──────────────
+function claimMatchesSearch(c: Claim, q: string): boolean {
+  if (!q.trim()) return true
+  const term = q.toLowerCase().trim()
+  const candidates = [
+    c.claimId, c.providerName, c.claimStage,
+    c.primaryPayer, c.primaryPaidTo,
+    c.secondaryPayer, c.secondaryPaidTo,
+    c.processingNotes, c.resubmissionOf,
+    c.totalBilled      != null ? c.totalBilled.toString()      : null,
+    c.totalReimbursed  != null ? c.totalReimbursed.toString()  : null,
+    c.remainingBalance != null ? c.remainingBalance.toString() : null,
+    c.primaryAllowedAmt  != null ? c.primaryAllowedAmt.toString()  : null,
+    c.primaryPaidAmt     != null ? c.primaryPaidAmt.toString()     : null,
+    c.secondaryAllowedAmt != null ? c.secondaryAllowedAmt.toString() : null,
+    c.secondaryPaidAmt   != null ? c.secondaryPaidAmt.toString()   : null,
+    c.dosStart         ? new Date(c.dosStart).toLocaleDateString('en-US', { timeZone: 'UTC' })         : null,
+    c.dosStop          ? new Date(c.dosStop).toLocaleDateString('en-US', { timeZone: 'UTC' })          : null,
+    c.primaryPaidDate  ? new Date(c.primaryPaidDate).toLocaleDateString('en-US', { timeZone: 'UTC' })  : null,
+    c.secondaryPaidDate ? new Date(c.secondaryPaidDate).toLocaleDateString('en-US', { timeZone: 'UTC' }) : null,
+    c.dateFullyFinalized ? new Date(c.dateFullyFinalized).toLocaleDateString('en-US', { timeZone: 'UTC' }) : null,
+  ]
+  return candidates.some(f => f && f.toLowerCase().includes(term))
+}
+
 type Claim = {
   id: string
   claimId: string | null
@@ -412,11 +437,17 @@ function ClaimRow({ primary: c, chain, eobDocs }: ClaimGroup & { eobDocs: { id: 
   )
 }
 
+const YEARS = ['', '2024', '2025', '2026', '2027', '2028', '2029', '2030'] as const
+
 export default function NurseClaimsPage() {
   const [claims, setClaims] = useState<Claim[]>([])
   const [enrolledInBilling, setEnrolledInBilling] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(true)
   const [filterYear, setFilterYear] = useState('')
+  const [searchInput, setSearchInput] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [showStickyBar, setShowStickyBar] = useState(false)
+  const sentinelRef = useRef<HTMLDivElement>(null)
   // Map from Claim.id (DB UUID) → array of EOB docs (supports multiple per claim)
   const [eobMap, setEobMap] = useState<Record<string, { id: string; fileName: string }[]>>({})
 
@@ -443,18 +474,88 @@ export default function NurseClaimsPage() {
       })
   }, [])
 
+  // Show compact sticky bar when the search+year section scrolls behind the banner
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+    const obs = new IntersectionObserver(
+      ([entry]) => setShowStickyBar(!entry.isIntersecting),
+      { rootMargin: '-220px 0px 0px 0px', threshold: 0 }
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+
   const yearFilteredClaims = filterYear
     ? claims.filter(c => c.dosStart && new Date(c.dosStart).getUTCFullYear().toString() === filterYear)
     : claims
 
-  const resubIds = new Set(yearFilteredClaims.filter(c => c.resubmissionOf).map(c => c.resubmissionOf as string))
-  const activeClaims = yearFilteredClaims.filter(c => !c.claimId || !resubIds.has(c.claimId))
+  const searchFilteredClaims = searchQuery
+    ? yearFilteredClaims.filter(c => claimMatchesSearch(c, searchQuery))
+    : yearFilteredClaims
+
+  const resubIds = new Set(searchFilteredClaims.filter(c => c.resubmissionOf).map(c => c.resubmissionOf as string))
+  const activeClaims = searchFilteredClaims.filter(c => !c.claimId || !resubIds.has(c.claimId))
 
   const totalBilled = activeClaims.reduce((s, c) => s + (c.totalBilled || 0), 0)
   const totalReimbursed = activeClaims.reduce((s, c) => s + (c.totalReimbursed || 0), 0)
 
+  function submitSearch() { setSearchQuery(searchInput) }
+  function clearSearch() { setSearchInput(''); setSearchQuery('') }
+
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">
+
+      {/* ── Compact sticky bar (mobile only, shown when search+year scrolls off) ── */}
+      {showStickyBar && (
+        <div className="md:hidden fixed top-[220px] left-0 right-0 z-40 bg-[#F4F6F5]/95 backdrop-blur-sm border-b border-[#D9E1E8] shadow-sm px-3 py-2 flex items-center gap-2">
+          {/* Year dropdown */}
+          <div className="flex items-center gap-1 shrink-0">
+            <span className="text-[10px] text-[#7A8F79] font-semibold uppercase tracking-wide">Year:</span>
+            <select
+              value={filterYear}
+              onChange={e => setFilterYear(e.target.value)}
+              className="text-xs border border-[#D9E1E8] rounded-md px-1.5 py-1 text-[#2F3E4E] bg-white focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
+            >
+              {YEARS.map(y => <option key={y || 'all'} value={y}>{y || 'All'}</option>)}
+            </select>
+          </div>
+          <div className="w-px h-5 bg-[#D9E1E8] shrink-0" />
+          {/* Inline search field */}
+          <div className="flex-1 flex items-center bg-white border border-[#D9E1E8] rounded-lg overflow-hidden min-w-0">
+            <svg className="w-3.5 h-3.5 text-[#7A8F79] ml-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+            </svg>
+            <input
+              type="text"
+              value={searchInput}
+              onChange={e => setSearchInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') submitSearch() }}
+              placeholder="Search claims…"
+              className="flex-1 min-w-0 px-2 py-1.5 text-xs text-[#2F3E4E] focus:outline-none placeholder-[#7A8F79]"
+            />
+            {/* 🔍 = submit */}
+            <button
+              onClick={submitSearch}
+              className="px-2 py-1.5 text-[#7A8F79] hover:text-[#2F3E4E] transition"
+              title="Search"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+              </svg>
+            </button>
+            {/* ✕ = clear */}
+            {(searchQuery || searchInput) && (
+              <button
+                onClick={clearSearch}
+                className="px-2 py-1.5 text-red-500 hover:text-red-700 transition font-bold text-sm leading-none"
+                title="Clear search"
+              >✕</button>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="max-w-4xl mx-auto">
 
         <div className="mb-6">
@@ -508,9 +609,43 @@ export default function NurseClaimsPage() {
 
         {claims.length > 0 && (
           <>
-            {/* Year filter */}
+            {/* Sentinel — IntersectionObserver watches this to trigger sticky bar */}
+            <div ref={sentinelRef} className="h-px -mt-px" />
+
+            {/* ── Search bar ── */}
+            <div className="flex items-center gap-2 mb-4">
+              <div className="flex-1 flex items-center bg-white border border-[#D9E1E8] rounded-xl shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-[#7A8F79]">
+                <svg className="w-4 h-4 text-[#7A8F79] ml-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+                </svg>
+                <input
+                  type="text"
+                  value={searchInput}
+                  onChange={e => setSearchInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') submitSearch() }}
+                  placeholder="Search by claim ID, payer, amount, date…"
+                  className="flex-1 px-3 py-2.5 text-sm text-[#2F3E4E] placeholder-[#7A8F79] focus:outline-none"
+                />
+              </div>
+              <button
+                onClick={submitSearch}
+                className="shrink-0 bg-[#2F3E4E] hover:bg-[#7A8F79] text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-sm transition"
+              >
+                Search
+              </button>
+              {(searchQuery || searchInput) && (
+                <button
+                  onClick={clearSearch}
+                  className="shrink-0 bg-[#C4622D] hover:bg-[#a3511f] text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-sm transition"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {/* ── Year filter pills ── */}
             <div className="flex flex-wrap gap-2 mb-4">
-              {(['', '2024', '2025', '2026', '2027', '2028', '2029', '2030'] as const).map(y => (
+              {YEARS.map(y => (
                 <button
                   key={y || 'all'}
                   onClick={() => setFilterYear(y)}
@@ -524,6 +659,17 @@ export default function NurseClaimsPage() {
                 </button>
               ))}
             </div>
+
+            {/* Active search indicator */}
+            {searchQuery && (
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xs text-[#7A8F79]">
+                  Showing results for <span className="font-semibold text-[#2F3E4E]">&ldquo;{searchQuery}&rdquo;</span>
+                  {' '}— {activeClaims.length} claim{activeClaims.length !== 1 ? 's' : ''} matched
+                </span>
+                <button onClick={clearSearch} className="text-[#C4622D] text-xs font-semibold hover:underline">Clear</button>
+              </div>
+            )}
 
             <div className="grid grid-cols-3 gap-2 md:gap-4 mb-6">
               <div className="bg-white rounded-xl p-2.5 md:p-4 shadow-sm">

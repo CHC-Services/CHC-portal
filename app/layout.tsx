@@ -2,6 +2,7 @@ import "./globals.css";
 import { getUserFromCookie } from "@/lib/getUserFromCookie";
 import Banner from "./components/Banner";
 import Footer from "./components/Footer";
+import PullToRefresh from "./components/PullToRefresh";
 
 export default async function RootLayout({
   children,
@@ -19,6 +20,7 @@ export default async function RootLayout({
       </head>
       <body className="pt-[220px] md:pt-[200px]">
         <Banner user={user} />
+        <PullToRefresh />
         <div className="page-wrap px-4 sm:px-6">
           {children}
         </div>

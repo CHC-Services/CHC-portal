@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
+import { fmtPhone } from '../../../../../lib/formatPhone'
 
 type Entry = { workDate: string; invoiceFeePlan?: string; invoiceFeeAmt?: number }
 type Payment = { id: string; receiptNumber: string; amount: number; method?: string; note?: string; s3Key?: string; appliedAt: string }
@@ -183,7 +184,7 @@ export default function PrintInvoicePage({ params }: { params: Promise<{ id: str
                       <p className="text-sm text-[#2F3E4E]">{invoice.nurse.bizServiceAddress}</p>
                     )}
                     {invoice.nurse.bizPhone && (
-                      <p className="text-sm text-[#7A8F79] mt-0.5">{invoice.nurse.bizPhone}</p>
+                      <p className="text-sm text-[#7A8F79] mt-0.5">{fmtPhone(invoice.nurse.bizPhone)}</p>
                     )}
                     {invoice.nurse.bizEmail && (
                       <p className="text-sm text-[#7A8F79] mt-0.5">{invoice.nurse.bizEmail}</p>
@@ -206,7 +207,7 @@ export default function PrintInvoicePage({ params }: { params: Promise<{ id: str
                       </p>
                     )}
                     {invoice.nurse?.phone && (
-                      <p className="text-sm text-[#7A8F79] mt-0.5">{invoice.nurse.phone}</p>
+                      <p className="text-sm text-[#7A8F79] mt-0.5">{fmtPhone(invoice.nurse.phone)}</p>
                     )}
                     <p className="text-sm text-[#7A8F79] mt-0.5">{email}</p>
                   </>

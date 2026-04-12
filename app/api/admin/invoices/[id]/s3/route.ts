@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../../lib/prisma'
 import { verifyToken } from '../../../../../../lib/auth'
 import { uploadToS3, getPresignedDownloadUrl } from '../../../../../../lib/s3'
+import { fmtPhone } from '../../../../../../lib/formatPhone'
 
 // Build a self-contained printable HTML invoice (no external deps)
 function buildInvoiceHtml(invoice: any): string {
@@ -20,7 +21,7 @@ function buildInvoiceHtml(invoice: any): string {
   const billToAddress = useBiz
     ? (nurse?.bizServiceAddress || '')
     : [nurse?.address, [nurse?.city, nurse?.state].filter(Boolean).join(', ') + (nurse?.zip ? ` ${nurse.zip}` : '')].filter(Boolean).join('<br>')
-  const billToPhone = useBiz ? (nurse?.bizPhone || '') : (nurse?.phone || '')
+  const billToPhone = fmtPhone(useBiz ? (nurse?.bizPhone || '') : (nurse?.phone || ''))
   const billToEmail = useBiz ? (nurse?.bizEmail || nurse?.user?.email || invoice.nurseEmail) : (nurse?.user?.email || invoice.nurseEmail)
 
   const entryRows = (invoice.entries || []).map((e: any) => `

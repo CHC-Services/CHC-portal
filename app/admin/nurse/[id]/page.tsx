@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AdminNav from '../../../components/AdminNav'
 import { DateInput, DateInputHandle } from '../../../components/DateInput'
+import { fmtPhoneInput } from '../../../../lib/formatPhone'
 
 type Profile = Record<string, any>
 
@@ -50,7 +51,10 @@ function Field({
         <input
           type={sensitive && !show ? 'password' : type}
           value={profile[field] || ''}
-          onChange={(e) => setProfile({ ...profile, [field]: e.target.value })}
+          onChange={(e) => {
+            const val = type === 'tel' ? fmtPhoneInput(e.target.value) : e.target.value
+            setProfile({ ...profile, [field]: val })
+          }}
           className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] pr-16"
         />
         {sensitive && (
@@ -840,7 +844,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                 <Field label="Last Name"      field="lastName"      profile={profile} setProfile={setProfile} />
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Phone"          field="phone"         profile={profile} setProfile={setProfile} />
+                <Field label="Phone"          field="phone"         profile={profile} setProfile={setProfile} type="tel" />
                 <Field label="Email"          field="user.email"    profile={profile} setProfile={setProfile} type="email" />
               </div>
               <Field label="Home Address"     field="address"       profile={profile} setProfile={setProfile} />
@@ -879,7 +883,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                   <Field label="Entity Name"       field="bizEntityName"      profile={profile} setProfile={setProfile} />
                   <Field label="Service Address"   field="bizServiceAddress"  profile={profile} setProfile={setProfile} />
                   <div className="grid grid-cols-2 gap-3">
-                    <Field label="Business Phone"  field="bizPhone"           profile={profile} setProfile={setProfile} />
+                    <Field label="Business Phone"  field="bizPhone"           profile={profile} setProfile={setProfile} type="tel" />
                     <Field label="Business Email"  field="bizEmail"           profile={profile} setProfile={setProfile} type="email" />
                   </div>
                   <div className="grid grid-cols-2 gap-3">

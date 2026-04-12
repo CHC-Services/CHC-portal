@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import PortalMessages from '../../components/PortalMessages'
+import { fmtPhoneInput } from '../../../lib/formatPhone'
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -121,6 +122,17 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-1">
+                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Phone Number</label>
+                <input
+                  type="tel"
+                  placeholder="(555) 555-5555"
+                  value={profile.phone || ''}
+                  onChange={(e) => setProfile({ ...profile, phone: fmtPhoneInput(e.target.value) })}
+                  className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]"
+                />
+              </div>
+
+              <div className="space-y-1">
                 <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Home Address</label>
                 <input
                   type="text"
@@ -191,7 +203,7 @@ export default function ProfilePage() {
                   </div>
                   <div className="space-y-1">
                     <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Business Phone</label>
-                    <input type="tel" value={profile.bizPhone || ''} onChange={(e) => setProfile({ ...profile, bizPhone: e.target.value })} placeholder="(555) 555-5555" className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
+                    <input type="tel" value={profile.bizPhone || ''} onChange={(e) => setProfile({ ...profile, bizPhone: fmtPhoneInput(e.target.value) })} placeholder="(555) 555-5555" className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
                   </div>
                   <div className="space-y-1">
                     <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Business Email</label>

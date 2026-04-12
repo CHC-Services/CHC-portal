@@ -1,5 +1,7 @@
 'use client'
 
+import { fmtPhone } from '../../../lib/formatPhone'
+
 const FEE_LABELS: Record<string, string> = {
   A1: 'Medicaid — Single Payer',
   A2: 'Commercial — Single Payer',
@@ -154,7 +156,7 @@ export default function InvoiceTemplatePage() {
                 <p className="font-bold text-[#2F3E4E]">{SAMPLE.firstName} {SAMPLE.lastName}</p>
                 <p className="text-sm text-[#2F3E4E]">{SAMPLE.address}</p>
                 <p className="text-sm text-[#2F3E4E]">{SAMPLE.city}, {SAMPLE.state} {SAMPLE.zip}</p>
-                <p className="text-sm text-[#7A8F79] mt-0.5">{SAMPLE.phone}</p>
+                <p className="text-sm text-[#7A8F79] mt-0.5">{fmtPhone(SAMPLE.phone)}</p>
                 <p className="text-sm text-[#7A8F79]">{SAMPLE.email}</p>
                 <p className="text-xs font-mono text-[#7A8F79] mt-0.5">Acct: {SAMPLE.accountNumber}</p>
               </div>

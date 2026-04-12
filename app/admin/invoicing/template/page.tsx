@@ -59,12 +59,44 @@ export default function InvoiceTemplatePage() {
   return (
     <>
       <style>{`
-        @media print {
-          .no-print { display: none !important; }
-          body { margin: 0; background: white; }
-          .invoice-wrap { box-shadow: none !important; }
+        @page {
+          size: letter portrait;
+          margin: 0.55in;
         }
-        @page { margin: 1.5cm; }
+        @media print {
+          /* Force background colors and images to print */
+          *, *::before, *::after {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+          }
+          /* Strip all screen chrome */
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+          }
+          /* Hide toolbar */
+          .no-print { display: none !important; }
+          /* Remove screen-only outer wrapper styling */
+          .print-outer {
+            padding-top: 0 !important;
+            background: white !important;
+            min-height: unset !important;
+          }
+          /* Make invoice fill the page, no screen decorations */
+          .invoice-wrap {
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            margin: 0 !important;
+            max-width: 100% !important;
+            width: 100% !important;
+          }
+          /* Tighten spacing so a typical invoice fits one page */
+          .print-body { padding: 20px 28px !important; }
+          .print-gap  { gap: 16px !important; }
+          .print-section { margin-bottom: 14px !important; }
+        }
       `}</style>
 
       {/* Toolbar */}
@@ -86,7 +118,7 @@ export default function InvoiceTemplatePage() {
         </button>
       </div>
 
-      <div className="pt-14 min-h-screen bg-gray-100">
+      <div className="print-outer pt-14 min-h-screen bg-gray-100">
         <div className="invoice-wrap max-w-[720px] mx-auto my-8 bg-white shadow-xl rounded-xl overflow-hidden p-0">
 
           {/* Header */}
@@ -113,10 +145,10 @@ export default function InvoiceTemplatePage() {
             </div>
           </div>
 
-          <div className="px-8 py-6 space-y-6">
+          <div className="print-body px-8 py-6 space-y-6">
 
             {/* Bill To / Invoice Info */}
-            <div className="grid grid-cols-2 gap-6">
+            <div className="print-gap print-section grid grid-cols-2 gap-6">
               <div className="bg-[#F4F6F5] rounded-xl p-4">
                 <p className="text-[9px] font-bold uppercase tracking-widest text-[#7A8F79] mb-2">Bill To</p>
                 <p className="font-bold text-[#2F3E4E]">{SAMPLE.firstName} {SAMPLE.lastName}</p>

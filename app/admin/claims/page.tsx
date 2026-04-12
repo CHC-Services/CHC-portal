@@ -114,9 +114,16 @@ function groupClaims(claims: Claim[]): ClaimGroup[] {
   const groups: ClaimGroup[] = []
   for (const c of claims) {
     if (superseded.has(c.claimId || '')) continue
-    const originals = c.resubmissionOf && byClaimId.has(c.resubmissionOf)
-      ? [byClaimId.get(c.resubmissionOf)!]
-      : []
+    // Follow the full resubmission chain: direct original → its original → etc.
+    const originals: Claim[] = []
+    let current = c
+    const seen = new Set<string>()
+    while (current.resubmissionOf && byClaimId.has(current.resubmissionOf) && !seen.has(current.resubmissionOf)) {
+      seen.add(current.resubmissionOf)
+      const orig = byClaimId.get(current.resubmissionOf)!
+      originals.push(orig)
+      current = orig
+    }
     groups.push({ primary: c, originals })
   }
   return groups
@@ -1109,32 +1116,85 @@ export default function AdminClaimsPage() {
                             : <span title="Double-click to edit">{c.processingNotes || '—'}</span>}
                         </td>
                       </tr>
-                      {isExpanded && originals.map(orig => (
-                        <tr key={orig.id} className="bg-red-50 text-xs text-[#7A8F79] border-l-4 border-red-200">
-                          <td className="px-4 py-2"></td>
-                          <td className="px-4 py-2 text-[10px] text-red-400 font-semibold whitespace-nowrap">Original</td>
-                          <td className="px-4 py-2">{orig.providerName || orig.nurse?.displayName}</td>
-                          <td className="px-4 py-2 font-mono">{orig.claimId || '—'}</td>
-                          <td className="px-4 py-2 whitespace-nowrap">{fmtDOS(orig.dosStart, orig.dosStop)}</td>
-                          <td className="px-4 py-2"><StageBadge stage={orig.claimStage} /></td>
-                          <td className="px-4 py-2 whitespace-nowrap">{fmtDate(orig.submitDate)}</td>
-                          <td className="px-4 py-2 text-right">{fmt(orig.totalBilled, '$')}</td>
-                          <td className="px-4 py-2 border-l border-[#D9E1E8]">{orig.primaryPayer || '—'}</td>
-                          <td className="px-4 py-2 text-right">{fmt(orig.primaryAllowedAmt, '$')}</td>
-                          <td className="px-4 py-2 text-right">{fmt(orig.primaryPaidAmt, '$')}</td>
-                          <td className="px-4 py-2 whitespace-nowrap">{fmtDate(orig.primaryPaidDate)}</td>
-                          <td className="px-4 py-2">{orig.primaryPaidTo || '—'}</td>
-                          <td className="px-4 py-2 border-l border-[#D9E1E8]">{orig.secondaryPayer || '—'}</td>
-                          <td className="px-4 py-2 text-right">{fmt(orig.secondaryAllowedAmt, '$')}</td>
-                          <td className="px-4 py-2 text-right">{fmt(orig.secondaryPaidAmt, '$')}</td>
-                          <td className="px-4 py-2 whitespace-nowrap">{fmtDate(orig.secondaryPaidDate)}</td>
-                          <td className="px-4 py-2">{orig.secondaryPaidTo || '—'}</td>
-                          <td className="px-4 py-2 border-l border-[#D9E1E8] text-right">{fmt(orig.totalReimbursed, '$')}</td>
-                          <td className="px-4 py-2 text-right">{fmt(orig.remainingBalance, '$')}</td>
-                          <td className="px-4 py-2 whitespace-nowrap">{fmtDate(orig.dateFullyFinalized)}</td>
-                          <td className="px-4 py-2 max-w-xs truncate">{orig.processingNotes || '—'}</td>
-                        </tr>
-                      ))}
+                      {isExpanded && originals.map((orig, depth) => {
+                        const depthColors = [
+                          { row: 'bg-red-50 border-l-4 border-red-200',    label: 'text-red-400'    },
+                          { row: 'bg-orange-50 border-l-4 border-orange-200', label: 'text-orange-400' },
+                          { row: 'bg-amber-50 border-l-4 border-amber-200',  label: 'text-amber-500'  },
+                        ]
+                        const dc = depthColors[Math.min(depth, depthColors.length - 1)]
+                        const labelText = depth === 0 ? 'Original' : `v${originals.length - depth} Original`
+                        const indent = (depth + 1) * 12
+                        return (
+                          <tr key={orig.id} className={`text-xs text-[#7A8F79] ${dc.row}`}>
+                            {/* EOB cell */}
+                            <td className="px-4 py-2">
+                              <div className="flex flex-col gap-1 min-w-[72px]">
+                                {(eobMap[orig.id] || []).map((eob, i) => (
+                                  <div key={eob.id} className="flex items-center gap-1">
+                                    <button
+                                      onClick={async () => {
+                                        const r = await fetch(`/api/admin/documents/${eob.id}/url`, { credentials: 'include' })
+                                        const d = await r.json()
+                                        if (d.url) window.open(d.url, '_blank')
+                                      }}
+                                      title={eob.fileName}
+                                      className="text-[10px] font-semibold text-green-700 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded hover:bg-green-100 transition whitespace-nowrap"
+                                    >
+                                      📎 EOB {(eobMap[orig.id] || []).length > 1 ? i + 1 : ''}
+                                    </button>
+                                    <button
+                                      onClick={() => deleteEob(eob.id)}
+                                      disabled={eobDeleting === eob.id}
+                                      title="Delete EOB"
+                                      className="text-[10px] text-red-400 hover:text-red-600 border border-red-100 px-1 py-0.5 rounded transition disabled:opacity-40"
+                                    >
+                                      {eobDeleting === eob.id ? '…' : '✕'}
+                                    </button>
+                                  </div>
+                                ))}
+                                <label className={`cursor-pointer text-[10px] font-semibold text-[#7A8F79] border border-dashed border-[#D9E1E8] px-1.5 py-0.5 rounded hover:border-[#7A8F79] hover:text-[#2F3E4E] transition whitespace-nowrap ${eobUploading === orig.id ? 'opacity-50 cursor-default' : ''}`}>
+                                  {eobUploading === orig.id ? '…' : '+ EOB'}
+                                  <input
+                                    type="file"
+                                    className="hidden"
+                                    disabled={eobUploading === orig.id}
+                                    accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif"
+                                    onChange={e => {
+                                      const file = e.target.files?.[0]
+                                      if (file) handleEobUpload(orig, file)
+                                      e.target.value = ''
+                                    }}
+                                  />
+                                </label>
+                              </div>
+                            </td>
+                            <td className="py-2 text-[10px] font-semibold whitespace-nowrap" style={{ paddingLeft: `${indent}px` }}>
+                              <span className={dc.label}>{labelText}</span>
+                            </td>
+                            <td className="px-4 py-2">{orig.providerName || orig.nurse?.displayName}</td>
+                            <td className="px-4 py-2 font-mono">{orig.claimId || '—'}</td>
+                            <td className="px-4 py-2 whitespace-nowrap">{fmtDOS(orig.dosStart, orig.dosStop)}</td>
+                            <td className="px-4 py-2"><StageBadge stage={orig.claimStage} /></td>
+                            <td className="px-4 py-2 whitespace-nowrap">{fmtDate(orig.submitDate)}</td>
+                            <td className="px-4 py-2 text-right">{fmt(orig.totalBilled, '$')}</td>
+                            <td className="px-4 py-2 border-l border-[#D9E1E8]">{orig.primaryPayer || '—'}</td>
+                            <td className="px-4 py-2 text-right">{fmt(orig.primaryAllowedAmt, '$')}</td>
+                            <td className="px-4 py-2 text-right">{fmt(orig.primaryPaidAmt, '$')}</td>
+                            <td className="px-4 py-2 whitespace-nowrap">{fmtDate(orig.primaryPaidDate)}</td>
+                            <td className="px-4 py-2">{orig.primaryPaidTo || '—'}</td>
+                            <td className="px-4 py-2 border-l border-[#D9E1E8]">{orig.secondaryPayer || '—'}</td>
+                            <td className="px-4 py-2 text-right">{fmt(orig.secondaryAllowedAmt, '$')}</td>
+                            <td className="px-4 py-2 text-right">{fmt(orig.secondaryPaidAmt, '$')}</td>
+                            <td className="px-4 py-2 whitespace-nowrap">{fmtDate(orig.secondaryPaidDate)}</td>
+                            <td className="px-4 py-2">{orig.secondaryPaidTo || '—'}</td>
+                            <td className="px-4 py-2 border-l border-[#D9E1E8] text-right">{fmt(orig.totalReimbursed, '$')}</td>
+                            <td className="px-4 py-2 text-right">{fmt(orig.remainingBalance, '$')}</td>
+                            <td className="px-4 py-2 whitespace-nowrap">{fmtDate(orig.dateFullyFinalized)}</td>
+                            <td className="px-4 py-2 max-w-xs truncate">{orig.processingNotes || '—'}</td>
+                          </tr>
+                        )
+                      })}
                     </Fragment>
                   )
                 })}

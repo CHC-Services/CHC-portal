@@ -10,20 +10,17 @@ function adminOnly(req: Request) {
 }
 
 // POST /api/admin/notifications/flush
-// Called when admin turns Bulk Import Mode OFF.
-// Groups all PendingNotification records by nurse, respects individual
-// notification preferences, sends one summary email per eligible nurse,
-// then deletes all queued notifications.
+// Groups all PendingNotification records by nurse, sends one summary email per
+// eligible nurse, records the batch for history, then deletes the queue.
 export async function POST(req: Request) {
   const session = adminOnly(req)
   if (!session || session.role !== 'admin') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Optional: restrict flush to specific nurseIds (used by CSV import to avoid touching
-  // document notifications queued under bulk mode)
   const body = await req.json().catch(() => ({}))
   const filterNurseIds: string[] | undefined = Array.isArray(body.nurseIds) ? body.nurseIds : undefined
+  const trigger: string = body.trigger || 'manual'
 
   const pending = await prisma.pendingNotification.findMany({
     where: filterNurseIds ? { nurseId: { in: filterNurseIds } } : undefined,
@@ -41,7 +38,6 @@ export async function POST(req: Request) {
     byNurse.get(n.nurseId)!.push(n)
   }
 
-  // Load all affected nurse profiles + emails in one query
   const nurseIds = [...byNurse.keys()]
   const profiles = await prisma.nurseProfile.findMany({
     where: { id: { in: nurseIds } },
@@ -50,6 +46,10 @@ export async function POST(req: Request) {
 
   let sent = 0
   let skipped = 0
+  const batchEntries: {
+    nurseId: string; nurseName: string; nurseEmail: string
+    claims: object[]; documents: object[]; sentOk: boolean
+  }[] = []
 
   for (const profile of profiles) {
     const notifications = byNurse.get(profile.id) || []
@@ -57,34 +57,24 @@ export async function POST(req: Request) {
     if (!email) { skipped++; continue }
 
     const claimNotifs = notifications.filter(n => n.type === 'claim')
-    const docNotifs = notifications.filter(n => n.type === 'document')
+    const docNotifs   = notifications.filter(n => n.type === 'document')
+    const eligibleClaims = profile.notifyNewClaim     ? claimNotifs : []
+    const eligibleDocs   = profile.notifyNewDocument  ? docNotifs   : []
 
-    // Respect individual preferences — only include sections the nurse opted into
-    const eligibleClaims = profile.notifyNewClaim ? claimNotifs : []
-    const eligibleDocs = profile.notifyNewDocument ? docNotifs : []
+    if (eligibleClaims.length === 0 && eligibleDocs.length === 0) { skipped++; continue }
 
-    if (eligibleClaims.length === 0 && eligibleDocs.length === 0) {
-      skipped++
-      continue
-    }
-
-    // Parse claim payloads — deduplicate by claimId so re-uploads don't double-send
+    // Deduplicate claims by claimId
     const seenClaimIds = new Set<string>()
-    const claims = eligibleClaims.reduce<{ claimId: string; dosStart: Date | null; dosStop: Date | null; totalBilled: number | null }[]>((acc, n) => {
+    const claims = eligibleClaims.reduce<{ claimId: string; dosStart: string | null; dosStop: string | null; totalBilled: number | null }[]>((acc, n) => {
       const p = n.payload as Record<string, any>
       const claimId = p.claimId || '—'
       if (seenClaimIds.has(claimId)) return acc
       seenClaimIds.add(claimId)
-      acc.push({
-        claimId,
-        dosStart: p.dosStart ? new Date(p.dosStart) : null,
-        dosStop: p.dosStop ? new Date(p.dosStop) : null,
-        totalBilled: typeof p.totalBilled === 'number' ? p.totalBilled : null,
-      })
+      acc.push({ claimId, dosStart: p.dosStart ?? null, dosStop: p.dosStop ?? null, totalBilled: typeof p.totalBilled === 'number' ? p.totalBilled : null })
       return acc
     }, [])
 
-    // Parse document payloads — deduplicate by title+category
+    // Deduplicate docs by title+category
     const seenDocs = new Set<string>()
     const documents = eligibleDocs.reduce<{ documentTitle: string; category: string }[]>((acc, n) => {
       const p = n.payload as Record<string, any>
@@ -95,17 +85,37 @@ export async function POST(req: Request) {
       return acc
     }, [])
 
+    const claimsForEmail = claims.map(c => ({
+      claimId: c.claimId,
+      dosStart: c.dosStart ? new Date(c.dosStart) : null,
+      dosStop:  c.dosStop  ? new Date(c.dosStop)  : null,
+      totalBilled: c.totalBilled,
+    }))
+
     const ok = await sendBulkImportSummary({
       nurseEmail: email,
       nurseName: profile.displayName,
-      claims,
+      claims: claimsForEmail,
       documents,
     })
 
+    batchEntries.push({ nurseId: profile.id, nurseName: profile.displayName, nurseEmail: email, claims, documents, sentOk: ok })
     if (ok) sent++; else skipped++
   }
 
-  // Clear all pending notifications regardless of whether email was sent
+  // Record batch history (only if at least one entry was attempted)
+  if (batchEntries.length > 0) {
+    await prisma.notificationBatch.create({
+      data: {
+        trigger,
+        totalSent: sent,
+        totalSkipped: skipped,
+        entries: { create: batchEntries },
+      },
+    })
+  }
+
+  // Delete all flushed pending notifications
   await prisma.pendingNotification.deleteMany({
     where: { nurseId: { in: nurseIds } },
   })

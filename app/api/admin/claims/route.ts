@@ -67,6 +67,7 @@ export async function POST(req: Request) {
       dosStop:             parseDate(body.dosStop),
       totalBilled:         parseNum(body.totalBilled),
       claimStage:          parseStr(body.claimStage),
+      submitDate:          parseDate(body.submitDate),
       primaryPayer:        parseStr(body.primaryPayer),
       primaryAllowedAmt:   parseNum(body.primaryAllowedAmt),
       primaryPaidAmt:      parseNum(body.primaryPaidAmt),

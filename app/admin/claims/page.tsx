@@ -19,6 +19,7 @@ type Claim = {
   dosStop: string | null
   totalBilled: number | null
   claimStage: string | null
+  submitDate: string | null
   primaryPayer: string | null
   primaryAllowedAmt: number | null
   primaryPaidAmt: number | null
@@ -899,6 +900,7 @@ export default function AdminClaimsPage() {
                   <th className="px-4 py-3">Claim ID</th>
                   <th className="px-4 py-3">DOS</th>
                   <th className="px-4 py-3">Stage</th>
+                  <th className="px-4 py-3">Submit Date</th>
                   <th className="px-4 py-3">Total Billed</th>
                   <th className="px-4 py-3 border-l border-[#D9E1E8]">Primary Payer</th>
                   <th className="px-4 py-3">Allowed</th>
@@ -1010,6 +1012,12 @@ export default function AdminClaimsPage() {
                               </select>
                             : <span title="Double-click to edit"><StageBadge stage={c.claimStage} /></span>}
                         </td>
+                        {/* Submit Date — editable date */}
+                        <td className="px-4 py-3 text-xs text-[#2F3E4E] whitespace-nowrap" onDoubleClick={() => startEdit(c.id, 'submitDate', c.submitDate ? new Date(c.submitDate).toISOString().slice(0,10) : '')}>
+                          {editCell?.id === c.id && editCell.field === 'submitDate'
+                            ? <input autoFocus type="date" className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
+                            : <span title="Double-click to edit">{fmtDate(c.submitDate)}</span>}
+                        </td>
                         {/* Total Billed — editable number */}
                         <td className="px-4 py-3 text-right text-[#2F3E4E]" onDoubleClick={() => startEdit(c.id, 'totalBilled', c.totalBilled != null ? String(c.totalBilled) : '')}>
                           {editCell?.id === c.id && editCell.field === 'totalBilled'
@@ -1109,6 +1117,7 @@ export default function AdminClaimsPage() {
                           <td className="px-4 py-2 font-mono">{orig.claimId || '—'}</td>
                           <td className="px-4 py-2 whitespace-nowrap">{fmtDOS(orig.dosStart, orig.dosStop)}</td>
                           <td className="px-4 py-2"><StageBadge stage={orig.claimStage} /></td>
+                          <td className="px-4 py-2 whitespace-nowrap">{fmtDate(orig.submitDate)}</td>
                           <td className="px-4 py-2 text-right">{fmt(orig.totalBilled, '$')}</td>
                           <td className="px-4 py-2 border-l border-[#D9E1E8]">{orig.primaryPayer || '—'}</td>
                           <td className="px-4 py-2 text-right">{fmt(orig.primaryAllowedAmt, '$')}</td>
@@ -1180,6 +1189,11 @@ export default function AdminClaimsPage() {
                         <option key={s} value={s}>{s}</option>
                       ))}
                     </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Submit Date</label>
+                    <input type="date" value={addForm.submitDate || ''} onChange={e => setAddForm(f => ({ ...f, submitDate: e.target.value }))}
+                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">DOS Start</label>

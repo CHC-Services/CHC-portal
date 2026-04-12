@@ -320,6 +320,18 @@ model FaqItem {
   updatedAt   DateTime @updatedAt
 }
 
+model PromptPayDocument {
+  id        String   @id @default(uuid())
+  claimRef  String   // claimId text e.g. "CLM-0042"
+  claimDbId String?  // Claim.id DB UUID (optional)
+  s3Key     String
+  fileName  String
+  version   Int
+  createdAt DateTime @default(now())
+
+  @@index([claimRef])
+}
+
 model ClaimReminder {
   id         String   @id @default(uuid())
   claimDbId  String   // Claim.id (DB UUID)
@@ -345,6 +357,10 @@ model Claim {
   dosStop      DateTime?
   totalBilled  Float?
   claimStage   String?
+  submitDate   DateTime?  // date the claim was submitted to insurance
+
+  // Prompt Pay tracking
+  submitDateReminderSentAt DateTime?  // set when the 28-day alert email fires
 
   // Primary Insurance
   primaryPayer        String?

@@ -47,6 +47,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if ('dosStop'            in body) data.dosStop            = parseDate(body.dosStop)
   if ('totalBilled'        in body) data.totalBilled        = parseNum(body.totalBilled)
   if ('claimStage'         in body) data.claimStage         = parseStr(body.claimStage)
+  if ('submitDate'         in body) data.submitDate         = parseDate(body.submitDate)
   if ('primaryPayer'       in body) data.primaryPayer       = parseStr(body.primaryPayer)
   if ('primaryAllowedAmt'  in body) data.primaryAllowedAmt  = parseNum(body.primaryAllowedAmt)
   if ('primaryPaidAmt'     in body) data.primaryPaidAmt     = parseNum(body.primaryPaidAmt)

@@ -927,3 +927,101 @@ export async function sendBulkImportSummary({
     return false
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Prompt Pay Interest — 28-day claim submit date alert
+// ─────────────────────────────────────────────────────────────────────────────
+export async function sendPromptPayReminder({
+  toEmail,
+  fromEmail,
+  providerName,
+  claimId,
+  submitDate,
+  day30,
+  formLinkName,
+  formUrl,
+  subjectTemplate,
+  customNote,
+}: {
+  toEmail: string
+  fromEmail: string
+  providerName: string
+  claimId: string
+  submitDate: Date
+  day30: Date
+  formLinkName: string
+  formUrl: string | null
+  subjectTemplate: string
+  customNote: string
+}): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) return false
+  const resend = new Resend(process.env.RESEND_API_KEY)
+
+  const fmtD = (d: Date) =>
+    d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+
+  const subject = subjectTemplate
+    .replace('{claimId}', claimId)
+    .replace('{provider}', providerName)
+    .replace('{day30}', fmtD(day30))
+
+  const formBlock = formUrl
+    ? `<a href="${formUrl}" style="display:inline-block;background:#7A8F79;color:white;text-decoration:none;padding:10px 22px;border-radius:8px;font-size:13px;font-weight:600;margin-top:16px">${formLinkName} →</a>`
+    : `<p style="color:#7A8F79;font-size:13px;margin-top:16px;font-style:italic">No form link configured — add one in adEmail settings.</p>`
+
+  const noteBlock = customNote.trim()
+    ? `<div style="background:#f4f6f8;border-radius:8px;padding:14px 18px;margin-top:20px"><p style="margin:0;font-size:13px;color:#2F3E4E">${customNote.replace(/\n/g, '<br/>')}</p></div>`
+    : ''
+
+  try {
+    const { error } = await resend.emails.send({
+      from: `Coming Home Care Alerts <${fromEmail}>`,
+      to: toEmail,
+      subject,
+      html: `
+        <div style="font-family:sans-serif;max-width:560px;padding:32px;color:#2F3E4E">
+          <div style="background:#2F3E4E;border-radius:12px;padding:20px 24px;margin-bottom:28px">
+            <p style="margin:0;font-size:20px;font-weight:700;color:white">⏰ Prompt Pay Interest Alert</p>
+          </div>
+
+          <p style="font-size:15px;color:#2F3E4E;margin:0 0 20px">
+            A claim has reached <strong>28 days</strong> since submission. Prompt Pay interest may apply on <strong>${fmtD(day30)}</strong> (day 30).
+          </p>
+
+          <div style="background:#f4f6f8;border-radius:10px;padding:20px 24px;margin-bottom:20px">
+            <table style="width:100%;border-collapse:collapse">
+              <tr>
+                <td style="padding:6px 0;font-size:13px;color:#7A8F79;width:140px">Provider</td>
+                <td style="padding:6px 0;font-size:14px;font-weight:600;color:#2F3E4E">${providerName}</td>
+              </tr>
+              <tr>
+                <td style="padding:6px 0;font-size:13px;color:#7A8F79">Claim ID</td>
+                <td style="padding:6px 0;font-size:14px;font-weight:600;color:#2F3E4E;font-family:monospace">${claimId}</td>
+              </tr>
+              <tr>
+                <td style="padding:6px 0;font-size:13px;color:#7A8F79">Submit Date</td>
+                <td style="padding:6px 0;font-size:14px;color:#2F3E4E">${fmtD(submitDate)}</td>
+              </tr>
+              <tr>
+                <td style="padding:6px 0;font-size:13px;color:#7A8F79">Day 30 Deadline</td>
+                <td style="padding:6px 0;font-size:14px;font-weight:700;color:#c0392b">${fmtD(day30)}</td>
+              </tr>
+            </table>
+          </div>
+
+          ${formBlock}
+          ${noteBlock}
+
+          <hr style="border:none;border-top:1px solid #D9E1E8;margin:28px 0"/>
+          <p style="font-size:11px;color:#aab">
+            Coming Home Care Services, LLC · Automated claim alert<br/>
+            To manage alert settings, visit the adEmail page in the provider portal.
+          </p>
+        </div>
+      `,
+    })
+    return !error
+  } catch {
+    return false
+  }
+}

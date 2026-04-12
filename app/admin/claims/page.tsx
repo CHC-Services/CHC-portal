@@ -185,6 +185,15 @@ export default function AdminClaimsPage() {
   const [bulkModeLoading, setBulkModeLoading] = useState(false)
   const [bulkFlushMsg, setBulkFlushMsg] = useState<string | null>(null)
 
+  // Follow-up reminders
+  type Reminder = { id: string; claimDbId: string; claimRef: string | null; nurseId: string | null; dueDate: string; reason: string; completed: boolean }
+  const [reminders, setReminders] = useState<Reminder[]>([])
+  const [showReminderModal, setShowReminderModal] = useState(false)
+  const [reminderForm, setReminderForm] = useState({ claimDbId: '', claimRef: '', nurseId: '', dueDate: '', reason: '' })
+  const [reminderSaving, setReminderSaving] = useState(false)
+  const [reminderError, setReminderError] = useState('')
+  const [showReminderList, setShowReminderList] = useState(false)
+
   // Inline editing
   const [editCell, setEditCell] = useState<{ id: string; field: string } | null>(null)
   const [editVal, setEditVal] = useState('')
@@ -298,6 +307,53 @@ export default function AdminClaimsPage() {
     setLoading(false)
   }
 
+  async function loadReminders() {
+    const res = await fetch('/api/admin/claims/reminders', { credentials: 'include' })
+    if (res.ok) setReminders(await res.json())
+  }
+
+  async function submitReminder(e: React.FormEvent) {
+    e.preventDefault()
+    if (!reminderForm.claimDbId || !reminderForm.dueDate || !reminderForm.reason.trim()) {
+      setReminderError('Please select a claim, set a date, and enter a reason.')
+      return
+    }
+    setReminderSaving(true)
+    setReminderError('')
+    const res = await fetch('/api/admin/claims/reminders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(reminderForm),
+    })
+    setReminderSaving(false)
+    if (!res.ok) { setReminderError('Failed to save reminder.'); return }
+    const saved = await res.json()
+    setReminders(prev => [saved, ...prev])
+    setReminderForm({ claimDbId: '', claimRef: '', nurseId: '', dueDate: '', reason: '' })
+    setShowReminderModal(false)
+  }
+
+  async function toggleReminderComplete(id: string, completed: boolean) {
+    const res = await fetch('/api/admin/claims/reminders', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ id, completed }),
+    })
+    if (res.ok) setReminders(prev => prev.map(r => r.id === id ? { ...r, completed } : r))
+  }
+
+  async function deleteReminder(id: string) {
+    await fetch('/api/admin/claims/reminders', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ id }),
+    })
+    setReminders(prev => prev.filter(r => r.id !== id))
+  }
+
   // Load initial state
   useEffect(() => {
     fetch('/api/admin/system-settings', { credentials: 'include' })
@@ -306,6 +362,7 @@ export default function AdminClaimsPage() {
       .catch(() => {})
     loadClaims()
     loadEobs()
+    loadReminders()
   }, [])
 
   async function toggleBulkMode() {
@@ -733,8 +790,8 @@ export default function AdminClaimsPage() {
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap gap-3 mb-4">
+        {/* Filters + Reminder button */}
+        <div className="flex flex-wrap gap-3 mb-4 items-center">
           <input
             type="text"
             placeholder="Search provider, claim ID, payer…"
@@ -760,7 +817,69 @@ export default function AdminClaimsPage() {
               <option key={y} value={y}>{y}</option>
             ))}
           </select>
+
+          {/* Reminder buttons — pushed to the right */}
+          <div className="ml-auto flex items-center gap-2">
+            {reminders.filter(r => !r.completed).length > 0 && (
+              <button
+                onClick={() => setShowReminderList(v => !v)}
+                className="relative flex items-center gap-1.5 border border-amber-300 bg-amber-50 text-amber-700 px-3 py-2 rounded-lg text-sm font-semibold hover:bg-amber-100 transition"
+              >
+                🔔 Follow-ups
+                <span className="bg-amber-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">
+                  {reminders.filter(r => !r.completed).length}
+                </span>
+              </button>
+            )}
+            <button
+              onClick={() => { setReminderForm({ claimDbId: '', claimRef: '', nurseId: '', dueDate: '', reason: '' }); setReminderError(''); setShowReminderModal(true) }}
+              className="flex items-center gap-1.5 border border-[#D9E1E8] bg-white text-[#2F3E4E] px-3 py-2 rounded-lg text-sm font-semibold hover:border-[#7A8F79] hover:text-[#7A8F79] transition"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Set Reminder
+            </button>
+          </div>
         </div>
+
+        {/* Reminder list panel */}
+        {showReminderList && reminders.length > 0 && (
+          <div className="mb-4 bg-white rounded-xl border border-[#D9E1E8] shadow-sm overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-[#D9E1E8]">
+              <p className="text-sm font-semibold text-[#2F3E4E]">Claim Follow-Up Reminders</p>
+              <button onClick={() => setShowReminderList(false)} className="text-[#7A8F79] hover:text-[#2F3E4E] text-xs">✕ Close</button>
+            </div>
+            <div className="divide-y divide-[#D9E1E8]">
+              {reminders.map(r => {
+                const due = new Date(r.dueDate)
+                const today = new Date(); today.setHours(0,0,0,0)
+                const overdue = !r.completed && due < today
+                const dueStr = due.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+                return (
+                  <div key={r.id} className={`flex items-start gap-4 px-5 py-3 ${r.completed ? 'opacity-50' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={r.completed}
+                      onChange={e => toggleReminderComplete(r.id, e.target.checked)}
+                      className="mt-0.5 w-4 h-4 accent-[#7A8F79] cursor-pointer"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {r.claimRef && <span className="font-mono text-xs font-bold text-[#2F3E4E] bg-[#F4F6F5] px-2 py-0.5 rounded">{r.claimRef}</span>}
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${overdue ? 'bg-red-100 text-red-700' : r.completed ? 'bg-gray-100 text-gray-400' : 'bg-amber-50 text-amber-700'}`}>
+                          {overdue ? '⚠ Overdue · ' : ''}{dueStr}
+                        </span>
+                      </div>
+                      <p className="text-sm text-[#2F3E4E] mt-0.5 leading-snug">{r.reason}</p>
+                    </div>
+                    <button onClick={() => deleteReminder(r.id)} className="shrink-0 text-[#D9E1E8] hover:text-red-400 transition text-lg leading-none">×</button>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Table */}
         {loading ? (
@@ -1183,6 +1302,85 @@ export default function AdminClaimsPage() {
                 </button>
               </div>
 
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Follow-Up Reminder Modal ── */}
+      {showReminderModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#D9E1E8]">
+              <h2 className="text-lg font-bold text-[#2F3E4E]">Set Claim Follow-Up</h2>
+              <button onClick={() => setShowReminderModal(false)} className="text-[#7A8F79] hover:text-[#2F3E4E] text-xl leading-none">×</button>
+            </div>
+            <form onSubmit={submitReminder} className="px-6 py-5 space-y-4">
+              {/* Claim selector */}
+              <div>
+                <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Claim</label>
+                <select
+                  value={reminderForm.claimDbId}
+                  onChange={e => {
+                    const selected = claims.find(c => c.id === e.target.value)
+                    setReminderForm(f => ({
+                      ...f,
+                      claimDbId: e.target.value,
+                      claimRef: selected?.claimId || '',
+                      nurseId: selected?.nurseId || '',
+                    }))
+                  }}
+                  className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                  required
+                >
+                  <option value="">— Select a claim —</option>
+                  {[...claims]
+                    .sort((a, b) => (a.claimId || '').localeCompare(b.claimId || ''))
+                    .map(c => (
+                      <option key={c.id} value={c.id}>
+                        {c.claimId || c.id.slice(0, 8)} · {c.providerName || '—'}{c.dosStart ? ` · ${fmtDate(c.dosStart)}` : ''}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {/* Due date */}
+              <div>
+                <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Follow-Up Date</label>
+                <input
+                  type="date"
+                  value={reminderForm.dueDate}
+                  onChange={e => setReminderForm(f => ({ ...f, dueDate: e.target.value }))}
+                  className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                  required
+                />
+              </div>
+
+              {/* Reason */}
+              <div>
+                <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Reason / Notes</label>
+                <textarea
+                  rows={3}
+                  value={reminderForm.reason}
+                  onChange={e => setReminderForm(f => ({ ...f, reason: e.target.value }))}
+                  placeholder="What needs to be followed up on?"
+                  className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] resize-none"
+                  required
+                />
+              </div>
+
+              {reminderError && <p className="text-red-600 text-xs">{reminderError}</p>}
+
+              <div className="flex justify-end gap-3 pt-1">
+                <button type="button" onClick={() => setShowReminderModal(false)}
+                  className="px-5 py-2 rounded-lg border border-[#D9E1E8] text-sm font-semibold text-[#7A8F79] hover:text-[#2F3E4E] hover:border-[#7A8F79] transition">
+                  Cancel
+                </button>
+                <button type="submit" disabled={reminderSaving}
+                  className="px-5 py-2 rounded-lg bg-[#2F3E4E] text-white text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-60">
+                  {reminderSaving ? 'Saving…' : 'Save Reminder'}
+                </button>
+              </div>
             </form>
           </div>
         </div>

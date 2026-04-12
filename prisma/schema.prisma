@@ -320,6 +320,20 @@ model FaqItem {
   updatedAt   DateTime @updatedAt
 }
 
+model ClaimReminder {
+  id         String   @id @default(uuid())
+  claimDbId  String   // Claim.id (DB UUID)
+  claimRef   String?  // Claim.claimId (display ID e.g. "CLM-0042")
+  nurseId    String?  // which provider the claim belongs to
+  dueDate    DateTime
+  reason     String
+  completed  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([claimDbId])
+  @@index([dueDate])
+}
+
 model Claim {
   id           String @id @default(uuid())
   nurseId      String

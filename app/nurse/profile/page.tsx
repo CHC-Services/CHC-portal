@@ -192,6 +192,68 @@ export default function ProfilePage() {
             {profile.hasBusinessProvider && (
               <div className="bg-white rounded-xl shadow p-6 space-y-4">
                 <h2 className="text-xl font-semibold text-[#2F3E4E]">Business Provider Information</h2>
+
+                {/* NPI + Type + Medicaid ID — top row */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Business NPI</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={profile.bizNpi || ''}
+                        onChange={(e) => setProfile({ ...profile, bizNpi: e.target.value })}
+                        placeholder="10-digit NPI"
+                        maxLength={10}
+                        className="flex-1 border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]"
+                      />
+                      <button
+                        type="button"
+                        title="Look up NPI in NPPES registry"
+                        onClick={async () => {
+                          const npi = (profile.bizNpi || '').replace(/\D/g, '')
+                          if (npi.length !== 10) { alert('Enter a 10-digit NPI first.'); return }
+                          const res = await fetch(`/api/admin/npi-lookup?npi=${npi}`, { credentials: 'include' })
+                          const d = await res.json()
+                          if (!d.found) { alert(d.message || 'No record found for that NPI.'); return }
+                          setProfile((p: any) => ({
+                            ...p,
+                            ...(d.npiType    && { bizNpiType:        d.npiType }),
+                            ...(d.entityName && { bizEntityName:     d.entityName }),
+                            ...(d.address    && { bizServiceAddress: d.address }),
+                            ...(d.city       && { bizCity:           d.city }),
+                            ...(d.state      && { bizState:          d.state }),
+                            ...(d.zip        && { bizZip:            d.zip }),
+                          }))
+                        }}
+                        className="shrink-0 px-3 py-2 rounded-lg bg-[#F4F6F5] border border-[#D9E1E8] text-[#7A8F79] text-xs font-semibold hover:border-[#7A8F79] hover:text-[#2F3E4E] transition"
+                      >
+                        🔍 Lookup
+                      </button>
+                    </div>
+                    {/* NPI Type */}
+                    <div className="flex items-center gap-4 pt-1">
+                      <label className="flex items-center gap-1.5 cursor-pointer text-xs text-[#2F3E4E]">
+                        <input type="radio" name="bizNpiType" value="Type1"
+                          checked={profile.bizNpiType === 'Type1'}
+                          onChange={() => setProfile({ ...profile, bizNpiType: 'Type1' })}
+                          className="accent-[#7A8F79]" />
+                        Type 1 — Individual
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer text-xs text-[#2F3E4E]">
+                        <input type="radio" name="bizNpiType" value="Type2"
+                          checked={profile.bizNpiType === 'Type2'}
+                          onChange={() => setProfile({ ...profile, bizNpiType: 'Type2' })}
+                          className="accent-[#7A8F79]" />
+                        Type 2 — Organizational
+                      </label>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Business Medicaid ID</label>
+                    <input type="text" value={profile.bizMedicaidId || ''} onChange={(e) => setProfile({ ...profile, bizMedicaidId: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="sm:col-span-2 space-y-1">
                     <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Entity Name</label>
@@ -199,7 +261,21 @@ export default function ProfilePage() {
                   </div>
                   <div className="sm:col-span-2 space-y-1">
                     <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Service Address</label>
-                    <input type="text" value={profile.bizServiceAddress || ''} onChange={(e) => setProfile({ ...profile, bizServiceAddress: e.target.value })} placeholder="Business address" className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
+                    <input type="text" value={profile.bizServiceAddress || ''} onChange={(e) => setProfile({ ...profile, bizServiceAddress: e.target.value })} placeholder="Street address" className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">City</label>
+                    <input type="text" value={profile.bizCity || ''} onChange={(e) => setProfile({ ...profile, bizCity: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">State</label>
+                      <input type="text" value={profile.bizState || ''} onChange={(e) => setProfile({ ...profile, bizState: e.target.value })} maxLength={2} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Zip</label>
+                      <input type="text" value={profile.bizZip || ''} onChange={(e) => setProfile({ ...profile, bizZip: e.target.value })} maxLength={10} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
+                    </div>
                   </div>
                   <div className="space-y-1">
                     <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Business Phone</label>
@@ -208,14 +284,6 @@ export default function ProfilePage() {
                   <div className="space-y-1">
                     <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Business Email</label>
                     <input type="email" value={profile.bizEmail || ''} onChange={(e) => setProfile({ ...profile, bizEmail: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Business NPI</label>
-                    <input type="text" value={profile.bizNpi || ''} onChange={(e) => setProfile({ ...profile, bizNpi: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Business Medicaid ID</label>
-                    <input type="text" value={profile.bizMedicaidId || ''} onChange={(e) => setProfile({ ...profile, bizMedicaidId: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
                   </div>
                 </div>
                 <button type="submit" className="w-full bg-[#2F3E4E] text-white p-2 rounded-lg hover:bg-[#7A8F79] transition font-semibold">

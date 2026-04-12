@@ -525,18 +525,18 @@ export default function NurseClaimsPage() {
               ))}
             </div>
 
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              <div className="bg-white rounded-xl p-4 shadow-sm">
-                <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold">Total Claims</p>
-                <p className="text-2xl font-bold text-[#2F3E4E] mt-1">{activeClaims.length}</p>
+            <div className="grid grid-cols-3 gap-2 md:gap-4 mb-6">
+              <div className="bg-white rounded-xl p-2.5 md:p-4 shadow-sm">
+                <p className="text-[9px] md:text-xs uppercase tracking-widest text-[#7A8F79] font-semibold leading-tight">Total Claims</p>
+                <p className="text-base md:text-2xl font-bold text-[#2F3E4E] mt-0.5">{activeClaims.length}</p>
               </div>
-              <div className="bg-white rounded-xl p-4 shadow-sm">
-                <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold">Total Billed</p>
-                <p className="text-2xl font-bold text-[#2F3E4E] mt-1">{fmt(totalBilled, '$')}</p>
+              <div className="bg-white rounded-xl p-2.5 md:p-4 shadow-sm">
+                <p className="text-[9px] md:text-xs uppercase tracking-widest text-[#7A8F79] font-semibold leading-tight">Total Billed</p>
+                <p className="text-base md:text-2xl font-bold text-[#2F3E4E] mt-0.5 truncate">{fmt(totalBilled, '$')}</p>
               </div>
-              <div className="bg-white rounded-xl p-4 shadow-sm">
-                <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold">Total Reimbursed</p>
-                <p className="text-2xl font-bold text-[#7A8F79] mt-1">{fmt(totalReimbursed, '$')}</p>
+              <div className="bg-white rounded-xl p-2.5 md:p-4 shadow-sm">
+                <p className="text-[9px] md:text-xs uppercase tracking-widest text-[#7A8F79] font-semibold leading-tight">Total Reimb.</p>
+                <p className="text-base md:text-2xl font-bold text-[#7A8F79] mt-0.5 truncate">{fmt(totalReimbursed, '$')}</p>
               </div>
             </div>
           </>

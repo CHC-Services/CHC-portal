@@ -74,8 +74,12 @@ model NurseProfile {
   bizEmail             String?
   einEncrypted         String?   // AES-256-GCM encrypted
   feinEncrypted        String?   // AES-256-GCM encrypted
+  bizNpiType           String?   // 'Type1' | 'Type2'
   bizNpi               String?
   bizMedicaidId        String?
+  bizCity              String?
+  bizState             String?
+  bizZip               String?
 
   // Payment — admin-managed
   bankName             String?

@@ -48,6 +48,18 @@ export async function PATCH(req: Request) {
     notifyDocExpiring,
     notifyNewDocument,
     notifyNewClaim,
+    // Business provider fields
+    hasBusinessProvider,
+    bizNpiType,
+    bizNpi,
+    bizMedicaidId,
+    bizEntityName,
+    bizServiceAddress,
+    bizCity,
+    bizState,
+    bizZip,
+    bizPhone,
+    bizEmail,
     currentPassword,
     newPassword
   } = body
@@ -66,6 +78,17 @@ export async function PATCH(req: Request) {
   if (notifyDocExpiring !== undefined) updates.notifyDocExpiring = notifyDocExpiring
   if (notifyNewDocument !== undefined) updates.notifyNewDocument = notifyNewDocument
   if (notifyNewClaim !== undefined) updates.notifyNewClaim = notifyNewClaim
+  if (hasBusinessProvider !== undefined) updates.hasBusinessProvider = hasBusinessProvider
+  if (bizNpiType !== undefined) updates.bizNpiType = bizNpiType
+  if (bizNpi !== undefined) updates.bizNpi = bizNpi
+  if (bizMedicaidId !== undefined) updates.bizMedicaidId = bizMedicaidId
+  if (bizEntityName !== undefined) updates.bizEntityName = bizEntityName
+  if (bizServiceAddress !== undefined) updates.bizServiceAddress = bizServiceAddress
+  if (bizCity !== undefined) updates.bizCity = bizCity
+  if (bizState !== undefined) updates.bizState = bizState
+  if (bizZip !== undefined) updates.bizZip = bizZip
+  if (bizPhone !== undefined) updates.bizPhone = bizPhone
+  if (bizEmail !== undefined) updates.bizEmail = bizEmail
 
   // apply profile updates
   let displayNameChanged = false

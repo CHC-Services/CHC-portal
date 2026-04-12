@@ -880,19 +880,79 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                   <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8]">
                     Business Provider Information
                   </h2>
-                  <Field label="Entity Name"       field="bizEntityName"      profile={profile} setProfile={setProfile} />
-                  <Field label="Service Address"   field="bizServiceAddress"  profile={profile} setProfile={setProfile} />
-                  <div className="grid grid-cols-2 gap-3">
-                    <Field label="Business Phone"  field="bizPhone"           profile={profile} setProfile={setProfile} type="tel" />
-                    <Field label="Business Email"  field="bizEmail"           profile={profile} setProfile={setProfile} type="email" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Field label="EIN"             field="ein"                profile={profile} setProfile={setProfile} sensitive />
-                    <Field label="FEIN"            field="fein"               profile={profile} setProfile={setProfile} sensitive />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Field label="Business NPI"    field="bizNpi"             profile={profile} setProfile={setProfile} />
+
+                  {/* NPI Type + NPI + Medicaid ID — top row */}
+                  <div className="grid grid-cols-2 gap-3 items-end">
+                    <div className="space-y-2">
+                      <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Business NPI</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={profile.bizNpi || ''}
+                          onChange={(e) => setProfile({ ...profile, bizNpi: e.target.value })}
+                          className="flex-1 border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] text-sm focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                          placeholder="10-digit NPI"
+                          maxLength={10}
+                        />
+                        <button
+                          type="button"
+                          title="Look up NPI in NPPES registry"
+                          onClick={async () => {
+                            const npi = (profile.bizNpi || '').replace(/\D/g, '')
+                            if (npi.length !== 10) { alert('Enter a 10-digit NPI first.'); return }
+                            const res = await fetch(`/api/admin/npi-lookup?npi=${npi}`, { credentials: 'include' })
+                            const d = await res.json()
+                            if (!d.found) { alert(d.message || 'No record found for that NPI.'); return }
+                            setProfile((p: Profile) => ({
+                              ...p,
+                              ...(d.npiType      && { bizNpiType:       d.npiType }),
+                              ...(d.entityName   && { bizEntityName:    d.entityName }),
+                              ...(d.address      && { bizServiceAddress: d.address }),
+                              ...(d.city         && { bizCity:          d.city }),
+                              ...(d.state        && { bizState:         d.state }),
+                              ...(d.zip          && { bizZip:           d.zip }),
+                            }))
+                          }}
+                          className="shrink-0 px-3 py-2 rounded-lg bg-[#F4F6F5] border border-[#D9E1E8] text-[#7A8F79] text-xs font-semibold hover:border-[#7A8F79] hover:text-[#2F3E4E] transition"
+                        >
+                          🔍 Lookup
+                        </button>
+                      </div>
+                      {/* NPI Type checkboxes */}
+                      <div className="flex items-center gap-4 pt-1">
+                        <label className="flex items-center gap-1.5 cursor-pointer text-xs text-[#2F3E4E]">
+                          <input type="radio" name={`bizNpiType-${profile.id}`} value="Type1"
+                            checked={profile.bizNpiType === 'Type1'}
+                            onChange={() => setProfile({ ...profile, bizNpiType: 'Type1' })}
+                            className="accent-[#7A8F79]" />
+                          Type 1 — Individual
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer text-xs text-[#2F3E4E]">
+                          <input type="radio" name={`bizNpiType-${profile.id}`} value="Type2"
+                            checked={profile.bizNpiType === 'Type2'}
+                            onChange={() => setProfile({ ...profile, bizNpiType: 'Type2' })}
+                            className="accent-[#7A8F79]" />
+                          Type 2 — Organizational
+                        </label>
+                      </div>
+                    </div>
                     <Field label="Business Medicaid ID" field="bizMedicaidId" profile={profile} setProfile={setProfile} />
+                  </div>
+
+                  <Field label="Entity Name"       field="bizEntityName"     profile={profile} setProfile={setProfile} />
+                  <Field label="Service Address"   field="bizServiceAddress" profile={profile} setProfile={setProfile} />
+                  <div className="grid grid-cols-3 gap-3">
+                    <Field label="City"  field="bizCity"  profile={profile} setProfile={setProfile} />
+                    <Field label="State" field="bizState" profile={profile} setProfile={setProfile} />
+                    <Field label="Zip"   field="bizZip"   profile={profile} setProfile={setProfile} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="Business Phone"  field="bizPhone" profile={profile} setProfile={setProfile} type="tel" />
+                    <Field label="Business Email"  field="bizEmail" profile={profile} setProfile={setProfile} type="email" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="EIN"  field="ein"  profile={profile} setProfile={setProfile} sensitive />
+                    <Field label="FEIN" field="fein" profile={profile} setProfile={setProfile} sensitive />
                   </div>
                 </div>
               )}

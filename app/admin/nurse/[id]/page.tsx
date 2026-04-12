@@ -1053,6 +1053,40 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
             </div>
           </div>
 
+            {/* Notification Preferences (read-only view of provider's own settings) */}
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8] mb-4">
+                Notification Preferences
+              </h2>
+              <p className="text-xs text-[#7A8F79] mb-4">Set by the provider in their own profile. Read-only here.</p>
+              <div className="space-y-2.5">
+                {([
+                  { label: 'New Claim Alerts',          field: 'notifyNewClaim',        desc: 'Notified when a claim is added to their account' },
+                  { label: 'New Document Alerts',       field: 'notifyNewDocument',     desc: 'Notified when a document is uploaded to their account' },
+                  { label: 'Billing Reminders',         field: 'notifyBillingReminder', desc: 'Receives billing-related reminder emails' },
+                  { label: 'Document Expiry Reminders', field: 'notifyDocExpiring',     desc: 'Notified when a license or document is expiring' },
+                  { label: 'Weekly Hour Reminders',     field: 'receiveNotifications',  desc: 'Receives weekly hour submission reminder emails' },
+                ] as { label: string; field: string; desc: string }[]).map(({ label, field, desc }) => {
+                  const enabled = profile[field] !== false
+                  return (
+                    <div key={field} className="flex items-center justify-between gap-3 py-1">
+                      <div>
+                        <p className="text-sm font-semibold text-[#2F3E4E] leading-tight">{label}</p>
+                        <p className="text-xs text-[#7A8F79] mt-0.5">{desc}</p>
+                      </div>
+                      <span className={`shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full ${
+                        enabled
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-gray-100 text-gray-400'
+                      }`}>
+                        {enabled ? 'Opted In' : 'Opted Out'}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
             {/* Payment Information */}
             <Section title="Payment Information">
               <Field label="Bank Name"         field="bankName"       profile={profile} setProfile={setProfile} />

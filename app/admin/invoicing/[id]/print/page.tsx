@@ -19,7 +19,7 @@ type Invoice = {
   notes?: string
   entries: Entry[]
   payments: Payment[]
-  nurse?: { displayName: string; accountNumber?: string; user?: { email: string } }
+  nurse?: { displayName: string; accountNumber?: string; firstName?: string; lastName?: string; address?: string; city?: string; state?: string; zip?: string; phone?: string; user?: { email: string } }
 }
 
 const FEE_LABELS: Record<string, string> = {
@@ -119,14 +119,20 @@ export default function PrintInvoicePage({ params }: { params: Promise<{ id: str
         <div className="invoice-wrap max-w-[720px] mx-auto my-8 bg-white shadow-xl rounded-xl overflow-hidden p-0">
 
           {/* Header */}
-          <div className="bg-[#2F3E4E] px-8 py-6 flex justify-between items-start">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8F79]">Invoice</p>
-              <h1 className="text-2xl font-black text-white mt-0.5">Coming Home Care Services, LLC</h1>
-              <p className="text-xs text-[#D9E1E8] mt-1">support@cominghomecare.com · cominghomecare.com</p>
+          <div className="bg-[#2F3E4E] px-8 py-5 flex justify-between items-center">
+            <div className="flex items-center gap-5">
+              {/* Logo on white background for legibility against dark header */}
+              <div className="bg-white rounded-lg px-3 py-2 flex-shrink-0">
+                <img src="/chc_logo.png" alt="Coming Home Care" className="h-12 w-auto block" />
+              </div>
+              <div>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-[#7A8F79]">Invoice</p>
+                <h1 className="text-xl font-black text-white leading-tight">Coming Home Care Services, LLC</h1>
+                <p className="text-[11px] text-[#D9E1E8] mt-0.5">support@cominghomecare.com · cominghomecare.com</p>
+              </div>
             </div>
-            <div className="text-right">
-              <p className="text-xs text-[#7A8F79] font-semibold">Invoice #</p>
+            <div className="text-right flex-shrink-0">
+              <p className="text-[10px] text-[#7A8F79] font-semibold">Invoice #</p>
               <p className="text-lg font-black text-white font-mono">{invoice.invoiceNumber}</p>
               <span
                 className="inline-block mt-1 text-[10px] font-black px-3 py-0.5 rounded-full"
@@ -143,8 +149,24 @@ export default function PrintInvoicePage({ params }: { params: Promise<{ id: str
             <div className="grid grid-cols-2 gap-6">
               <div className="bg-[#F4F6F5] rounded-xl p-4">
                 <p className="text-[9px] font-bold uppercase tracking-widest text-[#7A8F79] mb-2">Bill To</p>
-                <p className="font-bold text-[#2F3E4E]">{displayName}</p>
-                <p className="text-sm text-[#7A8F79]">{email}</p>
+                {/* Full name if available, otherwise displayName */}
+                <p className="font-bold text-[#2F3E4E]">
+                  {invoice.nurse?.firstName && invoice.nurse?.lastName
+                    ? `${invoice.nurse.firstName} ${invoice.nurse.lastName}`
+                    : displayName}
+                </p>
+                {invoice.nurse?.address && (
+                  <p className="text-sm text-[#2F3E4E]">{invoice.nurse.address}</p>
+                )}
+                {(invoice.nurse?.city || invoice.nurse?.state || invoice.nurse?.zip) && (
+                  <p className="text-sm text-[#2F3E4E]">
+                    {[invoice.nurse.city, invoice.nurse.state].filter(Boolean).join(', ')}{invoice.nurse.zip ? ` ${invoice.nurse.zip}` : ''}
+                  </p>
+                )}
+                {invoice.nurse?.phone && (
+                  <p className="text-sm text-[#7A8F79] mt-0.5">{invoice.nurse.phone}</p>
+                )}
+                <p className="text-sm text-[#7A8F79] mt-0.5">{email}</p>
                 {accountNumber && <p className="text-xs font-mono text-[#7A8F79] mt-0.5">Acct: {accountNumber}</p>}
               </div>
               <div className="bg-[#F4F6F5] rounded-xl p-4">

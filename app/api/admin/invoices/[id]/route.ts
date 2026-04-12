@@ -19,7 +19,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     include: {
       entries: { orderBy: { workDate: 'asc' } },
       payments: { orderBy: { appliedAt: 'asc' } },
-      nurse: { select: { displayName: true, accountNumber: true, user: { select: { email: true } } } },
+      nurse: { select: { displayName: true, accountNumber: true, firstName: true, lastName: true, address: true, city: true, state: true, zip: true, phone: true, user: { select: { email: true } } } },
     },
   })
   if (!invoice) return NextResponse.json({ error: 'Not found' }, { status: 404 })

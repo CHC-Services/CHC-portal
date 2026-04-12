@@ -12,6 +12,14 @@ function buildInvoiceHtml(invoice: any): string {
   }
   const nurse = invoice.nurse
   const balance = invoice.totalAmount - (invoice.paidAmount || 0)
+  const PORTAL_URL = process.env.BASE_URL || 'https://cominghomecare.com'
+  const billToName = (nurse?.firstName && nurse?.lastName)
+    ? `${nurse.firstName} ${nurse.lastName}`
+    : (nurse?.displayName || invoice.nurseName)
+  const billToAddress = [
+    nurse?.address,
+    [nurse?.city, nurse?.state].filter(Boolean).join(', ') + (nurse?.zip ? ` ${nurse.zip}` : ''),
+  ].filter(Boolean).join('<br>')
 
   const entryRows = (invoice.entries || []).map((e: any) => `
     <tr style="border-top:1px solid #e2e8f0">
@@ -51,24 +59,32 @@ function buildInvoiceHtml(invoice: any): string {
     🖨 Print / Save as PDF
   </button>
 
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px">
-    <div>
-      <p style="margin:0;font-size:11px;font-weight:700;letter-spacing:.1em;color:#64748b;text-transform:uppercase">Invoice</p>
-      <h2 style="margin:4px 0 2px;font-size:22px;font-weight:900">Coming Home Care Services, LLC</h2>
-      <p style="margin:0;font-size:12px;color:#64748b">support@cominghomecare.com · cominghomecare.com</p>
+  <!-- Header banner -->
+  <div style="background:#2F3E4E;border-radius:10px 10px 0 0;padding:18px 24px;display:flex;justify-content:space-between;align-items:center;margin-bottom:0">
+    <div style="display:flex;align-items:center;gap:16px">
+      <div style="background:white;border-radius:8px;padding:8px 12px;display:inline-block;line-height:0">
+        <img src="${PORTAL_URL}/chc_logo.png" alt="Coming Home Care" style="height:48px;width:auto;display:block">
+      </div>
+      <div>
+        <p style="margin:0;font-size:10px;font-weight:700;letter-spacing:.1em;color:#7A8F79;text-transform:uppercase">Invoice</p>
+        <p style="margin:2px 0 0;font-size:18px;font-weight:900;color:white">Coming Home Care Services, LLC</p>
+        <p style="margin:2px 0 0;font-size:11px;color:#D9E1E8">support@cominghomecare.com · cominghomecare.com</p>
+      </div>
     </div>
     <div style="text-align:right">
-      <p style="margin:0;font-family:monospace;font-size:16px;font-weight:700">${invoice.invoiceNumber}</p>
-      <span style="font-size:11px;font-weight:700;color:${color};background:${color}18;padding:2px 10px;border-radius:99px;display:inline-block;margin-top:4px">${invoice.status}</span>
-      <p style="margin:6px 0 0;font-size:12px;color:#64748b">Issued ${fmtDate(invoice.sentAt)}</p>
-      <p style="margin:2px 0 0;font-size:12px;color:#64748b">Due ${fmtDate(invoice.dueDate)}</p>
+      <p style="margin:0;font-family:monospace;font-size:16px;font-weight:700;color:white">${invoice.invoiceNumber}</p>
+      <span style="font-size:11px;font-weight:700;color:${color};background:${color}28;padding:2px 10px;border-radius:99px;display:inline-block;margin-top:4px">${invoice.status}</span>
+      <p style="margin:6px 0 0;font-size:12px;color:#D9E1E8">Issued ${fmtDate(invoice.sentAt)}</p>
+      <p style="margin:2px 0 0;font-size:12px;color:#D9E1E8">Due ${fmtDate(invoice.dueDate)}</p>
     </div>
   </div>
 
-  <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 18px;margin-bottom:24px">
+  <div style="background:#f8fafc;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 10px 10px;padding:14px 18px;margin-bottom:24px">
     <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.08em;color:#64748b;text-transform:uppercase">Bill To</p>
-    <p style="margin:0;font-size:15px;font-weight:700">${nurse?.displayName || invoice.nurseName}</p>
-    <p style="margin:0;font-size:13px;color:#64748b">${nurse?.user?.email || invoice.nurseEmail}</p>
+    <p style="margin:0;font-size:15px;font-weight:700">${billToName}</p>
+    ${billToAddress ? `<p style="margin:2px 0 0;font-size:13px;color:#2F3E4E">${billToAddress}</p>` : ''}
+    ${nurse?.phone ? `<p style="margin:2px 0 0;font-size:13px;color:#64748b">${nurse.phone}</p>` : ''}
+    <p style="margin:2px 0 0;font-size:13px;color:#64748b">${nurse?.user?.email || invoice.nurseEmail}</p>
     ${nurse?.accountNumber ? `<p style="margin:4px 0 0;font-size:12px;font-family:monospace;color:#64748b">Account: ${nurse.accountNumber}</p>` : ''}
   </div>
 
@@ -128,7 +144,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     include: {
       entries: { orderBy: { workDate: 'asc' } },
       payments: { orderBy: { appliedAt: 'asc' } },
-      nurse: { select: { displayName: true, accountNumber: true, user: { select: { email: true } } } },
+      nurse: { select: { displayName: true, accountNumber: true, firstName: true, lastName: true, address: true, city: true, state: true, zip: true, phone: true, user: { select: { email: true } } } },
     },
   })
   if (!invoice) return NextResponse.json({ error: 'Not found' }, { status: 404 })

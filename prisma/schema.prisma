@@ -308,6 +308,32 @@ model PendingNotification {
   @@index([nurseId])
 }
 
+model NotificationBatch {
+  id           String                   @id @default(uuid())
+  sentAt       DateTime                 @default(now())
+  trigger      String                   @default("manual") // 'manual' | 'import' | 'cron'
+  totalSent    Int                      @default(0)
+  totalSkipped Int                      @default(0)
+  entries      NotificationBatchEntry[]
+
+  @@index([sentAt])
+}
+
+model NotificationBatchEntry {
+  id         String            @id @default(uuid())
+  batchId    String
+  nurseId    String
+  nurseName  String
+  nurseEmail String
+  claims     Json              // [{claimId, dosStart, dosStop, totalBilled}]
+  documents  Json              // [{documentTitle, category}]
+  sentOk     Boolean           @default(true)
+  batch      NotificationBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@index([batchId])
+  @@index([nurseId])
+}
+
 model FaqItem {
   id          String   @id @default(uuid())
   question    String

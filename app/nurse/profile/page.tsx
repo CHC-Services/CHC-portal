@@ -190,6 +190,10 @@ export default function ProfilePage() {
                     <input type="text" value={profile.bizServiceAddress || ''} onChange={(e) => setProfile({ ...profile, bizServiceAddress: e.target.value })} placeholder="Business address" className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
                   </div>
                   <div className="space-y-1">
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Business Phone</label>
+                    <input type="tel" value={profile.bizPhone || ''} onChange={(e) => setProfile({ ...profile, bizPhone: e.target.value })} placeholder="(555) 555-5555" className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
+                  </div>
+                  <div className="space-y-1">
                     <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Business Email</label>
                     <input type="email" value={profile.bizEmail || ''} onChange={(e) => setProfile({ ...profile, bizEmail: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
                   </div>

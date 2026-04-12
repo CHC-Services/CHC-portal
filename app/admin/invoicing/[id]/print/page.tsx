@@ -19,7 +19,7 @@ type Invoice = {
   notes?: string
   entries: Entry[]
   payments: Payment[]
-  nurse?: { displayName: string; accountNumber?: string; firstName?: string; lastName?: string; address?: string; city?: string; state?: string; zip?: string; phone?: string; user?: { email: string } }
+  nurse?: { displayName: string; accountNumber?: string; firstName?: string; lastName?: string; address?: string; city?: string; state?: string; zip?: string; phone?: string; hasBusinessProvider?: boolean; bizEntityName?: string; bizServiceAddress?: string; bizPhone?: string; bizEmail?: string; user?: { email: string } }
 }
 
 const FEE_LABELS: Record<string, string> = {
@@ -149,24 +149,42 @@ export default function PrintInvoicePage({ params }: { params: Promise<{ id: str
             <div className="grid grid-cols-2 gap-6">
               <div className="bg-[#F4F6F5] rounded-xl p-4">
                 <p className="text-[9px] font-bold uppercase tracking-widest text-[#7A8F79] mb-2">Bill To</p>
-                {/* Full name if available, otherwise displayName */}
-                <p className="font-bold text-[#2F3E4E]">
-                  {invoice.nurse?.firstName && invoice.nurse?.lastName
-                    ? `${invoice.nurse.firstName} ${invoice.nurse.lastName}`
-                    : displayName}
-                </p>
-                {invoice.nurse?.address && (
-                  <p className="text-sm text-[#2F3E4E]">{invoice.nurse.address}</p>
+                {invoice.nurse?.hasBusinessProvider ? (
+                  // Business entity billing info
+                  <>
+                    <p className="font-bold text-[#2F3E4E]">{invoice.nurse.bizEntityName || displayName}</p>
+                    {invoice.nurse.bizServiceAddress && (
+                      <p className="text-sm text-[#2F3E4E]">{invoice.nurse.bizServiceAddress}</p>
+                    )}
+                    {invoice.nurse.bizPhone && (
+                      <p className="text-sm text-[#7A8F79] mt-0.5">{invoice.nurse.bizPhone}</p>
+                    )}
+                    {invoice.nurse.bizEmail && (
+                      <p className="text-sm text-[#7A8F79] mt-0.5">{invoice.nurse.bizEmail}</p>
+                    )}
+                  </>
+                ) : (
+                  // Individual provider billing info
+                  <>
+                    <p className="font-bold text-[#2F3E4E]">
+                      {invoice.nurse?.firstName && invoice.nurse?.lastName
+                        ? `${invoice.nurse.firstName} ${invoice.nurse.lastName}`
+                        : displayName}
+                    </p>
+                    {invoice.nurse?.address && (
+                      <p className="text-sm text-[#2F3E4E]">{invoice.nurse.address}</p>
+                    )}
+                    {(invoice.nurse?.city || invoice.nurse?.state || invoice.nurse?.zip) && (
+                      <p className="text-sm text-[#2F3E4E]">
+                        {[invoice.nurse.city, invoice.nurse.state].filter(Boolean).join(', ')}{invoice.nurse.zip ? ` ${invoice.nurse.zip}` : ''}
+                      </p>
+                    )}
+                    {invoice.nurse?.phone && (
+                      <p className="text-sm text-[#7A8F79] mt-0.5">{invoice.nurse.phone}</p>
+                    )}
+                    <p className="text-sm text-[#7A8F79] mt-0.5">{email}</p>
+                  </>
                 )}
-                {(invoice.nurse?.city || invoice.nurse?.state || invoice.nurse?.zip) && (
-                  <p className="text-sm text-[#2F3E4E]">
-                    {[invoice.nurse.city, invoice.nurse.state].filter(Boolean).join(', ')}{invoice.nurse.zip ? ` ${invoice.nurse.zip}` : ''}
-                  </p>
-                )}
-                {invoice.nurse?.phone && (
-                  <p className="text-sm text-[#7A8F79] mt-0.5">{invoice.nurse.phone}</p>
-                )}
-                <p className="text-sm text-[#7A8F79] mt-0.5">{email}</p>
                 {accountNumber && <p className="text-xs font-mono text-[#7A8F79] mt-0.5">Acct: {accountNumber}</p>}
               </div>
               <div className="bg-[#F4F6F5] rounded-xl p-4">

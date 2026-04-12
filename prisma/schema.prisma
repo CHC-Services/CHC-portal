@@ -70,6 +70,7 @@ model NurseProfile {
   hasBusinessProvider  Boolean @default(false)
   bizServiceAddress    String?
   bizEntityName        String?
+  bizPhone             String?
   bizEmail             String?
   einEncrypted         String?   // AES-256-GCM encrypted
   feinEncrypted        String?   // AES-256-GCM encrypted

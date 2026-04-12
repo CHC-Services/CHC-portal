@@ -13,13 +13,15 @@ function buildInvoiceHtml(invoice: any): string {
   const nurse = invoice.nurse
   const balance = invoice.totalAmount - (invoice.paidAmount || 0)
   const PORTAL_URL = process.env.BASE_URL || 'https://cominghomecare.com'
-  const billToName = (nurse?.firstName && nurse?.lastName)
-    ? `${nurse.firstName} ${nurse.lastName}`
-    : (nurse?.displayName || invoice.nurseName)
-  const billToAddress = [
-    nurse?.address,
-    [nurse?.city, nurse?.state].filter(Boolean).join(', ') + (nurse?.zip ? ` ${nurse.zip}` : ''),
-  ].filter(Boolean).join('<br>')
+  const useBiz = !!nurse?.hasBusinessProvider
+  const billToName = useBiz
+    ? (nurse?.bizEntityName || nurse?.displayName || invoice.nurseName)
+    : ((nurse?.firstName && nurse?.lastName) ? `${nurse.firstName} ${nurse.lastName}` : (nurse?.displayName || invoice.nurseName))
+  const billToAddress = useBiz
+    ? (nurse?.bizServiceAddress || '')
+    : [nurse?.address, [nurse?.city, nurse?.state].filter(Boolean).join(', ') + (nurse?.zip ? ` ${nurse.zip}` : '')].filter(Boolean).join('<br>')
+  const billToPhone = useBiz ? (nurse?.bizPhone || '') : (nurse?.phone || '')
+  const billToEmail = useBiz ? (nurse?.bizEmail || nurse?.user?.email || invoice.nurseEmail) : (nurse?.user?.email || invoice.nurseEmail)
 
   const entryRows = (invoice.entries || []).map((e: any) => `
     <tr style="border-top:1px solid #e2e8f0">
@@ -83,8 +85,8 @@ function buildInvoiceHtml(invoice: any): string {
     <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.08em;color:#64748b;text-transform:uppercase">Bill To</p>
     <p style="margin:0;font-size:15px;font-weight:700">${billToName}</p>
     ${billToAddress ? `<p style="margin:2px 0 0;font-size:13px;color:#2F3E4E">${billToAddress}</p>` : ''}
-    ${nurse?.phone ? `<p style="margin:2px 0 0;font-size:13px;color:#64748b">${nurse.phone}</p>` : ''}
-    <p style="margin:2px 0 0;font-size:13px;color:#64748b">${nurse?.user?.email || invoice.nurseEmail}</p>
+    ${billToPhone ? `<p style="margin:2px 0 0;font-size:13px;color:#64748b">${billToPhone}</p>` : ''}
+    <p style="margin:2px 0 0;font-size:13px;color:#64748b">${billToEmail}</p>
     ${nurse?.accountNumber ? `<p style="margin:4px 0 0;font-size:12px;font-family:monospace;color:#64748b">Account: ${nurse.accountNumber}</p>` : ''}
   </div>
 
@@ -144,7 +146,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     include: {
       entries: { orderBy: { workDate: 'asc' } },
       payments: { orderBy: { appliedAt: 'asc' } },
-      nurse: { select: { displayName: true, accountNumber: true, firstName: true, lastName: true, address: true, city: true, state: true, zip: true, phone: true, user: { select: { email: true } } } },
+      nurse: { select: { displayName: true, accountNumber: true, firstName: true, lastName: true, address: true, city: true, state: true, zip: true, phone: true, hasBusinessProvider: true, bizEntityName: true, bizServiceAddress: true, bizPhone: true, bizEmail: true, user: { select: { email: true } } } },
     },
   })
   if (!invoice) return NextResponse.json({ error: 'Not found' }, { status: 404 })

@@ -61,7 +61,7 @@ function fmt(val: number | null, prefix = '') {
 
 function fmtDate(val: string | null) {
   if (!val) return '—'
-  return new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit', timeZone: 'UTC' })
+  return new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
 }
 
 function fmtDOS(start: string | null, stop: string | null): string {

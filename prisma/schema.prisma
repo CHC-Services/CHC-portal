@@ -112,6 +112,11 @@ model NurseProfile {
   notifyNewDocument       Boolean @default(true)  // alert when admin uploads a document
   notifyNewClaim          Boolean @default(true)  // alert when a new claim is added
 
+  // Directory opt-in
+  dirOptIn     Boolean @default(true)
+  dirShowEmail Boolean @default(true)
+  dirShowPhone Boolean @default(true)
+
   user             User               @relation(fields: [userId], references: [id])
   timeEntries      TimeEntry[]
   claims           Claim[]
@@ -120,6 +125,7 @@ model NurseProfile {
   reminders        NurseReminder[]
   documents        NurseDocument[]
   invoiceActivities InvoiceActivity[]
+  caseAssignments  CaseAssignment[]
 }
 
 model GlobalEvent {
@@ -424,4 +430,30 @@ model Claim {
 
   @@index([nurseId])
   @@index([claimId])
+}
+
+model HomeCase {
+  id               String           @id @default(uuid())
+  patientFirstName String
+  notes            String?
+  active           Boolean          @default(true)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  assignments      CaseAssignment[]
+
+  @@index([active])
+}
+
+model CaseAssignment {
+  id       String      @id @default(uuid())
+  caseId   String
+  nurseId  String
+  joinedAt DateTime    @default(now())
+
+  homeCase HomeCase     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  nurse    NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, nurseId])
+  @@index([caseId])
+  @@index([nurseId])
 }

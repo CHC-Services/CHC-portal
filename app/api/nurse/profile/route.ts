@@ -48,6 +48,8 @@ export async function PATCH(req: Request) {
     notifyDocExpiring,
     notifyNewDocument,
     notifyNewClaim,
+    // Directory privacy
+    dirOptIn, dirShowEmail, dirShowPhone,
     // Business provider fields
     hasBusinessProvider,
     bizNpiType,
@@ -78,6 +80,9 @@ export async function PATCH(req: Request) {
   if (notifyDocExpiring !== undefined) updates.notifyDocExpiring = notifyDocExpiring
   if (notifyNewDocument !== undefined) updates.notifyNewDocument = notifyNewDocument
   if (notifyNewClaim !== undefined) updates.notifyNewClaim = notifyNewClaim
+  if (dirOptIn     !== undefined) updates.dirOptIn     = dirOptIn
+  if (dirShowEmail !== undefined) updates.dirShowEmail = dirShowEmail
+  if (dirShowPhone !== undefined) updates.dirShowPhone = dirShowPhone
   if (hasBusinessProvider !== undefined) updates.hasBusinessProvider = hasBusinessProvider
   if (bizNpiType !== undefined) updates.bizNpiType = bizNpiType
   if (bizNpi !== undefined) updates.bizNpi = bizNpi

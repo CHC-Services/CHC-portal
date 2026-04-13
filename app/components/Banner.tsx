@@ -163,8 +163,8 @@ export default function Banner({ user }: BannerProps) {
             {/* ── MOBILE header (hidden on md+) ── */}
             <div className="md:hidden fixed top-0 left-0 w-full bg-[#F4F6F5] text-[#2f3e4e] z-50 shadow-sm">
 
-                {/* Row 1: Logo | Hamburger + Logout */}
-                <div className="flex items-center justify-between px-4 py-3">
+                {/* Row 1: Logo | Sign Out (or Login) */}
+                <div className="flex items-center justify-between px-3 pt-3 pb-1">
                     <Link href="/">
                         <Image
                             src="/chc_logo.png"
@@ -175,33 +175,35 @@ export default function Banner({ user }: BannerProps) {
                             className="h-auto cursor-pointer"
                         />
                     </Link>
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={() => setMenuOpen(o => !o)}
-                            className="p-2 rounded hover:bg-[#D9E1E8] transition"
-                            aria-label="Toggle menu"
-                        >
-                            {menuOpen ? (
-                                <svg className="w-6 h-6 text-[#2F3E4E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            ) : (
-                                <svg className="w-6 h-6 text-[#2F3E4E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                                </svg>
-                            )}
-                        </button>
-                        {authButtonMobile}
-                    </div>
+                    {authButtonMobile}
                 </div>
 
-                {/* Row 2: Welcome text — right aligned */}
-                {displayName && (
-                    <div className="px-4 pb-2 text-right">
-                        <span style={{ fontFamily: "'Lato', sans-serif", fontStyle: 'italic', fontSize: '0.95rem' }}>Welcome home, </span>
-                        <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '1rem' }}>{displayName}</span>
+                {/* Row 2: Welcome text (left) | Hamburger (right) */}
+                <div className="flex items-center justify-between px-3 pb-2">
+                    <div className="flex-1 min-w-0">
+                        {displayName && (
+                            <span className="truncate">
+                                <span style={{ fontFamily: "'Lato', sans-serif", fontStyle: 'italic', fontSize: '0.9rem' }}>Welcome home, </span>
+                                <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '0.95rem' }}>{displayName}</span>
+                            </span>
+                        )}
                     </div>
-                )}
+                    <button
+                        onClick={() => setMenuOpen(o => !o)}
+                        className="p-2 rounded hover:bg-[#D9E1E8] transition shrink-0"
+                        aria-label="Toggle menu"
+                    >
+                        {menuOpen ? (
+                            <svg className="w-6 h-6 text-[#2F3E4E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        ) : (
+                            <svg className="w-6 h-6 text-[#2F3E4E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                        )}
+                    </button>
+                </div>
 
                 {/* Hamburger dropdown */}
                 {menuOpen && (

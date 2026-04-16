@@ -22,9 +22,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   const { id } = await params
-  const { readyToInvoice, invoiceFeePlan, claimRef } = await req.json()
+  const { readyToInvoice, invoiceFeePlan, claimRef, hours, notes } = await req.json()
 
   const data: Record<string, unknown> = {}
+
+  if (hours !== undefined) {
+    const h = parseFloat(hours)
+    if (!isNaN(h) && h > 0) data.hours = h
+  }
+
+  if (notes !== undefined) {
+    data.notes = notes || null
+  }
 
   if (readyToInvoice !== undefined) {
     data.readyToInvoice = readyToInvoice

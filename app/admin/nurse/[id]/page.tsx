@@ -339,6 +339,26 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
     logActivity('Print', 'Statement', yearParam ? `${yearParam} Statement` : 'Full Statement')
   }
 
+  // Inline hours editing
+  const [editingHoursId, setEditingHoursId] = useState<string | null>(null)
+  const [editHoursVal, setEditHoursVal] = useState('')
+  const [savingHours, setSavingHours] = useState(false)
+
+  async function saveHoursEdit(entryId: string) {
+    const h = parseFloat(editHoursVal)
+    if (isNaN(h) || h <= 0) { setEditingHoursId(null); return }
+    setSavingHours(true)
+    await fetch(`/api/admin/time-entry/${entryId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ hours: h }),
+    })
+    setSavingHours(false)
+    setEditingHoursId(null)
+    fetchEntries()
+  }
+
   // Log hours form
   const [workDate, setWorkDate] = useState('')
   const workDateRef = useRef<DateInputHandle>(null)
@@ -1324,7 +1344,37 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                               className="border border-[#D9E1E8] rounded px-2 py-1 text-xs text-[#2F3E4E] w-24 focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
                             />
                           </td>
-                          <td className="py-2.5 pr-4 text-right text-xs font-semibold text-[#2F3E4E]">{entry.hours}</td>
+                          <td
+                            className="py-2.5 pr-4 text-right text-xs font-semibold text-[#2F3E4E] select-none"
+                            title={entry.invoiceId ? 'Already invoiced' : 'Double-click to edit hours'}
+                            onDoubleClick={() => {
+                              if (entry.invoiceId) return
+                              setEditingHoursId(entry.id)
+                              setEditHoursVal(String(entry.hours))
+                            }}
+                          >
+                            {editingHoursId === entry.id ? (
+                              <input
+                                autoFocus
+                                type="number"
+                                min="1"
+                                step="1"
+                                value={editHoursVal}
+                                onChange={(e: { target: HTMLInputElement }) => setEditHoursVal(e.target.value)}
+                                onKeyDown={(e: { key: string }) => {
+                                  if (e.key === 'Enter') saveHoursEdit(entry.id)
+                                  if (e.key === 'Escape') setEditingHoursId(null)
+                                }}
+                                onBlur={() => saveHoursEdit(entry.id)}
+                                disabled={savingHours}
+                                className="w-14 border border-[#7A8F79] rounded px-1 py-0.5 text-xs text-center focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                              />
+                            ) : (
+                              <span className={`${entry.invoiceId ? 'text-[#7A8F79] cursor-not-allowed' : 'underline decoration-dotted decoration-[#7A8F79] underline-offset-2 cursor-text'}`}>
+                                {entry.hours}
+                              </span>
+                            )}
+                          </td>
                           <td className="py-2.5 pr-4 text-[#7A8F79] italic text-xs max-w-[120px] truncate">{entry.notes || '—'}</td>
                           <td className="py-2.5">
                             {entry.readyToInvoice ? (

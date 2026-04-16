@@ -105,8 +105,10 @@ function FeatureCard({
         accent ? 'bg-[#2F3E4E] border-[#7A8F79] text-white' : 'bg-white border-[#7A8F79] text-[#2F3E4E]'
       }`}
     >
-      <div className="text-2xl mb-2">{icon}</div>
-      <p className={`text-base font-bold mb-1 ${accent ? 'text-white' : 'text-[#2F3E4E]'}`}>{title}</p>
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-2xl leading-none">{icon}</span>
+        <p className={`text-base font-bold ${accent ? 'text-white' : 'text-[#2F3E4E]'}`}>{title}</p>
+      </div>
       <p className={`text-sm ${accent ? 'text-[#D9E1E8]' : 'text-[#7A8F79]'}`}>{description}</p>
     </Link>
   )
@@ -240,10 +242,12 @@ export default async function Home() {
           <div>
             <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-3">Quick Access</p>
             <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
-              <FeatureCard href="/admin"     icon="🗂"  title="Admin Area"   description="View providers, add new accounts, enter hours & invoice, manage profiles, and more." accent />
+              <FeatureCard href="/admin"     icon="🗂"  title="Admin Area"   description="View providers, add/delete accounts, enter hours, manage profiles, and more." accent />
+              <FeatureCard href="/admin/claims"   icon="🧾"  title="Claims" description="Track & update claim, upload EOBs, assign Claim IDs to invoice." />
+              <FeatureCard href="/admin/invoices"  icon="💵"  title="Invoices" description="Create, send, track, and cashout invoices to apply to sites income ledger." />
+              <FeatureCard href="/admin/faq" icon="❓"  title="FAQ Add/Edit"    description="Add and Edit site FAQ topics." />
               <FeatureCard href="/admin/ideas" icon="🧠"  title="Idea Board" description="Place to store all reminders & ideas about site improvements." />
               <FeatureCard href="/resources" icon="📚"  title="Provider Resources" description="NY enrollment guides to share with your providers." />
-              <FeatureCard href="/admin/faq" icon="❓"  title="FAQ Add/Edit"    description="Add and Edit site FAQ topics." />
             </div>
           </div>
         )}

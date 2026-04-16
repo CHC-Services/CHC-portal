@@ -478,10 +478,22 @@ export default function AdminDashboard() {
 
       {/* Nurse Roster */}
       <div>
-        <h2 className="text-lg font-semibold text-[#2F3E4E] mb-3">
-          Nurse Roster
-          <span className="ml-2 text-sm font-normal text-[#7A8F79]">— click a nurse to expand their hours</span>
-        </h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold text-[#2F3E4E]">
+            Nurse Roster
+            <span className="ml-2 text-sm font-normal text-[#7A8F79]">— click a nurse to expand their hours</span>
+          </h2>
+          <a
+            href="/api/admin/reports/time-matrix"
+            download="CHC-Time-Report-2026.xlsx"
+            className="flex items-center gap-2 bg-[#2F3E4E] hover:bg-[#7A8F79] text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Export Jan–Apr 2026
+          </a>
+        </div>
 
         {loadingNurses ? (
           <p className="text-sm text-[#7A8F79]">Loading nurses…</p>

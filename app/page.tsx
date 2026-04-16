@@ -240,8 +240,10 @@ export default async function Home() {
           <div>
             <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-3">Quick Access</p>
             <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
-              <FeatureCard href="/admin"     icon="🗂"  title="Provider Roster"   description="View all providers, add new accounts, and manage profiles." accent />
+              <FeatureCard href="/admin"     icon="🗂"  title="Admin Area"   description="View providers, add new accounts, enter hours & invoice, manage profiles, and more." accent />
+              <FeatureCard href="/admin/ideas" icon="🧠"  title="Idea Board" description="Place to store all reminders & ideas about site improvements." />
               <FeatureCard href="/resources" icon="📚"  title="Provider Resources" description="NY enrollment guides to share with your providers." />
+              <FeatureCard href="/admin/faq" icon="❓"  title="FAQ Add/Edit"    description="Add and Edit site FAQ topics." />
             </div>
           </div>
         )}

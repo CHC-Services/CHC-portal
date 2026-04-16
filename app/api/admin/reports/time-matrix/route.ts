@@ -114,8 +114,10 @@ export async function GET(req: Request) {
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, 'Time Report Jan–Apr 2026')
 
-  const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array', cellStyles: true }) as Uint8Array
-  const blob = new Blob([buf], {
+  const raw = XLSX.write(wb, { bookType: 'xlsx', type: 'array', cellStyles: true }) as Uint8Array
+  // .slice(0) narrows the type from ArrayBufferLike → ArrayBuffer, which Blob requires
+  const ab = raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength) as ArrayBuffer
+  const blob = new Blob([ab], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   })
 

@@ -74,25 +74,10 @@ export async function GET(req: Request) {
   // ── Build worksheet ───────────────────────────────────────────────────────
   const ws = XLSX.utils.aoa_to_sheet(aoa)
 
-  // Style every cell: 8pt Arial, centered (except column A = left-aligned)
-  for (let r = 0; r < aoa.length; r++) {
-    for (let c = 0; c < aoa[r].length; c++) {
-      const ref = XLSX.utils.encode_cell({ r, c })
-      if (!ws[ref]) continue
-      ws[ref].s = {
-        font: { name: 'Arial', sz: 8, bold: r === 0 },
-        alignment: { horizontal: c === 0 ? 'left' : 'center', vertical: 'center' },
-        ...(r === 0
-          ? { fill: { fgColor: { rgb: '2F3E4E' }, patternType: 'solid' }, font: { name: 'Arial', sz: 8, bold: true, color: { rgb: 'FFFFFF' } } }
-          : {}),
-      }
-    }
-  }
-
   // Column widths (characters): date col wider, nurse cols narrow
   ws['!cols'] = [
-    { wch: 6 },
-    ...nurses.map(() => ({ wch: 4.5 })),
+    { wch: 7 },
+    ...nurses.map(() => ({ wch: 5 })),
   ]
 
   // Freeze header row
@@ -100,7 +85,7 @@ export async function GET(req: Request) {
 
   // Page setup: landscape, fit to 1 page wide
   ws['!printSetup'] = {
-    paperSize: 1,           // US Letter
+    paperSize: 1,
     orientation: 'landscape',
     fitToPage: true,
     fitToWidth: 1,
@@ -114,7 +99,7 @@ export async function GET(req: Request) {
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, 'Time Report Jan–Apr 2026')
 
-  const raw = XLSX.write(wb, { bookType: 'xlsx', type: 'array', cellStyles: true }) as Uint8Array
+  const raw = XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as Uint8Array
   // .slice(0) narrows the type from ArrayBufferLike → ArrayBuffer, which Blob requires
   const ab = raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength) as ArrayBuffer
   const blob = new Blob([ab], {

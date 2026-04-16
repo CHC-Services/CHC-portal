@@ -114,7 +114,7 @@ export async function GET(req: Request) {
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, 'Time Report Jan–Apr 2026')
 
-  const buf: Buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer', cellStyles: true })
+  const buf: Uint8Array = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer', cellStyles: true })
 
   return new NextResponse(buf, {
     headers: {

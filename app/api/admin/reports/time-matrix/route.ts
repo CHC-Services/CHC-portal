@@ -114,11 +114,13 @@ export async function GET(req: Request) {
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, 'Time Report Jan–Apr 2026')
 
-  const buf: Uint8Array = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer', cellStyles: true })
+  const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array', cellStyles: true }) as Uint8Array
+  const blob = new Blob([buf], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  })
 
-  return new NextResponse(buf, {
+  return new NextResponse(blob, {
     headers: {
-      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'Content-Disposition': 'attachment; filename="CHC-Time-Report-2026.xlsx"',
     },
   })

@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { fmtPhone } from '../../../../lib/formatPhone'
 
 const FEE_LABELS: Record<string, string> = {
@@ -58,6 +59,26 @@ const STATUS_COLOR: Record<string, string> = {
 const statusColor = STATUS_COLOR[SAMPLE.status] || '#6b7280'
 
 export default function InvoiceTemplatePage() {
+  const [sending, setSending] = useState(false)
+  const [sendStatus, setSendStatus] = useState<'idle' | 'ok' | 'err'>('idle')
+
+  async function sendPreview() {
+    setSending(true)
+    setSendStatus('idle')
+    try {
+      const res = await fetch('/api/admin/invoices/send-preview', {
+        method: 'POST',
+        credentials: 'include',
+      })
+      setSendStatus(res.ok ? 'ok' : 'err')
+    } catch {
+      setSendStatus('err')
+    } finally {
+      setSending(false)
+      setTimeout(() => setSendStatus('idle'), 4000)
+    }
+  }
+
   return (
     <>
       <style>{`
@@ -106,6 +127,20 @@ export default function InvoiceTemplatePage() {
         <span className="text-sm font-semibold text-[#D9E1E8]">Invoice Template Preview</span>
         <span className="text-xs text-[#7A8F79] bg-[#7A8F79]/20 px-2 py-0.5 rounded-full font-semibold">SAMPLE DATA</span>
         <div className="flex-1" />
+        <button
+          onClick={sendPreview}
+          disabled={sending}
+          className={`text-sm font-semibold px-5 py-2 rounded-lg transition disabled:opacity-60 ${
+            sendStatus === 'ok'  ? 'bg-green-600 text-white' :
+            sendStatus === 'err' ? 'bg-red-600 text-white' :
+            'bg-[#4a6fa5] hover:bg-[#3a5f95] text-white'
+          }`}
+        >
+          {sending        ? '⏳ Sending…'                        :
+           sendStatus === 'ok'  ? '✓ Sent to support@'           :
+           sendStatus === 'err' ? '✕ Send failed'                :
+           '📧 Email Preview'}
+        </button>
         <button
           onClick={() => window.print()}
           className="bg-[#7A8F79] hover:bg-[#657a64] text-white text-sm font-semibold px-5 py-2 rounded-lg transition"

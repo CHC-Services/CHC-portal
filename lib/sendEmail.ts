@@ -65,6 +65,12 @@ const FEE_PLAN_LABELS: Record<string, string> = {
 export async function sendInvoiceEmail({
   to,
   nurseName,
+  nurseFirstName,
+  nurseLastName,
+  nurseAddress,
+  nurseCity,
+  nurseState,
+  nurseZip,
   invoiceNumber,
   totalAmount,
   dueTerm,
@@ -74,6 +80,12 @@ export async function sendInvoiceEmail({
 }: {
   to: string
   nurseName: string
+  nurseFirstName?: string
+  nurseLastName?: string
+  nurseAddress?: string
+  nurseCity?: string
+  nurseState?: string
+  nurseZip?: string
   invoiceNumber: string
   totalAmount: number
   dueTerm: string
@@ -88,6 +100,42 @@ export async function sendInvoiceEmail({
   const fmtMoney = (n: number) => `$${n.toFixed(2)}`
   const issueDate = fmt(new Date())
   const dueDateFmt = dueTerm === 'ASAP' ? 'Due Immediately' : fmt(dueDate)
+
+  // Build base64 SVG icon data URIs for payment buttons
+  const svgImg = (svg: string) =>
+    `<img src="data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}" width="20" height="20" alt="" style="display:block"/>`
+  const venmoIcon = svgImg(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="white" d="M19.04 2c.76 1.27 1.1 2.58 1.1 4.23 0 5.27-4.5 12.11-8.16 16.92H4.22L1 4.01l6.77-.65 1.73 13.92c1.6-2.68 3.58-6.9 3.58-9.77 0-1.57-.27-2.64-.68-3.51H19.04z"/></svg>`)
+  const cashappIcon = svgImg(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="white" d="M13.567 7.9c.84.23 1.62.69 2.19 1.35l1.67-1.67a6.42 6.42 0 00-3.86-1.88V4h-2v1.72c-2.3.4-3.97 2.06-3.97 4.13 0 2.37 1.85 3.38 3.97 3.93v3.37c-.9-.18-1.74-.64-2.36-1.32L7.4 17.5a6.5 6.5 0 004.16 1.78V21h2v-1.73c2.34-.37 4.03-2.05 4.03-4.2 0-2.44-1.91-3.47-4.03-4v-3.17zm-2 0V5.77c-.88.26-1.47 1-1.47 1.85 0 .8.5 1.35 1.47 1.65v-3.37zm2 8.27c.92-.27 1.53-1.03 1.53-1.9 0-.83-.52-1.4-1.53-1.72v3.62z"/></svg>`)
+  const appleIcon = svgImg(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="white" d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>`)
+  const zelleIcon = svgImg(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="white" stroke-width="1.5"/><text x="12" y="16.5" text-anchor="middle" font-size="11" font-weight="900" font-family="Arial,Helvetica,sans-serif" fill="white">Z</text></svg>`)
+
+  // Billed-to address lines
+  const billName = (nurseFirstName && nurseLastName) ? `${nurseFirstName} ${nurseLastName}` : nurseName
+  const cityLine = [nurseCity, nurseState, nurseZip].filter(Boolean).join(nurseState ? ', ' : ' ')
+  const addressBlock = [
+    nurseAddress ? `<p style="margin:2px 0 0;font-size:12px;color:#7A8F79">${nurseAddress}</p>` : '',
+    cityLine     ? `<p style="margin:2px 0 0;font-size:12px;color:#7A8F79">${cityLine}</p>`    : '',
+  ].join('')
+
+  // Payment deep links
+  const venmoUrl   = `https://venmo.com/AlexMcGann?txn=pay&amount=${totalAmount.toFixed(2)}&note=${encodeURIComponent(invoiceNumber)}`
+  const cashappUrl = `https://cash.app/$myInvoiceCHC/${totalAmount.toFixed(2)}`
+  const zelleUrl   = `mailto:support@cominghomecare.com?subject=${encodeURIComponent(`Zelle Payment – ${invoiceNumber}`)}`
+  const appleUrl   = `mailto:support@cominghomecare.com?subject=${encodeURIComponent(`Apple Pay – ${invoiceNumber}`)}`
+
+  // Reusable payment button builder
+  const payBtn = (href: string, bg: string, icon: string, label: string, handle: string) => `
+    <td style="padding:4px;width:50%">
+      <a href="${href}" style="display:block;background:${bg};border-radius:12px;padding:12px 14px;text-decoration:none">
+        <table style="border-collapse:collapse;width:100%"><tr>
+          <td style="width:24px;padding:0;vertical-align:middle">${icon}</td>
+          <td style="padding:0 0 0 9px;vertical-align:middle">
+            <p style="margin:0;font-size:13px;font-weight:800;color:#ffffff;line-height:1.2">${label}</p>
+            <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.75);line-height:1">${handle}</p>
+          </td>
+        </tr></table>
+      </a>
+    </td>`
 
   const lineItems = entries.map(e => `
     <tr>
@@ -115,7 +163,9 @@ export async function sendInvoiceEmail({
   <!-- Header -->
   <div style="background:#2F3E4E;padding:32px 40px;display:flex;align-items:center;justify-content:space-between">
     <div style="display:flex;align-items:center;gap:16px">
-      <img src="${PORTAL_URL}/chc_logo.png" alt="CHC" style="height:56px;width:auto"/>
+      <div style="background:#ffffff;border-radius:10px;padding:8px 14px;display:inline-block;line-height:0">
+        <img src="${PORTAL_URL}/chc_logo.png" alt="Coming Home Care" style="height:52px;width:auto;display:block"/>
+      </div>
     </div>
     <div style="text-align:right">
       <p style="margin:0;color:#7A8F79;font-size:10px;letter-spacing:3px;text-transform:uppercase;font-weight:700">Invoice</p>
@@ -133,8 +183,9 @@ export async function sendInvoiceEmail({
   <div style="padding:28px 40px;display:flex;justify-content:space-between;border-bottom:1px solid #D9E1E8">
     <div>
       <p style="margin:0 0 6px;font-size:10px;color:#7A8F79;text-transform:uppercase;letter-spacing:2px;font-weight:700">Billed To</p>
-      <p style="margin:0;font-size:17px;font-weight:800;color:#2F3E4E">${nurseName}</p>
+      <p style="margin:0;font-size:17px;font-weight:800;color:#2F3E4E">${billName}</p>
       <p style="margin:3px 0 0;font-size:12px;color:#7A8F79">${to}</p>
+      ${addressBlock}
     </div>
     <div style="text-align:right">
       <div style="margin-bottom:10px">
@@ -173,27 +224,18 @@ export async function sendInvoiceEmail({
   <!-- Payment Options -->
   <div style="margin:0 40px 32px;background:#f4f6f8;border-radius:14px;padding:24px 28px">
     <p style="margin:0 0 14px;font-size:10px;color:#7A8F79;text-transform:uppercase;letter-spacing:2px;font-weight:700">How to Pay</p>
-    <table style="width:100%;border-collapse:collapse">
+    <table style="width:100%;border-collapse:collapse;margin:-4px">
       <tr>
-        <td style="padding:6px 0;width:110px">
-          <span style="font-size:13px;color:#2F3E4E;font-weight:700">💚 Venmo</span>
-        </td>
-        <td style="padding:6px 0;font-size:13px;color:#4a5a6a">@AlexMcGann</td>
+        ${payBtn(venmoUrl,   '#3D95CE', venmoIcon,   'Venmo',     '@AlexMcGann')}
+        ${payBtn(cashappUrl, '#00C244', cashappIcon, 'Cash App',  '$myInvoiceCHC')}
       </tr>
       <tr>
-        <td style="padding:6px 0"><span style="font-size:13px;color:#2F3E4E;font-weight:700">💚 Zelle</span></td>
-        <td style="padding:6px 0;font-size:13px;color:#4a5a6a">support@cominghomecare.com</td>
-      </tr>
-      <tr>
-        <td style="padding:6px 0"><span style="font-size:13px;color:#2F3E4E;font-weight:700">💚 CashApp</span></td>
-        <td style="padding:6px 0;font-size:13px;color:#4a5a6a">$myInvoiceCHC</td>
-      </tr>
-      <tr>
-        <td style="padding:6px 0"><span style="font-size:13px;color:#2F3E4E;font-weight:700">🍎 Apple Pay</span></td>
-        <td style="padding:6px 0;font-size:13px;color:#4a5a6a">support@cominghomecare.com</td>
+        ${payBtn(zelleUrl,  '#6D1ED4', zelleIcon,  'Zelle',     'support@cominghomecare.com')}
+        ${payBtn(appleUrl,  '#1c1c1e', appleIcon,  'Apple Pay', 'support@cominghomecare.com')}
       </tr>
     </table>
-    ${totalAmount >= 50 ? '<p style="margin:14px 0 0;font-size:11px;color:#7A8F79;border-top:1px solid #D9E1E8;padding-top:12px">Credit card payments accepted for invoices of $50.00 or more — contact us for details.</p>' : ''}
+    <p style="margin:14px 0 0;font-size:11px;color:#9aabb5">Please include <strong>${invoiceNumber}</strong> as your payment note.</p>
+    ${totalAmount >= 50 ? '<p style="margin:8px 0 0;font-size:11px;color:#7A8F79;border-top:1px solid #D9E1E8;padding-top:10px">Credit card payments accepted for invoices of $50.00 or more — contact us for details.</p>' : ''}
   </div>
 
   <!-- CTA -->

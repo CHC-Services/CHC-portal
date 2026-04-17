@@ -74,6 +74,12 @@ export async function POST(req: Request) {
   await sendInvoiceEmail({
     to: nurse.user.email,
     nurseName: nurse.displayName,
+    nurseFirstName: nurse.firstName  ?? undefined,
+    nurseLastName:  nurse.lastName   ?? undefined,
+    nurseAddress:   nurse.address    ?? undefined,
+    nurseCity:      nurse.city       ?? undefined,
+    nurseState:     nurse.state      ?? undefined,
+    nurseZip:       nurse.zip        ?? undefined,
     invoiceNumber,
     totalAmount,
     dueTerm,

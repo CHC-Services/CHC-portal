@@ -29,6 +29,12 @@ export async function POST(req: Request) {
   const ok = await sendInvoiceEmail({
     to: PREVIEW_TO,
     nurseName: 'Jane R. Sample, RN',
+    nurseFirstName: 'Jane',
+    nurseLastName: 'Sample, RN',
+    nurseAddress: '123 Provider Lane',
+    nurseCity: 'Albany',
+    nurseState: 'NY',
+    nurseZip: '12207',
     invoiceNumber: 'CHC-PREVIEW',
     totalAmount,
     dueTerm: '30',

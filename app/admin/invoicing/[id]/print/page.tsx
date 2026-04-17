@@ -95,6 +95,10 @@ export default function PrintInvoicePage({ params }: { params: Promise<{ id: str
             padding: 0 !important;
             background: white !important;
           }
+          /* Hide site chrome: Banner (fixed class) + Footer */
+          .fixed { display: none !important; }
+          footer { display: none !important; }
+          .page-wrap { padding: 0 !important; }
           .no-print { display: none !important; }
           .print-outer {
             padding-top: 0 !important;

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../../lib/prisma'
 import { verifyToken } from '../../../../../../lib/auth'
 import { uploadToS3 } from '../../../../../../lib/s3'
+import { sendReceiptEmail } from '../../../../../../lib/sendEmail'
 
 function adminOnly(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -105,6 +106,27 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       },
     }),
   ])
+
+  // Send receipt email fire-and-forget
+  const nurseEmail = invoice.nurse?.user?.email || invoice.nurseEmail
+  if (nurseEmail) {
+    sendReceiptEmail({
+      to: nurseEmail,
+      nurseName: invoice.nurse?.displayName || invoice.nurseName,
+      accountNumber: invoice.nurse?.accountNumber ?? null,
+      receiptNumber,
+      invoiceNumber: invoice.invoiceNumber,
+      paymentAmount: Number(amount),
+      paymentMethod: method || null,
+      paymentNote: note || null,
+      appliedAt,
+      invoiceTotal: invoice.totalAmount,
+      previouslyPaid: invoice.paidAmount || 0,
+      newTotalPaid: newPaid,
+      balance: Math.max(0, invoice.totalAmount - newPaid),
+      newStatus,
+    }).catch(() => {})
+  }
 
   return NextResponse.json({
     ok: true,

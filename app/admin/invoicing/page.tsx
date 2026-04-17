@@ -533,6 +533,13 @@ export default function AdminInvoicingPage() {
                                               : <span className="text-[#D9E1E8] text-[11px]" title="Not in S3">☁️</span>
                                             }
                                           </td>
+                                          <td className="py-1 pr-1">
+                                            <button
+                                              onClick={() => window.open(`/admin/invoicing/${inv.id}/receipt?paymentId=${p.id}`, '_blank')}
+                                              className="text-[#7A8F79] hover:text-[#2F3E4E] transition text-[11px]"
+                                              title="Print receipt"
+                                            >🖨</button>
+                                          </td>
                                           <td className="py-1">
                                             <button
                                               onClick={() => deletePayment(inv.id, p.id)}

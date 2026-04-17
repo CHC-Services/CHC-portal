@@ -99,6 +99,10 @@ export default function InvoiceTemplatePage() {
             padding: 0 !important;
             background: white !important;
           }
+          /* Hide site chrome: Banner (fixed class) + Footer */
+          .fixed { display: none !important; }
+          footer { display: none !important; }
+          .page-wrap { padding: 0 !important; }
           /* Hide toolbar */
           .no-print { display: none !important; }
           /* Remove screen-only outer wrapper styling */
@@ -126,6 +130,9 @@ export default function InvoiceTemplatePage() {
       <div className="no-print fixed top-0 left-0 right-0 bg-[#2F3E4E] text-white px-6 py-3 flex items-center gap-4 z-50 shadow-lg">
         <span className="text-sm font-semibold text-[#D9E1E8]">Invoice Template Preview</span>
         <span className="text-xs text-[#7A8F79] bg-[#7A8F79]/20 px-2 py-0.5 rounded-full font-semibold">SAMPLE DATA</span>
+        <a href="/admin/invoicing/receipt-template" target="_blank" className="text-xs text-[#7A8F79] hover:text-white transition underline underline-offset-2">
+          View Receipt Template →
+        </a>
         <div className="flex-1" />
         <button
           onClick={sendPreview}

@@ -174,8 +174,7 @@ export async function sendInvoiceEmail({
   </div>
 
   <!-- Subheader stripe -->
-  <div style="background:#7A8F79;padding:10px 40px;display:flex;justify-content:space-between;align-items:center">
-    <p style="margin:0;color:#ffffff;font-size:11px;font-weight:600;letter-spacing:1px">COMING HOME CARE SERVICES, LLC</p>
+  <div style="background:#7A8F79;padding:10px 40px;text-align:right">
     <p style="margin:0;color:#f0f4f0;font-size:11px">support@cominghomecare.com</p>
   </div>
 
@@ -184,7 +183,6 @@ export async function sendInvoiceEmail({
     <div>
       <p style="margin:0 0 6px;font-size:10px;color:#7A8F79;text-transform:uppercase;letter-spacing:2px;font-weight:700">Billed To</p>
       <p style="margin:0;font-size:17px;font-weight:800;color:#2F3E4E">${billName}</p>
-      <p style="margin:3px 0 0;font-size:12px;color:#7A8F79">${to}</p>
       ${addressBlock}
     </div>
     <div style="text-align:right">
@@ -234,7 +232,7 @@ export async function sendInvoiceEmail({
         ${payBtn(appleUrl,  '#1c1c1e', appleIcon,  'Apple Pay', 'support@cominghomecare.com')}
       </tr>
     </table>
-    <p style="margin:14px 0 0;font-size:11px;color:#9aabb5">Please include <strong>${invoiceNumber}</strong> as your payment note.</p>
+    <p style="margin:14px 0 0;font-size:11px;color:#9aabb5">Please include <strong>${invoiceNumber.replace(/^CHC-/i, '')}</strong> as your payment note.</p>
     ${totalAmount >= 50 ? '<p style="margin:8px 0 0;font-size:11px;color:#7A8F79;border-top:1px solid #D9E1E8;padding-top:10px">Credit card payments accepted for invoices of $50.00 or more — contact us for details.</p>' : ''}
   </div>
 
@@ -1060,6 +1058,172 @@ export async function sendPromptPayReminder({
             To manage alert settings, visit the adEmail page in the provider portal.
           </p>
         </div>
+      `,
+    })
+    return !error
+  } catch {
+    return false
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Payment Receipt Email
+// ─────────────────────────────────────────────────────────────────────────────
+export async function sendReceiptEmail({
+  to,
+  nurseName,
+  nurseFirstName,
+  nurseLastName,
+  accountNumber,
+  receiptNumber,
+  invoiceNumber,
+  paymentAmount,
+  paymentMethod,
+  paymentNote,
+  appliedAt,
+  invoiceTotal,
+  previouslyPaid,
+  newTotalPaid,
+  balance,
+  newStatus,
+}: {
+  to: string
+  nurseName: string
+  nurseFirstName?: string
+  nurseLastName?: string
+  accountNumber?: string | null
+  receiptNumber: string
+  invoiceNumber: string
+  paymentAmount: number
+  paymentMethod?: string | null
+  paymentNote?: string | null
+  appliedAt: Date
+  invoiceTotal: number
+  previouslyPaid: number
+  newTotalPaid: number
+  balance: number
+  newStatus: string
+}): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) return false
+  const resend = new Resend(process.env.RESEND_API_KEY)
+
+  const fmt = (d: Date) => new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+  const fmtMoney = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  const isPaidInFull = newStatus === 'Paid' || balance <= 0
+  const billName = (nurseFirstName && nurseLastName) ? `${nurseFirstName} ${nurseLastName}` : nurseName
+
+  const svgImg = (svg: string) =>
+    `<img src="data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}" width="18" height="18" alt="" style="display:inline-block;vertical-align:middle;margin-right:6px"/>`
+  const checkIcon = svgImg(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="white" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`)
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to,
+      subject: `RECEIPT ${receiptNumber} — Payment Applied to ${invoiceNumber}`,
+      html: `
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background:#D9E1E8;font-family:'Helvetica Neue',Arial,sans-serif">
+<div style="padding:40px 16px">
+<div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(47,62,78,0.14)">
+
+  <!-- Header -->
+  <div style="background:#2F3E4E;padding:28px 40px;display:flex;align-items:center;justify-content:space-between">
+    <div style="background:#ffffff;border-radius:10px;padding:8px 14px;display:inline-block;line-height:0">
+      <img src="${PORTAL_URL}/chc_logo.png" alt="Coming Home Care" style="height:52px;width:auto;display:block"/>
+    </div>
+    <div style="text-align:right">
+      <p style="margin:0;color:#7A8F79;font-size:10px;letter-spacing:3px;text-transform:uppercase;font-weight:700">Receipt</p>
+      <p style="margin:6px 0 0;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:1px">${receiptNumber}</p>
+      <p style="margin:4px 0 0;color:#7A8F79;font-size:11px">Invoice ${invoiceNumber}</p>
+    </div>
+  </div>
+
+  <!-- Payment received stripe -->
+  <div style="background:${isPaidInFull ? '#16a34a' : '#2563eb'};padding:18px 40px;display:flex;align-items:center;justify-content:space-between">
+    <div style="display:flex;align-items:center">
+      ${checkIcon}
+      <p style="margin:0;color:#ffffff;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase">
+        ${isPaidInFull ? 'Paid in Full' : 'Payment Received'}
+      </p>
+    </div>
+    <p style="margin:0;color:#ffffff;font-size:26px;font-weight:900">${fmtMoney(paymentAmount)}</p>
+  </div>
+
+  <!-- Provider + Payment Details -->
+  <div style="padding:28px 40px;display:flex;justify-content:space-between;gap:24px;border-bottom:1px solid #D9E1E8">
+    <div style="flex:1">
+      <p style="margin:0 0 6px;font-size:10px;color:#7A8F79;text-transform:uppercase;letter-spacing:2px;font-weight:700">Provider</p>
+      <p style="margin:0;font-size:16px;font-weight:800;color:#2F3E4E">${billName}</p>
+      <p style="margin:3px 0 0;font-size:12px;color:#7A8F79">${to}</p>
+      ${accountNumber ? `<p style="margin:3px 0 0;font-size:11px;font-family:monospace;color:#7A8F79">Acct: ${accountNumber}</p>` : ''}
+    </div>
+    <div style="text-align:right;flex-shrink:0">
+      <div style="margin-bottom:10px">
+        <p style="margin:0;font-size:10px;color:#7A8F79;text-transform:uppercase;letter-spacing:2px;font-weight:700">Applied</p>
+        <p style="margin:3px 0 0;font-size:13px;color:#2F3E4E;font-weight:600">${fmt(appliedAt)}</p>
+      </div>
+      ${paymentMethod ? `
+      <div>
+        <p style="margin:0;font-size:10px;color:#7A8F79;text-transform:uppercase;letter-spacing:2px;font-weight:700">Method</p>
+        <p style="margin:3px 0 0;font-size:13px;color:#2F3E4E;font-weight:600">${paymentMethod}</p>
+      </div>` : ''}
+    </div>
+  </div>
+
+  <!-- Invoice Summary -->
+  <div style="padding:24px 40px">
+    <p style="margin:0 0 14px;font-size:10px;color:#7A8F79;text-transform:uppercase;letter-spacing:2px;font-weight:700">Invoice Summary</p>
+    <table style="width:100%;border-collapse:collapse">
+      <tr style="border-bottom:1px solid #f0f4f0">
+        <td style="padding:10px 0;font-size:13px;color:#7A8F79">Invoice Total</td>
+        <td style="padding:10px 0;font-size:13px;color:#2F3E4E;font-weight:600;text-align:right">${fmtMoney(invoiceTotal)}</td>
+      </tr>
+      ${previouslyPaid > 0 ? `
+      <tr style="border-bottom:1px solid #f0f4f0">
+        <td style="padding:10px 0;font-size:13px;color:#7A8F79">Previously Paid</td>
+        <td style="padding:10px 0;font-size:13px;color:#16a34a;font-weight:600;text-align:right">&#8722;${fmtMoney(previouslyPaid)}</td>
+      </tr>` : ''}
+      <tr style="border-bottom:2px solid #2F3E4E">
+        <td style="padding:10px 0;font-size:13px;font-weight:700;color:#2F3E4E">This Payment</td>
+        <td style="padding:10px 0;font-size:16px;font-weight:800;color:#2F3E4E;text-align:right">&#8722;${fmtMoney(paymentAmount)}</td>
+      </tr>
+      <tr>
+        <td style="padding:14px 0 0;font-size:12px;font-weight:700;color:#7A8F79;text-transform:uppercase;letter-spacing:1px">Remaining Balance</td>
+        <td style="padding:14px 0 0;font-size:24px;font-weight:900;text-align:right;color:${isPaidInFull ? '#16a34a' : '#dc2626'}">${fmtMoney(balance)}</td>
+      </tr>
+    </table>
+
+    ${isPaidInFull ? `
+    <div style="margin-top:20px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 18px;text-align:center">
+      <p style="margin:0;font-size:14px;font-weight:800;color:#16a34a">&#10003; Invoice Paid in Full &#8212; Thank You!</p>
+    </div>` : `
+    <div style="margin-top:20px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px 18px">
+      <p style="margin:0;font-size:12px;color:#2563eb">Remaining balance of <strong>${fmtMoney(balance)}</strong> is due on the original invoice terms.</p>
+    </div>`}
+
+    ${paymentNote ? `<div style="margin-top:14px;padding:10px 14px;background:#f4f6f8;border-left:3px solid #7A8F79;border-radius:0 8px 8px 0"><p style="margin:0;font-size:12px;color:#4a5a6a"><strong>Note:</strong> ${paymentNote}</p></div>` : ''}
+  </div>
+
+  <!-- CTA -->
+  <div style="text-align:center;padding:0 40px 32px">
+    <a href="${PORTAL_URL}/nurse/invoices"
+       style="display:inline-block;background:#2F3E4E;color:#ffffff;text-decoration:none;padding:14px 36px;border-radius:12px;font-size:14px;font-weight:700;letter-spacing:0.5px">
+      View Invoice in Portal &#8594;
+    </a>
+  </div>
+
+  <!-- Footer -->
+  <div style="background:#2F3E4E;padding:20px 40px;display:flex;justify-content:space-between;align-items:center">
+    <p style="margin:0;font-size:12px;color:#7A8F79;font-weight:600">Coming Home Care Services, LLC</p>
+    <p style="margin:0;font-size:11px;color:#4a5a6a">cominghomecare.com</p>
+  </div>
+
+</div>
+</div>
+</body>
+</html>
       `,
     })
     return !error

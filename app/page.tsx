@@ -229,7 +229,7 @@ export default async function Home() {
           <div>
             <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-3">Quick Access</p>
             <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
-              <FeatureCard href="/nurse"          icon="⏱"  title="Log Hours"         description="Submit your daily hours and view your full time history." accent />
+              <FeatureCard href="/nurse"          icon="⏱"  title="Log Hours"         description="Submit your daily hours & view your full time entry history." accent />
               <FeatureCard href="/nurse/claims"   icon="📋"  title="My Claims"         description="Track your BCBS claim statuses and payment details." />
               <FeatureCard href="/nurse/profile"  icon="👤"  title="My Profile"        description="Keep your contact info, billing details, and renewals up to date." />
               <FeatureCard href="/resources"      icon="📚"  title="Provider Resources" description="Step-by-step NY enrollment guides for NPI, Medicaid, and BCBS." />

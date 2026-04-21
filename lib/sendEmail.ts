@@ -262,6 +262,47 @@ export async function sendInvoiceEmail({
   }
 }
 
+export async function sendRegistrationConfirmation({
+  to,
+  displayName,
+}: {
+  to: string
+  displayName: string
+}): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) return false
+  const resend = new Resend(process.env.RESEND_API_KEY)
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to,
+      subject: 'Welcome to the Coming Home Care Provider Portal',
+      html: `
+        <div style="font-family:sans-serif;max-width:520px;padding:32px;color:#2F3E4E">
+          <h2 style="margin:0 0 8px;color:#2F3E4E">You're in — Welcome to the CHC Portal</h2>
+          <p style="margin:0 0 20px;color:#7A8F79;font-size:14px">Hi ${displayName}, your account has been created. Sign in any time using the email and password you registered with.</p>
+
+          <a href="${PORTAL_URL}/login"
+             style="display:inline-block;background:#2F3E4E;color:white;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600">
+            Sign In to Your Portal →
+          </a>
+
+          <p style="margin-top:24px;font-size:13px;color:#7A8F79">
+            Once signed in, you can complete your profile and get started with billing enrollment.<br/>
+            If you have any questions, contact us at support@cominghomecare.com.
+          </p>
+
+          <hr style="border:none;border-top:1px solid #D9E1E8;margin:24px 0"/>
+          <p style="font-size:11px;color:#aab">This is an automated message from Coming Home Care. Please do not reply to this email.</p>
+        </div>
+      `,
+    })
+    return !error
+  } catch {
+    return false
+  }
+}
+
 export async function sendPasswordResetByAdmin({
   to,
   displayName,

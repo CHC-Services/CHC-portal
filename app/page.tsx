@@ -262,8 +262,9 @@ export default async function Home() {
                 <FeatureCard href="/login" icon="📋"  title="Claims Management"   description="Real-time BCBS claim status, payment breakdowns, and EOB tracking." />
                 <FeatureCard href="/login" icon="💳"  title="Billing Enrollment"  description="Enroll in billing services and manage your provider payment plan." />
                 <FeatureCard href="/login" icon="📅"  title="Renewal Reminders"   description="Never miss a license, Medicaid, or BCBS renewal with built-in calendar reminders." />
-                <FeatureCard href="/resources" icon="📚"  title="NY Provider Guides" description="Deconstructed step-by-step guides for NPI, Medicaid, and BCBS enrollment." />
-                <FeatureCard href="/login" icon="🔒"  title="Secure &amp; Private"    description="Sensitive data encrypted at rest. HIPAA-conscious from the ground up." />
+                <FeatureCard href="/resources" icon="📚"  title="Provider Resources" description="Deconstructed step-by-step guides for NPI, Medicaid, and BCBS enrollment." />
+                <FeatureCard href="/care" icon="🧘" title="myCare" description="Tips for preventing burnout & links to help keep you running at your best." /> 
+                <FeatureCard href="/login" icon="🔒"  title="Secure &amp; Private"    description="Privacy-conscious from the start. Both your & your patient's data are protected with HIPAA level privacy encryptions." />
               </div>
             </div>
 

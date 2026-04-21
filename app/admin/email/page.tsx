@@ -50,6 +50,11 @@ export default function AdminEmailPage() {
   const [result, setResult] = useState<{ sent: number; failed: number; total: number } | null>(null)
   const [error, setError] = useState('')
 
+  // ── Template preview state ─────────────────────────────────────────────────
+  const [previewTemplate, setPreviewTemplate] = useState('')
+  const [previewSending, setPreviewSending] = useState(false)
+  const [previewMsg, setPreviewMsg] = useState<{ ok: boolean; text: string } | null>(null)
+
   // ── Prompt Pay settings state ──────────────────────────────────────────────
   const [pp, setPp] = useState<PPSettings>(PP_DEFAULTS)
   const [ppSaving, setPpSaving] = useState(false)
@@ -155,6 +160,24 @@ export default function AdminEmailPage() {
     if (data.url) window.open(data.url, '_blank')
   }
 
+  // ── Template preview helpers ───────────────────────────────────────────────
+  async function sendPreview() {
+    if (!previewTemplate) return
+    setPreviewSending(true); setPreviewMsg(null)
+    const res = await fetch('/api/admin/email/preview', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ template: previewTemplate }),
+    })
+    setPreviewSending(false)
+    if (res.ok) {
+      const data = await res.json()
+      setPreviewMsg({ ok: true, text: `Preview sent to ${data.to}` })
+    } else {
+      const data = await res.json()
+      setPreviewMsg({ ok: false, text: data.error || 'Send failed.' })
+    }
+  }
+
   async function sendTestEmail() {
     setTestSending(true); setTestMsg('')
     const res = await fetch('/api/cron/claim-reminders-test', {
@@ -239,6 +262,76 @@ export default function AdminEmailPage() {
           </button>
 
         </form>
+
+        {/* ── adTemplates ─────────────────────────────────────────────────── */}
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-[#2F3E4E] px-6 py-4">
+            <h2 className="text-base font-bold text-white">
+              <span className="text-[#7A8F79] italic">ad</span>Templates
+            </h2>
+            <p className="text-xs text-[#D9E1E8] mt-0.5">Send a mock preview of any system email to your inbox.</p>
+          </div>
+
+          <div className="p-6 space-y-4">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-widest text-[#7A8F79] mb-2">Select Template</label>
+              <select
+                value={previewTemplate}
+                onChange={e => { setPreviewTemplate(e.target.value); setPreviewMsg(null) }}
+                className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] bg-white focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+              >
+                <option value="">— Choose a template —</option>
+                <optgroup label="Account / Auth">
+                  <option value="welcome_admin">Welcome — Admin-Created Account (with temp password)</option>
+                  <option value="welcome_self">Welcome — Self-Registration (no credentials)</option>
+                  <option value="password_reset_admin">Password Reset by Admin</option>
+                </optgroup>
+                <optgroup label="Billing / Invoices">
+                  <option value="invoice">Invoice Sent to Provider</option>
+                  <option value="receipt">Payment Receipt</option>
+                  <option value="enrollment_alert_in">Billing Enrollment Alert — Opted In</option>
+                  <option value="enrollment_alert_out">Billing Enrollment Alert — Opted Out</option>
+                  <option value="billing_inquiry">Billing Inquiry (Public Form Submission)</option>
+                </optgroup>
+                <optgroup label="Reminders / Alerts">
+                  <option value="weekly_reminder">Weekly Hours Submission Reminder</option>
+                  <option value="doc_expiring">Document Expiration Reminder (25 days)</option>
+                  <option value="doc_expiring_urgent">Document Expiration Reminder — Urgent (4 days)</option>
+                  <option value="prompt_pay">Prompt Pay Interest Alert</option>
+                </optgroup>
+                <optgroup label="Claims / Documents">
+                  <option value="new_claim">New Claim Added Alert</option>
+                  <option value="new_document">New Document Added Alert</option>
+                  <option value="nurse_shared_doc">Provider Shared Document (Admin Notification)</option>
+                  <option value="bulk_import">Bulk Import Summary</option>
+                  <option value="edi_summary">EDI Upload Summary</option>
+                </optgroup>
+              </select>
+            </div>
+
+            {previewTemplate && (
+              <div className="bg-[#f4f6f5] border border-[#D9E1E8] rounded-lg px-4 py-3 text-xs text-[#7A8F79]">
+                Preview will be sent to your admin email with sample data so you can see exactly how it renders.
+              </div>
+            )}
+
+            <div className="flex items-center gap-4">
+              <button
+                type="button"
+                onClick={sendPreview}
+                disabled={!previewTemplate || previewSending}
+                className="px-5 py-2 rounded-lg bg-[#2F3E4E] text-white text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-40"
+              >
+                {previewSending ? 'Sending preview…' : 'Send Preview Email'}
+              </button>
+              {previewMsg && (
+                <p className={`text-xs font-semibold ${previewMsg.ok ? 'text-green-600' : 'text-red-500'}`}>
+                  {previewMsg.ok ? '✓ ' : '✗ '}{previewMsg.text}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
 
         {/* ── Prompt Pay Reminder Settings ────────────────────────────────── */}
         <form onSubmit={savePpSettings}>

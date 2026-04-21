@@ -194,8 +194,6 @@ export default function ProfilePage() {
 
             <BillingSection profile={profile} onUnenroll={() => setProfile({ ...profile, enrolledInBilling: false })} />
 
-            <MyCasesBlock />
-
             <form onSubmit={changePassword} className="bg-white rounded-xl shadow p-6 space-y-4">
               <h2 className="text-xl font-semibold text-[#2F3E4E]">
                 <span style={{ color: '#7A8F79', fontStyle: 'italic' }}>my</span>Passwords
@@ -244,39 +242,6 @@ function SensitiveField({ label, value, onChange, type = 'text' }: {
   )
 }
 
-function MyCasesBlock() {
-  const [cases, setCases] = useState<{ id: string; patientFirstName: string }[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetch('/api/nurse/cases', { credentials: 'include' })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data?.cases) setCases(data.cases) })
-      .finally(() => setLoading(false))
-  }, [])
-
-  return (
-    <div className="bg-white rounded-xl shadow p-6">
-      <h2 className="text-xl font-semibold mb-4 text-[#2F3E4E]">
-        <span style={{ color: '#7A8F79', fontStyle: 'italic' }}>my</span>Cases
-      </h2>
-      {loading ? (
-        <p className="text-sm text-[#7A8F79]">Loading…</p>
-      ) : cases.length === 0 ? (
-        <p className="text-sm text-[#7A8F79]">No cases assigned yet. Your coordinator will add you to a case.</p>
-      ) : (
-        <div className="space-y-2">
-          {cases.map(c => (
-            <div key={c.id} className="flex items-center gap-3 bg-[#F4F6F5] rounded-lg px-4 py-2.5">
-              <div className="w-2 h-2 rounded-full bg-[#7A8F79] shrink-0" />
-              <span className="text-sm font-semibold text-[#2F3E4E]">{c.patientFirstName}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
 
 function NotifPrefsBlock({ profile, setProfile }: { profile: any; setProfile: (p: any) => void }) {
   return (

@@ -95,9 +95,6 @@ export default function Banner({ user }: BannerProps) {
             <Link href="/nurse/documents" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/nurse/documents" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Documents
             </Link>
-            <Link href="/nurse/directory" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/nurse/directory" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
-                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Directory
-            </Link>
             <Link href="/nurse/profile" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/nurse/profile" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Profile
             </Link>
@@ -177,7 +174,6 @@ export default function Banner({ user }: BannerProps) {
         ...(role === 'nurse' ? [
             { href: '/nurse', label: 'Dashboard', icon: '📊' },
             { href: '/nurse/documents', label: 'Documents', icon: '📁' },
-            { href: '/nurse/directory', label: 'Directory', icon: '👥' },
             { href: '/nurse/profile', label: 'Profile', icon: '👤' },
         ] : []),
         ...(role === 'provider' ? [

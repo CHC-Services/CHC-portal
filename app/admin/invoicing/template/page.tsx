@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { fmtPhone } from '../../../../lib/formatPhone'
+import { shortInvoiceNumber } from '../../../../lib/formatInvoice'
 
 const FEE_LABELS: Record<string, string> = {
   A1: 'Medicaid — Single Payer',
@@ -179,7 +180,7 @@ export default function InvoiceTemplatePage() {
             </div>
             <div className="text-right flex-shrink-0">
               <p className="text-[10px] text-[#7A8F79] font-semibold">Invoice #</p>
-              <p className="text-lg font-black text-white font-mono">{SAMPLE.invoiceNumber}</p>
+              <p className="text-lg font-black text-white font-mono">{shortInvoiceNumber(SAMPLE.invoiceNumber)}</p>
               <span
                 className="inline-block mt-1 text-[10px] font-black px-3 py-0.5 rounded-full"
                 style={{ background: `${statusColor}22`, color: statusColor }}
@@ -308,7 +309,7 @@ export default function InvoiceTemplatePage() {
 
                 {/* Venmo */}
                 <a
-                  href={`https://venmo.com/AlexMcGann?txn=pay&amount=${balance.toFixed(2)}&note=${encodeURIComponent(SAMPLE.invoiceNumber)}`}
+                  href={`https://venmo.com/AlexMcGann?txn=pay&amount=${balance.toFixed(2)}&note=${encodeURIComponent(shortInvoiceNumber(SAMPLE.invoiceNumber))}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="no-print flex items-center gap-2 bg-[#3D95CE] hover:bg-[#2d7fb8] text-white font-bold text-sm px-4 py-2.5 rounded-xl transition shadow-sm"
@@ -321,7 +322,7 @@ export default function InvoiceTemplatePage() {
 
                 {/* Cash App */}
                 <a
-                  href={`https://cash.app/$myInvoiceCHC/${balance.toFixed(2)}?note=${encodeURIComponent(SAMPLE.invoiceNumber)}`}
+                  href={`https://cash.app/$myInvoiceCHC/${balance.toFixed(2)}?note=${encodeURIComponent(shortInvoiceNumber(SAMPLE.invoiceNumber))}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="no-print flex items-center gap-2 bg-[#00D632] hover:bg-[#00b82b] text-white font-bold text-sm px-4 py-2.5 rounded-xl transition shadow-sm"
@@ -355,7 +356,7 @@ export default function InvoiceTemplatePage() {
               </div>
 
               <p className="text-[10px] text-[#7A8F79] mt-2">
-                Please include <strong>{SAMPLE.invoiceNumber}</strong> as your payment note.
+                Please include <strong>{shortInvoiceNumber(SAMPLE.invoiceNumber)}</strong> as your payment note.
               </p>
             </div>
 

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import AdminNav from '../../../components/AdminNav'
 import { DateInput, DateInputHandle } from '../../../components/DateInput'
 import { fmtPhoneInput } from '../../../../lib/formatPhone'
+import { shortInvoiceNumber } from '../../../../lib/formatInvoice'
 
 type Profile = Record<string, any>
 
@@ -590,7 +591,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
     const data = await res.json()
     setInvoiceSending(false)
     if (res.ok) {
-      setInvoiceMessage(`Invoice ${data.invoiceNumber} sent successfully.`)
+      setInvoiceMessage(`Invoice ${shortInvoiceNumber(data.invoiceNumber)} sent successfully.`)
       setShowInvoiceModal(false)
       setInvoiceNotes('')
       fetchEntries()
@@ -1302,7 +1303,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                       const minDate = new Date(Math.min(...dates)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
                       const maxDate = new Date(Math.max(...dates)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
                       const totalFee = group.reduce((s, e) => s + (e.invoiceFeeAmt ?? 0), 0)
-                      const invoiceNum = group[0]?.invoice?.invoiceNumber || invoiceId.slice(0, 8)
+                      const invoiceNum = group[0]?.invoice?.invoiceNumber ? shortInvoiceNumber(group[0].invoice.invoiceNumber) : invoiceId.slice(0, 8)
                       const firstRef = group.find(e => e.claimRef)?.claimRef
                       return (
                         <tr key={invoiceId} className="border-b border-[#D9E1E8] bg-green-50">
@@ -1671,7 +1672,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-xs font-bold text-[#2F3E4E] font-mono">{p.receiptNumber}</span>
                                 <span className="text-[10px] font-semibold bg-[#D9E1E8] text-[#2F3E4E] px-1.5 py-0.5 rounded-full">{p.method || 'Other'}</span>
-                                <span className="text-[10px] text-[#7A8F79]">→ {p.invoiceNumber}</span>
+                                <span className="text-[10px] text-[#7A8F79]">→ {shortInvoiceNumber(p.invoiceNumber)}</span>
                               </div>
                               <span className="text-[10px] text-[#7A8F79]">{fmtD(p.appliedAt)}</span>
                             </div>
@@ -1700,7 +1701,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                       <div key={inv.id} className="border border-[#D9E1E8] rounded-xl overflow-hidden">
                         <div className="flex items-center justify-between px-4 py-3 bg-[#F4F6F5]">
                           <div className="flex items-center gap-3 flex-wrap">
-                            <span className="font-mono font-bold text-sm text-[#2F3E4E]">{inv.invoiceNumber}</span>
+                            <span className="font-mono font-bold text-sm text-[#2F3E4E]">{shortInvoiceNumber(inv.invoiceNumber)}</span>
                             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusColor(inv.status)}`}>
                               {inv.status}
                             </span>
@@ -1994,7 +1995,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
           <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-[#D9E1E8]">
-                <h3 className="text-lg font-bold text-[#2F3E4E]">{previewInvoice.invoiceNumber}</h3>
+                <h3 className="text-lg font-bold text-[#2F3E4E]">{shortInvoiceNumber(previewInvoice.invoiceNumber)}</h3>
                 <button onClick={() => { setPreviewInvoice(null); setPreviewDetail(null); setPreviewMessage('') }} className="text-[#7A8F79] hover:text-[#2F3E4E] text-xl leading-none">×</button>
               </div>
 
@@ -2011,7 +2012,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                       </div>
                       <div className="text-right">
                         <p className="text-xs text-[#7A8F79] uppercase tracking-widest font-semibold mb-0.5">Invoice</p>
-                        <p className="font-semibold text-[#7A8F79] italic">{previewInvoice.invoiceNumber}</p>
+                        <p className="font-semibold text-[#7A8F79] italic">{shortInvoiceNumber(previewInvoice.invoiceNumber)}</p>
                         <p className="text-xs text-[#7A8F79] mt-1">Issued {fmtI(previewInvoice.sentAt)}</p>
                         <p className="text-xs text-[#7A8F79]">Due {fmtI(previewInvoice.dueDate)}</p>
                       </div>

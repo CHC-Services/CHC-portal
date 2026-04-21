@@ -1,4 +1,5 @@
 import { Resend } from 'resend'
+import { shortInvoiceNumber } from './formatInvoice'
 
 const ALERT_TO = 'enroll@cominghomecare.com'
 const FROM = 'Coming Home Care <support@cominghomecare.com>'
@@ -118,10 +119,11 @@ export async function sendInvoiceEmail({
   ].join('')
 
   // Payment deep links
-  const venmoUrl   = `https://venmo.com/AlexMcGann?txn=pay&amount=${totalAmount.toFixed(2)}&note=${encodeURIComponent(invoiceNumber)}`
+  const shortNum   = shortInvoiceNumber(invoiceNumber)
+  const venmoUrl   = `https://venmo.com/AlexMcGann?txn=pay&amount=${totalAmount.toFixed(2)}&note=${encodeURIComponent(shortNum)}`
   const cashappUrl = `https://cash.app/$myInvoiceCHC/${totalAmount.toFixed(2)}`
-  const zelleUrl   = `mailto:support@cominghomecare.com?subject=${encodeURIComponent(`Zelle Payment – ${invoiceNumber}`)}`
-  const appleUrl   = `mailto:support@cominghomecare.com?subject=${encodeURIComponent(`Apple Pay – ${invoiceNumber}`)}`
+  const zelleUrl   = `mailto:support@cominghomecare.com?subject=${encodeURIComponent(`Zelle Payment – ${shortNum}`)}`
+  const appleUrl   = `mailto:support@cominghomecare.com?subject=${encodeURIComponent(`Apple Pay – ${shortNum}`)}`
 
   // Reusable payment button builder
   const payBtn = (href: string, bg: string, icon: string, label: string, handle: string) => `
@@ -152,7 +154,7 @@ export async function sendInvoiceEmail({
     const { error } = await resend.emails.send({
       from: FROM,
       to,
-      subject: `INVOICE ${invoiceNumber} — Coming Home Care Services, LLC`,
+      subject: `INVOICE ${shortNum} — Coming Home Care Services, LLC`,
       html: `
 <!DOCTYPE html>
 <html>
@@ -169,7 +171,7 @@ export async function sendInvoiceEmail({
     </div>
     <div style="text-align:right">
       <p style="margin:0;color:#7A8F79;font-size:10px;letter-spacing:3px;text-transform:uppercase;font-weight:700">Invoice</p>
-      <p style="margin:6px 0 0;color:#ffffff;font-size:26px;font-weight:800;letter-spacing:1px">${invoiceNumber}</p>
+      <p style="margin:6px 0 0;color:#ffffff;font-size:26px;font-weight:800;letter-spacing:1px">${shortNum}</p>
     </div>
   </div>
 
@@ -232,7 +234,7 @@ export async function sendInvoiceEmail({
         ${payBtn(appleUrl,  '#1c1c1e', appleIcon,  'Apple Pay', 'support@cominghomecare.com')}
       </tr>
     </table>
-    <p style="margin:14px 0 0;font-size:11px;color:#9aabb5">Please include <strong>${invoiceNumber.replace(/^CHC-/i, '')}</strong> as your payment note.</p>
+    <p style="margin:14px 0 0;font-size:11px;color:#9aabb5">Please include <strong>${shortNum}</strong> as your payment note.</p>
     ${totalAmount >= 50 ? '<p style="margin:8px 0 0;font-size:11px;color:#7A8F79;border-top:1px solid #D9E1E8;padding-top:10px">Credit card payments accepted for invoices of $50.00 or more — contact us for details.</p>' : ''}
   </div>
 
@@ -1161,7 +1163,7 @@ export async function sendReceiptEmail({
     const { error } = await resend.emails.send({
       from: FROM,
       to,
-      subject: `RECEIPT ${receiptNumber} — Payment Applied to ${invoiceNumber}`,
+      subject: `RECEIPT ${receiptNumber} — Payment Applied to ${shortInvoiceNumber(invoiceNumber)}`,
       html: `
 <!DOCTYPE html>
 <html>
@@ -1177,7 +1179,7 @@ export async function sendReceiptEmail({
     <div style="text-align:right">
       <p style="margin:0;color:#7A8F79;font-size:10px;letter-spacing:3px;text-transform:uppercase;font-weight:700">Receipt</p>
       <p style="margin:6px 0 0;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:1px">${receiptNumber}</p>
-      <p style="margin:4px 0 0;color:#7A8F79;font-size:11px">Invoice ${invoiceNumber}</p>
+      <p style="margin:4px 0 0;color:#7A8F79;font-size:11px">Invoice ${shortInvoiceNumber(invoiceNumber)}</p>
     </div>
   </div>
 

@@ -3,6 +3,7 @@
 import { useState, useEffect, use } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
+import { shortInvoiceNumber } from '../../../../../lib/formatInvoice'
 
 type Payment = {
   id: string
@@ -84,7 +85,7 @@ function ReceiptPrintInner({ id }: { id: string }) {
   const previouslyPaid = Math.max(0, newTotalPaid - payment.amount)
   const balance = Math.max(0, invoice.totalAmount - newTotalPaid)
   const isPaidInFull = balance <= 0
-  const stripeColor = isPaidInFull ? '#16a34a' : '#2563eb'
+  const stripeColor = isPaidInFull ? '#16a34a' : '#7A8F79'
 
   return (
     <>
@@ -109,7 +110,7 @@ function ReceiptPrintInner({ id }: { id: string }) {
       {/* Toolbar */}
       <div className="no-print fixed top-0 left-0 right-0 bg-[#2F3E4E] text-white px-6 py-3 flex items-center gap-4 z-50 shadow-lg">
         <span className="text-sm font-semibold text-[#D9E1E8]">{payment.receiptNumber}</span>
-        <span className="text-xs text-[#7A8F79]">for {invoice.invoiceNumber}</span>
+        <span className="text-xs text-[#7A8F79]">for {shortInvoiceNumber(invoice.invoiceNumber)}</span>
         <div className="flex-1" />
         <button
           onClick={() => window.print()}
@@ -133,7 +134,7 @@ function ReceiptPrintInner({ id }: { id: string }) {
             <div className="text-right flex-shrink-0">
               <p className="text-[10px] text-[#7A8F79] font-semibold uppercase tracking-widest">Receipt</p>
               <p className="text-xl font-black text-white font-mono mt-1">{payment.receiptNumber}</p>
-              <p className="text-[11px] text-[#7A8F79] mt-1">Invoice {invoice.invoiceNumber}</p>
+              <p className="text-[11px] text-[#7A8F79] mt-1">Invoice {shortInvoiceNumber(invoice.invoiceNumber)}</p>
             </div>
           </div>
 

@@ -3,6 +3,7 @@
 import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { fmtPhone } from '../../../../../lib/formatPhone'
+import { shortInvoiceNumber } from '../../../../../lib/formatInvoice'
 
 type Entry = { workDate: string; invoiceFeePlan?: string; invoiceFeeAmt?: number }
 type Payment = { id: string; receiptNumber: string; amount: number; method?: string; note?: string; s3Key?: string; appliedAt: string }
@@ -120,7 +121,7 @@ export default function PrintInvoicePage({ params }: { params: Promise<{ id: str
 
       {/* Print/email controls */}
       <div className="no-print fixed top-0 left-0 right-0 bg-[#2F3E4E] text-white px-6 py-3 flex items-center gap-4 z-50 shadow-lg">
-        <span className="text-sm font-semibold text-[#D9E1E8]">{invoice.invoiceNumber}</span>
+        <span className="text-sm font-semibold text-[#D9E1E8]">{shortInvoiceNumber(invoice.invoiceNumber)}</span>
         <div className="flex-1" />
         <button
           onClick={() => window.print()}
@@ -164,7 +165,7 @@ export default function PrintInvoicePage({ params }: { params: Promise<{ id: str
             </div>
             <div className="text-right flex-shrink-0">
               <p className="text-[10px] text-[#7A8F79] font-semibold">Invoice #</p>
-              <p className="text-lg font-black text-white font-mono">{invoice.invoiceNumber}</p>
+              <p className="text-lg font-black text-white font-mono">{shortInvoiceNumber(invoice.invoiceNumber)}</p>
               <span
                 className="inline-block mt-1 text-[10px] font-black px-3 py-0.5 rounded-full"
                 style={{ background: `${statusColor}22`, color: statusColor }}
@@ -384,7 +385,7 @@ export default function PrintInvoicePage({ params }: { params: Promise<{ id: str
                 </div>
 
                 <p className="text-[10px] text-[#7A8F79] mt-2">
-                  Please include <strong>{invoice.invoiceNumber}</strong> as your payment note.
+                  Please include <strong>{shortInvoiceNumber(invoice.invoiceNumber)}</strong> as your payment note.
                 </p>
               </div>
             )}

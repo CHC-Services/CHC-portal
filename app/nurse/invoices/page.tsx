@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import PortalMessages from '../../components/PortalMessages'
+import { shortInvoiceNumber } from '../../../lib/formatInvoice'
 
 const STATUS_COLORS: Record<string, string> = {
   Pending:   'bg-yellow-100 text-yellow-800',
@@ -96,7 +97,7 @@ export default function NurseInvoicesPage() {
               <div className="flex items-center gap-4">
                 <div>
                   <p className="text-xs font-semibold text-[#7A8F79] uppercase tracking-widest">Invoice</p>
-                  <p className="text-lg font-bold text-[#2F3E4E]">{inv.invoiceNumber}</p>
+                  <p className="text-lg font-bold text-[#2F3E4E]">{shortInvoiceNumber(inv.invoiceNumber)}</p>
                 </div>
                 <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_COLORS[inv.status] ?? 'bg-gray-100 text-gray-600'}`}>
                   {inv.status}
@@ -228,7 +229,7 @@ export default function NurseInvoicesPage() {
 
                     </div>
                     <p className="text-[10px] text-[#7A8F79] mt-3 leading-relaxed">
-                      Include <strong>{inv.invoiceNumber}</strong> as your payment note. Amount: <strong>${inv.totalAmount.toFixed(2)}</strong>.
+                      Include <strong>{shortInvoiceNumber(inv.invoiceNumber)}</strong> as your payment note. Amount: <strong>${inv.totalAmount.toFixed(2)}</strong>.
                       Questions? Email <a href="mailto:support@cominghomecare.com" className="underline">support@cominghomecare.com</a>
                     </p>
                     {inv.totalAmount >= 50 && (

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { shortInvoiceNumber } from '../../../../lib/formatInvoice'
 
 // ── Sample data ───────────────────────────────────────────────────────────────
 const SAMPLE = {
@@ -48,7 +49,7 @@ export default function ReceiptTemplatePage() {
   }
 
   const isPaidInFull = SAMPLE.newStatus === 'Paid' || SAMPLE.balance <= 0
-  const stripeColor = isPaidInFull ? '#16a34a' : '#2563eb'
+  const stripeColor = isPaidInFull ? '#16a34a' : '#7A8F79'
 
   return (
     <>
@@ -109,7 +110,7 @@ export default function ReceiptTemplatePage() {
             <div className="text-right flex-shrink-0">
               <p className="text-[10px] text-[#7A8F79] font-semibold uppercase tracking-widest">Receipt</p>
               <p className="text-xl font-black text-white font-mono mt-1">{SAMPLE.receiptNumber}</p>
-              <p className="text-[11px] text-[#7A8F79] mt-1">Invoice {SAMPLE.invoiceNumber}</p>
+              <p className="text-[11px] text-[#7A8F79] mt-1">Invoice {shortInvoiceNumber(SAMPLE.invoiceNumber)}</p>
             </div>
           </div>
 

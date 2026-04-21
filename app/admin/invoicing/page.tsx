@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import AdminNav from '../../components/AdminNav'
+import { shortInvoiceNumber } from '../../../lib/formatInvoice'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -180,7 +181,7 @@ export default function AdminInvoicingPage() {
     if (res.ok) {
       const inv = invoices.find(i => i.id === payInvoiceId)
       const s3Note = data.s3Key ? ' Receipt saved to S3.' : ''
-      setPayMsg(`Payment applied — Receipt ${data.receiptNumber} · ${inv?.invoiceNumber} · Status: ${data.newStatus}.${s3Note}`)
+      setPayMsg(`Payment applied — Receipt ${data.receiptNumber} · ${inv ? shortInvoiceNumber(inv.invoiceNumber) : ''} · Status: ${data.newStatus}.${s3Note}`)
       setPayAmount('')
       setPayNote('')
       await loadAll()
@@ -307,7 +308,7 @@ export default function AdminInvoicingPage() {
                 const status = inv.status === 'Pending' ? 'Sent' : inv.status
                 return (
                   <div key={inv.id} className="flex items-center gap-3 py-1.5 border-b border-[#D9E1E8] last:border-0 text-sm">
-                    <span className="font-mono font-semibold text-[#2F3E4E] text-xs w-36 shrink-0">{inv.invoiceNumber}</span>
+                    <span className="font-mono font-semibold text-[#2F3E4E] text-xs w-36 shrink-0">{shortInvoiceNumber(inv.invoiceNumber)}</span>
                     <span className="flex-1 text-xs text-[#7A8F79] truncate">{inv.nurse?.displayName || inv.nurseName}</span>
                     <span className="text-xs text-[#2F3E4E]">{fmt(inv.sentAt)}</span>
                     <span className="text-xs font-semibold text-[#2F3E4E]">{currency(inv.totalAmount)}</span>
@@ -455,7 +456,7 @@ export default function AdminInvoicingPage() {
                         }`}
                         onClick={() => setExpandedId(isExpanded ? null : inv.id)}
                       >
-                        <td className="py-2 pr-3 font-mono text-xs font-semibold text-[#2F3E4E]">{inv.invoiceNumber}</td>
+                        <td className="py-2 pr-3 font-mono text-xs font-semibold text-[#2F3E4E]">{shortInvoiceNumber(inv.invoiceNumber)}</td>
                         <td className="py-2 pr-3 text-xs text-[#2F3E4E]">
                           {inv.nurse?.displayName || inv.nurseName}
                           {inv.nurse?.accountNumber && (
@@ -646,7 +647,7 @@ export default function AdminInvoicingPage() {
                       const balance = inv.totalAmount - (inv.paidAmount || 0)
                       return (
                         <option key={inv.id} value={inv.id}>
-                          {inv.invoiceNumber} · {inv.nurse?.displayName || inv.nurseName} · {currency(balance)} due
+                          {shortInvoiceNumber(inv.invoiceNumber)} · {inv.nurse?.displayName || inv.nurseName} · {currency(balance)} due
                         </option>
                       )
                     })}
@@ -657,7 +658,7 @@ export default function AdminInvoicingPage() {
                   const balance = inv.totalAmount - (inv.paidAmount || 0)
                   return (
                     <p className="text-[10px] text-[#7A8F79] mt-1">
-                      {inv.invoiceNumber} — Billed: {currency(inv.totalAmount)} · Paid: {currency(inv.paidAmount || 0)} · Balance: <strong className="text-red-500">{currency(balance)}</strong>
+                      {shortInvoiceNumber(inv.invoiceNumber)} — Billed: {currency(inv.totalAmount)} · Paid: {currency(inv.paidAmount || 0)} · Balance: <strong className="text-red-500">{currency(balance)}</strong>
                     </p>
                   )
                 })()}

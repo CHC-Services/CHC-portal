@@ -1,5 +1,6 @@
 import "./globals.css";
 import { Cormorant_Upright } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { getUserFromCookie } from "@/lib/getUserFromCookie";
 import Banner from "./components/Banner";
 import Footer from "./components/Footer";
@@ -34,6 +35,7 @@ export default async function RootLayout({
           {children}
         </div>
         <Footer />
+        <Analytics />
       </body>
     </html>
   );

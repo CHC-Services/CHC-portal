@@ -9,7 +9,7 @@ import PullToRefresh from "./components/PullToRefresh";
 const cormorantUpright = Cormorant_Upright({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
-  style: ["normal", "italic"],
+  style: ["normal"],
   variable: "--font-cormorant",
   display: "swap",
 });

@@ -57,24 +57,28 @@ export default function SignupPage() {
     <div className="min-h-screen bg-[#D9E1E8] flex items-stretch">
 
       {/* Left — branding panel */}
-      <div className="hidden md:flex flex-col justify-center gap-12 bg-[#2F3E4E] text-white w-1/2 px-12 py-16">
+      <div className="hidden md:flex flex-col justify-center gap-12 bg-[#2F3E4E] text-white w-1/3 px-12 py-16 ">
         <div>
-          <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-2">Coming Home Care</p>
-          <h2 className="text-4xl font-bold leading-tight whitespace-nowrap">
-            <span className="italic text-[#7A8F79]">my</span>Provider{' '}
-            <span className="text-white">Portal</span>
-          </h2>
+          <div className="flex items-baseline gap-2 border-t border-[#3d5166] pt-6 mb-2">
+            <p className="text-sm uppercase tracking-widest text-[#7A8F79] font-semibold">Inside the provider</p>
+            <h3 className="text-xl font-bold leading-tight">
+              <span className="italic text-[#7A8F79]">my</span>Portal
+            </h3>
+          </div>
           <p className="mt-4 text-[#D9E1E8] text-sm leading-relaxed max-w-sm">
-            Create your account to get started. Once registered, you can complete your provider profile and enroll in billing services.
+            You'll find...
           </p>
         </div>
 
         <div className="space-y-5">
           {[
-            { icon: '👤', label: 'Set up your provider profile' },
-            { icon: '💳', label: 'Enroll in billing services' },
-            { icon: '📋', label: 'Access provider resources & guides' },
-            { icon: '📅', label: 'Stay on top of renewals & deadlines' },
+            { icon: '⏰', label: 'Easily log your hours from anywhere' },
+            { icon: '📊', label: 'Claim status tracker & income reports' },
+            { icon: '📅', label: 'Important document renewal reminders' },
+            { icon: '🧾', label: 'Review & pay invoices, save receipts' },
+            { icon: '✍🏼', label: 'Provider guides for Medicaid enrollment' },
+            { icon: '⏳', label: 'Self-employed tax date reminders' },
+            { icon: '🗄️', label: 'Secure storage for sensitive documents' }
           ].map(f => (
             <div key={f.label} className="flex items-center gap-3">
               <span className="text-xl">{f.icon}</span>
@@ -82,14 +86,15 @@ export default function SignupPage() {
             </div>
           ))}
 
-          <p className="pt-4 text-xs italic text-[#7A8F79] border-t border-[#3d5166]">
-            &ldquo;You take care of everyone else. We take care of this.&rdquo;
+          <p className="pt-4 pl-6 text-sm italic text-left text-[#7A8F79] border-t border-[#3d5166]">
+            &ldquo;You take care of everyone else. </p>
+          <p className="pb-4 pr-6 text-sm italic text-right text-[#7A8F79] border-b border-[#3d5166]">Let us help take care of this.&rdquo;
           </p>
         </div>
       </div>
 
       {/* Right — signup form */}
-      <div className="flex flex-col justify-center w-full md:w-1/2 px-8 md:px-16 py-16">
+      <div className="flex flex-col justify-center w-full md:w-2/3 px-8 md:px-16 py-16">
         <div className="max-w-sm w-full mx-auto">
           <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-1">Get started</p>
           <h1 className="text-3xl font-bold text-[#2F3E4E] mb-1 whitespace-nowrap">
@@ -167,13 +172,7 @@ export default function SignupPage() {
               Sign in →
             </Link>
           </p>
-
-          <div className="mt-6 border-t border-[#D9E1E8] pt-6 text-center">
-            <p className="text-xs text-[#7A8F79]">Interested in our billing services?</p>
-            <Link href="/billing" className="text-xs font-semibold text-[#2F3E4E] hover:text-[#7A8F79] underline underline-offset-2 transition">
-              Learn about our billing services →
-            </Link>
-          </div>
+          
         </div>
       </div>
 

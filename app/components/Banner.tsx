@@ -45,7 +45,7 @@ export default function Banner({ user }: BannerProps) {
         <div className="flex items-center gap-2">
             <Link
                 href="/signup"
-                className="text-sm font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition px-1"
+                className="text-medium font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition px-1"
             >
                 New User?
             </Link>
@@ -159,23 +159,29 @@ export default function Banner({ user }: BannerProps) {
             <Link href="/billing" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/billing" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 Services
             </Link>
-            <Link href="/resources" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/resources" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
-                Resources
-            </Link>
             <Link href="/faq" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/faq" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 FAQ
             </Link>
-            <Link href="/care" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/care" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
-                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Care
-            </Link>
+            {role && (
+                <>
+                    <Link href="/resources" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/resources" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                        Resources
+                    </Link>
+                    <Link href="/care" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/care" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                        <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Care
+                    </Link>
+                </>
+            )}
         </>
     )
 
     const bottomNavItems = [
         { href: '/', label: 'Home', icon: '🏠' },
-        { href: '/resources', label: 'Resources', icon: '📋' },
         { href: '/faq', label: 'FAQ', icon: '❓' },
-        { href: '/care', label: 'myCare', icon: '🌿' },
+        ...(role ? [
+            { href: '/resources', label: 'Resources', icon: '📋' },
+            { href: '/care', label: 'myCare', icon: '🌿' },
+        ] : []),
         ...(role === 'nurse' ? [
             { href: '/nurse', label: 'Dashboard', icon: '📊' },
             { href: '/nurse/documents', label: 'Documents', icon: '📁' },
@@ -243,7 +249,7 @@ export default function Banner({ user }: BannerProps) {
                 {menuOpen && (
                     <div className="border-t border-[#D9E1E8] bg-[#F4F6F5] px-6 py-4 flex flex-col gap-4 text-sm font-semibold shadow-md">
                         {myRow}
-                        <div className="border-t border-[#D9E1E8] pt-4 flex flex-col gap-4 text-[#2F3E4E]/70">
+                        <div className="border-t border-[#D9E1E8] pt-4 flex flex-col gap-4 text-[#2F3E4E]">
                             {generalRow}
                         </div>
                     </div>
@@ -289,7 +295,7 @@ export default function Banner({ user }: BannerProps) {
                             </nav>
                         )}
                         {/* Row 2: general links (+ myPortal Login when logged out) */}
-                        <nav className={`flex flex-wrap gap-6 text-sm font-semibold items-center text-[#2F3E4E]/60 ${myRow ? 'mt-2' : 'mt-3'}`}>
+                        <nav className={`flex flex-wrap gap-6 text-sm font-semibold items-center text-[#2F3E4E] ${myRow ? 'mt-2' : 'mt-3'}`}>
                             {generalRow}
                         </nav>
                     </div>

@@ -143,7 +143,7 @@ export default function Banner({ user }: BannerProps) {
             <Link href="/" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 Home
             </Link>
-            <Link href="/billing" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/billing" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+            <Link href="/services" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/services" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 Services
             </Link>
             <Link href="/faq" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/faq" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>

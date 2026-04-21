@@ -58,16 +58,8 @@ export default function BillingPage() {
           <p className="mt-3 text-[#D9E1E8] text-sm max-w-xl leading-relaxed">
             Coming Home Care offers end-to-end medical billing services for home care providers.
             We manage claim submission, follow-up, and reimbursement tracking — so you can focus
-            on what matters most: <span className=" text-[#7A8F79] text-sm font-semibold uppercase ">patient care</span>.
+            on what matters most: patient care.
           </p>
-          <a
-            href="/2026-BillingFees.pdf"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 mt-6 bg-[#7A8F79] hover:bg-[#657a64] text-white font-semibold px-5 py-2.5 rounded-lg transition text-sm"
-          >
-            📄 View 2026 Billing Fee Schedule
-          </a>
         </div>
       </div>
 

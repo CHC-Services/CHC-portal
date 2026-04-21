@@ -15,15 +15,6 @@ type TimeEntry = {
   createdAt: string
 }
 
-function StatCard({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="bg-white rounded-xl shadow-sm p-5 flex flex-col gap-1 border-t-4 border-[#7A8F79]">
-      <span className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold">{label}</span>
-      <span className="text-3xl font-bold text-[#2F3E4E]">{value}</span>
-    </div>
-  )
-}
-
 
 export default function NurseDashboard() {
   const router = useRouter()
@@ -34,6 +25,7 @@ export default function NurseDashboard() {
   const [message, setMessage] = useState('')
   const [entries, setEntries] = useState<TimeEntry[]>([])
   const [loadingHistory, setLoadingHistory] = useState(true)
+  const [invoiceSummary, setInvoiceSummary] = useState<{ totalDue: number; count: number } | null>(null)
   const [claimSummary, setClaimSummary] = useState<{ totalBilled: number; totalAllowed: number; totalPaid: number; avgPerHour: number | null } | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [deleting, setDeleting] = useState(false)
@@ -84,6 +76,9 @@ export default function NurseDashboard() {
           router.replace('/nurse/onboarding')
         } else {
           loadEntries()
+          fetch('/api/nurse/invoices/summary', { credentials: 'include' })
+            .then(r => r.ok ? r.json() : null)
+            .then(d => { if (d) setInvoiceSummary(d) })
           fetch('/api/nurse/claims/summary', { credentials: 'include' })
             .then(r => r.ok ? r.json() : null)
             .then(d => { if (d) setClaimSummary(d) })
@@ -119,17 +114,27 @@ export default function NurseDashboard() {
   const now = new Date()
   const thisMonth = now.getMonth()
   const thisYear = now.getFullYear()
+  const priorMonth = thisMonth === 0 ? 11 : thisMonth - 1
+  const priorMonthYear = thisMonth === 0 ? thisYear - 1 : thisYear
 
   const hoursThisMonth = entries
-    .filter(e => {
-      const d = new Date(e.workDate)
-      return d.getMonth() === thisMonth && d.getFullYear() === thisYear
-    })
+    .filter(e => { const d = new Date(e.workDate); return d.getMonth() === thisMonth && d.getFullYear() === thisYear })
     .reduce((sum, e) => sum + e.hours, 0)
 
-  const hoursAllTime = entries.reduce((sum, e) => sum + e.hours, 0)
+  const hoursPriorMonth = entries
+    .filter(e => { const d = new Date(e.workDate); return d.getMonth() === priorMonth && d.getFullYear() === priorMonthYear })
+    .reduce((sum, e) => sum + e.hours, 0)
+
+  const hoursYTD = entries
+    .filter(e => new Date(e.workDate).getFullYear() === thisYear)
+    .reduce((sum, e) => sum + e.hours, 0)
+
+  const hoursUnbilled = entries
+    .filter(e => !e.billed)
+    .reduce((sum, e) => sum + e.hours, 0)
 
   const monthName = now.toLocaleString('default', { month: 'long' })
+  const priorMonthName = new Date(priorMonthYear, priorMonth).toLocaleString('default', { month: 'long' })
 
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">
@@ -145,6 +150,32 @@ export default function NurseDashboard() {
       </div>
 
       <PortalMessages priority="General" />
+
+      {/* Account Summary */}
+      {invoiceSummary && (
+        <div className="bg-white rounded-xl shadow-sm p-5 mb-6">
+          <p className="text-xs font-semibold uppercase tracking-widest text-[#7A8F79] mb-4">
+            Account Summary
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-[#F4F6F5] rounded-xl p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Balance Due</p>
+              <p className={`text-2xl font-black ${invoiceSummary.totalDue > 0 ? 'text-red-500' : 'text-green-600'}`}>
+                ${invoiceSummary.totalDue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+            </div>
+            <div className="bg-[#F4F6F5] rounded-xl p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Outstanding Invoices</p>
+              <p className={`text-2xl font-black ${invoiceSummary.count > 0 ? 'text-amber-600' : 'text-green-600'}`}>
+                {invoiceSummary.count}
+              </p>
+            </div>
+          </div>
+          {invoiceSummary.count === 0 && (
+            <p className="text-xs text-[#7A8F79] italic mt-3">Your account is fully paid up. Thank you!</p>
+          )}
+        </div>
+      )}
 
       {/* Claims reimbursement summary */}
       {claimSummary && (
@@ -165,23 +196,41 @@ export default function NurseDashboard() {
               <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Total Paid</p>
               <p className="text-2xl font-black text-green-600">${claimSummary.totalPaid.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
             </div>
-            <div className="bg-[#2F3E4E] rounded-xl p-4">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Avg $/Hour</p>
+            <div className="bg-[#7A8F79] rounded-xl p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-white/70 mb-1">Avg Rate per Hour</p>
               {claimSummary.avgPerHour !== null ? (
-                <p className="text-2xl font-black text-white">${claimSummary.avgPerHour.toFixed(2)}</p>
+                <p className="text-2xl font-black text-[#2F3E4E]">${claimSummary.avgPerHour.toFixed(2)}</p>
               ) : (
-                <p className="text-sm text-[#7A8F79] italic mt-1">No paid claims yet</p>
+                <p className="text-sm text-white/70 italic mt-1">No paid claims yet</p>
               )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Stats strip */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-        <StatCard label={`Hours in ${monthName}`} value={hoursThisMonth} />
-        <StatCard label="Total Hours on Record" value={hoursAllTime} />
-        <StatCard label="Submissions" value={entries.length} />
+      {/* Worked Hours Summary */}
+      <div className="bg-white rounded-xl shadow-sm p-5 mb-8">
+        <p className="text-xs font-semibold uppercase tracking-widest text-[#7A8F79] mb-4">
+          Worked Hours Summary
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-[#F4F6F5] rounded-xl p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">{monthName}</p>
+            <p className="text-2xl font-black text-[#2F3E4E]">{hoursThisMonth}</p>
+          </div>
+          <div className="bg-[#F4F6F5] rounded-xl p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">{priorMonthName}</p>
+            <p className="text-2xl font-black text-[#2F3E4E]">{hoursPriorMonth}</p>
+          </div>
+          <div className="bg-[#F4F6F5] rounded-xl p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Year to Date</p>
+            <p className="text-2xl font-black text-[#2F3E4E]">{hoursYTD}</p>
+          </div>
+          <div className="bg-[#F4F6F5] rounded-xl p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Waiting to be Billed</p>
+            <p className="text-2xl font-black text-amber-600">{hoursUnbilled}</p>
+          </div>
+        </div>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">

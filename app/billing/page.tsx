@@ -75,9 +75,9 @@ export default function BillingPage() {
       <div className="px-6 md:px-10 py-10 max-w-3xl">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
           {[
-            { icon: '📋', title: 'Claim Submission', body: 'We submit claims to primary and secondary payers on your behalf, accurately and on time.' },
-            { icon: '🔄', title: 'Follow-Up & Appeals', body: 'We track claim status, follow up on pending claims, and handle denials and appeals.' },
-            { icon: '💳', title: 'Reimbursement Tracking', body: 'Full visibility into what was billed, what was paid, and what is still outstanding.' },
+            { icon: '📤', title: 'Claim Submission', body: 'We submit claims to primary & secondary payers on your behalf, accurately and on time.' },
+            { icon: '💰', title: 'Reimbursement Tracking', body: 'Full visibility into what was billed, what was paid, and what is still outstanding.' },
+            { icon: '🗂️', title: 'Secure EOB Storage', body: 'Related EOBs are securely uploaded and available to be printed or downloaded.' },
           ].map(card => (
             <div key={card.title} className="bg-white rounded-2xl shadow-sm p-5">
               <div className="text-3xl mb-3">{card.icon}</div>
@@ -102,7 +102,9 @@ export default function BillingPage() {
             <>
               <h2 className="text-xl font-bold text-[#2F3E4E] mb-1">Request More Information</h2>
               <p className="text-sm text-[#7A8F79] mb-6">
-                Fill out the form below and we&apos;ll be in touch within 24–48 hours.
+                Fill out the form below and we&apos;ll be in touch within 24–48 hours. Or <Link href="/signup" className="font-semibold text-[#2F3E4E] underline underline-offset-2 hover:text-[#7A8F79] transition">
+              register as a new user
+            </Link> to enroll in billing services. 
               </p>
 
               <form onSubmit={handleSubmit} className="space-y-4">

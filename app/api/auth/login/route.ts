@@ -27,10 +27,9 @@ export async function POST(req: Request) {
   id: user.id,
   role: user.role,
   nurseProfileId: user.nurseProfile?.id,
-  // user.name is not present in the generated client until after running
-  // a migration, so cast to any to satisfy TS for now.
   name: (user as any).name,
-  displayName: user.nurseProfile?.displayName
+  displayName: user.nurseProfile?.displayName,
+  isDemo: (user.nurseProfile as any)?.isDemo ?? false,
 })
 
   const res = NextResponse.json({ ok: true, role: user.role })

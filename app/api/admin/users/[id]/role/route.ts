@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../../lib/prisma'
 import { verifyToken } from '../../../../../../lib/auth'
+import { sendAccessApprovedEmail } from '../../../../../../lib/sendEmail'
 
 const VALID_ROLES = ['nurse', 'admin', 'biller', 'provider', 'guardian']
 
@@ -20,7 +21,17 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
   }
 
-  await prisma.user.update({ where: { id }, data: { role } })
+  const user = await prisma.user.update({
+    where: { id },
+    data: { role },
+    select: { email: true, role: true, nurseProfile: { select: { displayName: true } } },
+  })
+
+  // Send approval email only when promoting a pending request to an active role
+  if (role === 'nurse' && user.email) {
+    const displayName = user.nurseProfile?.displayName || user.email
+    sendAccessApprovedEmail({ to: user.email, displayName }).catch(() => {})
+  }
 
   return NextResponse.json({ ok: true, role })
 }

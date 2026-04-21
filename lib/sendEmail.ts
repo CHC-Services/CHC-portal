@@ -1297,3 +1297,82 @@ export async function sendReceiptEmail({
     return false
   }
 }
+
+export async function sendAccessApprovedEmail({
+  to,
+  displayName,
+}: {
+  to: string
+  displayName: string
+}): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) return false
+  const resend = createLoggedResend('alert', displayName)
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to,
+      subject: 'Your Coming Home Care Portal Access Has Been Approved',
+      html: `
+        <div style="font-family:sans-serif;max-width:520px;padding:32px;color:#2F3E4E">
+          <h2 style="margin:0 0 8px;color:#2F3E4E">You're approved — Welcome to the CHC Portal!</h2>
+          <p style="margin:0 0 20px;font-size:15px;color:#2F3E4E;line-height:1.7">
+            Hi ${displayName}, great news — your access request has been reviewed and approved.
+            You can now sign in and start using the provider portal.
+          </p>
+          <a href="${PORTAL_URL}/login"
+             style="display:inline-block;background:#2F3E4E;color:white;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600">
+            Sign In to Your Portal →
+          </a>
+          <p style="margin-top:24px;font-size:13px;color:#7A8F79">
+            Once you're in, you can complete your profile, review your claims, and access billing resources.<br/>
+            If you have any questions, reach out to us at <a href="mailto:support@cominghomecare.com" style="color:#7A8F79">support@cominghomecare.com</a>.
+          </p>
+          <hr style="border:none;border-top:1px solid #D9E1E8;margin:24px 0"/>
+          <p style="font-size:11px;color:#aab">Coming Home Care Services, LLC · <a href="${PORTAL_URL}" style="color:#7A8F79">cominghomecare.com</a></p>
+        </div>
+      `,
+    })
+    return !error
+  } catch {
+    return false
+  }
+}
+
+export async function sendAccessDeniedEmail({
+  to,
+  displayName,
+}: {
+  to: string
+  displayName: string
+}): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) return false
+  const resend = createLoggedResend('alert', displayName)
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to,
+      subject: 'Update on Your Coming Home Care Portal Access Request',
+      html: `
+        <div style="font-family:sans-serif;max-width:520px;padding:32px;color:#2F3E4E">
+          <h2 style="margin:0 0 8px;color:#2F3E4E">We're sorry — your access request was not approved</h2>
+          <p style="margin:0 0 20px;font-size:15px;color:#2F3E4E;line-height:1.7">
+            Hi ${displayName}, thank you for your interest in the Coming Home Care provider portal.
+            After reviewing your request, we're unable to grant access at this time.
+          </p>
+          <p style="margin:0 0 20px;font-size:14px;color:#7A8F79;line-height:1.7">
+            If you believe this is an error or would like more information, please don't hesitate to reach out — we're happy to help.
+          </p>
+          <a href="mailto:support@cominghomecare.com"
+             style="display:inline-block;background:#2F3E4E;color:white;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600">
+            Contact Support
+          </a>
+          <hr style="border:none;border-top:1px solid #D9E1E8;margin:24px 0"/>
+          <p style="font-size:11px;color:#aab">Coming Home Care Services, LLC · <a href="${PORTAL_URL}" style="color:#7A8F79">cominghomecare.com</a></p>
+        </div>
+      `,
+    })
+    return !error
+  } catch {
+    return false
+  }
+}

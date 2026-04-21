@@ -12,6 +12,7 @@ type TokenPayload = {
   nurseProfileId?: string;
   name: string;            // internal/admin name
   displayName?: string;   // nurse-chosen name
+  isDemo?: boolean;
 };
 
 export function signToken(payload: TokenPayload) {

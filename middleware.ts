@@ -5,11 +5,25 @@ import { verifyToken } from "@/lib/auth";
 // /nurse sub-paths that provider-role users may access
 const PROVIDER_ALLOWED_NURSE_PATHS = ['/nurse/profile', '/nurse/onboarding']
 
+const DEMO_WRITE_BLOCK_PATHS = ['/api/nurse/', '/api/time-entry']
+const WRITE_METHODS = ['POST', 'PATCH', 'PUT', 'DELETE']
+
 export function middleware(req: NextRequest) {
   const token = req.cookies.get("auth_token")?.value;
   const { pathname } = req.nextUrl;
 
   console.log('middleware hit', pathname, 'token', token);
+
+  // Block all writes from demo accounts
+  if (WRITE_METHODS.includes(req.method) && DEMO_WRITE_BLOCK_PATHS.some(p => pathname.startsWith(p))) {
+    if (token) {
+      let decoded = null
+      try { decoded = verifyToken(token) } catch {}
+      if ((decoded as any)?.isDemo) {
+        return NextResponse.json({ error: 'Demo accounts are read-only.' }, { status: 403 })
+      }
+    }
+  }
 
   if (
     pathname.startsWith("/admin") ||
@@ -78,6 +92,6 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/nurse/:path*", "/portal/:path*", "/resources/:path*", "/resources", "/care/:path*", "/care"],
+  matcher: ["/admin/:path*", "/nurse/:path*", "/portal/:path*", "/resources/:path*", "/resources", "/care/:path*", "/care", "/api/nurse/:path*", "/api/time-entry/:path*"],
   runtime: 'nodejs',
 };

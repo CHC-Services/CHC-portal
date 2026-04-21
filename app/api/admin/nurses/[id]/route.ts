@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../lib/prisma'
 import { verifyToken } from '../../../../../lib/auth'
 import { encrypt, decrypt } from '../../../../../lib/encrypt'
+import { sendAccessDeniedEmail } from '../../../../../lib/sendEmail'
 
 function adminOnly(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -122,8 +123,19 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
 
   const { id } = await params
 
-  const profile = await prisma.nurseProfile.findUnique({ where: { id }, select: { userId: true } })
+  const profile = await prisma.nurseProfile.findUnique({
+    where: { id },
+    select: { userId: true, displayName: true, user: { select: { email: true, role: true } } },
+  })
   if (!profile) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  // Send denial email only for pending access requests (role === 'provider')
+  if (profile.user?.role === 'provider' && profile.user.email) {
+    sendAccessDeniedEmail({
+      to: profile.user.email,
+      displayName: profile.displayName || profile.user.email,
+    }).catch(() => {})
+  }
 
   // Delete in dependency order:
   // 1. TimeEntries (no cascade from NurseProfile)

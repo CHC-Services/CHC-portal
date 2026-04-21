@@ -202,7 +202,12 @@ function NurseRow({ nurse, onDeleted, onRefresh }: { nurse: Nurse; onDeleted: ()
             {nurse.displayName.charAt(0).toUpperCase()}
           </div>
           <div>
-            <p className="font-semibold text-[#2F3E4E]">{nurse.displayName}</p>
+            <div className="flex items-center gap-2">
+              <p className="font-semibold text-[#2F3E4E]">{nurse.displayName}</p>
+              {(nurse as any).isDemo && (
+                <span className="text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-700 border border-amber-300 px-1.5 py-0.5 rounded-full">Demo</span>
+              )}
+            </div>
             <p className="text-xs text-[#7A8F79]">{nurse.user.email}</p>
             {nurse.accountNumber && (
               <p className="text-xs font-mono text-[#2F3E4E] mt-0.5">{nurse.accountNumber}</p>
@@ -470,6 +475,7 @@ export default function AdminDashboard() {
 
   const pendingNurses = nurses.filter(n => n.user.role === 'provider')
   const activeNurses = nurses.filter(n => n.user.role !== 'provider')
+  const billableNurses = activeNurses.filter((n: any) => !n.isDemo)
 
   async function approveRequest(userId: string, nurseId: string) {
     await fetch(`/api/admin/users/${userId}/role`, {
@@ -486,7 +492,7 @@ export default function AdminDashboard() {
     loadNurses()
   }
 
-  const totalHoursThisMonth = activeNurses.reduce((sum, nurse) => {
+  const totalHoursThisMonth = billableNurses.reduce((sum, nurse) => {
     const now = new Date()
     return sum + nurse.timeEntries.filter(e => {
       const d = new Date(e.workDate)
@@ -497,8 +503,8 @@ export default function AdminDashboard() {
   const now = new Date()
   const monthName = now.toLocaleString('default', { month: 'long' })
 
-  const totalEntries = activeNurses.reduce((s, n) => s + n.timeEntries.length, 0)
-  const entriesThisMonth = activeNurses.reduce((sum, nurse) => {
+  const totalEntries = billableNurses.reduce((s, n) => s + n.timeEntries.length, 0)
+  const entriesThisMonth = billableNurses.reduce((sum, nurse) => {
     return sum + nurse.timeEntries.filter(e => {
       const d = new Date(e.workDate)
       return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()

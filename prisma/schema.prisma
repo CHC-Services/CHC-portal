@@ -114,6 +114,9 @@ model NurseProfile {
   // Self-reported type from public signup form
   signupRole   String?   // 'Nurse' | 'Patient' | 'Billing Service' | 'Other'
 
+  // Demo/test account — excluded from metrics, all writes blocked
+  isDemo       Boolean   @default(false)
+
   // Directory opt-in
   dirOptIn     Boolean @default(true)
   dirShowEmail Boolean @default(true)

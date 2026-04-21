@@ -20,6 +20,8 @@ export async function GET(req: Request) {
     orderBy: { displayName: 'asc' }
   })
 
+  // isDemo is returned as part of the profile spread below — no extra select needed
+
   const result = nurses.map((n: any) => {
     const invoiceBalance = n.invoices.reduce((sum: number, inv: any) => {
       if (inv.status === 'WrittenOff' || inv.status === 'Cancelled') return sum

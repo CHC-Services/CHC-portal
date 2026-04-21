@@ -1,7 +1,7 @@
 'use client'
 
 type BannerProps = {
-  user: { id: string; role: string; displayName?: string } | null;
+  user: { id: string; role: string; displayName?: string; isDemo?: boolean } | null;
 };
 
 import { usePathname } from "next/navigation";
@@ -188,8 +188,15 @@ export default function Banner({ user }: BannerProps) {
 
     return (
         <>
+            {/* ── Demo mode bar ── */}
+            {user?.isDemo && (
+                <div className="fixed top-0 left-0 w-full z-[60] bg-amber-400 text-amber-900 text-xs font-bold text-center py-1.5 tracking-wide">
+                    👁 Demo Mode — Read Only · Changes are blocked
+                </div>
+            )}
+
             {/* ── MOBILE header (hidden on md+) ── */}
-            <div className="md:hidden fixed top-0 left-0 w-full bg-[#F4F6F5] text-[#2f3e4e] z-50 shadow-sm">
+            <div className={`md:hidden fixed left-0 w-full bg-[#F4F6F5] text-[#2f3e4e] z-50 shadow-sm ${user?.isDemo ? 'top-[30px]' : 'top-0'}`}>
 
                 {/* Row 1: Logo | Auth button(s) */}
                 <div className="flex items-center justify-between px-3 pt-3 pb-1">
@@ -245,7 +252,7 @@ export default function Banner({ user }: BannerProps) {
             </div>
 
             {/* ── DESKTOP header (hidden below md) ── */}
-            <div className="hidden md:block fixed top-0 left-0 w-full bg-[#F4F6F5] text-[#2f3e4e] h-[200px] z-50">
+            <div className={`hidden md:block fixed left-0 w-full bg-[#F4F6F5] text-[#2f3e4e] h-[200px] z-50 ${user?.isDemo ? 'top-[30px]' : 'top-0'}`}>
                 <div className="max-w-[1400px] mx-auto h-full flex items-center justify-between px-6 relative">
 
                     {/* Top-right: clock + sign out / New User? */}

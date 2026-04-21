@@ -165,6 +165,10 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   const [userRole, setUserRole] = useState('')
   const [roleSaving, setRoleSaving] = useState(false)
   const [roleMessage, setRoleMessage] = useState('')
+  const [isDemo, setIsDemo] = useState(false)
+  const [demoSaving, setDemoSaving] = useState(false)
+  const [demoSeeding, setDemoSeeding] = useState(false)
+  const [demoSeedMsg, setDemoSeedMsg] = useState('')
   const [inviteSending, setInviteSending] = useState(false)
   const [inviteMessage, setInviteMessage] = useState('')
   const [notifEnabled, setNotifEnabled] = useState(true)
@@ -444,6 +448,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
         if (data) {
           setProfile(data)
           setUserRole(data.user?.role || 'nurse')
+          setIsDemo(data.isDemo ?? false)
           setNotifEnabled(data.receiveNotifications !== false)
         }
       })
@@ -612,6 +617,38 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
     })
     setRoleSaving(false)
     setRoleMessage(res.ok ? 'Role updated.' : 'Error updating role.')
+  }
+
+  async function toggleDemo() {
+    setDemoSaving(true)
+    const next = !isDemo
+    const res = await fetch(`/api/admin/nurses/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ isDemo: next }),
+    })
+    setDemoSaving(false)
+    if (res.ok) setIsDemo(next)
+  }
+
+  async function seedDemoData() {
+    if (!confirm('This will wipe and re-seed all time entries, claims, and invoices for this demo account. Continue?')) return
+    setDemoSeeding(true)
+    setDemoSeedMsg('')
+    const res = await fetch('/api/admin/demo/seed', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ nurseId: id }),
+    })
+    const data = await res.json()
+    setDemoSeeding(false)
+    if (res.ok) {
+      setDemoSeedMsg(`Seeded: ${data.seeded.timeEntries} time entries, ${data.seeded.claims} claims, ${data.seeded.invoices} invoices.`)
+    } else {
+      setDemoSeedMsg(data.error || 'Seed failed.')
+    }
   }
 
   async function resendInvite() {
@@ -1052,6 +1089,42 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
               <p className={`mt-2 text-xs font-medium ${roleMessage.includes('Error') ? 'text-red-500' : 'text-[#7A8F79]'}`}>
                 {roleMessage}
               </p>
+            )}
+
+            {/* Demo account toggle */}
+            <div className="mt-4 pt-4 border-t border-[#D9E1E8] flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[#2F3E4E]">Demo Account</p>
+                <p className="text-xs text-[#7A8F79] mt-0.5">Excluded from metrics. All writes blocked for this user.</p>
+              </div>
+              <button
+                type="button"
+                onClick={toggleDemo}
+                disabled={demoSaving}
+                className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ${isDemo ? 'bg-amber-400' : 'bg-[#D9E1E8]'} disabled:opacity-50`}
+              >
+                <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${isDemo ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              </button>
+            </div>
+
+            {isDemo && (
+              <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 space-y-2">
+                <p className="text-xs font-semibold text-amber-800">Demo Mode Active</p>
+                <p className="text-[11px] text-amber-700">Populate this account with realistic mock time entries, claims, and invoices so the portal looks fully active for demos.</p>
+                <button
+                  type="button"
+                  onClick={seedDemoData}
+                  disabled={demoSeeding}
+                  className="w-full bg-amber-500 text-white text-xs font-bold py-2 rounded-lg hover:bg-amber-600 transition disabled:opacity-50"
+                >
+                  {demoSeeding ? 'Seeding…' : '🌱 Populate Demo Data'}
+                </button>
+                {demoSeedMsg && (
+                  <p className={`text-[11px] font-semibold ${demoSeedMsg.includes('failed') || demoSeedMsg.includes('Error') ? 'text-red-600' : 'text-green-700'}`}>
+                    {demoSeedMsg}
+                  </p>
+                )}
+              </div>
             )}
 
             <div className="mt-4 pt-4 border-t border-[#D9E1E8]">

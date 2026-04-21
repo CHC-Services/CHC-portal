@@ -61,7 +61,7 @@ export default function Banner({ user }: BannerProps) {
         </div>
     )
 
-    // Desktop top-right area: clock + sign out (or New User? button when logged out)
+    // Desktop top-right area: clock + sign out (logged out shows nothing here)
     const desktopTopRight = role ? (
         <button
             onClick={async () => {
@@ -75,14 +75,7 @@ export default function Banner({ user }: BannerProps) {
             </svg>
             Sign Out
         </button>
-    ) : (
-        <Link
-            href="/signup"
-            className="flex items-center gap-1.5 text-sm font-semibold text-[#7A8F79] border border-[#7A8F79] px-3 py-1 rounded-full hover:bg-[#7A8F79] hover:text-white transition"
-        >
-            New User?
-        </Link>
-    )
+    ) : null
 
     // Row 1: personal "my" portal links
     const myRow = role === 'nurse' ? (
@@ -147,12 +140,6 @@ export default function Banner({ user }: BannerProps) {
     // Row 2: general site links (always visible)
     const generalRow = (
         <>
-            {/* myPortal Login shown inline with general links when logged out */}
-            {!role && (
-                <Link href="/login" onClick={() => setMenuOpen(false)} className={`transition font-bold ${pathname === "/login" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
-                    <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Portal Login
-                </Link>
-            )}
             <Link href="/" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 Home
             </Link>
@@ -162,6 +149,11 @@ export default function Banner({ user }: BannerProps) {
             <Link href="/faq" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/faq" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 FAQ
             </Link>
+            {!role && (
+                <Link href="/login" onClick={() => setMenuOpen(false)} className={`transition font-bold ${pathname === "/login" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                    <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Portal Login
+                </Link>
+            )}
             {role && (
                 <>
                     <Link href="/resources" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/resources" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
@@ -298,6 +290,14 @@ export default function Banner({ user }: BannerProps) {
                         <nav className={`flex flex-wrap gap-6 text-sm font-semibold items-center text-[#2F3E4E] ${myRow ? 'mt-2' : 'mt-3'}`}>
                             {generalRow}
                         </nav>
+                        {!role && (
+                            <Link
+                                href="/signup"
+                                className="mt-2 text-sm font-semibold text-[#7A8F79] border border-[#7A8F79] px-3 py-1 rounded-full hover:bg-[#7A8F79] hover:text-white transition"
+                            >
+                                New User?
+                            </Link>
+                        )}
                     </div>
 
                 </div>

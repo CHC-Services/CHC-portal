@@ -62,16 +62,22 @@ export default function PortalPage() {
 
         {/* Welcome card */}
         <div className="bg-[#2F3E4E] text-white rounded-2xl px-8 py-8">
-          <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-1">Welcome</p>
           <h1 className="text-2xl font-bold mb-2">
             <span className="italic text-[#7A8F79]">my</span>Provider Portal
           </h1>
-          <p className="text-[#D9E1E8] text-sm leading-relaxed">
-            Hi <strong>{user.displayName}</strong> — your account is set up. Complete the steps below to
-            finish your profile and get access to the full provider portal.
-          </p>
+          <p className="text-[#D9E1E8] text-medium leading-relaxed pt-1">
+            Hi <strong>{user.displayName}</strong> — <span className="text-medium tracking-widest text-[#7A8F79] font-semibold mb-1">WELCOME HOME,</span></p>
+            <p className="text-[#D9E1E8] text-sm font-semibold leading-relaxed ">
+              and thank you for registering for a portal account! </p>
+          
+          <p className="text-[#7A8F79] font-semibold text-medium mt-3 pl-10 leading-relaxed">
+            Your account is pending approval. </p> 
+            <p className="text-sm tracking-narrow text-[#D9E1E8] pt-4 mb-1">While you you wait, complete the steps below & click the links above to look around the site to see all of the tools & resources available. After your account is approved & the Billing Service enrollment is completed, you'll have full access to the portal features.</p>
+          
           <p className="mt-3 text-xs text-[#7A8F79]">
-            Once your profile is reviewed and billing enrollment is complete, Coming Home Care will activate your full portal access.
+           If you have any questions, reach us at: <a href="mailto:support@cominghomecare.com" className="font-semibold text-[#D9E1E8] hover:text-[#7A8F79] transition"><u>
+              support@cominghomecare.com</u>
+            </a>
           </p>
         </div>
 

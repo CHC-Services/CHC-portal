@@ -58,7 +58,7 @@ export default function SignupPage() {
         setCountdown(secs)
         if (secs <= 0) {
           clearInterval(interval)
-          router.push('/nurse/profile')
+          router.push('/nurse/portal')
         }
       }, 1000)
     } catch {
@@ -197,7 +197,7 @@ export default function SignupPage() {
           {success && (
             <div className="mt-6 bg-green-50 border border-green-200 rounded-xl px-5 py-4 text-center space-y-1">
               <p className="text-sm font-bold text-green-700">Account created successfully!</p>
-              <p className="text-xs text-green-600">Taking you to your profile in {countdown} second{countdown !== 1 ? 's' : ''}…</p>
+              <p className="text-xs text-green-600">Loading your portalin {countdown} second{countdown !== 1 ? 's' : ''}…</p>
             </div>
           )}
 

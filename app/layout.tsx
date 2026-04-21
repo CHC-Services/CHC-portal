@@ -5,6 +5,7 @@ import { getUserFromCookie } from "@/lib/getUserFromCookie";
 import Banner from "./components/Banner";
 import Footer from "./components/Footer";
 import PullToRefresh from "./components/PullToRefresh";
+import { Analytics } from "@vercel/analytics/next";
 
 const cormorantUpright = Cormorant_Upright({
   subsets: ["latin"],

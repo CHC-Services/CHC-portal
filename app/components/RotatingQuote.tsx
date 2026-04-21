@@ -21,10 +21,12 @@ const QUOTES = [
 export default function RotatingQuote({
   interval = 8000,
   compact = false,
+  variant,
   className = '',
 }: {
   interval?: number
   compact?: boolean
+  variant?: 'header'
   className?: string
 }) {
   const [index, setIndex] = useState(() => Math.floor(Math.random() * QUOTES.length))
@@ -43,6 +45,21 @@ export default function RotatingQuote({
   }, [interval])
 
   const quote = QUOTES[index]
+
+  if (variant === 'header') {
+    return (
+      <div className={`flex flex-col justify-center text-right ${className}`}>
+        <div className="transition-opacity duration-300" style={{ opacity: visible ? 1 : 0 }}>
+          <p className="font-cormorant text-[#2F3E4E] text-base leading-snug">
+            &ldquo;{quote.text}&rdquo;
+          </p>
+          <p className="font-cormorant text-[#7A8F79] text-sm uppercase tracking-widest mt-1">
+            &mdash; {quote.author}
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   if (compact) {
     return (

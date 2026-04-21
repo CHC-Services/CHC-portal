@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import PortalMessages from '../components/PortalMessages'
 import { DateInput, DateInputHandle } from '../components/DateInput'
+import RotatingQuote from '../components/RotatingQuote'
 
 type TimeEntry = {
   id: string
@@ -26,7 +27,7 @@ export default function NurseDashboard() {
   const [entries, setEntries] = useState<TimeEntry[]>([])
   const [loadingHistory, setLoadingHistory] = useState(true)
   const [invoiceSummary, setInvoiceSummary] = useState<{ totalDue: number; count: number } | null>(null)
-  const [claimSummary, setClaimSummary] = useState<{ totalBilled: number; totalAllowed: number; totalPaid: number; avgPerHour: number | null } | null>(null)
+  const [claimSummary, setClaimSummary] = useState<{ totalBilled: number; totalAllowed: number; totalPaid: number; avgPerHour: number | null; statusCounts: { submitted: number; pending: number; paid: number; denied: number } } | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [deleting, setDeleting] = useState(false)
 
@@ -140,13 +141,16 @@ export default function NurseDashboard() {
     <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">
 
       {/* Page header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-[#2F3E4E]">
-          <span className="text-[#7A8F79] italic">my</span>Dashboard
-        </h1>
-        <p className="text-sm text-[#7A8F79] mt-1">
-          {now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-        </p>
+      <div className="flex items-stretch gap-6 mb-8">
+        <div className="shrink-0">
+          <h1 className="text-3xl font-bold text-[#2F3E4E]">
+            <span className="text-[#7A8F79] italic">my</span>Dashboard
+          </h1>
+          <p className="text-sm text-[#7A8F79] mt-1">
+            {now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          </p>
+        </div>
+        <RotatingQuote variant="header" className="flex-1 pl-8 ml-auto max-w-md" />
       </div>
 
       <PortalMessages priority="General" />
@@ -154,7 +158,7 @@ export default function NurseDashboard() {
       {/* Account Summary */}
       {invoiceSummary && (
         <div className="bg-white rounded-xl shadow-sm p-5 mb-6">
-          <p className="text-xs font-semibold uppercase tracking-widest text-[#7A8F79] mb-4">
+          <p className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] mb-4">
             Account Summary
           </p>
           <div className="grid grid-cols-2 gap-4">
@@ -177,10 +181,10 @@ export default function NurseDashboard() {
         </div>
       )}
 
-      {/* Claims reimbursement summary */}
+      {/* Reimbursement Summary */}
       {claimSummary && (
         <div className="bg-white rounded-xl shadow-sm p-5 mb-6">
-          <p className="text-xs font-semibold uppercase tracking-widest text-[#7A8F79] mb-4">
+          <p className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] mb-4">
             Reimbursement Summary
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -208,10 +212,37 @@ export default function NurseDashboard() {
         </div>
       )}
 
-      {/* Worked Hours Summary */}
+      {/* Claims Summary */}
+      {claimSummary && (
+        <div className="bg-white rounded-xl shadow-sm p-5 mb-6">
+          <p className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] mb-4">
+            Claims Summary
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-[#F4F6F5] rounded-xl p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Submitted</p>
+              <p className="text-2xl font-black text-[#2F3E4E]">{claimSummary.statusCounts.submitted}</p>
+            </div>
+            <div className="bg-[#F4F6F5] rounded-xl p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Pending</p>
+              <p className="text-2xl font-black text-amber-600">{claimSummary.statusCounts.pending}</p>
+            </div>
+            <div className="bg-[#F4F6F5] rounded-xl p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Paid</p>
+              <p className="text-2xl font-black text-green-600">{claimSummary.statusCounts.paid}</p>
+            </div>
+            <div className="bg-[#F4F6F5] rounded-xl p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Denied</p>
+              <p className="text-2xl font-black text-red-500">{claimSummary.statusCounts.denied}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Logged Hours Summary */}
       <div className="bg-white rounded-xl shadow-sm p-5 mb-8">
-        <p className="text-xs font-semibold uppercase tracking-widest text-[#7A8F79] mb-4">
-          Worked Hours Summary
+        <p className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] mb-4">
+          Logged Hours Summary
         </p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-[#F4F6F5] rounded-xl p-4">

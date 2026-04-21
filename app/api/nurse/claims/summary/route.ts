@@ -20,6 +20,7 @@ export async function GET(req: Request) {
     select: {
       claimId: true,
       resubmissionOf: true,
+      claimStage: true,
       totalBilled: true,
       hours: true,
       primaryAllowedAmt: true,
@@ -27,9 +28,6 @@ export async function GET(req: Request) {
       totalReimbursed: true,
     },
   })
-
-  // Build map: claimId string → claim (for root lookup)
-  const byClaimId = new Map(claims.filter(c => c.claimId).map(c => [c.claimId!, c]))
 
   // Partition into roots and resubmissions
   const roots = claims.filter(c => !c.resubmissionOf)
@@ -41,38 +39,55 @@ export async function GET(req: Request) {
     }
   }
 
-  let totalBilled = 0
-  let totalAllowed = 0
-  let totalPaid = 0
-  let paidHours = 0
-  let paidReimbursed = 0
+  // Stage priority — higher = more advanced; used to pick the "current" status of a chain
+  const STAGE_PRIORITY: Record<string, number> = {
+    'Draft': 0, '': 0,
+    'INS-1 Submitted': 1, 'INS-2 Submitted': 2, 'Resubmitted': 2,
+    'Pending': 3, 'Info Requested': 3, 'Info Sent': 3, 'Appealed': 4,
+    'Rejected': 5, 'Paid': 10, 'Denied': 10,
+  }
+
+  function stageBucket(stage: string | null): 'submitted' | 'pending' | 'paid' | 'denied' {
+    switch (stage) {
+      case 'INS-1 Submitted':
+      case 'INS-2 Submitted':
+      case 'Resubmitted':   return 'submitted'
+      case 'Paid':          return 'paid'
+      case 'Denied':
+      case 'Rejected':      return 'denied'
+      default:              return 'pending'
+    }
+  }
+
+  let totalBilled = 0, totalAllowed = 0, totalPaid = 0, paidHours = 0, paidReimbursed = 0
+  const statusCounts = { submitted: 0, pending: 0, paid: 0, denied: 0 }
 
   for (const root of roots) {
     const chain = [root, ...(root.claimId ? (resubsByParent.get(root.claimId) ?? []) : [])]
 
-    // Total billed: use root's amount (what was originally submitted)
+    // Financial totals
     totalBilled += root.totalBilled ?? 0
-
-    // Allowed + Paid: use best value across the chain (resubmission may have been paid when original wasn't)
     const bestAllowed = Math.max(...chain.map(c => (c.primaryAllowedAmt ?? 0) + (c.secondaryAllowedAmt ?? 0)))
     const bestPaid = Math.max(...chain.map(c => c.totalReimbursed ?? 0))
     totalAllowed += bestAllowed
     totalPaid += bestPaid
 
-    // Avg $/hr: accumulate from chains that have a paid amount
     if (bestPaid > 0) {
-      // Use hours from whichever claim in the chain has hours + payment data
       const paidClaim = chain.find(c => (c.totalReimbursed ?? 0) > 0 && (c.hours ?? 0) > 0)
         ?? chain.find(c => (c.hours ?? 0) > 0)
       const chainHours = paidClaim?.hours ?? root.hours ?? 0
-      if (chainHours > 0) {
-        paidHours += chainHours
-        paidReimbursed += bestPaid
-      }
+      if (chainHours > 0) { paidHours += chainHours; paidReimbursed += bestPaid }
     }
+
+    // Status count: use the most-advanced stage in the chain
+    const currentStage = chain.reduce((best, c) => {
+      const p = STAGE_PRIORITY[c.claimStage ?? ''] ?? 0
+      return p > (STAGE_PRIORITY[best ?? ''] ?? 0) ? (c.claimStage ?? '') : best
+    }, root.claimStage ?? '')
+    statusCounts[stageBucket(currentStage)]++
   }
 
   const avgPerHour = paidHours > 0 ? paidReimbursed / paidHours : null
 
-  return NextResponse.json({ totalBilled, totalAllowed, totalPaid, avgPerHour })
+  return NextResponse.json({ totalBilled, totalAllowed, totalPaid, avgPerHour, statusCounts })
 }

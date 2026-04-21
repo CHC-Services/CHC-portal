@@ -33,7 +33,8 @@ export default function Footer() {
           <p className="text-xs font-semibold uppercase tracking-widest text-[#7A8F79] mb-3">Company</p>
           <ul className="space-y-2 text-sm">
             <li><span className="text-[#7A8F79] cursor-default">About Us</span></li>
-            <li><span className="text-[#7A8F79] cursor-default">Privacy Policy</span></li>
+            <li><Link href="/privacy" className="hover:text-white transition">Terms of Service</Link></li>
+            <li><Link href="/privacy-policy" className="hover:text-white transition">Privacy Policy</Link></li>
             <li><span className="text-[#7A8F79] cursor-default">HIPAA Notice</span></li>
             <li>
               <a href="mailto:support@cominghomecare.com" className="hover:text-white transition">

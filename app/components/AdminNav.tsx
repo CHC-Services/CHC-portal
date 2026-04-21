@@ -14,6 +14,7 @@ const links = [
   { prefix: 'ad', label: 'Email',     href: '/admin/email' },
   { prefix: 'ad', label: 'FAQ',       href: '/admin/faq' },
   { prefix: 'my', label: 'Ideas',     href: '/admin/ideas' },
+  { prefix: 'ad', label: 'Backups',   href: '/admin/backups' },
   { prefix: '',   label: 'Add Provider', href: '/admin#add-provider' },
 ]
 

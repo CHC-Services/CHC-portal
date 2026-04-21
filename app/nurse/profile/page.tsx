@@ -11,12 +11,18 @@ export default function ProfilePage() {
   const [user, setUser] = useState<{ email: string; name: string } | null>(null)
   const [profile, setProfile] = useState<any>({})
   const [message, setMessage] = useState('')
-  const [pwMessage, setPwMessage] = useState('')
 
   // password fields
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [pwMessage, setPwMessage] = useState('')
+
+  // email update fields
+  const [newEmail, setNewEmail] = useState('')
+  const [confirmEmail, setConfirmEmail] = useState('')
+  const [emailPassword, setEmailPassword] = useState('')
+  const [emailMessage, setEmailMessage] = useState('')
 
   useEffect(() => {
     fetch('/api/nurse/profile')
@@ -56,10 +62,33 @@ export default function ProfilePage() {
     })
     const data = await res.json()
     if (res.ok) {
-      setPwMessage('Password changed.')
+      setPwMessage('Password changed successfully.')
       setCurrentPassword(''); setNewPassword(''); setConfirmPassword('')
     } else {
       setPwMessage(data.error || 'Could not change password.')
+    }
+  }
+
+  async function changeEmail(e: React.FormEvent) {
+    e.preventDefault()
+    setEmailMessage('')
+    if (!newEmail.trim()) { setEmailMessage('Please enter a new email address.'); return }
+    if (newEmail.trim().toLowerCase() !== confirmEmail.trim().toLowerCase()) {
+      setEmailMessage('Email addresses do not match.'); return
+    }
+    const res = await fetch('/api/nurse/update-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ newEmail: newEmail.trim(), currentPassword: emailPassword }),
+    })
+    const data = await res.json()
+    if (res.ok) {
+      setEmailMessage('Email updated. Please log in again with your new address.')
+      setUser(u => u ? { ...u, email: data.email } : u)
+      setNewEmail(''); setConfirmEmail(''); setEmailPassword('')
+    } else {
+      setEmailMessage(data.error || 'Could not update email.')
     }
   }
 
@@ -88,134 +117,183 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* 3-column layout */}
-      <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
 
-          {/* ── Col 1+2: Personal Information ── */}
-          <div className="lg:col-span-2 space-y-5">
+        {/* ── Col 1+2: Personal Information + myLogin ── */}
+        <div className="lg:col-span-2 space-y-5">
 
-            <div className="bg-white rounded-xl shadow p-6 space-y-4">
-              <h2 className="text-xl font-semibold text-[#2F3E4E]">Personal Information</h2>
+          {/* Personal Information */}
+          <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow p-6 space-y-4">
+            <h2 className="text-xl font-semibold text-[#2F3E4E]">Personal Information</h2>
 
-              {/* Name row */}
-              <div className="grid grid-cols-6 gap-3">
-                <div className="col-span-2 space-y-1">
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">First Name</label>
-                  <input type="text" value={profile.firstName || ''} onChange={(e) => setProfile({ ...profile, firstName: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
-                </div>
-                <div className="col-span-1 space-y-1">
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">MI</label>
-                  <input type="text" maxLength={1} value={profile.middleInitial || ''} onChange={(e) => setProfile({ ...profile, middleInitial: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
-                </div>
-                <div className="col-span-3 space-y-1">
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Last Name</label>
-                  <input type="text" value={profile.lastName || ''} onChange={(e) => setProfile({ ...profile, lastName: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
-                </div>
+            {/* Name row */}
+            <div className="grid grid-cols-6 gap-3">
+              <div className="col-span-2 space-y-1">
+                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">First Name</label>
+                <input type="text" value={profile.firstName || ''} onChange={(e) => setProfile({ ...profile, firstName: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">
-                    Email — <a href="mailto:support@cominghomecare.com" className="normal-case font-normal underline hover:text-[#2F3E4E]">request update</a>
-                  </label>
-                  <input type="text" value={user?.email || ''} disabled className="w-full border border-[#D9E1E8] p-2 rounded-lg bg-gray-100 text-[#2F3E4E]" />
-                </div>
-                <div className="space-y-1">
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Preferred Name <span className="normal-case font-normal text-[#7A8F79]">(optional)</span></label>
-                  <input type="text" value={profile.displayName || ''} onChange={(e) => setProfile({ ...profile, displayName: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
-                </div>
+              <div className="col-span-1 space-y-1">
+                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">MI</label>
+                <input type="text" maxLength={1} value={profile.middleInitial || ''} onChange={(e) => setProfile({ ...profile, middleInitial: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
               </div>
+              <div className="col-span-3 space-y-1">
+                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Last Name</label>
+                <input type="text" value={profile.lastName || ''} onChange={(e) => setProfile({ ...profile, lastName: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
+              </div>
+            </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Preferred Name <span className="normal-case font-normal text-[#7A8F79]">(optional)</span></label>
+                <input type="text" value={profile.displayName || ''} onChange={(e) => setProfile({ ...profile, displayName: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
+              </div>
               <div className="space-y-1">
                 <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Phone Number</label>
                 <input type="tel" placeholder="(555) 555-5555" value={profile.phone || ''} onChange={(e) => setProfile({ ...profile, phone: fmtPhoneInput(e.target.value) })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
               </div>
-
-              <div className="space-y-1">
-                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Home Address</label>
-                <input type="text" placeholder="Street address" value={profile.address || ''} onChange={(e) => setProfile({ ...profile, address: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="sm:col-span-2 space-y-1">
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">City</label>
-                  <input type="text" placeholder="City" value={profile.city || ''} onChange={(e) => setProfile({ ...profile, city: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
-                </div>
-                <div className="space-y-1">
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">State</label>
-                  <input type="text" placeholder="State" value={profile.state || ''} onChange={(e) => setProfile({ ...profile, state: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
-                </div>
-                <div className="space-y-1">
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">ZIP</label>
-                  <input type="text" placeholder="ZIP" value={profile.zip || ''} onChange={(e) => setProfile({ ...profile, zip: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
-                </div>
-              </div>
-
-              {/* Sensitive fields */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <SensitiveField
-                  label="Date of Birth"
-                  type="date"
-                  value={profile.dob || ''}
-                  onChange={(v) => setProfile({ ...profile, dob: v })}
-                />
-                <SensitiveField
-                  label="SSN"
-                  value={profile.ssn || ''}
-                  onChange={(v) => setProfile({ ...profile, ssn: v })}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <SensitiveField
-                  label="NPI Number (Individual)"
-                  value={profile.npiNumber || ''}
-                  onChange={(v) => setProfile({ ...profile, npiNumber: v })}
-                />
-                <SensitiveField
-                  label="Medicaid ID"
-                  value={profile.medicaidNumber || ''}
-                  onChange={(v) => setProfile({ ...profile, medicaidNumber: v })}
-                />
-              </div>
-
-              <button type="submit" className="w-full bg-[#2F3E4E] text-white p-2 rounded-lg hover:bg-[#7A8F79] transition font-semibold">
-                Save Changes
-              </button>
-              {message && <p className="text-sm text-center text-[#2F3E4E]">{message}</p>}
             </div>
 
+            <div className="space-y-1">
+              <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Home Address</label>
+              <input type="text" placeholder="Street address" value={profile.address || ''} onChange={(e) => setProfile({ ...profile, address: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
+            </div>
 
-          </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="sm:col-span-2 space-y-1">
+                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">City</label>
+                <input type="text" placeholder="City" value={profile.city || ''} onChange={(e) => setProfile({ ...profile, city: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
+              </div>
+              <div className="space-y-1">
+                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">State</label>
+                <input type="text" placeholder="State" value={profile.state || ''} onChange={(e) => setProfile({ ...profile, state: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
+              </div>
+              <div className="space-y-1">
+                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">ZIP</label>
+                <input type="text" placeholder="ZIP" value={profile.zip || ''} onChange={(e) => setProfile({ ...profile, zip: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
+              </div>
+            </div>
 
-          {/* ── Col 3: myBilling + myCases + myPasswords + myNotifications ── */}
-          <div className="space-y-5">
+            {/* Sensitive fields */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <SensitiveField label="Date of Birth" type="date" value={profile.dob || ''} onChange={(v) => setProfile({ ...profile, dob: v })} />
+              <SensitiveField label="SSN" value={profile.ssn || ''} onChange={(v) => setProfile({ ...profile, ssn: v })} />
+            </div>
 
-            <BillingSection profile={profile} onUnenroll={() => setProfile({ ...profile, enrolledInBilling: false })} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <SensitiveField label="NPI Number (Individual)" value={profile.npiNumber || ''} onChange={(v) => setProfile({ ...profile, npiNumber: v })} />
+              <SensitiveField label="Medicaid ID" value={profile.medicaidNumber || ''} onChange={(v) => setProfile({ ...profile, medicaidNumber: v })} />
+            </div>
 
-            <form onSubmit={changePassword} className="bg-white rounded-xl shadow p-6 space-y-4">
-              <h2 className="text-xl font-semibold text-[#2F3E4E]">
-                <span style={{ color: '#7A8F79', fontStyle: 'italic' }}>my</span>Passwords
-              </h2>
-              <input type="password" placeholder="Current password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
-              <input type="password" placeholder="New password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
-              <input type="password" placeholder="Confirm new password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
-              <button type="submit" className="w-full bg-[#2F3E4E] text-white p-2 rounded-lg hover:bg-[#7A8F79] transition font-semibold">
-                Update Password
-              </button>
-              {pwMessage && <p className="text-sm text-center text-[#2F3E4E]">{pwMessage}</p>}
-            </form>
+            <button type="submit" className="w-full bg-[#2F3E4E] text-white p-2 rounded-lg hover:bg-[#7A8F79] transition font-semibold">
+              Save Changes
+            </button>
+            {message && <p className="text-sm text-center text-[#2F3E4E]">{message}</p>}
+          </form>
 
-            <NotifPrefsBlock profile={profile} setProfile={setProfile} />
+          {/* myLogin — email + password, 2-col */}
+          <div className="bg-white rounded-xl shadow p-6">
+            <h2 className="text-xl font-semibold text-[#2F3E4E] mb-5">
+              <span style={{ color: '#7A8F79', fontStyle: 'italic' }}>my</span>Login
+            </h2>
 
+            <div className="grid sm:grid-cols-2 gap-6">
+
+              {/* ── Left: Email Update ── */}
+              <form onSubmit={changeEmail} className="space-y-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-[#7A8F79] mb-0.5">Update Email Address</p>
+                  <p className="text-xs text-[#7A8F79]">
+                    Current: <span className="font-semibold text-[#2F3E4E]">{user?.email}</span>
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">New Email</label>
+                  <input
+                    type="email"
+                    placeholder="new@email.com"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    required
+                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Confirm New Email</label>
+                  <input
+                    type="email"
+                    placeholder="Confirm new email"
+                    value={confirmEmail}
+                    onChange={(e) => setConfirmEmail(e.target.value)}
+                    required
+                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Current Password</label>
+                  <input
+                    type="password"
+                    placeholder="Verify your identity"
+                    value={emailPassword}
+                    onChange={(e) => setEmailPassword(e.target.value)}
+                    required
+                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]"
+                  />
+                </div>
+                <button type="submit" className="w-full bg-[#2F3E4E] text-white p-2 rounded-lg hover:bg-[#7A8F79] transition font-semibold text-sm">
+                  Update Email
+                </button>
+                {emailMessage && (
+                  <p className={`text-xs text-center font-medium ${emailMessage.includes('updated') ? 'text-green-600' : 'text-red-500'}`}>
+                    {emailMessage}
+                  </p>
+                )}
+              </form>
+
+              {/* ── Right: Password Change ── */}
+              <form onSubmit={changePassword} className="space-y-3 sm:border-l sm:border-[#D9E1E8] sm:pl-6">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-[#7A8F79] mb-0.5">Change Password</p>
+                  <p className="text-xs text-[#7A8F79]">Choose a strong password you haven&apos;t used before.</p>
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Current Password</label>
+                  <input type="password" placeholder="Current password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">New Password</label>
+                  <input type="password" placeholder="New password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Confirm New Password</label>
+                  <input type="password" placeholder="Confirm new password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
+                </div>
+                <button type="submit" className="w-full bg-[#2F3E4E] text-white p-2 rounded-lg hover:bg-[#7A8F79] transition font-semibold text-sm">
+                  Update Password
+                </button>
+                {pwMessage && (
+                  <p className={`text-xs text-center font-medium ${pwMessage.includes('successfully') ? 'text-green-600' : 'text-red-500'}`}>
+                    {pwMessage}
+                  </p>
+                )}
+              </form>
+
+            </div>
           </div>
 
         </div>
-      </form>
+
+        {/* ── Col 3: myBilling + myNotifications ── */}
+        <div className="space-y-5">
+          <BillingSection profile={profile} onUnenroll={() => setProfile({ ...profile, enrolledInBilling: false })} />
+          <NotifPrefsBlock profile={profile} setProfile={setProfile} />
+        </div>
+
+      </div>
     </div>
   )
 }
+
+// ── Sensitive field with show/hide toggle ─────────────────────────────────────
 
 function SensitiveField({ label, value, onChange, type = 'text' }: {
   label: string; value: string; onChange: (v: string) => void; type?: string
@@ -242,6 +320,7 @@ function SensitiveField({ label, value, onChange, type = 'text' }: {
   )
 }
 
+// ── Notification preferences ──────────────────────────────────────────────────
 
 function NotifPrefsBlock({ profile, setProfile }: { profile: any; setProfile: (p: any) => void }) {
   return (
@@ -250,29 +329,20 @@ function NotifPrefsBlock({ profile, setProfile }: { profile: any; setProfile: (p
         <h2 className="text-xl font-semibold text-[#2F3E4E]">
           <span style={{ color: '#7A8F79', fontStyle: 'italic' }}>my</span>Notifications
         </h2>
-        <p className="text-xs text-[#7A8F79] mt-0.5">Choose which emails you'd like to receive.</p>
+        <p className="text-xs text-[#7A8F79] mt-0.5">Choose which emails you&apos;d like to receive.</p>
       </div>
       <div>
         <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-3">Reminders</p>
         <div className="space-y-3">
           {[
-            { field: 'receiveNotifications', label: 'Weekly Hour Submission', desc: 'Friday reminder to submit your hours for the week' },
-            { field: 'notifyBillingReminder', label: 'Billing Reminder', desc: 'Reminders related to invoices and billing activity' },
-            { field: 'notifyDocExpiring', label: 'Document / License Expiring', desc: 'Alerts before a document or license on file reaches its expiration date' },
+            { field: 'receiveNotifications',  label: 'Weekly Hour Submission',     desc: 'Friday reminder to submit your hours for the week' },
+            { field: 'notifyBillingReminder', label: 'Billing Reminder',           desc: 'Reminders related to invoices and billing activity' },
+            { field: 'notifyDocExpiring',     label: 'Document / License Expiring', desc: 'Alerts before a document or license on file reaches its expiration date' },
           ].map(({ field, label, desc }) => (
-            <NotifToggle
-              key={field}
-              label={label}
-              desc={desc}
-              checked={profile[field] !== false}
+            <NotifToggle key={field} label={label} desc={desc} checked={profile[field] !== false}
               onChange={async (val) => {
                 setProfile({ ...profile, [field]: val })
-                await fetch('/api/nurse/profile', {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  credentials: 'include',
-                  body: JSON.stringify({ [field]: val }),
-                })
+                await fetch('/api/nurse/profile', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ [field]: val }) })
               }}
             />
           ))}
@@ -283,21 +353,12 @@ function NotifPrefsBlock({ profile, setProfile }: { profile: any; setProfile: (p
         <div className="space-y-3">
           {[
             { field: 'notifyNewDocument', label: 'New Document Added', desc: 'Email when your coordinator uploads a document to your profile' },
-            { field: 'notifyNewClaim', label: 'New Claim Added', desc: 'Email when a new claim is added to your account' },
+            { field: 'notifyNewClaim',    label: 'New Claim Added',    desc: 'Email when a new claim is added to your account' },
           ].map(({ field, label, desc }) => (
-            <NotifToggle
-              key={field}
-              label={label}
-              desc={desc}
-              checked={profile[field] !== false}
+            <NotifToggle key={field} label={label} desc={desc} checked={profile[field] !== false}
               onChange={async (val) => {
                 setProfile({ ...profile, [field]: val })
-                await fetch('/api/nurse/profile', {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  credentials: 'include',
-                  body: JSON.stringify({ [field]: val }),
-                })
+                await fetch('/api/nurse/profile', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ [field]: val }) })
               }}
             />
           ))}
@@ -307,9 +368,7 @@ function NotifPrefsBlock({ profile, setProfile }: { profile: any; setProfile: (p
   )
 }
 
-function NotifToggle({ label, desc, checked, onChange }: {
-  label: string; desc: string; checked: boolean; onChange: (val: boolean) => void
-}) {
+function NotifToggle({ label, desc, checked, onChange }: { label: string; desc: string; checked: boolean; onChange: (val: boolean) => void }) {
   return (
     <label className="flex items-center justify-between gap-3 cursor-pointer">
       <div className="flex-1 min-w-0">
@@ -325,6 +384,8 @@ function NotifToggle({ label, desc, checked, onChange }: {
   )
 }
 
+// ── Billing section ───────────────────────────────────────────────────────────
+
 function BillingSection({ profile, onUnenroll }: { profile: any; onUnenroll: () => void }) {
   const [confirming, setConfirming] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -333,10 +394,7 @@ function BillingSection({ profile, onUnenroll }: { profile: any; onUnenroll: () 
   async function handleUnenroll() {
     setLoading(true)
     await fetch('/api/nurse/unenroll', { method: 'POST', credentials: 'include' })
-    setLoading(false)
-    setDone(true)
-    setConfirming(false)
-    onUnenroll()
+    setLoading(false); setDone(true); setConfirming(false); onUnenroll()
   }
 
   const planLabels: Record<string, string> = {
@@ -351,7 +409,6 @@ function BillingSection({ profile, onUnenroll }: { profile: any; onUnenroll: () 
       <h2 className="text-xl font-semibold mb-4 text-[#2F3E4E]">
         <span style={{ color: '#7A8F79', fontStyle: 'italic' }}>my</span>Billing
       </h2>
-
       {profile.enrolledInBilling === true ? (
         <div className="space-y-3">
           <div className="bg-[#F4F6F5] rounded-lg p-4 text-sm space-y-1">

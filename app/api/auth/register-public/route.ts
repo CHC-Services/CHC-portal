@@ -18,7 +18,7 @@ async function generateAccountNumber(): Promise<string> {
 
 export async function POST(req: Request) {
   try {
-    const { firstName, lastName, phone, email, password } = await req.json()
+    const { firstName, lastName, phone, email, password, signupRole } = await req.json()
 
     if (!firstName?.trim() || !lastName?.trim() || !email?.trim() || !password || !phone?.trim()) {
       return NextResponse.json({ error: 'First name, last name, phone, email, and password are required.' }, { status: 400 })
@@ -49,6 +49,7 @@ export async function POST(req: Request) {
             lastName: lastName.trim(),
             phone: phone.trim(),
             accountNumber: await generateAccountNumber(),
+            signupRole: signupRole?.trim() || null,
           },
         },
       },

@@ -11,6 +11,7 @@ export default function SignupPage() {
   const [lastName, setLastName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
+  const [signupRole, setSignupRole] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
@@ -35,7 +36,7 @@ export default function SignupPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ firstName, lastName, phone, email, password }),
+        body: JSON.stringify({ firstName, lastName, phone, email, password, signupRole }),
       })
 
       const data = await res.json()
@@ -137,6 +138,18 @@ export default function SignupPage() {
               required
               className="w-full border border-[#D9E1E8] p-3 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79] bg-white focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
             />
+            <select
+              value={signupRole}
+              onChange={e => setSignupRole(e.target.value)}
+              required
+              className="w-full border border-[#D9E1E8] p-3 rounded-lg text-[#2F3E4E] bg-white focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+            >
+              <option value="" disabled>I am a… (select one)</option>
+              <option value="Nurse">Nurse / Home Care Provider</option>
+              <option value="Patient">Patient / Family Member</option>
+              <option value="Billing Service">Billing Service</option>
+              <option value="Other">Other</option>
+            </select>
             <input
               type="password"
               placeholder="Password (8+ characters)"

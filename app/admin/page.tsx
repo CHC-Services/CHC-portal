@@ -19,8 +19,91 @@ type Nurse = {
   accountNumber: string | null
   npiNumber: string | null
   invoiceBalance: number
-  user: { email: string; name: string }
+  signupRole: string | null
+  user: { id: string; email: string; name: string; role: string; createdAt: string }
   timeEntries: TimeEntry[]
+}
+
+function PendingRequestRow({ nurse, onApprove, onDeny }: { nurse: Nurse; onApprove: () => void; onDeny: () => void }) {
+  const [confirmDeny, setConfirmDeny] = useState(false)
+  const [acting, setActing] = useState(false)
+
+  async function handleApprove() {
+    setActing(true)
+    await onApprove()
+  }
+
+  async function handleDeny() {
+    setActing(true)
+    await onDeny()
+  }
+
+  const joinedDate = new Date(nurse.user.createdAt).toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric'
+  })
+
+  const roleColor: Record<string, string> = {
+    'Nurse': 'bg-blue-100 text-blue-700',
+    'Patient': 'bg-purple-100 text-purple-700',
+    'Billing Service': 'bg-yellow-100 text-yellow-700',
+    'Other': 'bg-gray-100 text-gray-600',
+  }
+  const badgeClass = nurse.signupRole ? (roleColor[nurse.signupRole] ?? 'bg-gray-100 text-gray-600') : 'bg-gray-100 text-gray-400'
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border-l-4 border-orange-400 px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-4">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="font-semibold text-[#2F3E4E]">{nurse.user.name}</p>
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${badgeClass}`}>
+            {nurse.signupRole ?? 'No type selected'}
+          </span>
+        </div>
+        <p className="text-xs text-[#7A8F79] mt-0.5">{nurse.user.email}</p>
+        {nurse.user.createdAt && (
+          <p className="text-xs text-[#7A8F79] mt-0.5">Requested {joinedDate}</p>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2 shrink-0">
+        {confirmDeny ? (
+          <>
+            <p className="text-xs text-red-600 font-semibold mr-1">Remove this account?</p>
+            <button
+              onClick={() => setConfirmDeny(false)}
+              className="text-xs border border-[#D9E1E8] text-[#7A8F79] px-3 py-1.5 rounded-lg hover:bg-[#F4F6F5] transition"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDeny}
+              disabled={acting}
+              className="text-xs bg-red-600 text-white px-3 py-1.5 rounded-lg font-semibold hover:bg-red-700 transition disabled:opacity-50"
+            >
+              {acting ? 'Removing…' : 'Yes, Remove'}
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              onClick={handleApprove}
+              disabled={acting}
+              className="text-xs bg-[#7A8F79] text-white px-4 py-1.5 rounded-lg font-semibold hover:bg-[#2F3E4E] transition disabled:opacity-50"
+            >
+              {acting ? 'Approving…' : 'Approve'}
+            </button>
+            <button
+              onClick={() => setConfirmDeny(true)}
+              disabled={acting}
+              className="text-xs border border-red-300 text-red-500 px-4 py-1.5 rounded-lg font-semibold hover:bg-red-50 transition disabled:opacity-50"
+            >
+              Deny
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  )
 }
 
 function NurseRow({ nurse, onDeleted, onRefresh }: { nurse: Nurse; onDeleted: () => void; onRefresh: () => void }) {
@@ -385,7 +468,25 @@ export default function AdminDashboard() {
     }
   }
 
-  const totalHoursThisMonth = nurses.reduce((sum, nurse) => {
+  const pendingNurses = nurses.filter(n => n.user.role === 'provider')
+  const activeNurses = nurses.filter(n => n.user.role !== 'provider')
+
+  async function approveRequest(userId: string, nurseId: string) {
+    await fetch(`/api/admin/users/${userId}/role`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ role: 'nurse' }),
+    })
+    loadNurses()
+  }
+
+  async function denyRequest(nurseId: string) {
+    await fetch(`/api/admin/nurses/${nurseId}`, { method: 'DELETE', credentials: 'include' })
+    loadNurses()
+  }
+
+  const totalHoursThisMonth = activeNurses.reduce((sum, nurse) => {
     const now = new Date()
     return sum + nurse.timeEntries.filter(e => {
       const d = new Date(e.workDate)
@@ -396,8 +497,8 @@ export default function AdminDashboard() {
   const now = new Date()
   const monthName = now.toLocaleString('default', { month: 'long' })
 
-  const totalEntries = nurses.reduce((s, n) => s + n.timeEntries.length, 0)
-  const entriesThisMonth = nurses.reduce((sum, nurse) => {
+  const totalEntries = activeNurses.reduce((s, n) => s + n.timeEntries.length, 0)
+  const entriesThisMonth = activeNurses.reduce((sum, nurse) => {
     return sum + nurse.timeEntries.filter(e => {
       const d = new Date(e.workDate)
       return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
@@ -456,7 +557,7 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <div className="bg-white rounded-xl shadow-sm p-5 flex flex-col gap-1 border-t-4 border-[#7A8F79]">
           <span className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold">Active Providers</span>
-          <span className="text-3xl font-bold text-[#2F3E4E]">{nurses.length}</span>
+          <span className="text-3xl font-bold text-[#2F3E4E]">{activeNurses.length}</span>
           <span className="text-xs text-[#7A8F79]">registered accounts</span>
         </div>
         <div className="bg-white rounded-xl shadow-sm p-5 flex flex-col gap-1 border-t-4 border-[#7A8F79]">
@@ -524,6 +625,28 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {/* Pending Access Requests */}
+      {pendingNurses.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-[#2F3E4E] mb-3 flex items-center gap-2">
+            Pending Access Requests
+            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-orange-500 text-white text-xs font-bold">
+              {pendingNurses.length}
+            </span>
+          </h2>
+          <div className="space-y-3">
+            {pendingNurses.map(nurse => (
+              <PendingRequestRow
+                key={nurse.id}
+                nurse={nurse}
+                onApprove={() => approveRequest(nurse.user.id, nurse.id)}
+                onDeny={() => denyRequest(nurse.id)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Nurse Roster */}
       <div>
         <div className="flex items-center justify-between mb-3">
@@ -545,11 +668,11 @@ export default function AdminDashboard() {
 
         {loadingNurses ? (
           <p className="text-sm text-[#7A8F79]">Loading nurses…</p>
-        ) : nurses.length === 0 ? (
+        ) : activeNurses.length === 0 ? (
           <p className="text-sm text-[#7A8F79] italic">No nurses on record yet.</p>
         ) : (
           <div className="space-y-3">
-            {nurses.map(nurse => (
+            {activeNurses.map(nurse => (
               <NurseRow key={nurse.id} nurse={nurse} onDeleted={loadNurses} onRefresh={loadNurses} />
             ))}
           </div>

@@ -111,6 +111,9 @@ model NurseProfile {
   notifyNewDocument       Boolean @default(true)  // alert when admin uploads a document
   notifyNewClaim          Boolean @default(true)  // alert when a new claim is added
 
+  // Self-reported type from public signup form
+  signupRole   String?   // 'Nurse' | 'Patient' | 'Billing Service' | 'Other'
+
   // Directory opt-in
   dirOptIn     Boolean @default(true)
   dirShowEmail Boolean @default(true)
@@ -430,6 +433,16 @@ model Claim {
 
   @@index([nurseId])
   @@index([claimId])
+}
+
+model ClaimBackup {
+  id         String   @id @default(uuid())
+  label      String   @default("auto")   // 'auto' | 'manual'
+  claimCount Int
+  snapshot   Json                         // serialized Claim[] array
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 model HomeCase {

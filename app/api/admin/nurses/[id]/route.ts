@@ -131,7 +131,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
 
   // Send denial email only for pending access requests (role === 'provider')
   if (profile.user?.role === 'provider' && profile.user.email) {
-    sendAccessDeniedEmail({
+    await sendAccessDeniedEmail({
       to: profile.user.email,
       displayName: profile.displayName || profile.user.email,
     }).catch(() => {})

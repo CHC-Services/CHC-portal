@@ -30,7 +30,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   // Send approval email only when promoting a pending request to an active role
   if (role === 'nurse' && user.email) {
     const displayName = user.nurseProfile?.displayName || user.email
-    sendAccessApprovedEmail({ to: user.email, displayName }).catch(() => {})
+    await sendAccessApprovedEmail({ to: user.email, displayName }).catch(() => {})
   }
 
   return NextResponse.json({ ok: true, role })

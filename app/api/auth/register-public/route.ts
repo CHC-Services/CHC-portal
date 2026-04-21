@@ -61,7 +61,7 @@ export async function POST(req: Request) {
       },
     })
 
-    sendRegistrationConfirmation({ to: user.email, displayName })
+    await sendRegistrationConfirmation({ to: user.email, displayName }).catch(() => {})
 
     const token = signToken({
       id: user.id,

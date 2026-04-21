@@ -1,5 +1,28 @@
 import { Resend } from 'resend'
 import { shortInvoiceNumber } from './formatInvoice'
+import { logEmail, type EmailCategory } from './logEmail'
+
+// Returns a Resend client whose send() method auto-logs every outgoing email.
+function createLoggedResend(category: EmailCategory, recipientName: string | null): Resend {
+  const client = new Resend(process.env.RESEND_API_KEY!)
+  const originalSend = client.emails.send.bind(client.emails)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ;(client.emails as any).send = async (params: any) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result: any = await originalSend(params)
+    const to: string = typeof params.to === 'string' ? params.to : params.to[0]
+    logEmail({
+      recipientName,
+      recipientEmail: to,
+      category,
+      subject: params.subject,
+      bodyHtml: params.html || '',
+      status: result.error ? 'failed' : 'sent',
+    }).catch(() => {})
+    return result
+  }
+  return client
+}
 
 const ALERT_TO = 'enroll@cominghomecare.com'
 const FROM = 'Coming Home Care <support@cominghomecare.com>'
@@ -17,7 +40,7 @@ export async function sendWelcomeEmail({
   password: string
 }): Promise<boolean> {
   if (!process.env.RESEND_API_KEY) return false
-  const resend = new Resend(process.env.RESEND_API_KEY)
+  const resend = createLoggedResend('alert', displayName)
 
   try {
     const { error } = await resend.emails.send({
@@ -95,7 +118,7 @@ export async function sendInvoiceEmail({
   notes?: string
 }): Promise<boolean> {
   if (!process.env.RESEND_API_KEY) return false
-  const resend = new Resend(process.env.RESEND_API_KEY)
+  const resend = createLoggedResend('invoice', nurseName)
 
   const fmt = (d: Date) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
   const fmtMoney = (n: number) => `$${n.toFixed(2)}`
@@ -272,7 +295,7 @@ export async function sendRegistrationConfirmation({
   displayName: string
 }): Promise<boolean> {
   if (!process.env.RESEND_API_KEY) return false
-  const resend = new Resend(process.env.RESEND_API_KEY)
+  const resend = createLoggedResend('alert', displayName)
 
   try {
     const { error } = await resend.emails.send({
@@ -317,7 +340,7 @@ export async function sendPasswordResetByAdmin({
   password: string
 }): Promise<boolean> {
   if (!process.env.RESEND_API_KEY) return false
-  const resend = new Resend(process.env.RESEND_API_KEY)
+  const resend = createLoggedResend('alert', displayName)
 
   try {
     const { error } = await resend.emails.send({
@@ -368,7 +391,7 @@ export async function sendWeeklyHoursReminder({
   nurseProfileId: string
 }): Promise<boolean> {
   if (!process.env.RESEND_API_KEY) return false
-  const resend = new Resend(process.env.RESEND_API_KEY)
+  const resend = createLoggedResend('reminder', displayName)
 
   const { createHmac } = await import('crypto')
   const unsubToken = createHmac('sha256', process.env.JWT_SECRET!)
@@ -436,7 +459,7 @@ export async function sendBillingInquiry({
   insuranceNames: string[]
 }): Promise<boolean> {
   if (!process.env.RESEND_API_KEY) return false
-  const resend = new Resend(process.env.RESEND_API_KEY)
+  const resend = createLoggedResend('misc', `${firstName} ${lastName}`)
 
   const insuranceList = insuranceNames
     .map((name, i) => `<li style="margin-bottom:4px">${i + 1}. ${name}</li>`)
@@ -482,7 +505,7 @@ export async function sendEnrollmentAlert({
   details?: string
 }): Promise<boolean> {
   if (!process.env.RESEND_API_KEY) return false
-  const resend = new Resend(process.env.RESEND_API_KEY)
+  const resend = createLoggedResend('alert', nurseName)
 
   const subject =
     action === 'opted_out'   ? `BILLING: ${nurseName} – Opted Out of Billing Services` :
@@ -530,7 +553,7 @@ export async function sendDocumentExpirationReminder({
   daysUntilExpiry: number
 }): Promise<boolean> {
   if (!process.env.RESEND_API_KEY) return false
-  const resend = new Resend(process.env.RESEND_API_KEY)
+  const resend = createLoggedResend('reminder', nurseName)
 
   const expDateStr = expiresAt.toLocaleDateString('en-US', {
     timeZone: 'UTC',
@@ -602,7 +625,7 @@ export async function sendEdiSummaryEmail({
   dryRun?: boolean
 }): Promise<boolean> {
   if (!process.env.RESEND_API_KEY) return false
-  const resend = new Resend(process.env.RESEND_API_KEY)
+  const resend = createLoggedResend('misc', null)
 
   const now = new Date().toLocaleDateString('en-US', {
     timeZone: 'America/New_York',
@@ -736,7 +759,7 @@ export async function sendNewDocumentAlert({
   uploadedAt: Date
 }): Promise<boolean> {
   if (!process.env.RESEND_API_KEY) return false
-  const resend = new Resend(process.env.RESEND_API_KEY)
+  const resend = createLoggedResend('alert', nurseName)
 
   const dateStr = uploadedAt.toLocaleDateString('en-US', {
     timeZone: 'America/New_York',
@@ -791,7 +814,7 @@ export async function sendNewClaimAlert({
   totalBilled: number | null
 }): Promise<boolean> {
   if (!process.env.RESEND_API_KEY) return false
-  const resend = new Resend(process.env.RESEND_API_KEY)
+  const resend = createLoggedResend('alert', nurseName)
 
   function fmtDate(d: Date | null) {
     if (!d) return '—'
@@ -865,7 +888,7 @@ export async function sendNurseSharedDocumentAlert({
   uploadedAt: Date
 }): Promise<boolean> {
   if (!process.env.RESEND_API_KEY) return false
-  const resend = new Resend(process.env.RESEND_API_KEY)
+  const resend = createLoggedResend('alert', nurseName)
   try {
     const { error } = await resend.emails.send({
       from: FROM,
@@ -912,7 +935,7 @@ export async function sendBulkImportSummary({
   documents: { documentTitle: string; category: string }[]
 }): Promise<boolean> {
   if (!process.env.RESEND_API_KEY) return false
-  const resend = new Resend(process.env.RESEND_API_KEY)
+  const resend = createLoggedResend('alert', nurseName)
 
   function fmtDate(d: Date | null) {
     if (!d) return '—'
@@ -1038,7 +1061,7 @@ export async function sendPromptPayReminder({
   customNote: string
 }): Promise<boolean> {
   if (!process.env.RESEND_API_KEY) return false
-  const resend = new Resend(process.env.RESEND_API_KEY)
+  const resend = createLoggedResend('alert', providerName)
 
   const fmtD = (d: Date) =>
     d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
@@ -1148,7 +1171,7 @@ export async function sendReceiptEmail({
   newStatus: string
 }): Promise<boolean> {
   if (!process.env.RESEND_API_KEY) return false
-  const resend = new Resend(process.env.RESEND_API_KEY)
+  const resend = createLoggedResend('receipt', nurseName)
 
   const fmt = (d: Date) => new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
   const fmtMoney = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`

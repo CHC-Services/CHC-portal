@@ -130,46 +130,46 @@ export default function ProfilePage() {
             <div className="grid grid-cols-6 gap-3">
               <div className="col-span-2 space-y-1">
                 <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">First Name</label>
-                <input type="text" value={profile.firstName || ''} onChange={(e) => setProfile({ ...profile, firstName: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
+                <input type="text" value={profile.firstName || ''} onChange={(e) => setProfile({ ...profile, firstName: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79]/50" />
               </div>
               <div className="col-span-1 space-y-1">
                 <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">MI</label>
-                <input type="text" maxLength={1} value={profile.middleInitial || ''} onChange={(e) => setProfile({ ...profile, middleInitial: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
+                <input type="text" maxLength={1} value={profile.middleInitial || ''} onChange={(e) => setProfile({ ...profile, middleInitial: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79]/50" />
               </div>
               <div className="col-span-3 space-y-1">
                 <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Last Name</label>
-                <input type="text" value={profile.lastName || ''} onChange={(e) => setProfile({ ...profile, lastName: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
+                <input type="text" value={profile.lastName || ''} onChange={(e) => setProfile({ ...profile, lastName: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79]/50" />
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Preferred Name <span className="normal-case font-normal text-[#7A8F79]">(optional)</span></label>
-                <input type="text" value={profile.displayName || ''} onChange={(e) => setProfile({ ...profile, displayName: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
+                <input type="text" value={profile.displayName || ''} onChange={(e) => setProfile({ ...profile, displayName: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79]/50" />
               </div>
               <div className="space-y-1">
                 <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Phone Number</label>
-                <input type="tel" placeholder="(555) 555-5555" value={profile.phone || ''} onChange={(e) => setProfile({ ...profile, phone: fmtPhoneInput(e.target.value) })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
+                <input type="tel" placeholder="(555) 555-5555" value={profile.phone || ''} onChange={(e) => setProfile({ ...profile, phone: fmtPhoneInput(e.target.value) })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79]/50" />
               </div>
             </div>
 
             <div className="space-y-1">
               <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Home Address</label>
-              <input type="text" placeholder="Street address" value={profile.address || ''} onChange={(e) => setProfile({ ...profile, address: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
+              <input type="text" placeholder="Street address" value={profile.address || ''} onChange={(e) => setProfile({ ...profile, address: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79]/50" />
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="sm:col-span-2 space-y-1">
                 <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">City</label>
-                <input type="text" placeholder="City" value={profile.city || ''} onChange={(e) => setProfile({ ...profile, city: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
+                <input type="text" placeholder="City" value={profile.city || ''} onChange={(e) => setProfile({ ...profile, city: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79]/50" />
               </div>
               <div className="space-y-1">
                 <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">State</label>
-                <input type="text" placeholder="State" value={profile.state || ''} onChange={(e) => setProfile({ ...profile, state: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
+                <input type="text" placeholder="State" value={profile.state || ''} onChange={(e) => setProfile({ ...profile, state: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79]/50" />
               </div>
               <div className="space-y-1">
                 <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">ZIP</label>
-                <input type="text" placeholder="ZIP" value={profile.zip || ''} onChange={(e) => setProfile({ ...profile, zip: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
+                <input type="text" placeholder="ZIP" value={profile.zip || ''} onChange={(e) => setProfile({ ...profile, zip: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79]/50" />
               </div>
             </div>
 
@@ -193,7 +193,7 @@ export default function ProfilePage() {
           {/* myLogin — email + password, 2-col */}
           <div className="bg-white rounded-xl shadow p-6">
             <h2 className="text-xl font-semibold text-[#2F3E4E] mb-5">
-              <span style={{ color: '#7A8F79', fontStyle: 'italic' }}>my</span>Login
+              <span style={{ color: '#7A8F79', fontStyle: 'italic' }}>my</span>Login Info
             </h2>
 
             <div className="grid sm:grid-cols-2 gap-6">
@@ -201,9 +201,9 @@ export default function ProfilePage() {
               {/* ── Left: Email Update ── */}
               <form onSubmit={changeEmail} className="space-y-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-[#7A8F79] mb-0.5">Update Email Address</p>
+                  <p className="text-sm font-semibold uppercase tracking-widest text-[#2F3E4E] mb-0.5">Update Email Address</p>
                   <p className="text-xs text-[#7A8F79]">
-                    Current: <span className="font-semibold text-[#2F3E4E]">{user?.email}</span>
+                    Current email: <span className="font-semibold text-[#2F3E4E]">{user?.email}</span>
                   </p>
                 </div>
                 <div className="space-y-1">
@@ -214,7 +214,7 @@ export default function ProfilePage() {
                     value={newEmail}
                     onChange={(e) => setNewEmail(e.target.value)}
                     required
-                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]"
+                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79]/50"
                   />
                 </div>
                 <div className="space-y-1">
@@ -225,7 +225,7 @@ export default function ProfilePage() {
                     value={confirmEmail}
                     onChange={(e) => setConfirmEmail(e.target.value)}
                     required
-                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]"
+                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79]/50"
                   />
                 </div>
                 <div className="space-y-1">
@@ -236,7 +236,7 @@ export default function ProfilePage() {
                     value={emailPassword}
                     onChange={(e) => setEmailPassword(e.target.value)}
                     required
-                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]"
+                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79]/50"
                   />
                 </div>
                 <button type="submit" className="w-full bg-[#2F3E4E] text-white p-2 rounded-lg hover:bg-[#7A8F79] transition font-semibold text-sm">
@@ -252,20 +252,20 @@ export default function ProfilePage() {
               {/* ── Right: Password Change ── */}
               <form onSubmit={changePassword} className="space-y-3 sm:border-l sm:border-[#D9E1E8] sm:pl-6">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-[#7A8F79] mb-0.5">Change Password</p>
+                  <p className="text-sm font-semibold uppercase tracking-widest text-[#2F3E4E] mb-0.5">Change Password</p>
                   <p className="text-xs text-[#7A8F79]">Choose a strong password you haven&apos;t used before.</p>
                 </div>
                 <div className="space-y-1">
                   <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Current Password</label>
-                  <input type="password" placeholder="Current password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
+                  <input type="password" placeholder="Current password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79]/50" />
                 </div>
                 <div className="space-y-1">
                   <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">New Password</label>
-                  <input type="password" placeholder="New password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
+                  <input type="password" placeholder="New password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79]/50" />
                 </div>
                 <div className="space-y-1">
                   <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Confirm New Password</label>
-                  <input type="password" placeholder="Confirm new password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E]" />
+                  <input type="password" placeholder="Confirm new password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79]/50" />
                 </div>
                 <button type="submit" className="w-full bg-[#2F3E4E] text-white p-2 rounded-lg hover:bg-[#7A8F79] transition font-semibold text-sm">
                   Update Password

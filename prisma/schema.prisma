@@ -435,6 +435,20 @@ model Claim {
   @@index([claimId])
 }
 
+model EmailLog {
+  id             String   @id @default(uuid())
+  sentAt         DateTime @default(now())
+  recipientName  String?
+  recipientEmail String
+  category       String   // 'invoice' | 'receipt' | 'reminder' | 'alert' | 'broadcast' | 'misc'
+  subject        String
+  bodyS3Key      String?  // email-logs/YYYY/MM/[id].html
+  status         String   @default("sent") // 'sent' | 'failed'
+
+  @@index([sentAt])
+  @@index([recipientEmail])
+}
+
 model ClaimBackup {
   id         String   @id @default(uuid())
   label      String   @default("auto")   // 'auto' | 'manual'

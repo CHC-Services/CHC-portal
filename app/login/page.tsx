@@ -45,20 +45,18 @@ export default function LoginPage() {
     <div className="min-h-screen bg-[#D9E1E8] flex items-stretch">
 
       {/* Left — branding panel */}
-      <div className="hidden md:flex flex-col justify-center gap-12 bg-[#2F3E4E] text-white w-1/3 px-12 py-16 ">
+      <div className="hidden md:flex flex-col justify-top pt-24 gap-8 bg-[#2F3E4E] text-white w-1/3 px-12 py-16 ">
         <div>
           <div className="flex items-baseline gap-2 border-t border-[#3d5166] pt-6 mb-2">
-            <p className="text-sm uppercase tracking-widest text-[#7A8F79] font-semibold">Inside the provider</p>
+            <p className="text-sm normal tracking-widest text-[#7A8F79] font-semibold">Inside the provider's</p>
             <h3 className="text-xl font-bold leading-tight">
               <span className="italic text-[#7A8F79]">my</span>Portal
             </h3>
           </div>
-          <p className="mt-4 text-[#D9E1E8] text-sm leading-relaxed max-w-sm">
-            You'll find...
-          </p>
+          <p className="text-sm normal tracking-widest text-[#7A8F79] font-semibold">You'll find...</p>
         </div>
 
-        <div className="space-y-5">
+        <div className="space-y-3">
           {[
             { icon: '⏰', label: 'Easily log your hours from anywhere' },
             { icon: '📊', label: 'Claim status tracker & income reports' },
@@ -73,20 +71,21 @@ export default function LoginPage() {
               <p className="text-sm text-[#D9E1E8]">{f.label}</p>
             </div>
           ))}
+        </div>
 
-          <p className="pt-4 pl-6 text-sm italic text-left text-[#7A8F79] border-t border-[#3d5166]">
-            &ldquo;You take care of everyone else. </p>
-          <p className="pb-4 pr-6 text-sm italic text-right text-[#7A8F79] border-b border-[#3d5166]">Let us help take care of this.&rdquo;
+        <div className="space-y-1">
+            <p className="pt-4 pl-8 text-sm italic text-left text-[#7A8F79] border-t border-[#3d5166]">
+                &ldquo;You take care of everyone else. </p>
+          <p className="pb-4 pr-10 text-sm italic text-right text-[#7A8F79] border-b border-[#3d5166]">Let us help take care of this.&rdquo;
           </p>
         </div>
       </div>
 
       {/* Right — login form */}
-      <div className="flex flex-col justify-center w-full md:w-2/3 px-8 md:px-16 py-16">
-
+      <div className="flex flex-col justify-top pt-36 w-full md:w-2/3 px-8 md:px-16 py-16">
         <div className="max-w-sm w-full mx-auto">
-          <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-1">Welcome to your</p>
-          <h1 className="text-3xl font-bold text-[#2F3E4E] mb-1">
+          <p className="text-sm uppercase tracking-widest text-[#7A8F79] font-semibold mb-1">Welcome to your</p>
+          <h1 className="text-3xl font-bold text-[#2F3E4E] mb-1 whitespace-nowrap">
             <span className="italic text-[#7A8F79]">my</span>Portal Login
           </h1>
           <p className="text-sm text-[#7A8F79]">Sign in to access your provider dashboard.</p>

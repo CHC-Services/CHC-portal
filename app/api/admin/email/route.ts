@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '../../../../lib/prisma'
 import { verifyToken } from '../../../../lib/auth'
 import { Resend } from 'resend'
+import { logEmail } from '../../../../lib/logEmail'
 
 const FROM = 'Coming Home Care <support@cominghomecare.com>'
 
@@ -34,13 +35,8 @@ export async function POST(req: Request) {
   const PORTAL_URL = process.env.BASE_URL || 'https://portal.cominghomecare.com'
 
   const results = await Promise.allSettled(
-    nurses.map(nurse =>
-      resend.emails.send({
-        from: FROM,
-        replyTo: 'support@cominghomecare.com',
-        to: nurse.user.email,
-        subject,
-        html: `
+    nurses.map(async nurse => {
+      const html = `
           <div style="font-family:sans-serif;max-width:520px;padding:32px;color:#2F3E4E">
             <h2 style="margin:0 0 8px;color:#2F3E4E">Hi ${nurse.displayName},</h2>
             <div style="font-size:15px;color:#2F3E4E;line-height:1.7;white-space:pre-wrap">${body.replace(/\n/g, '<br/>')}</div>
@@ -49,9 +45,24 @@ export async function POST(req: Request) {
               Coming Home Care Services, LLC · <a href="${PORTAL_URL}" style="color:#7A8F79">cominghomecare.com</a>
             </p>
           </div>
-        `,
+        `
+      const result = await resend.emails.send({
+        from: FROM,
+        replyTo: 'support@cominghomecare.com',
+        to: nurse.user.email,
+        subject,
+        html,
       })
-    )
+      logEmail({
+        recipientName: nurse.displayName,
+        recipientEmail: nurse.user.email,
+        category: 'broadcast',
+        subject,
+        bodyHtml: html,
+        status: result.error ? 'failed' : 'sent',
+      }).catch(() => {})
+      return result
+    })
   )
 
   const sent = results.filter(r => r.status === 'fulfilled').length

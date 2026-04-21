@@ -93,6 +93,7 @@ export async function POST(req: Request) {
         dosStart:            parseDate(row['DOS Start'] || ''),
         dosStop:             parseDate(row['DOS Stop'] || ''),
         totalBilled:         parseFloat2(row['Total Billed'] || ''),
+        hours:               parseFloat2(row['Hours'] || ''),
         claimStage:          row['Claim Stage'] || null,
         submitDate:          parseDate(row['Submit Date'] || ''),
         primaryPayer:        row['Primary Payer'] || null,

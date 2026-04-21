@@ -391,6 +391,7 @@ model Claim {
   dosStart     DateTime?
   dosStop      DateTime?
   totalBilled  Float?
+  hours        Float?
   claimStage   String?
   submitDate   DateTime?  // date the claim was submitted to insurance
 

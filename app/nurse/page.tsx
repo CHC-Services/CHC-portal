@@ -34,7 +34,7 @@ export default function NurseDashboard() {
   const [message, setMessage] = useState('')
   const [entries, setEntries] = useState<TimeEntry[]>([])
   const [loadingHistory, setLoadingHistory] = useState(true)
-  const [enrolledInBilling, setEnrolledInBilling] = useState<boolean | null>(null)
+  const [claimSummary, setClaimSummary] = useState<{ totalBilled: number; totalAllowed: number; totalPaid: number; avgPerHour: number | null } | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [deleting, setDeleting] = useState(false)
 
@@ -83,8 +83,10 @@ export default function NurseDashboard() {
         if (!data.onboardingComplete) {
           router.replace('/nurse/onboarding')
         } else {
-          setEnrolledInBilling((data.profile as any)?.enrolledInBilling ?? null)
           loadEntries()
+          fetch('/api/nurse/claims/summary', { credentials: 'include' })
+            .then(r => r.ok ? r.json() : null)
+            .then(d => { if (d) setClaimSummary(d) })
         }
       })
   }, [router])
@@ -144,24 +146,34 @@ export default function NurseDashboard() {
 
       <PortalMessages priority="General" />
 
-      {/* Billing enrollment banner for opted-out nurses */}
-      {enrolledInBilling === false && (
-        <div className="bg-white border border-[#D9E1E8] rounded-xl p-5 mb-6 flex items-center justify-between gap-4">
-          <div>
-            <p className="font-semibold text-[#2F3E4E] text-sm">Not enrolled in billing services</p>
-            <p className="text-xs text-[#7A8F79] mt-0.5">
-              You can enroll at any time — Coming Home Care will handle your insurance billing so you don't have to.
-            </p>
+      {/* Claims reimbursement summary */}
+      {claimSummary && (
+        <div className="bg-white rounded-xl shadow-sm p-5 mb-6">
+          <p className="text-xs font-semibold uppercase tracking-widest text-[#7A8F79] mb-4">
+            Reimbursement Summary
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-[#F4F6F5] rounded-xl p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Total Billed</p>
+              <p className="text-2xl font-black text-[#2F3E4E]">${claimSummary.totalBilled.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            </div>
+            <div className="bg-[#F4F6F5] rounded-xl p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Total Allowed</p>
+              <p className="text-2xl font-black text-[#2F3E4E]">${claimSummary.totalAllowed.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            </div>
+            <div className="bg-[#F4F6F5] rounded-xl p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Total Paid</p>
+              <p className="text-2xl font-black text-green-600">${claimSummary.totalPaid.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            </div>
+            <div className="bg-[#2F3E4E] rounded-xl p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Avg $/Hour</p>
+              {claimSummary.avgPerHour !== null ? (
+                <p className="text-2xl font-black text-white">${claimSummary.avgPerHour.toFixed(2)}</p>
+              ) : (
+                <p className="text-sm text-[#7A8F79] italic mt-1">No paid claims yet</p>
+              )}
+            </div>
           </div>
-          <button
-            onClick={async () => {
-              await fetch('/api/nurse/onboarding-reset', { method: 'POST', credentials: 'include' })
-              router.push('/nurse/onboarding')
-            }}
-            className="shrink-0 bg-[#2F3E4E] text-white px-4 py-2 rounded-lg hover:bg-[#7A8F79] transition text-sm font-semibold"
-          >
-            Enroll in Services
-          </button>
         </div>
       )}
 

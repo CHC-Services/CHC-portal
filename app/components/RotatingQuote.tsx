@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 
 const QUOTES = [
   { text: "A good physician treats the disease; a great physician treats the patient who has the disease.", author: "William Osler" },
@@ -21,16 +20,10 @@ const QUOTES = [
 
 export default function RotatingQuote({
   interval = 8000,
-  showCta = false,
-  ctaLabel = 'Access Your Portal →',
-  ctaHref = '/login',
   compact = false,
   className = '',
 }: {
   interval?: number
-  showCta?: boolean
-  ctaLabel?: string
-  ctaHref?: string
   compact?: boolean
   className?: string
 }) {
@@ -53,28 +46,18 @@ export default function RotatingQuote({
 
   if (compact) {
     return (
-      <div
-        className={`bg-[#2F3E4E] rounded-xl px-8 py-6 flex flex-col sm:flex-row items-center justify-between gap-4 ${className}`}
-      >
+      <div className={`bg-[#2F3E4E] rounded-xl px-8 py-6 ${className}`}>
         <div
           className="transition-opacity duration-300"
           style={{ opacity: visible ? 1 : 0 }}
         >
-          <p className="font-cormorant text-[#D9E1E8] text-xl italic leading-snug max-w-lg">
+          <p className="font-cormorant text-[#D9E1E8] text-lg italic leading-snug">
             &ldquo;{quote.text}&rdquo;
           </p>
           <p className="font-cormorant text-[#7A8F79] text-base mt-2">
             &mdash; {quote.author}
           </p>
         </div>
-        {showCta && (
-          <Link
-            href={ctaHref}
-            className="shrink-0 text-xs font-semibold text-[#7A8F79] hover:text-white transition uppercase tracking-widest"
-          >
-            {ctaLabel}
-          </Link>
-        )}
       </div>
     )
   }
@@ -85,21 +68,13 @@ export default function RotatingQuote({
         className="transition-opacity duration-300"
         style={{ opacity: visible ? 1 : 0 }}
       >
-        <p className="font-cormorant text-[#D9E1E8] text-2xl italic leading-snug max-w-xl mx-auto">
+        <p className="font-cormorant text-[#D9E1E8] text-xl italic leading-snug max-w-xl mx-auto">
           &ldquo;{quote.text}&rdquo;
         </p>
-        <p className="font-cormorant text-[#7A8F79] text-lg mt-4">
+        <p className="font-cormorant text-[#7A8F79] ml-48 text-lg mt-4">
           &mdash; {quote.author}
         </p>
       </div>
-      {showCta && (
-        <Link
-          href={ctaHref}
-          className="mt-6 inline-block bg-[#7A8F79] text-white font-semibold px-7 py-3 rounded-lg hover:bg-[#657a64] transition text-sm"
-        >
-          {ctaLabel}
-        </Link>
-      )}
     </div>
   )
 }

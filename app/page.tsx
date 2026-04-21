@@ -257,13 +257,13 @@ export default async function Home() {
             </div>
 
             {/* Quote for logged-out visitors */}
-            <RotatingQuote showCta />
+            <RotatingQuote />
           </>
         )}
 
         {/* ── Motivational footer strip (all logged-in users) ── */}
         {user && (
-          <RotatingQuote compact showCta ctaLabel="Provider Resources →" ctaHref="/resources" />
+          <RotatingQuote compact />
         )}
 
         {/* ── FAQ ── */}

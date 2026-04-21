@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   const token = cookie.split('auth_token=').pop()?.split(';')[0]
   const session = token ? verifyToken(token) : null
 
-  if (!session || session.role !== 'nurse') {
+  if (!session || !['nurse', 'provider'].includes(session.role)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

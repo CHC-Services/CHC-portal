@@ -64,7 +64,6 @@ model NurseProfile {
   ssnEncrypted   String?   // AES-256-GCM encrypted
   npiNumber      String?
   medicaidNumber String?
-  bcbsPayorId    String?
 
   // Business provider — admin-managed, conditional
   hasBusinessProvider  Boolean @default(false)

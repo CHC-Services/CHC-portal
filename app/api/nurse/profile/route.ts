@@ -1,14 +1,24 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../../lib/prisma'
 import { verifyToken, signToken } from '../../../../lib/auth'
+import { encrypt, decrypt } from '../../../../lib/encrypt'
 import bcrypt from 'bcrypt'
+
+function safeDecrypt(val: string | null | undefined): string {
+  if (!val) return ''
+  const parts = val.split(':')
+  if (parts.length === 3 && parts[0].length === 24) {
+    try { return decrypt(val) } catch { return val }
+  }
+  return val
+}
 
 export async function GET(req: Request) {
   const cookie = req.headers.get('cookie') || ''
   const token = cookie.split('auth_token=').pop()?.split(';')[0]
   const session = token ? verifyToken(token) : null
 
-  if (!session || session.role !== 'nurse' || !session.nurseProfileId) {
+  if (!session || !['nurse', 'provider'].includes(session.role) || !session.nurseProfileId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -17,11 +27,21 @@ export async function GET(req: Request) {
     where: { id: session.id }
   })) as any
 
-  const profile = await prisma.nurseProfile.findUnique({
+  const profileRaw = await prisma.nurseProfile.findUnique({
     where: { id: session.nurseProfileId },
   })
 
-  return NextResponse.json({ user, profile, onboardingComplete: (profile as any)?.onboardingComplete ?? false })
+  const p = profileRaw as any
+  const profile = profileRaw ? {
+    ...profileRaw,
+    ssnEncrypted: undefined,
+    ssn:           p.ssnEncrypted   ? safeDecrypt(p.ssnEncrypted)   : '',
+    dob:           safeDecrypt(p.dob),
+    npiNumber:     safeDecrypt(p.npiNumber),
+    medicaidNumber: safeDecrypt(p.medicaidNumber),
+  } : null
+
+  return NextResponse.json({ user, profile, onboardingComplete: (profileRaw as any)?.onboardingComplete ?? false })
 }
 
 export async function PATCH(req: Request) {
@@ -29,17 +49,23 @@ export async function PATCH(req: Request) {
   const token = cookie.split('auth_token=').pop()?.split(';')[0]
   const session = token ? verifyToken(token) : null
 
-  if (!session || session.role !== 'nurse' || !session.nurseProfileId) {
+  if (!session || !['nurse', 'provider'].includes(session.role) || !session.nurseProfileId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const body = await req.json()
   const {
     displayName,
+    firstName,
+    middleInitial,
+    lastName,
+    phone,
     address,
     city,
     state,
     zip,
+    dob,
+    ssn,
     npiNumber,
     medicaidNumber,
     billingInfo,
@@ -68,12 +94,18 @@ export async function PATCH(req: Request) {
 
   const updates: any = {}
   if (displayName !== undefined) updates.displayName = displayName
+  if (firstName !== undefined) updates.firstName = firstName
+  if (middleInitial !== undefined) updates.middleInitial = middleInitial
+  if (lastName !== undefined) updates.lastName = lastName
+  if (phone !== undefined) updates.phone = phone
   if (address !== undefined) updates.address = address
   if (city !== undefined) updates.city = city
   if (state !== undefined) updates.state = state
   if (zip !== undefined) updates.zip = zip
-  if (npiNumber !== undefined) updates.npiNumber = npiNumber
-  if (medicaidNumber !== undefined) updates.medicaidNumber = medicaidNumber
+  if (dob !== undefined) updates.dob = dob ? encrypt(dob) : null
+  if (ssn !== undefined) updates.ssnEncrypted = ssn ? encrypt(ssn) : null
+  if (npiNumber !== undefined) updates.npiNumber = npiNumber ? encrypt(npiNumber) : null
+  if (medicaidNumber !== undefined) updates.medicaidNumber = medicaidNumber ? encrypt(medicaidNumber) : null
   if (billingInfo !== undefined) updates.billingInfo = billingInfo
   if (receiveNotifications !== undefined) updates.receiveNotifications = receiveNotifications
   if (notifyBillingReminder !== undefined) updates.notifyBillingReminder = notifyBillingReminder

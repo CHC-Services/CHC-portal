@@ -9,6 +9,16 @@ function adminOnly(req: Request) {
   return token ? verifyToken(token) : null
 }
 
+// Handles both encrypted (iv:tag:ciphertext) and legacy plain-text values
+function safeDecrypt(val: string | null | undefined): string {
+  if (!val) return ''
+  const parts = val.split(':')
+  if (parts.length === 3 && parts[0].length === 24) {
+    try { return decrypt(val) } catch { return val }
+  }
+  return val
+}
+
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = adminOnly(req)
   if (!session || session.role !== 'admin') {
@@ -31,12 +41,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     feinEncrypted:        undefined,
     bankRoutingEncrypted: undefined,
     bankAccountEncrypted: undefined,
-    // send masked or decrypted versions
-    ssn:         p.ssnEncrypted         ? decrypt(p.ssnEncrypted)         : '',
-    ein:         p.einEncrypted         ? decrypt(p.einEncrypted)         : '',
-    fein:        p.feinEncrypted        ? decrypt(p.feinEncrypted)        : '',
-    bankRouting: p.bankRoutingEncrypted ? decrypt(p.bankRoutingEncrypted) : '',
-    bankAccount: p.bankAccountEncrypted ? decrypt(p.bankAccountEncrypted) : '',
+    // send decrypted versions
+    ssn:           p.ssnEncrypted         ? safeDecrypt(p.ssnEncrypted)         : '',
+    ein:           p.einEncrypted         ? safeDecrypt(p.einEncrypted)         : '',
+    fein:          p.feinEncrypted        ? safeDecrypt(p.feinEncrypted)        : '',
+    bankRouting:   p.bankRoutingEncrypted ? safeDecrypt(p.bankRoutingEncrypted) : '',
+    bankAccount:   p.bankAccountEncrypted ? safeDecrypt(p.bankAccountEncrypted) : '',
+    dob:           safeDecrypt(p.dob),
+    npiNumber:     safeDecrypt(p.npiNumber),
+    medicaidNumber: safeDecrypt(p.medicaidNumber),
   })
 }
 
@@ -52,6 +65,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const {
     // encrypted fields — handled separately
     ssn, ein, fein, bankRouting, bankAccount,
+    dob, npiNumber, medicaidNumber,
     ssnEncrypted, einEncrypted, feinEncrypted,
     bankRoutingEncrypted, bankAccountEncrypted,
     // read-only / relation fields — strip before passing to Prisma
@@ -69,11 +83,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (!key.includes('.')) data[key] = value
   }
 
-  if (ssn !== undefined)         data.ssnEncrypted         = ssn         ? encrypt(ssn)         : null
-  if (ein !== undefined)         data.einEncrypted         = ein         ? encrypt(ein)         : null
-  if (fein !== undefined)        data.feinEncrypted        = fein        ? encrypt(fein)        : null
-  if (bankRouting !== undefined) data.bankRoutingEncrypted = bankRouting ? encrypt(bankRouting) : null
-  if (bankAccount !== undefined) data.bankAccountEncrypted = bankAccount ? encrypt(bankAccount) : null
+  if (ssn !== undefined)           data.ssnEncrypted         = ssn         ? encrypt(ssn)         : null
+  if (ein !== undefined)           data.einEncrypted         = ein         ? encrypt(ein)         : null
+  if (fein !== undefined)          data.feinEncrypted        = fein        ? encrypt(fein)        : null
+  if (bankRouting !== undefined)   data.bankRoutingEncrypted = bankRouting ? encrypt(bankRouting) : null
+  if (bankAccount !== undefined)   data.bankAccountEncrypted = bankAccount ? encrypt(bankAccount) : null
+  if (dob !== undefined)           data.dob                  = dob         ? encrypt(dob)         : null
+  if (npiNumber !== undefined)     data.npiNumber            = npiNumber   ? encrypt(npiNumber)   : null
+  if (medicaidNumber !== undefined) data.medicaidNumber      = medicaidNumber ? encrypt(medicaidNumber) : null
 
   try {
     const updated = await prisma.nurseProfile.update({

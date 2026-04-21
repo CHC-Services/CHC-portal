@@ -2,6 +2,7 @@ import { cookies } from 'next/headers'
 import { verifyToken } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
+import RotatingQuote from './components/RotatingQuote'
 // import HomeDefinition from './components/HomeDefinition'
 
 async function getFaqs() {
@@ -62,18 +63,6 @@ async function getNurseStats(nurseProfileId: string) {
   }
 }
 
-const QUOTES = [
-  { text: "Every hour you log is a step toward the care that matters most.", author: "Coming Home Care" },
-  { text: "Small consistent actions create extraordinary outcomes.", author: "Coming Home Care" },
-  { text: "Your work changes lives. We're here to handle the rest.", author: "Coming Home Care" },
-  { text: "Compliance today means freedom tomorrow.", author: "Coming Home Care" },
-  { text: "The best caregivers take care of their paperwork too.", author: "Coming Home Care" },
-]
-
-function getQuote() {
-  const day = new Date().getDay()
-  return QUOTES[day % QUOTES.length]
-}
 
 function StatCard({ value, label, sub }: { value: string; label: string; sub?: string }) {
   return (
@@ -134,7 +123,6 @@ function ReminderPill({ title, dueDate, category }: { title: string; dueDate: Da
 export default async function Home() {
   const user = await getUser()
   const monthName = new Date().toLocaleString('en-US', { month: 'long' })
-  const quote = getQuote()
 
   let nurseStats = null
   if (user?.role === 'nurse' && user.nurseProfileId) {
@@ -169,7 +157,7 @@ export default async function Home() {
             <>
               {/* <HomeDefinition /> */}
               <p className="text-[#7A8F79] text-xs font-semibold uppercase tracking-widest mb-2">
-                Provider &amp; Admin Portal
+                Administrative Resources
               </p>
               <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight">
                 Your practice,{' '}
@@ -269,27 +257,13 @@ export default async function Home() {
             </div>
 
             {/* Quote for logged-out visitors */}
-            <div className="bg-[#2F3E4E] rounded-xl p-8 text-center">
-              <p className="text-[#D9E1E8] text-lg italic max-w-xl mx-auto">&ldquo;{quote.text}&rdquo;</p>
-              <p className="text-[#7A8F79] text-xs mt-3 uppercase tracking-widest">{quote.author}</p>
-              <Link
-                href="/login"
-                className="mt-6 inline-block bg-[#7A8F79] text-white font-semibold px-7 py-3 rounded-lg hover:bg-[#657a64] transition text-sm"
-              >
-                Access Your Portal →
-              </Link>
-            </div>
+            <RotatingQuote showCta />
           </>
         )}
 
         {/* ── Motivational footer strip (all logged-in users) ── */}
         {user && (
-          <div className="bg-[#2F3E4E] rounded-xl px-8 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-[#D9E1E8] text-sm italic max-w-lg">&ldquo;{quote.text}&rdquo;</p>
-            <Link href="/resources" className="shrink-0 text-xs font-semibold text-[#7A8F79] hover:text-white transition uppercase tracking-widest">
-              Provider Resources →
-            </Link>
-          </div>
+          <RotatingQuote compact showCta ctaLabel="Provider Resources →" ctaHref="/resources" />
         )}
 
         {/* ── FAQ ── */}

@@ -27,7 +27,7 @@ export default function Banner({ user }: BannerProps) {
     const displayName = user?.displayName || null
     const pathname = usePathname()
 
-    // Mobile auth button — pill style next to hamburger
+    // Mobile auth button — pill style
     const authButtonMobile = role ? (
         <button
             onClick={async () => {
@@ -42,19 +42,27 @@ export default function Banner({ user }: BannerProps) {
             Sign Out
         </button>
     ) : (
-        <Link
-            href="/login"
-            className="flex items-center gap-2 bg-[#7A8F79] text-white px-5 py-2 rounded-full hover:bg-[#657a64] transition text-sm font-semibold"
-        >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013 3v1" />
-            </svg>
-            <span><span className="italic text-[#D9E1E8]">my</span>Portal</span>
-        </Link>
+        <div className="flex items-center gap-2">
+            <Link
+                href="/signup"
+                className="text-sm font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition px-1"
+            >
+                New User?
+            </Link>
+            <Link
+                href="/login"
+                className="flex items-center gap-2 bg-[#7A8F79] text-white px-5 py-2 rounded-full hover:bg-[#657a64] transition text-sm font-semibold"
+            >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013 3v1" />
+                </svg>
+                <span><span className="italic text-[#D9E1E8]">my</span>Portal</span>
+            </Link>
+        </div>
     )
 
-    // Desktop auth button — only shown when logged in (Sign Out); login is handled in nav row 1
-    const authButtonDesktop = role ? (
+    // Desktop top-right area: clock + sign out (or New User? button when logged out)
+    const desktopTopRight = role ? (
         <button
             onClick={async () => {
                 await fetch('/api/logout', { method: 'POST', credentials: 'include' })
@@ -67,7 +75,14 @@ export default function Banner({ user }: BannerProps) {
             </svg>
             Sign Out
         </button>
-    ) : null
+    ) : (
+        <Link
+            href="/signup"
+            className="flex items-center gap-1.5 text-sm font-semibold text-[#7A8F79] border border-[#7A8F79] px-3 py-1 rounded-full hover:bg-[#7A8F79] hover:text-white transition"
+        >
+            New User?
+        </Link>
+    )
 
     // Row 1: personal "my" portal links
     const myRow = role === 'nurse' ? (
@@ -100,30 +115,44 @@ export default function Banner({ user }: BannerProps) {
                 Admin
             </Link>
             <Link href="/admin/calendar" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/admin/calendar" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
-                Admin Calendar
+                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>ad</span>Calendar
             </Link>
             <Link href="/admin/faq" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/admin/faq" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
-                Admin FAQ
+                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>ad</span>FAQ
             </Link>
             <Link href="/admin/messages" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/admin/messages" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
-                Portal Messaging
+                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>ad</span>Alerts
             </Link>
             <Link href="/admin/email" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/admin/email" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
-                Send Email
+                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>ad</span>Email
             </Link>
             <Link href="/admin/ideas" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/admin/ideas" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Ideas
             </Link>
         </>
-    ) : (
-        <Link href="/login" onClick={() => setMenuOpen(false)} className={`transition font-bold ${pathname === "/login" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
-            <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Portal Login
-        </Link>
-    )
+    ) : role === 'provider' ? (
+        <>
+            <Link href="/portal" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/portal" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Portal
+            </Link>
+            <Link href="/nurse/profile" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/nurse/profile" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Profile
+            </Link>
+            <Link href="/nurse/onboarding" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/nurse/onboarding" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Billing
+            </Link>
+        </>
+    ) : null
 
     // Row 2: general site links (always visible)
     const generalRow = (
         <>
+            {/* myPortal Login shown inline with general links when logged out */}
+            {!role && (
+                <Link href="/login" onClick={() => setMenuOpen(false)} className={`transition font-bold ${pathname === "/login" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                    <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Portal Login
+                </Link>
+            )}
             <Link href="/" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 Home
             </Link>
@@ -153,6 +182,11 @@ export default function Banner({ user }: BannerProps) {
             { href: '/nurse/directory', label: 'Directory', icon: '👥' },
             { href: '/nurse/profile', label: 'Profile', icon: '👤' },
         ] : []),
+        ...(role === 'provider' ? [
+            { href: '/portal', label: 'Portal', icon: '🏠' },
+            { href: '/nurse/profile', label: 'Profile', icon: '👤' },
+            { href: '/nurse/onboarding', label: 'Billing', icon: '💳' },
+        ] : []),
         ...(role === 'admin' ? [
             { href: '/admin', label: 'Admin', icon: '⚙️' },
         ] : []),
@@ -163,7 +197,7 @@ export default function Banner({ user }: BannerProps) {
             {/* ── MOBILE header (hidden on md+) ── */}
             <div className="md:hidden fixed top-0 left-0 w-full bg-[#F4F6F5] text-[#2f3e4e] z-50 shadow-sm">
 
-                {/* Row 1: Logo | Sign Out (or Login) */}
+                {/* Row 1: Logo | Auth button(s) */}
                 <div className="flex items-center justify-between px-3 pt-3 pb-1">
                     <Link href="/">
                         <Image
@@ -220,10 +254,10 @@ export default function Banner({ user }: BannerProps) {
             <div className="hidden md:block fixed top-0 left-0 w-full bg-[#F4F6F5] text-[#2f3e4e] h-[200px] z-50">
                 <div className="max-w-[1400px] mx-auto h-full flex items-center justify-between px-6 relative">
 
-                    {/* Top-right: clock, then portal button below */}
+                    {/* Top-right: clock + sign out / New User? */}
                     <div className="absolute top-4 right-6 flex flex-col items-end gap-2">
                         <span className="text-sm" style={{color:'#7A8F79'}}>{time}</span>
-                        {authButtonDesktop}
+                        {desktopTopRight}
                     </div>
 
                     {/* Logo */}
@@ -240,7 +274,7 @@ export default function Banner({ user }: BannerProps) {
                         </Link>
                     </div>
 
-                    {/* Right: welcome + 2-row nav */}
+                    {/* Right: welcome + nav */}
                     <div className="h-full flex flex-col justify-center items-end mt-6">
                         {displayName && (
                             <div className="mt-1 text-lg font-bold">
@@ -248,10 +282,14 @@ export default function Banner({ user }: BannerProps) {
                                 <span style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.5rem' }}>&nbsp;{displayName}</span>
                             </div>
                         )}
-                        <nav className="flex flex-wrap gap-6 text-sm font-semibold mt-3 items-center">
-                            {myRow}
-                        </nav>
-                        <nav className="flex flex-wrap gap-6 text-sm font-semibold mt-2 items-center text-[#2F3E4E]/60">
+                        {/* Row 1: role-specific links (hidden when logged out — myPortal Login moves to row 2) */}
+                        {myRow && (
+                            <nav className="flex flex-wrap gap-6 text-sm font-semibold mt-3 items-center">
+                                {myRow}
+                            </nav>
+                        )}
+                        {/* Row 2: general links (+ myPortal Login when logged out) */}
+                        <nav className={`flex flex-wrap gap-6 text-sm font-semibold items-center text-[#2F3E4E]/60 ${myRow ? 'mt-2' : 'mt-3'}`}>
                             {generalRow}
                         </nav>
                     </div>

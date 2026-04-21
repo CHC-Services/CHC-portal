@@ -35,7 +35,7 @@ export async function POST(req: Request) {
 
   // Resolve the admin's actual email for preview delivery
   const adminUser = await prisma.user.findUnique({
-    where: { id: session.userId },
+    where: { id: session.id },
     select: { email: true, name: true },
   })
   const to = adminUser?.email ?? 'support@cominghomecare.com'

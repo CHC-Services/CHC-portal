@@ -45,24 +45,28 @@ export default function LoginPage() {
     <div className="min-h-screen bg-[#D9E1E8] flex items-stretch">
 
       {/* Left — branding panel */}
-      <div className="hidden md:flex flex-col justify-center gap-12 bg-[#2F3E4E] text-white w-1/2 px-12 py-16">
+      <div className="hidden md:flex flex-col justify-center gap-12 bg-[#2F3E4E] text-white w-1/3 px-12 py-16 ">
         <div>
-          <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-2">Coming Home Care</p>
-          <h2 className="text-4xl font-bold leading-tight">
-            <span className="italic text-[#7A8F79]">my</span>Provider{' '}
-            <span className="text-white">Portal</span>
-          </h2>
+          <div className="flex items-baseline gap-2 border-t border-[#3d5166] pt-6 mb-2">
+            <p className="text-sm uppercase tracking-widest text-[#7A8F79] font-semibold">Inside the provider</p>
+            <h3 className="text-xl font-bold leading-tight">
+              <span className="italic text-[#7A8F79]">my</span>Portal
+            </h3>
+          </div>
           <p className="mt-4 text-[#D9E1E8] text-sm leading-relaxed max-w-sm">
-            Your secure home base for time tracking, claims management, billing enrollment, and renewal reminders — everything you need in one place.
+            You'll find...
           </p>
         </div>
 
         <div className="space-y-5">
           {[
-            { icon: '⏱', label: 'Log hours instantly' },
-            { icon: '📋', label: 'Track BCBS claims in real time' },
-            { icon: '📅', label: 'Never miss a renewal deadline' },
-            { icon: '📚', label: 'NY provider enrollment guides' },
+            { icon: '⏰', label: 'Easily log your hours from anywhere' },
+            { icon: '📊', label: 'Claim status tracker & income reports' },
+            { icon: '📅', label: 'Important document renewal reminders' },
+            { icon: '🧾', label: 'Review & pay invoices, save receipts' },
+            { icon: '✍🏼', label: 'Provider guides for Medicaid enrollment' },
+            { icon: '⏳', label: 'Self-employed tax date reminders' },
+            { icon: '🗄️', label: 'Secure storage for sensitive documents' }
           ].map(f => (
             <div key={f.label} className="flex items-center gap-3">
               <span className="text-xl">{f.icon}</span>
@@ -70,21 +74,28 @@ export default function LoginPage() {
             </div>
           ))}
 
-          <p className="pt-4 text-xs italic text-[#7A8F79] border-t border-[#3d5166]">
-            &ldquo;You take care of everyone else. We take care of this.&rdquo;
+          <p className="pt-4 pl-6 text-sm italic text-left text-[#7A8F79] border-t border-[#3d5166]">
+            &ldquo;You take care of everyone else. </p>
+          <p className="pb-4 pr-6 text-sm italic text-right text-[#7A8F79] border-b border-[#3d5166]">Let us help take care of this.&rdquo;
           </p>
         </div>
       </div>
 
       {/* Right — login form */}
-      <div className="flex flex-col justify-center w-full md:w-1/2 px-8 md:px-16 py-16">
+      <div className="flex flex-col justify-center w-full md:w-2/3 px-8 md:px-16 py-16">
 
         <div className="max-w-sm w-full mx-auto">
-          <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-1">Welcome back</p>
+          <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-1">Welcome to your</p>
           <h1 className="text-3xl font-bold text-[#2F3E4E] mb-1">
-            <span className="italic text-[#7A8F79]">my</span>Provider Portal
+            <span className="italic text-[#7A8F79]">my</span>Portal Login
           </h1>
-          <p className="text-sm text-[#7A8F79] mb-8">Sign in to access your dashboard.</p>
+          <p className="text-sm text-[#7A8F79]">Sign in to access your provider dashboard.</p>
+          <p className="text-sm mt-2 mb-8">
+            <span className="text-[#7A8F79]">New user?</span>{' '}
+            <Link href="/signup" className="font-semibold text-[#2F3E4E] underline underline-offset-2 hover:text-[#7A8F79] transition">
+              Create an Account.
+            </Link>
+          </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <input
@@ -122,24 +133,6 @@ export default function LoginPage() {
             </Link>
           </p>
 
-          <div className="mt-5 text-center">
-            <p className="text-xs text-[#7A8F79] mb-1">Use Availity for claims submission?</p>
-            <a
-              href="https://essentials.availity.com/static/public/onb/onboarding-ui-apps/availity-fr-ui/#/login"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs font-semibold text-[#2F3E4E] hover:text-[#7A8F79] underline underline-offset-2 transition"
-            >
-              Log in to Availity Essentials →
-            </a>
-          </div>
-
-          <div className="mt-6 border-t border-[#D9E1E8] pt-6 text-center">
-            <p className="text-xs text-[#7A8F79]">Not a provider yet?</p>
-            <Link href="/billing" className="text-xs font-semibold text-[#2F3E4E] hover:text-[#7A8F79] underline underline-offset-2 transition">
-              Learn about our billing services →
-            </Link>
-          </div>
         </div>
       </div>
 

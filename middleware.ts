@@ -2,15 +2,22 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifyToken } from "@/lib/auth";
 
+// /nurse sub-paths that provider-role users may access
+const PROVIDER_ALLOWED_NURSE_PATHS = ['/nurse/profile', '/nurse/onboarding']
+
 export function middleware(req: NextRequest) {
   const token = req.cookies.get("auth_token")?.value;
   const { pathname } = req.nextUrl;
 
-  // debugging
   console.log('middleware hit', pathname, 'token', token);
 
-  // Protect admin and nurse routes
-  if (pathname.startsWith("/admin") || pathname.startsWith("/nurse")) {
+  if (
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/nurse") ||
+    pathname.startsWith("/portal") ||
+    pathname.startsWith("/resources") ||
+    pathname.startsWith("/care")
+  ) {
 
     if (!token) {
       console.log('no token, redirect to login');
@@ -35,9 +42,24 @@ export function middleware(req: NextRequest) {
       return NextResponse.redirect(new URL("/login", req.url));
     }
 
-    if (pathname.startsWith("/nurse") && decoded.role !== "nurse") {
-      console.log('role mismatch, not nurse');
-      return NextResponse.redirect(new URL("/", req.url));
+    if (pathname.startsWith("/nurse")) {
+      const isNurse = decoded.role === "nurse"
+      const isProviderAllowed = decoded.role === "provider" && PROVIDER_ALLOWED_NURSE_PATHS.some(p => pathname.startsWith(p))
+
+      if (!isNurse && !isProviderAllowed) {
+        console.log('nurse path blocked for role', decoded.role);
+        return NextResponse.redirect(new URL(decoded.role === "provider" ? "/portal" : "/", req.url));
+      }
+    }
+
+    // /portal, /resources, /care — any authenticated role is fine
+    if (
+      (pathname.startsWith("/portal") ||
+       pathname.startsWith("/resources") ||
+       pathname.startsWith("/care")) &&
+      !["nurse", "admin", "provider", "biller", "guardian"].includes(decoded.role)
+    ) {
+      return NextResponse.redirect(new URL("/login", req.url));
     }
 
     // Valid session — reset the 24-hour inactivity clock on every page visit
@@ -56,6 +78,6 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/nurse/:path*"],
+  matcher: ["/admin/:path*", "/nurse/:path*", "/portal/:path*", "/resources/:path*", "/resources", "/care/:path*", "/care"],
   runtime: 'nodejs',
 };

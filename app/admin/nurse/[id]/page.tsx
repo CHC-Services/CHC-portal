@@ -873,15 +873,15 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                 <Field label="State"          field="state"         profile={profile} setProfile={setProfile} />
                 <Field label="ZIP"            field="zip"           profile={profile} setProfile={setProfile} />
               </div>
+              <Field label="Preferred Name (optional)" field="displayName" profile={profile} setProfile={setProfile} />
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Date of Birth"  field="dob"           profile={profile} setProfile={setProfile} type="date" />
+                <Field label="Date of Birth"  field="dob"           profile={profile} setProfile={setProfile} type="date" sensitive />
                 <Field label="SSN"            field="ssn"           profile={profile} setProfile={setProfile} sensitive />
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="NPI"            field="npiNumber"     profile={profile} setProfile={setProfile} />
-                <Field label="Medicaid ID"    field="medicaidNumber" profile={profile} setProfile={setProfile} />
+                <Field label="NPI (Individual)" field="npiNumber"   profile={profile} setProfile={setProfile} sensitive />
+                <Field label="Medicaid ID"    field="medicaidNumber" profile={profile} setProfile={setProfile} sensitive />
               </div>
-              <Field label="BCBS Payor ID"    field="bcbsPayorId"   profile={profile} setProfile={setProfile} />
             </Section>
 
             {/* Business Provider Information */}

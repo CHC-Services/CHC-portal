@@ -4,28 +4,97 @@ import React, { useState, useEffect, useRef, Fragment } from 'react'
 import AdminNav from '../../components/AdminNav'
 import { payCycleDateLabel } from '../../../lib/medicaidPayCycle'
 
-// Auto-advances to nextRef when a complete date (YYYY-MM-DD) is typed
+// 3-segment MM / DD / YYYY date input.
+// Auto-advances: MM→DD on 2 digits, DD→YYYY on 2 digits, YYYY→nextRef on 4 digits.
+// Backspace on empty segment retreats to previous segment.
+// "/" on MM or DD also advances (with zero-padding).
 const SmartDateInput = React.forwardRef<
   HTMLInputElement,
-  Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> & {
+  {
     value: string
     onChange: (val: string) => void
     nextRef?: React.RefObject<HTMLInputElement | null>
+    className?: string
   }
->(({ value, onChange, nextRef, ...props }, ref) => (
-  <input
-    ref={ref}
-    type="date"
-    value={value}
-    {...props}
-    onChange={e => {
-      onChange(e.target.value)
-      if (e.target.value.length === 10 && nextRef?.current) {
-        setTimeout(() => nextRef.current!.focus(), 10)
-      }
-    }}
-  />
-))
+>(({ onChange, nextRef }, ref) => {
+  const [mm, setMm] = useState('')
+  const [dd, setDd] = useState('')
+  const [yyyy, setYyyy] = useState('')
+  const mmRef  = useRef<HTMLInputElement>(null)
+  const ddRef  = useRef<HTMLInputElement>(null)
+  const yyyyRef = useRef<HTMLInputElement>(null)
+
+  React.useImperativeHandle(ref, () => mmRef.current!)
+
+  function emit(m: string, d: string, y: string) {
+    onChange(m.length === 2 && d.length === 2 && y.length === 4 ? `${y}-${m}-${d}` : '')
+  }
+
+  const seg = 'w-full text-center border border-[#D9E1E8] rounded px-1 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]'
+
+  return (
+    <div className="flex items-center gap-1">
+      {/* Month */}
+      <input
+        ref={mmRef}
+        type="text" inputMode="numeric" maxLength={2} placeholder="MM"
+        value={mm}
+        className={`w-10 ${seg}`}
+        onChange={e => {
+          const v = e.target.value.replace(/\D/g, '').slice(0, 2)
+          setMm(v); emit(v, dd, yyyy)
+          if (v.length === 2) ddRef.current?.focus()
+        }}
+        onKeyDown={e => {
+          if ((e.key === '/' || e.key === 'Tab') && mm) {
+            e.preventDefault()
+            const padded = mm.padStart(2, '0'); setMm(padded); emit(padded, dd, yyyy)
+            ddRef.current?.focus()
+          }
+        }}
+      />
+      <span className="text-[#7A8F79] text-sm select-none">/</span>
+      {/* Day */}
+      <input
+        ref={ddRef}
+        type="text" inputMode="numeric" maxLength={2} placeholder="DD"
+        value={dd}
+        className={`w-10 ${seg}`}
+        onChange={e => {
+          const v = e.target.value.replace(/\D/g, '').slice(0, 2)
+          setDd(v); emit(mm, v, yyyy)
+          if (v.length === 2) yyyyRef.current?.focus()
+        }}
+        onKeyDown={e => {
+          if (e.key === 'Backspace' && !dd) { e.preventDefault(); mmRef.current?.focus() }
+          if ((e.key === '/' || e.key === 'Tab') && dd) {
+            e.preventDefault()
+            const padded = dd.padStart(2, '0'); setDd(padded); emit(mm, padded, yyyy)
+            yyyyRef.current?.focus()
+          }
+        }}
+      />
+      <span className="text-[#7A8F79] text-sm select-none">/</span>
+      {/* Year */}
+      <input
+        ref={yyyyRef}
+        type="text" inputMode="numeric" maxLength={4} placeholder="YYYY"
+        value={yyyy}
+        className={`w-16 ${seg}`}
+        onChange={e => {
+          const v = e.target.value.replace(/\D/g, '').slice(0, 4)
+          setYyyy(v); emit(mm, dd, v)
+          if (v.length === 4 && nextRef?.current) {
+            setTimeout(() => nextRef.current!.focus(), 10)
+          }
+        }}
+        onKeyDown={e => {
+          if (e.key === 'Backspace' && !yyyy) { e.preventDefault(); ddRef.current?.focus() }
+        }}
+      />
+    </div>
+  )
+})
 SmartDateInput.displayName = 'SmartDateInput'
 
 type EobDoc = {
@@ -238,6 +307,7 @@ export default function AdminClaimsPage() {
 
   // Add Claim modal
   const [showAddModal, setShowAddModal] = useState(false)
+  const [modalResetKey, setModalResetKey] = useState(0)
   const [addClaimType, setAddClaimType] = useState<'commercial' | 'medicaid'>('commercial')
   const [addForm, setAddForm] = useState<Record<string, string>>({ claimStage: 'Draft' })
   const [adding, setAdding] = useState(false)
@@ -287,6 +357,7 @@ export default function AdminClaimsPage() {
   const [eobMap, setEobMap] = useState<Record<string, EobDoc[]>>({})
   const [eobUploading, setEobUploading] = useState<string | null>(null)  // claim DB id
   const [eobDeleting, setEobDeleting] = useState<string | null>(null)    // doc id
+  const [eobError, setEobError] = useState<string | null>(null)
 
   async function loadEobs() {
     const res = await fetch('/api/admin/documents?all=1&category=EOB', { credentials: 'include' })
@@ -305,6 +376,7 @@ export default function AdminClaimsPage() {
 
   async function handleEobUpload(claim: Claim, file: File) {
     setEobUploading(claim.id)
+    setEobError(null)
     try {
       // Step 1 — presign
       const presignRes = await fetch('/api/admin/documents/presign', {
@@ -316,13 +388,13 @@ export default function AdminClaimsPage() {
       const presign = await presignRes.json()
       if (!presignRes.ok) throw new Error(presign.error || 'Presign failed')
 
-      // Step 2 — upload to S3
+      // Step 2 — upload directly to S3
       const form = new FormData()
       Object.entries(presign.fields as Record<string, string>).forEach(([k, v]) => form.append(k, v))
       form.append('file', file)
       await fetch(presign.url, { method: 'POST', body: form, mode: 'no-cors' })
 
-      // Step 3 — confirm record with claimId + visibleToNurse
+      // Step 3 — confirm (server verifies file exists in S3 before saving record)
       const providerName = claim.providerName || claim.nurse?.displayName || 'Provider'
       const confirmRes = await fetch('/api/admin/documents/confirm', {
         method: 'POST',
@@ -341,11 +413,14 @@ export default function AdminClaimsPage() {
         }),
       })
       const confirmData = await confirmRes.json()
-      if (confirmData.ok) {
+      if (confirmRes.ok && confirmData.ok) {
         await loadEobs()
+      } else {
+        setEobError(confirmData.error || 'Upload failed — file did not reach storage.')
       }
     } catch (err) {
       console.error('EOB upload error:', err)
+      setEobError('Upload failed. Please try again.')
     }
     setEobUploading(null)
   }
@@ -507,6 +582,7 @@ export default function AdminClaimsPage() {
     setSelectedNurseId(null)
     setProviderSuggestions([])
     setAddError(null)
+    setModalResetKey(k => k + 1)
     setShowAddModal(true)
   }
 
@@ -795,6 +871,13 @@ export default function AdminClaimsPage() {
             {importResult.error && (
               <span className="text-red-700 font-semibold">Error: {importResult.error}</span>
             )}
+          </div>
+        )}
+
+        {eobError && (
+          <div className="bg-red-50 border border-red-300 rounded-xl px-5 py-3 mb-4 flex items-center justify-between gap-3">
+            <span className="text-red-700 font-semibold text-sm">⚠ EOB upload failed: {eobError}</span>
+            <button onClick={() => setEobError(null)} className="text-red-500 text-xs hover:text-red-700">✕</button>
           </div>
         )}
 
@@ -1463,18 +1546,15 @@ export default function AdminClaimsPage() {
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Submit Date</label>
-                    <SmartDateInput ref={submitDateRef} nextRef={dosStartRef} value={addForm.submitDate || ''} onChange={v => setAddForm(f => ({ ...f, submitDate: v }))}
-                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                    <SmartDateInput key={`${modalResetKey}-submitDate`} ref={submitDateRef} nextRef={dosStartRef} value={addForm.submitDate || ''} onChange={v => setAddForm(f => ({ ...f, submitDate: v }))} />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">DOS Start</label>
-                    <SmartDateInput ref={dosStartRef} nextRef={dosStopRef} value={addForm.dosStart || ''} onChange={v => setAddForm(f => ({ ...f, dosStart: v }))}
-                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                    <SmartDateInput key={`${modalResetKey}-dosStart`} ref={dosStartRef} nextRef={dosStopRef} value={addForm.dosStart || ''} onChange={v => setAddForm(f => ({ ...f, dosStart: v }))} />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">DOS Stop</label>
-                    <SmartDateInput ref={dosStopRef} value={addForm.dosStop || ''} onChange={v => setAddForm(f => ({ ...f, dosStop: v }))}
-                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                    <SmartDateInput key={`${modalResetKey}-dosStop`} ref={dosStopRef} value={addForm.dosStop || ''} onChange={v => setAddForm(f => ({ ...f, dosStop: v }))} />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Total Billed</label>
@@ -1505,8 +1585,7 @@ export default function AdminClaimsPage() {
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Paid Date</label>
-                    <SmartDateInput ref={primPaidDateRef} nextRef={secPaidDateRef} value={addForm.primaryPaidDate || ''} onChange={v => setAddForm(f => ({ ...f, primaryPaidDate: v }))}
-                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                    <SmartDateInput key={`${modalResetKey}-primPaid`} ref={primPaidDateRef} nextRef={secPaidDateRef} value={addForm.primaryPaidDate || ''} onChange={v => setAddForm(f => ({ ...f, primaryPaidDate: v }))} />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Paid To</label>
@@ -1537,8 +1616,7 @@ export default function AdminClaimsPage() {
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Paid Date</label>
-                    <SmartDateInput ref={secPaidDateRef} nextRef={finalDateRef} value={addForm.secondaryPaidDate || ''} onChange={v => setAddForm(f => ({ ...f, secondaryPaidDate: v }))}
-                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                    <SmartDateInput key={`${modalResetKey}-secPaid`} ref={secPaidDateRef} nextRef={finalDateRef} value={addForm.secondaryPaidDate || ''} onChange={v => setAddForm(f => ({ ...f, secondaryPaidDate: v }))} />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Paid To</label>
@@ -1564,8 +1642,7 @@ export default function AdminClaimsPage() {
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Date Fully Finalized</label>
-                    <SmartDateInput ref={finalDateRef} value={addForm.dateFullyFinalized || ''} onChange={v => setAddForm(f => ({ ...f, dateFullyFinalized: v }))}
-                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                    <SmartDateInput key={`${modalResetKey}-finalDate`} ref={finalDateRef} value={addForm.dateFullyFinalized || ''} onChange={v => setAddForm(f => ({ ...f, dateFullyFinalized: v }))} />
                   </div>
                   <div className="col-span-3">
                     <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Processing Notes</label>
@@ -1600,13 +1677,11 @@ export default function AdminClaimsPage() {
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">DOS Start <span className="text-red-500">*</span></label>
-                    <SmartDateInput ref={mDosStartRef} nextRef={mDosStopRef} value={medicaidForm.dosStart || ''} onChange={v => setMedicaidForm(f => ({ ...f, dosStart: v }))}
-                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                    <SmartDateInput key={`${modalResetKey}-mDosStart`} ref={mDosStartRef} nextRef={mDosStopRef} value={medicaidForm.dosStart || ''} onChange={v => setMedicaidForm(f => ({ ...f, dosStart: v }))} />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">DOS Stop <span className="text-red-500">*</span></label>
-                    <SmartDateInput ref={mDosStopRef} nextRef={mProcessedRef} value={medicaidForm.dosStop || ''} onChange={v => setMedicaidForm(f => ({ ...f, dosStop: v }))}
-                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                    <SmartDateInput key={`${modalResetKey}-mDosStop`} ref={mDosStopRef} nextRef={mProcessedRef} value={medicaidForm.dosStop || ''} onChange={v => setMedicaidForm(f => ({ ...f, dosStop: v }))} />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Paid Amount</label>
@@ -1615,8 +1690,7 @@ export default function AdminClaimsPage() {
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Processed Date</label>
-                    <SmartDateInput ref={mProcessedRef} value={medicaidForm.processedDate || ''} onChange={v => setMedicaidForm(f => ({ ...f, processedDate: v }))}
-                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                    <SmartDateInput key={`${modalResetKey}-mProcessed`} ref={mProcessedRef} value={medicaidForm.processedDate || ''} onChange={v => setMedicaidForm(f => ({ ...f, processedDate: v }))} />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Est. Pay Cycle #</label>

@@ -23,6 +23,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   if (!log) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   if (!log.bodyS3Key) return NextResponse.json({ error: 'No body stored' }, { status: 404 })
 
-  const url = await getPresignedDownloadUrl(log.bodyS3Key, 600)
+  const url = await getPresignedDownloadUrl(log.bodyS3Key, 600, {
+    contentType: 'text/html; charset=utf-8',
+    inline: true,
+  })
   return NextResponse.json({ url })
 }

@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { createPresignedPost } from '@aws-sdk/s3-presigned-post'
 
@@ -31,6 +31,20 @@ export async function uploadToS3(key: string, body: Buffer, contentType: string)
     ContentType: contentType,
     ServerSideEncryption: 'AES256',
   }))
+}
+
+/**
+ * Returns true if the object exists in S3 and is accessible.
+ * Uses HeadObject — requires s3:GetObject on the IAM user.
+ * Returns false if the object is missing or access is denied.
+ */
+export async function objectExists(key: string): Promise<boolean> {
+  try {
+    await s3.send(new HeadObjectCommand({ Bucket: BUCKET, Key: key }))
+    return true
+  } catch {
+    return false
+  }
 }
 
 /** Permanently delete an object from S3. */

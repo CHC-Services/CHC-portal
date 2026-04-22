@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../lib/prisma'
 import { verifyToken } from '../../../../../lib/auth'
 import { sendNewDocumentAlert } from '../../../../../lib/sendEmail'
+import { objectExists } from '../../../../../lib/s3'
 
 function adminOnly(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -40,6 +41,15 @@ export async function POST(req: Request) {
 
   if (!targets.length || !title || !storageKey || !fileName) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+  }
+
+  // Verify the upload actually landed in S3 before creating any DB records
+  const uploaded = await objectExists(storageKey)
+  if (!uploaded) {
+    return NextResponse.json(
+      { error: 'File not found in storage — the upload may have failed. Please try again.' },
+      { status: 422 }
+    )
   }
 
   const sanitizedReminderDays = Array.isArray(reminderDays)

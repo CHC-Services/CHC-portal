@@ -11,7 +11,7 @@ function createLoggedResend(category: EmailCategory, recipientName: string | nul
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result: any = await originalSend(params)
     const to: string = typeof params.to === 'string' ? params.to : params.to[0]
-    logEmail({
+    await logEmail({
       recipientName,
       recipientEmail: to,
       category,

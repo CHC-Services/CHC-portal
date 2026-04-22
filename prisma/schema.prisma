@@ -131,6 +131,7 @@ model NurseProfile {
   documents        NurseDocument[]
   invoiceActivities InvoiceActivity[]
   caseAssignments  CaseAssignment[]
+  medicaidClaims   MedicaidClaim[]
 }
 
 model GlobalEvent {
@@ -486,4 +487,32 @@ model CaseAssignment {
   @@unique([caseId, nurseId])
   @@index([caseId])
   @@index([nurseId])
+}
+
+model MedicaidClaim {
+  id             String    @id @default(uuid())
+  nurseId        String
+  patientCtrlNum String
+  payerCtrlNum   String?
+  dosStart       DateTime
+  dosStop        DateTime
+  totalCharge    Float
+  paidAmount     Float?
+  processedDate  DateTime?
+  statusCodes    String[]  @default([])
+  estPayCycle    Int?
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  nurse NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
+
+  @@index([nurseId])
+  @@index([dosStart])
+}
+
+model MedicaidStatusCode {
+  code        String   @id
+  description String
+  createdAt   DateTime @default(now())
 }

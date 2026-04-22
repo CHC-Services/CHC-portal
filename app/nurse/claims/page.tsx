@@ -2,6 +2,33 @@
 
 import { useState, useEffect, useRef } from 'react'
 import PortalMessages from '../../components/PortalMessages'
+import { payCycleDateLabel } from '../../../lib/medicaidPayCycle'
+
+type MedicaidClaim = {
+  id: string
+  patientCtrlNum: string
+  payerCtrlNum: string | null
+  dosStart: string
+  dosStop: string
+  totalCharge: number
+  paidAmount: number | null
+  processedDate: string | null
+  statusCodes: string[]
+  estPayCycle: number | null
+  notes: string | null
+}
+
+const ANCHOR_CYCLE = 2540
+const ANCHOR_DATE  = '2026-05-14'
+
+const STATUS_COLORS: Record<string, string> = {
+  F1:  'bg-green-100 text-green-700',
+  F2:  'bg-red-100 text-red-600',
+  '3': 'bg-blue-100 text-blue-700',
+  A3:  'bg-orange-100 text-orange-700',
+  '400': 'bg-red-100 text-red-600',
+  '483': 'bg-yellow-100 text-yellow-700',
+}
 
 // ── Search helper — checks every string/number field on a claim ──────────────
 function claimMatchesSearch(c: Claim, q: string): boolean {
@@ -443,6 +470,9 @@ export default function NurseClaimsPage() {
   const [claims, setClaims] = useState<Claim[]>([])
   const [enrolledInBilling, setEnrolledInBilling] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(true)
+  const [claimTab, setClaimTab] = useState<'commercial' | 'medicaid'>('commercial')
+  const [medicaidClaims, setMedicaidClaims] = useState<MedicaidClaim[]>([])
+  const [medicaidLoading, setMedicaidLoading] = useState(true)
   const [filterYear, setFilterYear] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -459,6 +489,11 @@ export default function NurseClaimsPage() {
         setEnrolledInBilling(data.enrolledInBilling ?? null)
         setLoading(false)
       })
+
+    fetch('/api/nurse/medicaid', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setMedicaidClaims(data); setMedicaidLoading(false) })
+      .catch(() => setMedicaidLoading(false))
 
     fetch('/api/nurse/documents', { credentials: 'include' })
       .then(r => r.json())
@@ -566,6 +601,131 @@ export default function NurseClaimsPage() {
         </div>
 
         <PortalMessages priority="Claims" />
+
+        {/* ── Tab toggle ── */}
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={() => setClaimTab('commercial')}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
+              claimTab === 'commercial'
+                ? 'bg-[#2F3E4E] text-white shadow-sm'
+                : 'bg-white text-[#7A8F79] border border-[#D9E1E8] hover:border-[#7A8F79]'
+            }`}
+          >
+            Commercial Claims
+          </button>
+          <button
+            onClick={() => setClaimTab('medicaid')}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
+              claimTab === 'medicaid'
+                ? 'bg-[#2F3E4E] text-white shadow-sm'
+                : 'bg-white text-[#7A8F79] border border-[#D9E1E8] hover:border-[#7A8F79]'
+            }`}
+          >
+            Medicaid Claims
+          </button>
+        </div>
+
+        {claimTab === 'medicaid' && (
+          <div>
+            {medicaidLoading ? (
+              <div className="text-center text-[#7A8F79] py-16">Loading…</div>
+            ) : medicaidClaims.length === 0 ? (
+              <div className="bg-white rounded-xl shadow-sm p-12 text-center">
+                <div className="w-14 h-14 rounded-full bg-[#D9E1E8] flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-7 h-7 text-[#7A8F79]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <p className="text-[#2F3E4E] font-semibold">No Medicaid claims on file yet</p>
+                <p className="text-[#7A8F79] text-sm mt-1">Your Medicaid claims will appear here once billing is processed.</p>
+              </div>
+            ) : (
+              <>
+                {/* Stats */}
+                <div className="grid grid-cols-3 gap-2 md:gap-4 mb-6">
+                  <div className="bg-white rounded-xl p-2.5 md:p-4 shadow-sm">
+                    <p className="text-[9px] md:text-xs uppercase tracking-widest text-[#7A8F79] font-semibold leading-tight">Total Claims</p>
+                    <p className="text-base md:text-2xl font-bold text-[#2F3E4E] mt-0.5">{medicaidClaims.length}</p>
+                  </div>
+                  <div className="bg-white rounded-xl p-2.5 md:p-4 shadow-sm">
+                    <p className="text-[9px] md:text-xs uppercase tracking-widest text-[#7A8F79] font-semibold leading-tight">Total Charged</p>
+                    <p className="text-base md:text-2xl font-bold text-[#2F3E4E] mt-0.5 truncate">
+                      ${medicaidClaims.reduce((s, c) => s + c.totalCharge, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  <div className="bg-white rounded-xl p-2.5 md:p-4 shadow-sm">
+                    <p className="text-[9px] md:text-xs uppercase tracking-widest text-[#7A8F79] font-semibold leading-tight">Total Paid</p>
+                    <p className="text-base md:text-2xl font-bold text-[#7A8F79] mt-0.5 truncate">
+                      ${medicaidClaims.reduce((s, c) => s + (c.paidAmount ?? 0), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {medicaidClaims.map(claim => {
+                    const dosStart = new Date(claim.dosStart).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })
+                    const dosStop  = new Date(claim.dosStop).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })
+                    const processed = claim.processedDate
+                      ? new Date(claim.processedDate).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })
+                      : null
+                    return (
+                      <div key={claim.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                        <div className="px-5 py-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2 mb-1">
+                              <span className="font-bold text-[#2F3E4E] text-sm">Patient Ctrl #: {claim.patientCtrlNum}</span>
+                              {claim.payerCtrlNum && (
+                                <span className="text-xs text-[#7A8F79]">Payer Ctrl #: {claim.payerCtrlNum}</span>
+                              )}
+                            </div>
+                            <p className="text-xs text-[#7A8F79]">DOS: {dosStart} – {dosStop}</p>
+                            {claim.notes && (
+                              <p className="text-xs text-[#7A8F79] mt-1 italic">{claim.notes}</p>
+                            )}
+                          </div>
+                          <div className="flex flex-col items-end gap-1 shrink-0 text-right">
+                            <span className="text-sm font-bold text-[#2F3E4E]">
+                              ${claim.totalCharge.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              <span className="font-normal text-[#7A8F79] text-xs ml-1">charged</span>
+                            </span>
+                            {claim.paidAmount != null && (
+                              <span className="text-sm font-semibold text-[#7A8F79]">
+                                ${claim.paidAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                <span className="font-normal text-xs ml-1">paid</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="px-5 pb-4 flex flex-wrap items-center gap-2">
+                          {claim.statusCodes.map(code => (
+                            <span
+                              key={code}
+                              className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[code] ?? 'bg-gray-100 text-gray-600'}`}
+                            >
+                              {code}
+                            </span>
+                          ))}
+                          {processed && (
+                            <span className="text-xs text-[#7A8F79] ml-auto">Processed {processed}</span>
+                          )}
+                          {claim.estPayCycle != null && (
+                            <span className="text-xs bg-blue-50 text-blue-700 font-semibold px-2 py-0.5 rounded-full">
+                              Est. Pay: {payCycleDateLabel(claim.estPayCycle, ANCHOR_CYCLE, ANCHOR_DATE)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {claimTab === 'commercial' && <>
 
         {/* Billing services promo — shown when not enrolled */}
         {enrolledInBilling !== true && (
@@ -713,6 +873,8 @@ export default function NurseClaimsPage() {
             ))}
           </div>
         )}
+
+        </>}
 
       </div>
     </div>

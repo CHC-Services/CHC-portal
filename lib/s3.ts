@@ -71,7 +71,7 @@ export async function getPresignedPost(
  */
 export async function getPresignedDownloadUrl(key: string, expiresInSeconds = 900): Promise<string> {
   return getSignedUrl(
-    s3,
+    s3Presign,
     new GetObjectCommand({ Bucket: BUCKET, Key: key }),
     { expiresIn: expiresInSeconds },
   )

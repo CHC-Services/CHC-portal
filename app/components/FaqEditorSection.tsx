@@ -20,7 +20,7 @@ type DragSrc =
   | { type: 'sub'; catIdx: number; subIdx: number }
   | { type: 'item'; catIdx: number; subIdx: number; itemIdx: number }
 
-const FAQ_CATEGORIES = ['General', 'Billing', 'Claims', 'Enrollment', 'Time Entry', 'Account']
+const DEFAULT_CATEGORIES = ['General', 'Billing', 'Claims', 'Enrollment', 'Time Entry', 'Account']
 
 function buildGroups(items: FaqItem[]): CatGroup[] {
   const sorted = [...items].sort((a, b) => a.sortOrder - b.sortOrder)
@@ -82,6 +82,14 @@ export default function FaqEditorSection() {
   const [groups, setGroups] = useState<CatGroup[]>([])
   const [loading, setLoading] = useState(true)
 
+  // Category management state
+  const [allCategories, setAllCategories] = useState<string[]>(DEFAULT_CATEGORIES)
+  const [allSubcategories, setAllSubcategories] = useState<Record<string, string[]>>({})
+  const [manageOpen, setManageOpen] = useState(false)
+  const [expandedCat, setExpandedCat] = useState<string | null>(null)
+  const [newCatInput, setNewCatInput] = useState('')
+  const [newSubInputs, setNewSubInputs] = useState<Record<string, string>>({})
+
   // Form state
   const [formOpen, setFormOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -93,21 +101,130 @@ export default function FaqEditorSection() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const editorRef = useRef<HTMLDivElement>(null)
 
+  // Citation state
+  const [citations, setCitations] = useState<{ url: string; label: string }[]>([])
+  const [citationUrl, setCitationUrl] = useState('')
+  const [citationLabel, setCitationLabel] = useState('')
+
   // Drag state
   const dragSrc = useRef<DragSrc | null>(null)
   const [dragOverKey, setDragOverKey] = useState<string | null>(null)
 
   function load() {
-    fetch('/api/faq', { credentials: 'include' })
-      .then(r => r.json())
-      .then(data => {
-        const arr: FaqItem[] = Array.isArray(data) ? data : []
-        setItems(arr)
-        setGroups(buildGroups(arr))
-      })
-      .finally(() => setLoading(false))
+    Promise.all([
+      fetch('/api/faq', { credentials: 'include' }).then(r => r.json()),
+      fetch('/api/admin/system-settings', { credentials: 'include' }).then(r => r.json()),
+    ]).then(([faqData, settings]) => {
+      const arr: FaqItem[] = Array.isArray(faqData) ? faqData : []
+      setItems(arr)
+      setGroups(buildGroups(arr))
+
+      if (settings && !settings.error) {
+        if (settings.faq_categories) {
+          try { setAllCategories(JSON.parse(settings.faq_categories)) } catch { /* keep default */ }
+        }
+        if (settings.faq_subcategories) {
+          try { setAllSubcategories(JSON.parse(settings.faq_subcategories)) } catch { /* keep default */ }
+        }
+      }
+    }).finally(() => setLoading(false))
   }
   useEffect(() => { load() }, [])
+
+  async function persistCategories(cats: string[]) {
+    setAllCategories(cats)
+    await fetch('/api/admin/system-settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ key: 'faq_categories', value: JSON.stringify(cats) }),
+    })
+  }
+
+  async function persistSubcategories(subs: Record<string, string[]>) {
+    setAllSubcategories(subs)
+    await fetch('/api/admin/system-settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ key: 'faq_subcategories', value: JSON.stringify(subs) }),
+    })
+  }
+
+  function addCategory() {
+    const name = newCatInput.trim()
+    if (!name || allCategories.includes(name)) return
+    persistCategories([...allCategories, name])
+    setNewCatInput('')
+  }
+
+  function deleteCategory(name: string) {
+    if (items.some(i => i.category === name)) {
+      alert(`Cannot delete "${name}" — there are FAQ items using this category. Reassign or delete them first.`)
+      return
+    }
+    const updated = allCategories.filter(c => c !== name)
+    persistCategories(updated)
+    const updatedSubs = { ...allSubcategories }
+    delete updatedSubs[name]
+    persistSubcategories(updatedSubs)
+  }
+
+  function addSubcategory(cat: string) {
+    const name = (newSubInputs[cat] || '').trim()
+    if (!name) return
+    const existing = allSubcategories[cat] || []
+    if (existing.includes(name)) return
+    const updated = { ...allSubcategories, [cat]: [...existing, name] }
+    persistSubcategories(updated)
+    setNewSubInputs(prev => ({ ...prev, [cat]: '' }))
+  }
+
+  function deleteSubcategory(cat: string, sub: string) {
+    if (items.some(i => i.category === cat && i.subcategory === sub)) {
+      alert(`Cannot delete "${sub}" — there are FAQ items using this subcategory. Reassign or delete them first.`)
+      return
+    }
+    const updated = { ...allSubcategories, [cat]: (allSubcategories[cat] || []).filter(s => s !== sub) }
+    persistSubcategories(updated)
+  }
+
+  // ── Citation helpers ────────────────────────────────────────────────────────
+  function addCitation() {
+    const url = citationUrl.trim()
+    const label = citationLabel.trim()
+    if (!url || !label) return
+    setCitations(prev => [...prev, { url, label }])
+    setCitationUrl('')
+    setCitationLabel('')
+  }
+
+  function removeCitation(idx: number) {
+    setCitations(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  function buildCitationHtml(cites: { url: string; label: string }[]): string {
+    if (cites.length === 0) return ''
+    const links = cites.map(c =>
+      `<a href="${c.url}" target="_blank" rel="noopener noreferrer" data-faq-citation style="display:inline-flex;align-items:center;background:#2F3E4E;border:1px solid #2F3E4E;border-radius:9999px;padding:1px 7px;font-size:11px;color:#ffffff;text-decoration:none;line-height:1.5;white-space:nowrap;">${c.label}</a>`
+    ).join('')
+    return `<div data-faq-citations style="margin-top:10px;display:flex;flex-wrap:wrap;gap:5px;align-items:center;">${links}</div>`
+  }
+
+  function parseCitationsFromHtml(html: string): { body: string; cites: { url: string; label: string }[] } {
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(html, 'text/html')
+    const wrapper = doc.querySelector('[data-faq-citations]')
+    if (!wrapper) return { body: html, cites: [] }
+    const cites: { url: string; label: string }[] = []
+    wrapper.querySelectorAll('a[data-faq-citation]').forEach(a => {
+      const url = a.getAttribute('href') || ''
+      const label = (a as HTMLElement).innerText || a.textContent || ''
+      if (url && label) cites.push({ url, label })
+    })
+    wrapper.remove()
+    return { body: doc.body.innerHTML, cites }
+  }
 
   // ── Rich text helpers ───────────────────────────────────────────────────────
   function fmt(cmd: string, val?: string) {
@@ -120,12 +237,10 @@ export default function FaqEditorSection() {
     if (url) fmt('createLink', url)
   }
   function applyFontSize(size: string) {
-    // execCommand fontSize uses 1-7 scale; we map via a workaround using CSS
     const sel = window.getSelection()
     if (!sel || sel.rangeCount === 0) return
     // eslint-disable-next-line @typescript-eslint/no-deprecated
     document.execCommand('fontSize', false, '7')
-    // Replace the font size=7 elements with a span carrying the desired px size
     const editor = editorRef.current
     if (!editor) return
     editor.querySelectorAll('font[size="7"]').forEach(el => {
@@ -141,9 +256,12 @@ export default function FaqEditorSection() {
   function openNew() {
     setEditingId(null)
     setQuestion('')
-    setCategory('General')
+    setCategory(allCategories[0] || 'General')
     setSubcategory('')
     setPublished(true)
+    setCitations([])
+    setCitationUrl('')
+    setCitationLabel('')
     setFormOpen(true)
     setTimeout(() => { if (editorRef.current) editorRef.current.innerHTML = '' }, 0)
   }
@@ -154,8 +272,12 @@ export default function FaqEditorSection() {
     setCategory(item.category)
     setSubcategory(item.subcategory || '')
     setPublished(item.published)
+    setCitationUrl('')
+    setCitationLabel('')
+    const { body, cites } = parseCitationsFromHtml(item.answer)
+    setCitations(cites)
     setFormOpen(true)
-    setTimeout(() => { if (editorRef.current) editorRef.current.innerHTML = item.answer }, 0)
+    setTimeout(() => { if (editorRef.current) editorRef.current.innerHTML = body }, 0)
   }
 
   function cancel() {
@@ -165,9 +287,10 @@ export default function FaqEditorSection() {
 
   // ── Save (create or update) ─────────────────────────────────────────────────
   async function save() {
-    const answer = editorRef.current?.innerHTML?.trim() || ''
-    if (!question.trim() || !answer) return
+    const bodyHtml = editorRef.current?.innerHTML?.trim() || ''
+    if (!question.trim() || !bodyHtml) return
     setSaving(true)
+    const answer = bodyHtml + buildCitationHtml(citations)
     const body = { question, answer, category, subcategory: subcategory.trim(), published }
     if (editingId) {
       await fetch(`/api/faq/${editingId}`, {
@@ -223,7 +346,6 @@ export default function FaqEditorSection() {
   function onDragStart(e: React.DragEvent, src: DragSrc) {
     dragSrc.current = src
     e.dataTransfer.effectAllowed = 'move'
-    // minimal ghost image
     const el = e.currentTarget as HTMLElement
     e.dataTransfer.setDragImage(el, 12, 12)
   }
@@ -272,8 +394,10 @@ export default function FaqEditorSection() {
     }
   }
 
-  // ── Subcategory suggestions for datalist ────────────────────────────────────
-  const subSuggestions = [...new Set(items.filter(i => i.category === category && i.subcategory).map(i => i.subcategory))]
+  // Subcategory suggestions: stored subs for this category + any used in existing items
+  const storedSubs = allSubcategories[category] || []
+  const itemSubs = items.filter(i => i.category === category && i.subcategory).map(i => i.subcategory)
+  const subSuggestions = [...new Set([...storedSubs, ...itemSubs])]
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -287,14 +411,135 @@ export default function FaqEditorSection() {
           )}
         </div>
         {!formOpen && (
-          <button
-            onClick={openNew}
-            className="bg-[#2F3E4E] text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-[#7A8F79] transition"
-          >
-            + Add FAQ Item
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setManageOpen(o => !o); setFormOpen(false) }}
+              className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition ${
+                manageOpen
+                  ? 'bg-[#7A8F79] text-white border-[#7A8F79]'
+                  : 'border-[#D9E1E8] text-[#7A8F79] hover:border-[#7A8F79] hover:text-[#2F3E4E]'
+              }`}
+            >
+              {manageOpen ? '▲ Categories' : '▾ Categories'}
+            </button>
+            <button
+              onClick={openNew}
+              className="bg-[#2F3E4E] text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-[#7A8F79] transition"
+            >
+              + Add FAQ Item
+            </button>
+          </div>
         )}
       </div>
+
+      {/* ── Category & Subcategory Manager ── */}
+      {manageOpen && !formOpen && (
+        <div className="border border-[#D9E1E8] rounded-xl p-5 bg-[#F9FAFB] space-y-4">
+          <p className="text-xs font-semibold uppercase tracking-widest text-[#7A8F79]">Manage Categories &amp; Subcategories</p>
+
+          <div className="space-y-2">
+            {allCategories.map(cat => {
+              const storedSubsForCat = allSubcategories[cat] || []
+              const inUse = items.some(i => i.category === cat)
+              const isExpanded = expandedCat === cat
+              return (
+                <div key={cat} className="border border-[#E8ECEA] rounded-lg overflow-hidden">
+                  {/* Category row */}
+                  <div className="flex items-center gap-2 px-3 py-2 bg-white">
+                    <button
+                      onClick={() => setExpandedCat(isExpanded ? null : cat)}
+                      className="flex-1 flex items-center gap-2 text-left"
+                    >
+                      <span className="text-xs text-[#C0C8C0]">{isExpanded ? '▾' : '▸'}</span>
+                      <span className="text-sm font-semibold text-[#2F3E4E]">{cat}</span>
+                      <span className="text-[10px] text-[#7A8F79]">
+                        {storedSubsForCat.length} subcategory{storedSubsForCat.length !== 1 ? 'ies' : 'y'} · {items.filter(i => i.category === cat).length} items
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => deleteCategory(cat)}
+                      disabled={inUse}
+                      title={inUse ? 'Category has FAQ items — delete them first' : 'Delete category'}
+                      className="text-xs text-red-400 hover:text-red-600 px-1.5 py-0.5 rounded transition disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  {/* Subcategories (expanded) */}
+                  {isExpanded && (
+                    <div className="border-t border-[#E8ECEA] px-4 py-3 bg-[#F9FAFB] space-y-2">
+                      {storedSubsForCat.length === 0 ? (
+                        <p className="text-xs italic text-[#7A8F79]">No subcategories yet.</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {storedSubsForCat.map(sub => {
+                            const subInUse = items.some(i => i.category === cat && i.subcategory === sub)
+                            return (
+                              <span
+                                key={sub}
+                                className="inline-flex items-center gap-1 border border-[#D9E1E8] rounded-full px-2.5 py-0.5 text-xs text-[#2F3E4E] bg-white"
+                              >
+                                {sub}
+                                <button
+                                  onClick={() => deleteSubcategory(cat, sub)}
+                                  disabled={subInUse}
+                                  title={subInUse ? 'Subcategory has FAQ items — delete them first' : 'Delete subcategory'}
+                                  className="text-red-400 hover:text-red-600 transition disabled:opacity-30 disabled:cursor-not-allowed leading-none"
+                                >
+                                  ✕
+                                </button>
+                              </span>
+                            )
+                          })}
+                        </div>
+                      )}
+                      {/* Add subcategory input */}
+                      <div className="flex gap-2 mt-1">
+                        <input
+                          type="text"
+                          value={newSubInputs[cat] || ''}
+                          onChange={e => setNewSubInputs(prev => ({ ...prev, [cat]: e.target.value }))}
+                          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSubcategory(cat) } }}
+                          placeholder="New subcategory name…"
+                          className="flex-1 border border-[#D9E1E8] rounded-lg px-2.5 py-1.5 text-xs text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                        />
+                        <button
+                          onClick={() => addSubcategory(cat)}
+                          className="bg-[#7A8F79] text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-[#2F3E4E] transition"
+                        >
+                          + Add
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Add new category */}
+          <div className="border-t border-[#E8ECEA] pt-4">
+            <p className="text-xs font-semibold text-[#7A8F79] mb-2 uppercase tracking-wide">Add New Category</p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newCatInput}
+                onChange={e => setNewCatInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCategory() } }}
+                placeholder="e.g. Payroll, Insurance…"
+                className="flex-1 border border-[#D9E1E8] rounded-lg px-2.5 py-1.5 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+              />
+              <button
+                onClick={addCategory}
+                className="bg-[#2F3E4E] text-white text-xs font-semibold px-4 py-1.5 rounded-lg hover:bg-[#7A8F79] transition"
+              >
+                + Add Category
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Editor form ── */}
       {formOpen && (
@@ -388,49 +633,107 @@ export default function FaqEditorSection() {
               ref={editorRef}
               contentEditable
               suppressContentEditableWarning
-              className="min-h-[120px] border border-[#D9E1E8] rounded-b-lg p-3 text-[#2F3E4E] text-sm focus:outline-none focus:ring-2 focus:ring-[#7A8F79] bg-white"
+              className="min-h-[120px] border border-[#D9E1E8] rounded-b-lg p-3 text-[#7A8F79] text-sm focus:outline-none focus:ring-2 focus:ring-[#7A8F79] bg-white"
             />
             <p className="text-[10px] text-[#7A8F79] mt-1">Keyboard shortcuts: ⌘/Ctrl+B bold · ⌘/Ctrl+I italic</p>
           </div>
 
-          {/* Category / Subtopic / Published */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+          {/* Category / Subcategory  |  Citations */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Left: category + subcategory stacked */}
+            <div className="space-y-2">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Category</label>
+                <select
+                  value={category}
+                  onChange={e => { setCategory(e.target.value); setSubcategory('') }}
+                  className="w-full h-10 border border-[#D9E1E8] px-2 rounded-lg text-[#2F3E4E] text-sm focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                >
+                  {allCategories.map(c => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">
+                  Subcategory <span className="normal-case font-normal">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  list="sub-suggestions"
+                  value={subcategory}
+                  onChange={e => setSubcategory(e.target.value)}
+                  placeholder="e.g. Medicaid, Anthem/BCBS"
+                  className="w-full h-10 border border-[#D9E1E8] px-2 rounded-lg text-[#2F3E4E] text-sm focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                />
+                <datalist id="sub-suggestions">
+                  {subSuggestions.map(s => <option key={s} value={s} />)}
+                </datalist>
+              </div>
+            </div>
+
+            {/* Right: citation section */}
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Category</label>
-              <select
-                value={category}
-                onChange={e => { setCategory(e.target.value); setSubcategory('') }}
-                className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] text-sm focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-              >
-                {FAQ_CATEGORIES.map(c => <option key={c}>{c}</option>)}
-              </select>
+              <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Citations</label>
+              <div className="border border-[#D9E1E8] rounded-lg p-3 bg-white space-y-2">
+                <input
+                  type="url"
+                  value={citationUrl}
+                  onChange={e => setCitationUrl(e.target.value)}
+                  placeholder="https://example.com/source"
+                  className="w-full h-8 border border-[#D9E1E8] px-2 rounded text-xs text-[#2F3E4E] focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
+                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={citationLabel}
+                    onChange={e => setCitationLabel(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCitation() } }}
+                    placeholder="Display name (e.g. CMS Guidelines)"
+                    className="flex-1 h-8 border border-[#D9E1E8] px-2 rounded text-xs text-[#2F3E4E] focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
+                  />
+                  <button
+                    type="button"
+                    onClick={addCitation}
+                    className="h-8 px-3 bg-[#7A8F79] text-white text-xs font-semibold rounded hover:bg-[#2F3E4E] transition shrink-0"
+                  >
+                    + Add
+                  </button>
+                </div>
+                {citations.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {citations.map((c, i) => (
+                      <span
+                        key={i}
+                        className="inline-flex items-center gap-1 border border-[#7A8F79] rounded-full px-2 py-0.5 text-[11px] text-[#7A8F79]"
+                      >
+                        {c.label}
+                        <button
+                          type="button"
+                          onClick={() => removeCitation(i)}
+                          className="text-red-400 hover:text-red-600 leading-none transition"
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {citations.length === 0 && (
+                  <p className="text-[10px] text-[#7A8F79] italic">No citations added — they appear as pill buttons at the end of the answer.</p>
+                )}
+              </div>
             </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">
-                Subtopic <span className="normal-case font-normal text-[#7A8F79]">(optional)</span>
-              </label>
-              <input
-                type="text"
-                list="sub-suggestions"
-                value={subcategory}
-                onChange={e => setSubcategory(e.target.value)}
-                placeholder="e.g. Medicaid, Anthem/BCBS"
-                className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] text-sm focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-              />
-              <datalist id="sub-suggestions">
-                {subSuggestions.map(s => <option key={s} value={s} />)}
-              </datalist>
-            </div>
-            <div className="flex items-center gap-2 pb-1">
-              <input
-                type="checkbox"
-                id="faq-pub"
-                checked={published}
-                onChange={e => setPublished(e.target.checked)}
-                className="accent-[#7A8F79]"
-              />
-              <label htmlFor="faq-pub" className="text-sm text-[#2F3E4E]">Published</label>
-            </div>
+          </div>
+
+          {/* Published toggle */}
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="faq-pub"
+              checked={published}
+              onChange={e => setPublished(e.target.checked)}
+              className="accent-[#7A8F79]"
+            />
+            <label htmlFor="faq-pub" className="text-sm text-[#2F3E4E]">Published</label>
           </div>
 
           <div className="flex gap-2 pt-1">

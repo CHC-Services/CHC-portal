@@ -26,9 +26,10 @@ function AccordionItem({ item }: { item: FaqItem }) {
       </button>
 
       {open && (
-        <div className="px-4 pb-4 pl-12 text-sm text-[#2F3E4E] leading-relaxed whitespace-pre-line">
-          {item.answer}
-        </div>
+        <div
+          className="px-4 pb-4 pl-12 text-sm text-[#7A8F79] leading-relaxed"
+          dangerouslySetInnerHTML={{ __html: item.answer }}
+        />
       )}
     </div>
   )

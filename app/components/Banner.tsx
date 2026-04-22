@@ -42,23 +42,15 @@ export default function Banner({ user }: BannerProps) {
             Sign Out
         </button>
     ) : (
-        <div className="flex items-center gap-2">
-            <Link
-                href="/signup"
-                className="text-medium font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition px-1"
-            >
-                New User?
-            </Link>
-            <Link
-                href="/login"
-                className="flex items-center gap-2 bg-[#7A8F79] text-white px-5 py-2 rounded-full hover:bg-[#657a64] transition text-sm font-semibold"
-            >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013 3v1" />
-                </svg>
-                <span><span className="italic text-[#D9E1E8]">my</span>Portal</span>
-            </Link>
-        </div>
+        <Link
+            href="/login"
+            className="flex items-center gap-2 bg-[#7A8F79] text-white px-5 py-2 rounded-full hover:bg-[#657a64] transition text-sm font-semibold shrink-0"
+        >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013 3v1" />
+            </svg>
+            <span><span className="italic text-[#D9E1E8]">my</span>Portal</span>
+        </Link>
     )
 
     // Desktop top-right area: clock + sign out (logged out shows nothing here)
@@ -147,9 +139,14 @@ export default function Banner({ user }: BannerProps) {
                 FAQ
             </Link>
             {!role && (
-                <Link href="/login" onClick={() => setMenuOpen(false)} className={`transition font-bold ${pathname === "/login" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
-                    <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Portal Login
-                </Link>
+                <>
+                    <Link href="/login" onClick={() => setMenuOpen(false)} className={`transition font-bold ${pathname === "/login" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                        <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Portal Login
+                    </Link>
+                    <Link href="/signup" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/signup" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                        New User? Sign Up
+                    </Link>
+                </>
             )}
             {role && (
                 <>

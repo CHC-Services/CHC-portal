@@ -26,7 +26,7 @@ export default function RotatingQuote({
 }: {
   interval?: number
   compact?: boolean
-  variant?: 'header'
+  variant?: 'header' | 'mobileBanner'
   className?: string
 }) {
   const [index, setIndex] = useState(() => Math.floor(Math.random() * QUOTES.length))
@@ -45,6 +45,19 @@ export default function RotatingQuote({
   }, [interval])
 
   const quote = QUOTES[index]
+
+  if (variant === 'mobileBanner') {
+    return (
+      <div className={`transition-opacity duration-300 ${className}`} style={{ opacity: visible ? 1 : 0 }}>
+        <p className="font-cormorant text-white text-base italic leading-snug">
+          &ldquo;{quote.text}&rdquo;
+        </p>
+        <p className="font-cormorant text-[#7A8F79] text-sm mt-1">
+          &mdash; {quote.author}
+        </p>
+      </div>
+    )
+  }
 
   if (variant === 'header') {
     return (

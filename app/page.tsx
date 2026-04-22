@@ -5,17 +5,6 @@ import Link from 'next/link'
 import RotatingQuote from './components/RotatingQuote'
 // import HomeDefinition from './components/HomeDefinition'
 
-async function getFaqs() {
-  try {
-    return await (prisma.faqItem as any).findMany({
-      where: { published: true },
-      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
-    })
-  } catch {
-    return []
-  }
-}
-
 async function getUser() {
   const cookieStore = await cookies()
   const token = cookieStore.get('auth_token')?.value
@@ -128,8 +117,6 @@ export default async function Home() {
   if (user?.role === 'nurse' && user.nurseProfileId) {
     nurseStats = await getNurseStats(user.nurseProfileId)
   }
-
-  const faqs: { id: string; question: string; answer: string; category: string; subcategory: string }[] = await getFaqs()
 
   return (
     <div className="min-h-screen bg-[#D9E1E8]">
@@ -266,63 +253,6 @@ export default async function Home() {
           <RotatingQuote compact />
         )}
 
-        {/* ── FAQ ── */}
-        {faqs.length > 0 && (() => {
-          // Group by category → subcategory, preserving sortOrder
-          const catOrder: string[] = []
-          const catMap = new Map<string, { subOrder: string[]; subMap: Map<string, typeof faqs> }>()
-          for (const faq of faqs) {
-            if (!catMap.has(faq.category)) {
-              catMap.set(faq.category, { subOrder: [], subMap: new Map() })
-              catOrder.push(faq.category)
-            }
-            const entry = catMap.get(faq.category)!
-            const subKey = faq.subcategory || ''
-            if (!entry.subMap.has(subKey)) {
-              entry.subMap.set(subKey, [])
-              entry.subOrder.push(subKey)
-            }
-            entry.subMap.get(subKey)!.push(faq)
-          }
-          return (
-            <div>
-              <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-4">Frequently Asked Questions</p>
-              <div className="space-y-6">
-                {catOrder.map(cat => {
-                  const entry = catMap.get(cat)!
-                  return (
-                    <div key={cat}>
-                      <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-2">{cat}</p>
-                      <div className="space-y-4">
-                        {entry.subOrder.map(sub => (
-                          <div key={sub || '__root__'}>
-                            {sub && (
-                              <p className="text-xs font-semibold text-[#7A8F79] italic mb-1.5 pl-1">{sub}</p>
-                            )}
-                            <div className="space-y-2">
-                              {entry.subMap.get(sub)!.map(faq => (
-                                <details key={faq.id} className="group bg-white rounded-xl shadow-sm border border-[#D9E1E8] overflow-hidden">
-                                  <summary className="flex items-center justify-between px-5 py-4 cursor-pointer list-none select-none font-semibold text-sm text-[#2F3E4E] hover:bg-[#F4F6F5] transition">
-                                    {faq.question}
-                                    <span className="text-[#7A8F79] text-lg ml-4 shrink-0 group-open:rotate-45 transition-transform">+</span>
-                                  </summary>
-                                  <div
-                                    className="px-5 pb-5 pt-2 text-sm text-[#2F3E4E] border-t border-[#D9E1E8] prose prose-sm max-w-none"
-                                    dangerouslySetInnerHTML={{ __html: faq.answer }}
-                                  />
-                                </details>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )
-        })()}
 
       </div>
     </div>

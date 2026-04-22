@@ -27,11 +27,12 @@ function buildGroups(items: FaqItem[]): CatGroup[] {
   const catOrder: string[] = []
   const catMap = new Map<string, { subOrder: string[]; subMap: Map<string, FaqItem[]> }>()
   for (const item of sorted) {
-    if (!catMap.has(item.category)) {
-      catMap.set(item.category, { subOrder: [], subMap: new Map() })
-      catOrder.push(item.category)
+    const primaryCat = parseCategories(item.category)[0]
+    if (!catMap.has(primaryCat)) {
+      catMap.set(primaryCat, { subOrder: [], subMap: new Map() })
+      catOrder.push(primaryCat)
     }
-    const entry = catMap.get(item.category)!
+    const entry = catMap.get(primaryCat)!
     const subKey = item.subcategory || ''
     if (!entry.subMap.has(subKey)) {
       entry.subMap.set(subKey, [])
@@ -64,6 +65,15 @@ function moveInArr<T>(arr: T[], from: number, to: number): T[] {
   return r
 }
 
+function parseCategories(raw: string): string[] {
+  try {
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : [raw]
+  } catch {
+    return [raw]
+  }
+}
+
 function TBtn({ onActivate, title, children }: { onActivate: () => void; title: string; children: React.ReactNode }) {
   return (
     <button
@@ -94,7 +104,7 @@ export default function FaqEditorSection() {
   const [formOpen, setFormOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [question, setQuestion] = useState('')
-  const [category, setCategory] = useState('General')
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(['General'])
   const [subcategory, setSubcategory] = useState('')
   const [published, setPublished] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -159,7 +169,7 @@ export default function FaqEditorSection() {
   }
 
   function deleteCategory(name: string) {
-    if (items.some(i => i.category === name)) {
+    if (items.some(i => parseCategories(i.category).includes(name))) {
       alert(`Cannot delete "${name}" — there are FAQ items using this category. Reassign or delete them first.`)
       return
     }
@@ -181,7 +191,7 @@ export default function FaqEditorSection() {
   }
 
   function deleteSubcategory(cat: string, sub: string) {
-    if (items.some(i => i.category === cat && i.subcategory === sub)) {
+    if (items.some(i => parseCategories(i.category).includes(cat) && i.subcategory === sub)) {
       alert(`Cannot delete "${sub}" — there are FAQ items using this subcategory. Reassign or delete them first.`)
       return
     }
@@ -253,10 +263,18 @@ export default function FaqEditorSection() {
   }
 
   // ── Form open/close ─────────────────────────────────────────────────────────
+  function toggleCategory(cat: string) {
+    setSelectedCategories(prev =>
+      prev.includes(cat)
+        ? prev.length > 1 ? prev.filter(c => c !== cat) : prev
+        : [...prev, cat]
+    )
+  }
+
   function openNew() {
     setEditingId(null)
     setQuestion('')
-    setCategory(allCategories[0] || 'General')
+    setSelectedCategories([allCategories[0] || 'General'])
     setSubcategory('')
     setPublished(true)
     setCitations([])
@@ -269,7 +287,7 @@ export default function FaqEditorSection() {
   function openEdit(item: FaqItem) {
     setEditingId(item.id)
     setQuestion(item.question)
-    setCategory(item.category)
+    setSelectedCategories(parseCategories(item.category))
     setSubcategory(item.subcategory || '')
     setPublished(item.published)
     setCitationUrl('')
@@ -291,7 +309,7 @@ export default function FaqEditorSection() {
     if (!question.trim() || !bodyHtml) return
     setSaving(true)
     const answer = bodyHtml + buildCitationHtml(citations)
-    const body = { question, answer, category, subcategory: subcategory.trim(), published }
+    const body = { question, answer, category: JSON.stringify(selectedCategories), subcategory: subcategory.trim(), published }
     if (editingId) {
       await fetch(`/api/faq/${editingId}`, {
         method: 'PATCH',
@@ -394,9 +412,11 @@ export default function FaqEditorSection() {
     }
   }
 
-  // Subcategory suggestions: stored subs for this category + any used in existing items
-  const storedSubs = allSubcategories[category] || []
-  const itemSubs = items.filter(i => i.category === category && i.subcategory).map(i => i.subcategory)
+  // Subcategory suggestions: stored subs for all selected categories + any used in existing items
+  const storedSubs = selectedCategories.flatMap(c => allSubcategories[c] || [])
+  const itemSubs = items
+    .filter(i => selectedCategories.some(c => parseCategories(i.category).includes(c)) && i.subcategory)
+    .map(i => i.subcategory)
   const subSuggestions = [...new Set([...storedSubs, ...itemSubs])]
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -440,7 +460,7 @@ export default function FaqEditorSection() {
           <div className="space-y-2">
             {allCategories.map(cat => {
               const storedSubsForCat = allSubcategories[cat] || []
-              const inUse = items.some(i => i.category === cat)
+              const inUse = items.some(i => parseCategories(i.category).includes(cat))
               const isExpanded = expandedCat === cat
               return (
                 <div key={cat} className="border border-[#E8ECEA] rounded-lg overflow-hidden">
@@ -453,7 +473,7 @@ export default function FaqEditorSection() {
                       <span className="text-xs text-[#C0C8C0]">{isExpanded ? '▾' : '▸'}</span>
                       <span className="text-sm font-semibold text-[#2F3E4E]">{cat}</span>
                       <span className="text-[10px] text-[#7A8F79]">
-                        {storedSubsForCat.length} subcategory{storedSubsForCat.length !== 1 ? 'ies' : 'y'} · {items.filter(i => i.category === cat).length} items
+                        {storedSubsForCat.length} subcategory{storedSubsForCat.length !== 1 ? 'ies' : 'y'} · {items.filter(i => parseCategories(i.category).includes(cat)).length} items
                       </span>
                     </button>
                     <button
@@ -643,14 +663,22 @@ export default function FaqEditorSection() {
             {/* Left: category + subcategory stacked */}
             <div className="space-y-2">
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Category</label>
-                <select
-                  value={category}
-                  onChange={e => { setCategory(e.target.value); setSubcategory('') }}
-                  className="w-full h-10 border border-[#D9E1E8] px-2 rounded-lg text-[#2F3E4E] text-sm focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-                >
-                  {allCategories.map(c => <option key={c}>{c}</option>)}
-                </select>
+                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">
+                  Category <span className="normal-case font-normal">(select one or more)</span>
+                </label>
+                <div className="border border-[#D9E1E8] rounded-lg p-2 bg-white max-h-36 overflow-y-auto space-y-1">
+                  {allCategories.map(c => (
+                    <label key={c} className="flex items-center gap-2 px-1 py-0.5 rounded cursor-pointer hover:bg-[#F4F6F5] transition">
+                      <input
+                        type="checkbox"
+                        checked={selectedCategories.includes(c)}
+                        onChange={() => toggleCategory(c)}
+                        className="accent-[#7A8F79]"
+                      />
+                      <span className="text-sm text-[#2F3E4E]">{c}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">
@@ -818,6 +846,9 @@ export default function FaqEditorSection() {
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 flex-wrap">
                                     <p className="text-sm font-semibold text-[#2F3E4E] truncate">{item.question}</p>
+                                    {parseCategories(item.category).length > 1 && parseCategories(item.category).slice(1).map(c => (
+                                      <span key={c} className="text-[10px] bg-[#E8F0E8] text-[#7A8F79] border border-[#D9E1E8] px-1.5 py-0.5 rounded font-semibold shrink-0">{c}</span>
+                                    ))}
                                     {!item.published && (
                                       <span className="text-[10px] uppercase tracking-wide bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-semibold shrink-0">Draft</span>
                                     )}

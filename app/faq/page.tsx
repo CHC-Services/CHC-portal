@@ -10,6 +10,19 @@ type FaqItem = {
   sortOrder: number
 }
 
+function parseCategories(raw: string): string[] {
+  try {
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : [raw]
+  } catch {
+    return [raw]
+  }
+}
+
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
 function AccordionItem({ item }: { item: FaqItem }) {
   const [open, setOpen] = useState(false)
 
@@ -39,6 +52,7 @@ export default function FaqPage() {
   const [items, setItems] = useState<FaqItem[]>([])
   const [loading, setLoading] = useState(true)
   const [activeCategory, setActiveCategory] = useState('All')
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     fetch('/api/faq')
@@ -49,17 +63,44 @@ export default function FaqPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  const categories = ['All', ...Array.from(new Set(items.map(i => i.category)))]
+  // Collect all unique categories across all items (multi-category aware)
+  const categories = ['All', ...Array.from(
+    new Set(items.flatMap(i => parseCategories(i.category)))
+  )]
 
+  // Filter by search first
+  const searchLower = search.toLowerCase()
+  const searchFiltered = search
+    ? items.filter(i =>
+        i.question.toLowerCase().includes(searchLower) ||
+        stripHtml(i.answer).toLowerCase().includes(searchLower)
+      )
+    : items
+
+  // Then filter by category (item matches if any of its categories match)
   const filtered = activeCategory === 'All'
-    ? items
-    : items.filter(i => i.category === activeCategory)
+    ? searchFiltered
+    : searchFiltered.filter(i => parseCategories(i.category).includes(activeCategory))
 
-  const grouped = filtered.reduce<Record<string, FaqItem[]>>((acc, item) => {
-    if (!acc[item.category]) acc[item.category] = []
-    acc[item.category].push(item)
-    return acc
-  }, {})
+  // Group into category buckets — each item appears under every category it belongs to
+  const groupOrder: string[] = []
+  const groupMap: Record<string, FaqItem[]> = {}
+
+  if (search) {
+    // When searching, show a single flat group labelled by the search term
+    groupOrder.push('Search Results')
+    groupMap['Search Results'] = filtered
+  } else {
+    for (const item of filtered) {
+      const cats = activeCategory === 'All'
+        ? parseCategories(item.category)
+        : [activeCategory]
+      for (const cat of cats) {
+        if (!groupMap[cat]) { groupMap[cat] = []; groupOrder.push(cat) }
+        if (!groupMap[cat].includes(item)) groupMap[cat].push(item)
+      }
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#D9E1E8]">
@@ -76,13 +117,33 @@ export default function FaqPage() {
           <p className="mt-3 text-[#D9E1E8] text-sm max-w-xl leading-relaxed">
             Find answers to common questions about billing, enrollment, claims, and working with Coming Home Care.
           </p>
+
+          {/* Search bar */}
+          <div className="mt-6 relative max-w-xl">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7A8F79] text-sm pointer-events-none">🔍</span>
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search questions and answers…"
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm text-[#2F3E4E] bg-white border border-white/20 focus:outline-none focus:ring-2 focus:ring-[#7A8F79] placeholder-[#aab]"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#7A8F79] hover:text-[#2F3E4E] text-xs font-semibold transition"
+              >
+                ✕ Clear
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
       <div className="max-w-3xl mx-auto px-6 md:px-10 py-8">
 
-        {/* Category filter tabs */}
-        {categories.length > 2 && (
+        {/* Category filter tabs — hidden while searching */}
+        {!search && categories.length > 2 && (
           <div className="flex flex-wrap gap-2 mb-6">
             {categories.map(cat => (
               <button
@@ -106,16 +167,20 @@ export default function FaqPage() {
           <div className="bg-white rounded-2xl shadow-sm p-8 text-center">
             <p className="text-[#7A8F79] text-sm">No questions have been added yet. Check back soon.</p>
           </div>
+        ) : filtered.length === 0 ? (
+          <div className="bg-white rounded-2xl shadow-sm p-8 text-center">
+            <p className="text-[#7A8F79] text-sm">No results for &ldquo;{search}&rdquo;. Try different keywords.</p>
+          </div>
         ) : (
           <div className="space-y-6">
-            {Object.entries(grouped).map(([category, catItems]) => (
-              <div key={category} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            {groupOrder.map(cat => (
+              <div key={cat} className="bg-white rounded-2xl shadow-sm overflow-hidden">
                 <div className="px-4 py-3 bg-[#F4F6F5] border-b border-[#D9E1E8]">
-                  <h2 className="text-xs font-bold uppercase tracking-widest text-[#7A8F79]">{category}</h2>
+                  <h2 className="text-xs font-bold uppercase tracking-widest text-[#7A8F79]">{cat}</h2>
                 </div>
                 <div className="px-0">
-                  {catItems.map(item => (
-                    <AccordionItem key={item.id} item={item} />
+                  {groupMap[cat].map(item => (
+                    <AccordionItem key={`${cat}-${item.id}`} item={item} />
                   ))}
                 </div>
               </div>

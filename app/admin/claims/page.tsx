@@ -7,7 +7,7 @@ import { payCycleDateLabel } from '../../../lib/medicaidPayCycle'
 // Auto-advances to nextRef when a complete date (YYYY-MM-DD) is typed
 const SmartDateInput = React.forwardRef<
   HTMLInputElement,
-  React.InputHTMLAttributes<HTMLInputElement> & {
+  Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> & {
     value: string
     onChange: (val: string) => void
     nextRef?: React.RefObject<HTMLInputElement | null>

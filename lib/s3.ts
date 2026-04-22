@@ -69,10 +69,23 @@ export async function getPresignedPost(
  * Default expiry: 15 minutes. The URL grants read access to that one object
  * and expires automatically — no permanent public access is ever granted.
  */
-export async function getPresignedDownloadUrl(key: string, expiresInSeconds = 900): Promise<string> {
+export async function getPresignedDownloadUrl(
+  key: string,
+  expiresInSeconds = 900,
+  options: { contentType?: string; fileName?: string; inline?: boolean } = {},
+): Promise<string> {
+  const disposition = options.fileName
+    ? `${options.inline ? 'inline' : 'attachment'}; filename="${options.fileName.replace(/"/g, '')}"`
+    : options.inline ? 'inline' : undefined
+
   return getSignedUrl(
     s3Presign,
-    new GetObjectCommand({ Bucket: BUCKET, Key: key }),
+    new GetObjectCommand({
+      Bucket: BUCKET,
+      Key: key,
+      ...(options.contentType ? { ResponseContentType: options.contentType } : {}),
+      ...(disposition        ? { ResponseContentDisposition: disposition }   : {}),
+    }),
     { expiresIn: expiresInSeconds },
   )
 }

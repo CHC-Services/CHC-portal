@@ -20,7 +20,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const doc = await prisma.nurseDocument.findUnique({ where: { id } })
   if (!doc) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const url = await getPresignedDownloadUrl(doc.storageKey)
+  const url = await getPresignedDownloadUrl(doc.storageKey, 900, {
+    contentType: doc.mimeType || undefined,
+    fileName: doc.fileName,
+    inline: true,
+  })
   return NextResponse.json({ url })
 }
 

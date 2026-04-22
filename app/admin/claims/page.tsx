@@ -1,8 +1,32 @@
 'use client'
 
-import { useState, useEffect, useRef, Fragment } from 'react'
+import React, { useState, useEffect, useRef, Fragment } from 'react'
 import AdminNav from '../../components/AdminNav'
 import { payCycleDateLabel } from '../../../lib/medicaidPayCycle'
+
+// Auto-advances to nextRef when a complete date (YYYY-MM-DD) is typed
+const SmartDateInput = React.forwardRef<
+  HTMLInputElement,
+  React.InputHTMLAttributes<HTMLInputElement> & {
+    value: string
+    onChange: (val: string) => void
+    nextRef?: React.RefObject<HTMLInputElement | null>
+  }
+>(({ value, onChange, nextRef, ...props }, ref) => (
+  <input
+    ref={ref}
+    type="date"
+    value={value}
+    {...props}
+    onChange={e => {
+      onChange(e.target.value)
+      if (e.target.value.length === 10 && nextRef?.current) {
+        setTimeout(() => nextRef.current!.focus(), 10)
+      }
+    }}
+  />
+))
+SmartDateInput.displayName = 'SmartDateInput'
 
 type EobDoc = {
   id: string
@@ -231,6 +255,21 @@ export default function AdminClaimsPage() {
   const [medicaidSelectedCodes, setMedicaidSelectedCodes] = useState<string[]>([])
   const [medicaidCodeInput, setMedicaidCodeInput] = useState('')
   const [medicaidCodeSuggestions, setMedicaidCodeSuggestions] = useState<{ code: string; description: string }[]>([])
+
+  // Provider autocomplete keyboard nav
+  const [activeSuggestionIdx, setActiveSuggestionIdx] = useState(0)
+
+  // Date field refs for auto-advance (commercial)
+  const submitDateRef   = useRef<HTMLInputElement>(null)
+  const dosStartRef     = useRef<HTMLInputElement>(null)
+  const dosStopRef      = useRef<HTMLInputElement>(null)
+  const primPaidDateRef = useRef<HTMLInputElement>(null)
+  const secPaidDateRef  = useRef<HTMLInputElement>(null)
+  const finalDateRef    = useRef<HTMLInputElement>(null)
+  // Date field refs for auto-advance (medicaid)
+  const mDosStartRef  = useRef<HTMLInputElement>(null)
+  const mDosStopRef   = useRef<HTMLInputElement>(null)
+  const mProcessedRef = useRef<HTMLInputElement>(null)
 
   // EDI upload state
   const [ediDragging, setEdiDragging] = useState(false)
@@ -474,6 +513,7 @@ export default function AdminClaimsPage() {
   function handleProviderInput(val: string) {
     setProviderInput(val)
     setSelectedNurseId(null)
+    setActiveSuggestionIdx(0)
     if (!val.trim()) { setProviderSuggestions([]); return }
     const q = val.toLowerCase()
     const matches = nurses.filter(n =>
@@ -489,6 +529,24 @@ export default function AdminClaimsPage() {
     setAddForm(f => ({ ...f, providerName: nurse.displayName }))
     setMedicaidForm(f => ({ ...f, nurseId: nurse.id }))
     setProviderSuggestions([])
+    setActiveSuggestionIdx(0)
+  }
+
+  function handleProviderKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!providerSuggestions.length) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setActiveSuggestionIdx(i => Math.min(i + 1, providerSuggestions.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveSuggestionIdx(i => Math.max(i - 1, 0))
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      const target = providerSuggestions[activeSuggestionIdx] ?? providerSuggestions[0]
+      if (target) selectNurse(target)
+    } else if (e.key === 'Escape') {
+      setProviderSuggestions([])
+    }
   }
 
   function handleMedicaidCodeInput(val: string) {
@@ -1354,6 +1412,7 @@ export default function AdminClaimsPage() {
                     placeholder="Type to search providers…"
                     value={providerInput}
                     onChange={e => handleProviderInput(e.target.value)}
+                    onKeyDown={handleProviderKeyDown}
                     autoComplete="off"
                     className={`w-full border rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] ${selectedNurseId ? 'border-[#7A8F79] bg-green-50' : 'border-[#D9E1E8]'}`}
                   />
@@ -1362,16 +1421,17 @@ export default function AdminClaimsPage() {
                   )}
                   {providerSuggestions.length > 0 && (
                     <div className="absolute z-10 mt-1 w-full bg-white border border-[#D9E1E8] rounded-xl shadow-lg overflow-hidden">
-                      {providerSuggestions.map(n => (
+                      {providerSuggestions.map((n, i) => (
                         <button
                           key={n.id}
                           type="button"
                           onMouseDown={() => selectNurse(n)}
-                          className="w-full text-left px-4 py-2.5 text-sm hover:bg-[#f4f6f8] transition"
+                          onMouseEnter={() => setActiveSuggestionIdx(i)}
+                          className={`w-full text-left px-4 py-2.5 text-sm transition ${i === activeSuggestionIdx ? 'bg-[#2F3E4E] text-white' : 'hover:bg-[#f4f6f8]'}`}
                         >
-                          <span className="font-semibold text-[#2F3E4E]">{n.displayName}</span>
+                          <span className="font-semibold">{n.displayName}</span>
                           {n.providerAliases.length > 0 && (
-                            <span className="text-[#7A8F79] text-xs ml-2">{n.providerAliases.join(', ')}</span>
+                            <span className={`text-xs ml-2 ${i === activeSuggestionIdx ? 'text-[#D9E1E8]' : 'text-[#7A8F79]'}`}>{n.providerAliases.join(', ')}</span>
                           )}
                         </button>
                       ))}
@@ -1403,17 +1463,17 @@ export default function AdminClaimsPage() {
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Submit Date</label>
-                    <input type="date" value={addForm.submitDate || ''} onChange={e => setAddForm(f => ({ ...f, submitDate: e.target.value }))}
+                    <SmartDateInput ref={submitDateRef} nextRef={dosStartRef} value={addForm.submitDate || ''} onChange={v => setAddForm(f => ({ ...f, submitDate: v }))}
                       className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">DOS Start</label>
-                    <input type="date" value={addForm.dosStart || ''} onChange={e => setAddForm(f => ({ ...f, dosStart: e.target.value }))}
+                    <SmartDateInput ref={dosStartRef} nextRef={dosStopRef} value={addForm.dosStart || ''} onChange={v => setAddForm(f => ({ ...f, dosStart: v }))}
                       className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">DOS Stop</label>
-                    <input type="date" value={addForm.dosStop || ''} onChange={e => setAddForm(f => ({ ...f, dosStop: e.target.value }))}
+                    <SmartDateInput ref={dosStopRef} value={addForm.dosStop || ''} onChange={v => setAddForm(f => ({ ...f, dosStop: v }))}
                       className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
                   </div>
                   <div>
@@ -1445,7 +1505,7 @@ export default function AdminClaimsPage() {
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Paid Date</label>
-                    <input type="date" value={addForm.primaryPaidDate || ''} onChange={e => setAddForm(f => ({ ...f, primaryPaidDate: e.target.value }))}
+                    <SmartDateInput ref={primPaidDateRef} nextRef={secPaidDateRef} value={addForm.primaryPaidDate || ''} onChange={v => setAddForm(f => ({ ...f, primaryPaidDate: v }))}
                       className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
                   </div>
                   <div>
@@ -1477,7 +1537,7 @@ export default function AdminClaimsPage() {
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Paid Date</label>
-                    <input type="date" value={addForm.secondaryPaidDate || ''} onChange={e => setAddForm(f => ({ ...f, secondaryPaidDate: e.target.value }))}
+                    <SmartDateInput ref={secPaidDateRef} nextRef={finalDateRef} value={addForm.secondaryPaidDate || ''} onChange={v => setAddForm(f => ({ ...f, secondaryPaidDate: v }))}
                       className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
                   </div>
                   <div>
@@ -1504,7 +1564,7 @@ export default function AdminClaimsPage() {
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Date Fully Finalized</label>
-                    <input type="date" value={addForm.dateFullyFinalized || ''} onChange={e => setAddForm(f => ({ ...f, dateFullyFinalized: e.target.value }))}
+                    <SmartDateInput ref={finalDateRef} value={addForm.dateFullyFinalized || ''} onChange={v => setAddForm(f => ({ ...f, dateFullyFinalized: v }))}
                       className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
                   </div>
                   <div className="col-span-3">
@@ -1540,12 +1600,12 @@ export default function AdminClaimsPage() {
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">DOS Start <span className="text-red-500">*</span></label>
-                    <input type="date" value={medicaidForm.dosStart || ''} onChange={e => setMedicaidForm(f => ({ ...f, dosStart: e.target.value }))}
+                    <SmartDateInput ref={mDosStartRef} nextRef={mDosStopRef} value={medicaidForm.dosStart || ''} onChange={v => setMedicaidForm(f => ({ ...f, dosStart: v }))}
                       className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">DOS Stop <span className="text-red-500">*</span></label>
-                    <input type="date" value={medicaidForm.dosStop || ''} onChange={e => setMedicaidForm(f => ({ ...f, dosStop: e.target.value }))}
+                    <SmartDateInput ref={mDosStopRef} nextRef={mProcessedRef} value={medicaidForm.dosStop || ''} onChange={v => setMedicaidForm(f => ({ ...f, dosStop: v }))}
                       className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
                   </div>
                   <div>
@@ -1555,7 +1615,7 @@ export default function AdminClaimsPage() {
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Processed Date</label>
-                    <input type="date" value={medicaidForm.processedDate || ''} onChange={e => setMedicaidForm(f => ({ ...f, processedDate: e.target.value }))}
+                    <SmartDateInput ref={mProcessedRef} value={medicaidForm.processedDate || ''} onChange={v => setMedicaidForm(f => ({ ...f, processedDate: v }))}
                       className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
                   </div>
                   <div>

@@ -19,7 +19,7 @@ const QUOTES = [
 ]
 
 export default function RotatingQuote({
-  interval = 8000,
+  interval = 90000,
   compact = false,
   variant,
   className = '',
@@ -49,7 +49,7 @@ export default function RotatingQuote({
   if (variant === 'mobileBanner') {
     return (
       <div className={`transition-opacity duration-300 ${className}`} style={{ opacity: visible ? 1 : 0 }}>
-        <p className="font-cormorant text-white text-base italic leading-snug">
+        <p className="font-cormorant font-semibold text-white text-base italic leading-snug">
           &ldquo;{quote.text}&rdquo;
         </p>
         <p className="font-cormorant text-[#7A8F79] text-sm mt-1">
@@ -63,7 +63,7 @@ export default function RotatingQuote({
     return (
       <div className={`flex flex-col justify-center text-right ${className}`}>
         <div className="transition-opacity duration-300" style={{ opacity: visible ? 1 : 0 }}>
-          <p className="font-cormorant text-[#2F3E4E] text-base leading-snug">
+          <p className="font-cormorant font-semibold text-[#2F3E4E] text-base leading-snug">
             &ldquo;{quote.text}&rdquo;
           </p>
           <p className="font-cormorant text-[#7A8F79] text-sm uppercase tracking-widest mt-1">
@@ -81,7 +81,7 @@ export default function RotatingQuote({
           className="transition-opacity duration-300"
           style={{ opacity: visible ? 1 : 0 }}
         >
-          <p className="font-cormorant text-[#D9E1E8] text-lg italic leading-snug">
+          <p className="font-cormorant font-semibold text-[#D9E1E8] text-lg italic leading-snug">
             &ldquo;{quote.text}&rdquo;
           </p>
           <p className="font-cormorant text-[#7A8F79] text-base mt-2">
@@ -98,7 +98,7 @@ export default function RotatingQuote({
         className="transition-opacity duration-300"
         style={{ opacity: visible ? 1 : 0 }}
       >
-        <p className="font-cormorant text-[#D9E1E8] text-xl italic leading-snug max-w-xl mx-auto">
+        <p className="font-cormorant font-semibold text-[#D9E1E8] text-xl italic leading-snug max-w-xl mx-auto">
           &ldquo;{quote.text}&rdquo;
         </p>
         <p className="font-cormorant text-[#7A8F79] ml-48 text-lg mt-4">

@@ -1186,9 +1186,12 @@ export default function AdminClaimsPage() {
                               <div key={eob.id} className="flex items-center gap-1">
                                 <button
                                   onClick={async () => {
-                                    const res = await fetch(`/api/admin/documents/${eob.id}`, { credentials: 'include' })
-                                    const data = await res.json()
-                                    if (data.url) window.open(data.url, '_blank')
+                                    const win = window.open('', '_blank')
+                                    try {
+                                      const res = await fetch(`/api/admin/documents/${eob.id}`, { credentials: 'include' })
+                                      const data = await res.json()
+                                      if (data.url && win) { win.location.href = data.url } else { win?.close() }
+                                    } catch { win?.close() }
                                   }}
                                   title={eob.fileName}
                                   className="text-[10px] font-semibold text-green-700 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded hover:bg-green-100 transition whitespace-nowrap"
@@ -1378,9 +1381,12 @@ export default function AdminClaimsPage() {
                                   <div key={eob.id} className="flex items-center gap-1">
                                     <button
                                       onClick={async () => {
-                                        const r = await fetch(`/api/admin/documents/${eob.id}/url`, { credentials: 'include' })
-                                        const d = await r.json()
-                                        if (d.url) window.open(d.url, '_blank')
+                                        const win = window.open('', '_blank')
+                                        try {
+                                          const r = await fetch(`/api/admin/documents/${eob.id}`, { credentials: 'include' })
+                                          const d = await r.json()
+                                          if (d.url && win) { win.location.href = d.url } else { win?.close() }
+                                        } catch { win?.close() }
                                       }}
                                       title={eob.fileName}
                                       className="text-[10px] font-semibold text-green-700 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded hover:bg-green-100 transition whitespace-nowrap"

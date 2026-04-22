@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, Fragment } from 'react'
 import AdminNav from '../../components/AdminNav'
+import { payCycleDateLabel } from '../../../lib/medicaidPayCycle'
 
 type EobDoc = {
   id: string
@@ -207,11 +208,29 @@ export default function AdminClaimsPage() {
   const [editVal, setEditVal] = useState('')
   const [editVal2, setEditVal2] = useState('') // used for dosStop when editing dosStart
 
+  // Nurse roster for provider autocomplete
+  type NurseOption = { id: string; displayName: string; providerAliases: string[] }
+  const [nurses, setNurses] = useState<NurseOption[]>([])
+
   // Add Claim modal
   const [showAddModal, setShowAddModal] = useState(false)
+  const [addClaimType, setAddClaimType] = useState<'commercial' | 'medicaid'>('commercial')
   const [addForm, setAddForm] = useState<Record<string, string>>({ claimStage: 'Draft' })
   const [adding, setAdding] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
+
+  // Provider autocomplete
+  const [providerInput, setProviderInput] = useState('')
+  const [providerSuggestions, setProviderSuggestions] = useState<NurseOption[]>([])
+  const [selectedNurseId, setSelectedNurseId] = useState<string | null>(null)
+  const providerRef = useRef<HTMLDivElement>(null)
+
+  // Medicaid add form
+  const [medicaidForm, setMedicaidForm] = useState<Record<string, string>>({})
+  const [medicaidStatusCodes, setMedicaidStatusCodes] = useState<{ code: string; description: string }[]>([])
+  const [medicaidSelectedCodes, setMedicaidSelectedCodes] = useState<string[]>([])
+  const [medicaidCodeInput, setMedicaidCodeInput] = useState('')
+  const [medicaidCodeSuggestions, setMedicaidCodeSuggestions] = useState<{ code: string; description: string }[]>([])
 
   // EDI upload state
   const [ediDragging, setEdiDragging] = useState(false)
@@ -371,6 +390,16 @@ export default function AdminClaimsPage() {
     loadClaims()
     loadEobs()
     loadReminders()
+    fetch('/api/admin/nurses', { credentials: 'include' })
+      .then(r => r.json())
+      .then((data: any[]) => {
+        if (Array.isArray(data)) setNurses(data.map(n => ({ id: n.id, displayName: n.displayName, providerAliases: n.providerAliases || [] })))
+      })
+      .catch(() => {})
+    fetch('/api/admin/medicaid/status-codes', { credentials: 'include' })
+      .then(r => r.json())
+      .then((data: any[]) => { if (Array.isArray(data)) setMedicaidStatusCodes(data) })
+      .catch(() => {})
   }, [])
 
   async function toggleBulkMode() {
@@ -432,15 +461,89 @@ export default function AdminClaimsPage() {
 
   function openAddModal() {
     setAddForm({ claimStage: 'Draft' })
+    setMedicaidForm({})
+    setMedicaidSelectedCodes([])
+    setMedicaidCodeInput('')
+    setProviderInput('')
+    setSelectedNurseId(null)
+    setProviderSuggestions([])
     setAddError(null)
     setShowAddModal(true)
   }
 
+  function handleProviderInput(val: string) {
+    setProviderInput(val)
+    setSelectedNurseId(null)
+    if (!val.trim()) { setProviderSuggestions([]); return }
+    const q = val.toLowerCase()
+    const matches = nurses.filter(n =>
+      n.displayName.toLowerCase().includes(q) ||
+      n.providerAliases.some(a => a.toLowerCase().includes(q))
+    ).slice(0, 6)
+    setProviderSuggestions(matches)
+  }
+
+  function selectNurse(nurse: NurseOption) {
+    setProviderInput(nurse.displayName)
+    setSelectedNurseId(nurse.id)
+    setAddForm(f => ({ ...f, providerName: nurse.displayName }))
+    setMedicaidForm(f => ({ ...f, nurseId: nurse.id }))
+    setProviderSuggestions([])
+  }
+
+  function handleMedicaidCodeInput(val: string) {
+    setMedicaidCodeInput(val)
+    if (!val.trim()) { setMedicaidCodeSuggestions([]); return }
+    const q = val.toLowerCase()
+    const suggestions = medicaidStatusCodes.filter(c =>
+      c.code.toLowerCase().includes(q) || c.description.toLowerCase().includes(q)
+    ).slice(0, 6)
+    setMedicaidCodeSuggestions(suggestions)
+  }
+
+  function addMedicaidCode(code: string) {
+    if (!medicaidSelectedCodes.includes(code)) setMedicaidSelectedCodes(prev => [...prev, code])
+    setMedicaidCodeInput('')
+    setMedicaidCodeSuggestions([])
+  }
+
   async function submitClaim(e: React.FormEvent) {
     e.preventDefault()
-    if (!addForm.providerName?.trim()) { setAddError('Provider name is required.'); return }
     setAdding(true)
     setAddError(null)
+
+    if (addClaimType === 'medicaid') {
+      if (!selectedNurseId) { setAddError('Please select a provider from the suggestions.'); setAdding(false); return }
+      if (!medicaidForm.patientCtrlNum?.trim()) { setAddError('Patient Ctrl # is required.'); setAdding(false); return }
+      if (!medicaidForm.dosStart || !medicaidForm.dosStop) { setAddError('DOS Start and Stop are required.'); setAdding(false); return }
+      if (!medicaidForm.totalCharge) { setAddError('Total Charge is required.'); setAdding(false); return }
+      const payload = {
+        nurseId: selectedNurseId,
+        patientCtrlNum: medicaidForm.patientCtrlNum,
+        payerCtrlNum: medicaidForm.payerCtrlNum || null,
+        dosStart: medicaidForm.dosStart,
+        dosStop: medicaidForm.dosStop,
+        totalCharge: parseFloat(medicaidForm.totalCharge),
+        paidAmount: medicaidForm.paidAmount ? parseFloat(medicaidForm.paidAmount) : null,
+        processedDate: medicaidForm.processedDate || null,
+        statusCodes: medicaidSelectedCodes,
+        estPayCycle: medicaidForm.estPayCycle ? parseInt(medicaidForm.estPayCycle) : null,
+        notes: medicaidForm.notes || null,
+      }
+      const res = await fetch('/api/admin/medicaid/claims', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json()
+      if (!res.ok) { setAddError(data.error || 'Failed to create Medicaid claim.'); setAdding(false); return }
+      setShowAddModal(false)
+      setAdding(false)
+      return
+    }
+
+    if (!addForm.providerName?.trim()) { setAddError('Provider name is required.'); setAdding(false); return }
     const res = await fetch('/api/admin/claims', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1215,27 +1318,75 @@ export default function AdminClaimsPage() {
               <button onClick={() => setShowAddModal(false)} className="text-[#7A8F79] hover:text-[#2F3E4E] text-xl leading-none">✕</button>
             </div>
 
+            {/* Claim type toggle */}
+            <div className="flex border-b border-[#D9E1E8]">
+              <button
+                type="button"
+                onClick={() => setAddClaimType('commercial')}
+                className={`flex-1 px-4 py-3 text-sm font-semibold transition ${addClaimType === 'commercial' ? 'bg-[#2F3E4E] text-white' : 'text-[#7A8F79] hover:bg-[#f4f6f8]'}`}
+              >
+                Commercial / Insurance
+              </button>
+              <button
+                type="button"
+                onClick={() => setAddClaimType('medicaid')}
+                className={`flex-1 px-4 py-3 text-sm font-semibold transition border-l border-[#D9E1E8] ${addClaimType === 'medicaid' ? 'bg-[#2F3E4E] text-white' : 'text-[#7A8F79] hover:bg-[#f4f6f8]'}`}
+              >
+                Medicaid
+              </button>
+            </div>
+
             <form onSubmit={submitClaim} className="px-6 py-5 space-y-6">
 
               {addError && (
                 <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-2">{addError}</div>
               )}
 
+              {/* Provider autocomplete — shared by both claim types */}
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-[#7A8F79] mb-3">Provider</p>
+                <div ref={providerRef} className="relative max-w-xs">
+                  <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">
+                    Provider Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Type to search providers…"
+                    value={providerInput}
+                    onChange={e => handleProviderInput(e.target.value)}
+                    autoComplete="off"
+                    className={`w-full border rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] ${selectedNurseId ? 'border-[#7A8F79] bg-green-50' : 'border-[#D9E1E8]'}`}
+                  />
+                  {selectedNurseId && (
+                    <span className="absolute right-2 top-8 text-green-600 text-xs font-semibold">✓ matched</span>
+                  )}
+                  {providerSuggestions.length > 0 && (
+                    <div className="absolute z-10 mt-1 w-full bg-white border border-[#D9E1E8] rounded-xl shadow-lg overflow-hidden">
+                      {providerSuggestions.map(n => (
+                        <button
+                          key={n.id}
+                          type="button"
+                          onMouseDown={() => selectNurse(n)}
+                          className="w-full text-left px-4 py-2.5 text-sm hover:bg-[#f4f6f8] transition"
+                        >
+                          <span className="font-semibold text-[#2F3E4E]">{n.displayName}</span>
+                          {n.providerAliases.length > 0 && (
+                            <span className="text-[#7A8F79] text-xs ml-2">{n.providerAliases.join(', ')}</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ── COMMERCIAL FORM ── */}
+              {addClaimType === 'commercial' && <>
+
               {/* Provider + Claim ID + Stage */}
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-[#7A8F79] mb-3">Claim Info</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-[#7A8F79] mb-3 border-t border-[#D9E1E8] pt-4">Claim Info</p>
                 <div className="grid grid-cols-3 gap-4">
-                  <div className="col-span-1">
-                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Provider Name <span className="text-red-500">*</span></label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Janine Barone"
-                      value={addForm.providerName || ''}
-                      onChange={e => setAddForm(f => ({ ...f, providerName: e.target.value }))}
-                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-                    />
-                  </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Claim ID</label>
                     <input type="text" value={addForm.claimId || ''} onChange={e => setAddForm(f => ({ ...f, claimId: e.target.value }))}
@@ -1363,6 +1514,116 @@ export default function AdminClaimsPage() {
                   </div>
                 </div>
               </div>
+
+              </>}
+
+              {/* ── MEDICAID FORM ── */}
+              {addClaimType === 'medicaid' && <>
+
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-[#7A8F79] mb-3 border-t border-[#D9E1E8] pt-4">Claim Details</p>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Patient Ctrl # <span className="text-red-500">*</span></label>
+                    <input type="text" value={medicaidForm.patientCtrlNum || ''} onChange={e => setMedicaidForm(f => ({ ...f, patientCtrlNum: e.target.value }))}
+                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Payer Ctrl #</label>
+                    <input type="text" value={medicaidForm.payerCtrlNum || ''} onChange={e => setMedicaidForm(f => ({ ...f, payerCtrlNum: e.target.value }))}
+                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Total Charge <span className="text-red-500">*</span></label>
+                    <input type="number" step="0.01" min="0" value={medicaidForm.totalCharge || ''} onChange={e => setMedicaidForm(f => ({ ...f, totalCharge: e.target.value }))}
+                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">DOS Start <span className="text-red-500">*</span></label>
+                    <input type="date" value={medicaidForm.dosStart || ''} onChange={e => setMedicaidForm(f => ({ ...f, dosStart: e.target.value }))}
+                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">DOS Stop <span className="text-red-500">*</span></label>
+                    <input type="date" value={medicaidForm.dosStop || ''} onChange={e => setMedicaidForm(f => ({ ...f, dosStop: e.target.value }))}
+                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Paid Amount</label>
+                    <input type="number" step="0.01" min="0" value={medicaidForm.paidAmount || ''} onChange={e => setMedicaidForm(f => ({ ...f, paidAmount: e.target.value }))}
+                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Processed Date</label>
+                    <input type="date" value={medicaidForm.processedDate || ''} onChange={e => setMedicaidForm(f => ({ ...f, processedDate: e.target.value }))}
+                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Est. Pay Cycle #</label>
+                    <input type="number" step="1" min="0" value={medicaidForm.estPayCycle || ''} onChange={e => setMedicaidForm(f => ({ ...f, estPayCycle: e.target.value }))}
+                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                    {medicaidForm.estPayCycle && !isNaN(parseInt(medicaidForm.estPayCycle)) && (
+                      <p className="text-xs text-[#7A8F79] mt-1">→ {payCycleDateLabel(parseInt(medicaidForm.estPayCycle))}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Codes */}
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-[#7A8F79] mb-3 border-t border-[#D9E1E8] pt-4">Claim Status Codes</p>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Type code or description…"
+                    value={medicaidCodeInput}
+                    onChange={e => handleMedicaidCodeInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        const match = medicaidStatusCodes.find(c => c.code.toLowerCase() === medicaidCodeInput.toLowerCase())
+                        if (match) addMedicaidCode(match.code)
+                        else if (medicaidCodeInput.trim()) addMedicaidCode(medicaidCodeInput.trim().toUpperCase())
+                      }
+                    }}
+                    className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                  />
+                  {medicaidCodeSuggestions.length > 0 && (
+                    <div className="absolute z-10 mt-1 w-full bg-white border border-[#D9E1E8] rounded-xl shadow-lg overflow-hidden">
+                      {medicaidCodeSuggestions.map(c => (
+                        <button
+                          key={c.code}
+                          type="button"
+                          onMouseDown={() => addMedicaidCode(c.code)}
+                          className="w-full text-left px-4 py-2.5 text-sm hover:bg-[#f4f6f8] transition"
+                        >
+                          <span className="font-semibold text-[#2F3E4E]">{c.code}</span>
+                          <span className="text-[#7A8F79] text-xs ml-2 line-clamp-1">{c.description}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {medicaidSelectedCodes.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {medicaidSelectedCodes.map(code => (
+                      <span key={code} className="flex items-center gap-1 bg-blue-50 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full">
+                        {code}
+                        <button type="button" onClick={() => setMedicaidSelectedCodes(prev => prev.filter(c => c !== code))} className="text-blue-400 hover:text-blue-700 leading-none ml-0.5">✕</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Notes */}
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-[#7A8F79] mb-3 border-t border-[#D9E1E8] pt-4">Notes</p>
+                <textarea rows={2} value={medicaidForm.notes || ''} onChange={e => setMedicaidForm(f => ({ ...f, notes: e.target.value }))}
+                  className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] resize-none" />
+              </div>
+
+              </>}
 
               {/* Actions */}
               <div className="flex justify-end gap-3 border-t border-[#D9E1E8] pt-5">

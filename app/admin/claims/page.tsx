@@ -1169,7 +1169,7 @@ export default function AdminClaimsPage() {
                   <th className="px-4 py-3">Notes</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#D9E1E8]">
+              <tbody className="divide-y divide-[#D9E1E8] text-[#2F3E4E]">
                 {groupClaims(filtered).map(({ primary: c, originals }) => {
                   const isExpanded = expandedOriginals.has(c.id)
                   const toggleOriginals = () => setExpandedOriginals(prev => {

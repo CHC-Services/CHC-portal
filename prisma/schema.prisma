@@ -411,6 +411,7 @@ model Claim {
   primaryPaidAmt      Float?
   primaryPaidDate     DateTime?
   primaryPaidTo       String?
+  primaryCheckNum     String?
 
   // Secondary Insurance
   secondaryPayer      String?
@@ -418,6 +419,7 @@ model Claim {
   secondaryPaidAmt    Float?
   secondaryPaidDate   DateTime?
   secondaryPaidTo     String?
+  secondaryCheckNum   String?
 
   // Summary
   totalReimbursed    Float?
@@ -515,4 +517,18 @@ model MedicaidStatusCode {
   code        String   @id
   description String
   createdAt   DateTime @default(now())
+}
+
+model ClaimAuditLog {
+  id              String   @id @default(uuid())
+  claimType       String   // 'commercial' | 'medicaid'
+  commercialId    String?  // Claim.id when claimType = 'commercial'
+  medicaidId      String?  // MedicaidClaim.id when claimType = 'medicaid'
+  snapshot        Json     // full field values at time of save
+  savedAt         DateTime @default(now())
+  savedBy         String   // admin user id
+
+  @@index([commercialId])
+  @@index([medicaidId])
+  @@index([savedAt])
 }

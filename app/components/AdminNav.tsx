@@ -6,14 +6,12 @@ import { usePathname } from 'next/navigation'
 const links = [
   { prefix: 'ad', label: 'Roster',    href: '/admin' },
   { prefix: 'ad', label: 'Claims',    href: '/admin/claims' },
-  { prefix: 'ad', label: 'Medicaid',  href: '/admin/medicaid' },
-  { prefix: 'ad', label: 'Billing',   href: '/admin/billing' },
+  { prefix: 'ad', label: 'Hours',     href: '/admin/hours' },
   { prefix: 'ad', label: 'Invoicing', href: '/admin/invoicing' },
   { prefix: 'ad', label: 'Calendar',  href: '/admin/calendar' },
   { prefix: 'ad', label: 'Docs',      href: '/admin/documents' },
   { prefix: 'ad', label: 'Messaging', href: '/admin/email' },
   { prefix: 'ad', label: 'FAQ',       href: '/admin/faq' },
-  { prefix: 'my', label: 'Ideas',     href: '/admin/ideas' },
   { prefix: 'ad', label: 'Backups',   href: '/admin/backups' },
   { prefix: '',   label: 'Add Provider', href: '/admin#add-provider' },
 ]

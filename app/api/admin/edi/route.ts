@@ -160,13 +160,12 @@ export async function POST(req: NextRequest) {
     claimsUnmatched: unmatched.length,
   }
 
-  // Send summary email (fire-and-forget — don't block the response)
-  sendEdiSummaryEmail({
+  await sendEdiSummaryEmail({
     unmatched: unmatchedDetail,
     matched,
     summary: summaryPayload,
     dryRun,
-  }).catch(() => {})
+  })
 
   return NextResponse.json({
     summary: summaryPayload,

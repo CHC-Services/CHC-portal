@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, Fragment, useMemo } from 'react'
 import AdminNav from '../../components/AdminNav'
-import { payCycleDateLabel } from '../../../lib/medicaidPayCycle'
+import { payCycleDateLabel, calcMedicaidCycleInfo } from '../../../lib/medicaidPayCycle'
 
 // 3-segment MM / DD / YYYY date input.
 // Auto-advances: MM→DD on 2 digits, DD→YYYY on 2 digits, YYYY→nextRef on 4 digits.
@@ -146,8 +146,9 @@ type MedicaidClaimRow = {
   totalCharge: number
   paidAmount: number | null
   processedDate: string | null
-  statusCodes: string[]
   estPayCycle: number | null
+  depositDate: string | null
+  statusCodes: string[]
   notes: string | null
   nurse?: { displayName: string; accountNumber?: string | null }
 }
@@ -201,8 +202,9 @@ type MedicaidFormState = {
   totalCharge: string
   paidAmount: string
   processedDate: string
-  statusCodes: string[]
   estPayCycle: string
+  depositDate: string
+  statusCodes: string[]
   notes: string
 }
 
@@ -398,8 +400,9 @@ function initMedicaidForm(c: MedicaidClaimRow): MedicaidFormState {
     totalCharge: String(c.totalCharge),
     paidAmount: c.paidAmount != null ? String(c.paidAmount) : '',
     processedDate: toDateStr(c.processedDate),
-    statusCodes: [...(c.statusCodes || [])],
     estPayCycle: c.estPayCycle != null ? String(c.estPayCycle) : '',
+    depositDate: toDateStr(c.depositDate),
+    statusCodes: [...(c.statusCodes || [])],
     notes: c.notes || '',
   }
 }
@@ -507,8 +510,9 @@ function ClaimDetailModal({
               totalCharge: mForm.totalCharge,
               paidAmount: mForm.paidAmount || null,
               processedDate: mForm.processedDate || null,
-              statusCodes: mForm.statusCodes,
               estPayCycle: mForm.estPayCycle || null,
+              depositDate: mForm.depositDate || null,
+              statusCodes: mForm.statusCodes,
               notes: mForm.notes || null,
             }),
           })
@@ -542,6 +546,14 @@ function ClaimDetailModal({
       .catch(() => {})
       .finally(() => setAuditLoading(false))
   }, [activeTab])
+
+  // Auto-calculate pay cycle and deposit date from Proc Date
+  useEffect(() => {
+    if (claim._type !== 'medicaid' || !mForm.processedDate) return
+    const info = calcMedicaidCycleInfo(mForm.processedDate)
+    if (!info) return
+    setMForm(f => ({ ...f, estPayCycle: String(info.cycle), depositDate: info.depositDateStr }))
+  }, [mForm.processedDate])
 
   function handleMCodeInput(val: string) {
     setMCodeInput(val)
@@ -780,14 +792,21 @@ function ClaimDetailModal({
                     <input type="number" step="0.01" className={inp} value={mForm.paidAmount} onChange={e => setMForm(f => ({ ...f, paidAmount: e.target.value }))} />
                   </div>
                   <div>
-                    <label className={lbl}>Processed Date</label>
+                    <label className={lbl}>Proc Date <span className="text-[#7A8F79] font-normal normal-case">(auto-calcs cycle &amp; deposit)</span></label>
                     <input type="date" className={inp} value={mForm.processedDate} onChange={e => setMForm(f => ({ ...f, processedDate: e.target.value }))} />
                   </div>
                   <div>
-                    <label className={lbl}>Est. Pay Cycle #</label>
-                    <input type="number" step="1" className={inp} value={mForm.estPayCycle} onChange={e => setMForm(f => ({ ...f, estPayCycle: e.target.value }))} />
+                    <label className={lbl}>Pay Cycle #</label>
+                    <input type="number" step="1" className={`${inp} bg-[#f8faf8]`} value={mForm.estPayCycle} onChange={e => setMForm(f => ({ ...f, estPayCycle: e.target.value }))} placeholder="Auto from Proc Date" />
                     {mForm.estPayCycle && !isNaN(parseInt(mForm.estPayCycle)) && (
-                      <p className="text-xs text-[#7A8F79] mt-1">→ {payCycleDateLabel(parseInt(mForm.estPayCycle))}</p>
+                      <p className="text-xs text-[#7A8F79] mt-1">Deposits {payCycleDateLabel(parseInt(mForm.estPayCycle))}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className={lbl}>Deposit Date</label>
+                    <input type="date" className={`${inp} bg-[#f8faf8]`} value={mForm.depositDate} onChange={e => setMForm(f => ({ ...f, depositDate: e.target.value }))} placeholder="Auto from Proc Date" />
+                    {mForm.depositDate && (
+                      <p className="text-xs text-[#7A8F79] mt-1">Thu · {new Date(mForm.depositDate + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</p>
                     )}
                   </div>
                 </div>
@@ -2011,8 +2030,14 @@ export default function AdminClaimsPage() {
                       <input type="number" step="0.01" min="0" value={addForm.primaryPaidAmt || ''} onChange={e => setAddForm(f => ({ ...f, primaryPaidAmt: e.target.value }))} className={fi} />
                     </div>
                     <div>
-                      <label className={lbl}>Paid Date</label>
+                      <label className={lbl}>{primaryIsMedicaid ? 'Proc Date' : 'Paid Date'}</label>
                       <SmartDateInput key={`${modalResetKey}-primPaid`} ref={primPaidDateRef} nextRef={primaryIsMedicaid ? finalDateRef : secPaidDateRef} value={addForm.primaryPaidDate || ''} onChange={v => setAddForm(f => ({ ...f, primaryPaidDate: v }))} />
+                      {primaryIsMedicaid && addForm.primaryPaidDate && (() => {
+                        const info = calcMedicaidCycleInfo(addForm.primaryPaidDate)
+                        return info ? (
+                          <p className="text-xs text-[#7A8F79] mt-1">Cycle {info.cycle} · Deposits {new Date(info.depositDateStr + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</p>
+                        ) : null
+                      })()}
                     </div>
                     <div>
                       <label className={lbl}>Paid To</label>
@@ -2058,16 +2083,14 @@ export default function AdminClaimsPage() {
                       </div>
                       {secondaryIsMedicaid && (
                         <div>
-                          <label className={lbl}>Est. Pay Cycle #</label>
-                          <input
-                            type="number" step="1" min="0"
-                            value={addPayCycle}
-                            onChange={e => setAddPayCycle(e.target.value)}
-                            className={fi}
-                          />
-                          {addPayCycle && !isNaN(parseInt(addPayCycle)) && (
-                            <p className="text-xs text-[#7A8F79] mt-1">→ {payCycleDateLabel(parseInt(addPayCycle))}</p>
-                          )}
+                          <label className={lbl}>Paid Date</label>
+                          <SmartDateInput key={`${modalResetKey}-secPaidMed`} value={addForm.secondaryPaidDate || ''} onChange={v => setAddForm(f => ({ ...f, secondaryPaidDate: v }))} />
+                          {addForm.secondaryPaidDate && (() => {
+                            const info = calcMedicaidCycleInfo(addForm.secondaryPaidDate)
+                            return info ? (
+                              <p className="text-xs text-[#7A8F79] mt-1">Cycle {info.cycle} · Deposits {new Date(info.depositDateStr + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</p>
+                            ) : null
+                          })()}
                         </div>
                       )}
                     </div>

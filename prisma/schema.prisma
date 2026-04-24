@@ -501,8 +501,9 @@ model MedicaidClaim {
   totalCharge    Float
   paidAmount     Float?
   processedDate  DateTime?
-  statusCodes    String[]  @default([])
   estPayCycle    Int?
+  depositDate    DateTime?
+  statusCodes    String[]  @default([])
   notes          String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt

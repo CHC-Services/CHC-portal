@@ -28,7 +28,7 @@ export async function POST(req: Request) {
   if (!adminOnly(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { nurseId, patientCtrlNum, payerCtrlNum, dosStart, dosStop, totalCharge, paidAmount, processedDate, statusCodes, estPayCycle, notes } = body
+  const { nurseId, patientCtrlNum, payerCtrlNum, dosStart, dosStop, totalCharge, paidAmount, processedDate, statusCodes, estPayCycle, depositDate, notes } = body
 
   if (!nurseId || !patientCtrlNum || !dosStart || !dosStop || totalCharge == null) {
     return NextResponse.json({ error: 'nurseId, patientCtrlNum, dosStart, dosStop, and totalCharge are required.' }, { status: 400 })
@@ -44,8 +44,9 @@ export async function POST(req: Request) {
       totalCharge:    parseFloat(totalCharge),
       paidAmount:     paidAmount != null ? parseFloat(paidAmount) : null,
       processedDate:  processedDate ? new Date(processedDate) : null,
-      statusCodes:    Array.isArray(statusCodes) ? statusCodes : [],
       estPayCycle:    estPayCycle ? parseInt(estPayCycle) : null,
+      depositDate:    depositDate ? new Date(depositDate) : null,
+      statusCodes:    Array.isArray(statusCodes) ? statusCodes : [],
       notes:          notes?.trim() || null,
     },
   })

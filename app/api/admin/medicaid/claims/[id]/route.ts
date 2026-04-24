@@ -24,8 +24,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (body.totalCharge    !== undefined) data.totalCharge    = parseFloat(body.totalCharge)
   if (body.paidAmount     !== undefined) data.paidAmount     = body.paidAmount != null && body.paidAmount !== '' ? parseFloat(body.paidAmount) : null
   if (body.processedDate  !== undefined) data.processedDate  = body.processedDate ? new Date(body.processedDate) : null
-  if (body.statusCodes    !== undefined) data.statusCodes    = body.statusCodes
   if (body.estPayCycle    !== undefined) data.estPayCycle    = body.estPayCycle ? parseInt(body.estPayCycle) : null
+  if (body.depositDate    !== undefined) data.depositDate    = body.depositDate ? new Date(body.depositDate) : null
+  if (body.statusCodes    !== undefined) data.statusCodes    = body.statusCodes
   if (body.notes          !== undefined) data.notes          = body.notes?.trim() || null
 
   const claim = await (prisma.medicaidClaim.update as any)({ where: { id }, data })

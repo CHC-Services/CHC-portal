@@ -31,6 +31,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  if (!process.env.RESEND_API_KEY) {
+    return NextResponse.json({ error: 'RESEND_API_KEY is not configured in environment variables.' }, { status: 500 })
+  }
+
   const { template } = await req.json()
 
   // Resolve the admin's actual email for preview delivery
@@ -46,6 +50,7 @@ export async function POST(req: Request) {
 
   let ok = false
 
+  try {
   switch (template) {
     case 'welcome_admin': {
       ok = await sendWelcomeEmail({
@@ -267,7 +272,13 @@ export async function POST(req: Request) {
     default:
       return NextResponse.json({ error: 'Unknown template' }, { status: 400 })
   }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    return NextResponse.json({ error: `Preview error: ${msg}` }, { status: 500 })
+  }
 
   if (ok) return NextResponse.json({ sent: true, to })
-  return NextResponse.json({ error: 'Send failed — check RESEND_API_KEY and logs.' }, { status: 500 })
+  return NextResponse.json({
+    error: `Resend delivery failed for "${template}". Verify RESEND_API_KEY is valid and ${to} is reachable via your Resend domain.`,
+  }, { status: 500 })
 }

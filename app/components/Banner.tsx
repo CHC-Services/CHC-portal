@@ -102,11 +102,8 @@ export default function Banner({ user }: BannerProps) {
             <Link href="/admin/faq" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/admin/faq" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>ad</span>FAQ
             </Link>
-            <Link href="/admin/messages" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/admin/messages" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
-                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>ad</span>Alerts
-            </Link>
             <Link href="/admin/email" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/admin/email" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
-                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>ad</span>Email
+                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>ad</span>Messaging
             </Link>
             <Link href="/admin/ideas" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/admin/ideas" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Ideas

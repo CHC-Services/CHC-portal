@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef, Fragment } from 'react'
+import React, { useState, useEffect, useRef, Fragment, useMemo } from 'react'
 import AdminNav from '../../components/AdminNav'
 import { payCycleDateLabel } from '../../../lib/medicaidPayCycle'
 
@@ -97,6 +97,8 @@ const SmartDateInput = React.forwardRef<
 })
 SmartDateInput.displayName = 'SmartDateInput'
 
+// ─── Types ───────────────────────────────────────────────────────────────────
+
 type EobDoc = {
   id: string
   fileName: string
@@ -104,7 +106,7 @@ type EobDoc = {
   nurseId: string
 }
 
-type Claim = {
+type CommercialClaim = {
   id: string
   nurseId: string
   claimId: string | null
@@ -119,11 +121,13 @@ type Claim = {
   primaryPaidAmt: number | null
   primaryPaidDate: string | null
   primaryPaidTo: string | null
+  primaryCheckNum: string | null
   secondaryPayer: string | null
   secondaryAllowedAmt: number | null
   secondaryPaidAmt: number | null
   secondaryPaidDate: string | null
   secondaryPaidTo: string | null
+  secondaryCheckNum: string | null
   totalReimbursed: number | null
   remainingBalance: number | null
   dateFullyFinalized: string | null
@@ -131,6 +135,78 @@ type Claim = {
   processingNotes: string | null
   nurse: { displayName: string; accountNumber: string | null }
 }
+
+type MedicaidClaimRow = {
+  id: string
+  nurseId: string
+  patientCtrlNum: string
+  payerCtrlNum: string | null
+  dosStart: string | null
+  dosStop: string | null
+  totalCharge: number
+  paidAmount: number | null
+  processedDate: string | null
+  statusCodes: string[]
+  estPayCycle: number | null
+  notes: string | null
+  nurse?: { displayName: string; accountNumber?: string | null }
+}
+
+type UnifiedClaim =
+  | (CommercialClaim & { _type: 'commercial' })
+  | (MedicaidClaimRow & { _type: 'medicaid' })
+
+type AuditLog = {
+  id: string
+  claimType: string
+  commercialId: string | null
+  medicaidId: string | null
+  snapshot: Record<string, unknown>
+  savedAt: string
+  savedBy: string
+}
+
+type CommercialFormState = {
+  claimId: string
+  providerName: string
+  dosStart: string
+  dosStop: string
+  totalBilled: string
+  claimStage: string
+  submitDate: string
+  primaryPayer: string
+  primaryAllowedAmt: string
+  primaryPaidAmt: string
+  primaryPaidDate: string
+  primaryPaidTo: string
+  primaryCheckNum: string
+  secondaryPayer: string
+  secondaryAllowedAmt: string
+  secondaryPaidAmt: string
+  secondaryPaidDate: string
+  secondaryPaidTo: string
+  secondaryCheckNum: string
+  totalReimbursed: string
+  remainingBalance: string
+  dateFullyFinalized: string
+  resubmissionOf: string
+  processingNotes: string
+}
+
+type MedicaidFormState = {
+  patientCtrlNum: string
+  payerCtrlNum: string
+  dosStart: string
+  dosStop: string
+  totalCharge: string
+  paidAmount: string
+  processedDate: string
+  statusCodes: string[]
+  estPayCycle: string
+  notes: string
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function fmt(val: number | null, prefix = '') {
   if (val == null) return '—'
@@ -156,6 +232,19 @@ function fmtDOS(start: string | null, stop: string | null): string {
   if (s.getUTCMonth() !== e.getUTCMonth()) return `${monDay(s)}–${monDay(e)}, ${yr(e)}`
   return `${mon(s)} ${day(s)}–${day(e)}, ${yr(s)}`
 }
+
+function toDateStr(val: string | null): string {
+  if (!val) return ''
+  const d = new Date(val)
+  if (isNaN(d.getTime())) return ''
+  return d.toISOString().slice(0, 10)
+}
+
+function isMedicaidPayer(payer: string | null): boolean {
+  return !!payer && payer.toLowerCase().includes('medicaid')
+}
+
+// ─── Components ──────────────────────────────────────────────────────────────
 
 function StageBadge({ stage }: { stage: string | null }) {
   if (!stage) return <span className="text-[#7A8F79] text-xs">—</span>
@@ -200,16 +289,15 @@ function parseCSV(text: string): Record<string, string>[] {
   })
 }
 
-type ClaimGroup = { primary: Claim; originals: Claim[] }
+type ClaimGroup = { primary: CommercialClaim; originals: CommercialClaim[] }
 
-function groupClaims(claims: Claim[]): ClaimGroup[] {
+function groupClaims(claims: CommercialClaim[]): ClaimGroup[] {
   const superseded = new Set(claims.filter(c => c.resubmissionOf).map(c => c.resubmissionOf!))
   const byClaimId = new Map(claims.filter(c => c.claimId).map(c => [c.claimId!, c]))
   const groups: ClaimGroup[] = []
   for (const c of claims) {
     if (superseded.has(c.claimId || '')) continue
-    // Follow the full resubmission chain: direct original → its original → etc.
-    const originals: Claim[] = []
+    const originals: CommercialClaim[] = []
     let current = c
     const seen = new Set<string>()
     while (current.resubmissionOf && byClaimId.has(current.resubmissionOf) && !seen.has(current.resubmissionOf)) {
@@ -223,7 +311,7 @@ function groupClaims(claims: Claim[]): ClaimGroup[] {
   return groups
 }
 
-function LinkButton({ claim, onLinked }: { claim: Claim; onLinked: () => void }) {
+function LinkButton({ claim, onLinked }: { claim: CommercialClaim; onLinked: () => void }) {
   const [open, setOpen] = useState(false)
   const [value, setValue] = useState(claim.resubmissionOf || '')
   const [saving, setSaving] = useState(false)
@@ -270,8 +358,594 @@ function LinkButton({ claim, onLinked }: { claim: Claim; onLinked: () => void })
   )
 }
 
+// ─── Form Initializers ────────────────────────────────────────────────────────
+
+function initCommercialForm(c: CommercialClaim): CommercialFormState {
+  return {
+    claimId: c.claimId || '',
+    providerName: c.providerName || '',
+    dosStart: toDateStr(c.dosStart),
+    dosStop: toDateStr(c.dosStop),
+    totalBilled: c.totalBilled != null ? String(c.totalBilled) : '',
+    claimStage: c.claimStage || '',
+    submitDate: toDateStr(c.submitDate),
+    primaryPayer: c.primaryPayer || '',
+    primaryAllowedAmt: c.primaryAllowedAmt != null ? String(c.primaryAllowedAmt) : '',
+    primaryPaidAmt: c.primaryPaidAmt != null ? String(c.primaryPaidAmt) : '',
+    primaryPaidDate: toDateStr(c.primaryPaidDate),
+    primaryPaidTo: c.primaryPaidTo || '',
+    primaryCheckNum: c.primaryCheckNum || '',
+    secondaryPayer: c.secondaryPayer || '',
+    secondaryAllowedAmt: c.secondaryAllowedAmt != null ? String(c.secondaryAllowedAmt) : '',
+    secondaryPaidAmt: c.secondaryPaidAmt != null ? String(c.secondaryPaidAmt) : '',
+    secondaryPaidDate: toDateStr(c.secondaryPaidDate),
+    secondaryPaidTo: c.secondaryPaidTo || '',
+    secondaryCheckNum: c.secondaryCheckNum || '',
+    totalReimbursed: c.totalReimbursed != null ? String(c.totalReimbursed) : '',
+    remainingBalance: c.remainingBalance != null ? String(c.remainingBalance) : '',
+    dateFullyFinalized: toDateStr(c.dateFullyFinalized),
+    resubmissionOf: c.resubmissionOf || '',
+    processingNotes: c.processingNotes || '',
+  }
+}
+
+function initMedicaidForm(c: MedicaidClaimRow): MedicaidFormState {
+  return {
+    patientCtrlNum: c.patientCtrlNum || '',
+    payerCtrlNum: c.payerCtrlNum || '',
+    dosStart: toDateStr(c.dosStart),
+    dosStop: toDateStr(c.dosStop),
+    totalCharge: String(c.totalCharge),
+    paidAmount: c.paidAmount != null ? String(c.paidAmount) : '',
+    processedDate: toDateStr(c.processedDate),
+    statusCodes: [...(c.statusCodes || [])],
+    estPayCycle: c.estPayCycle != null ? String(c.estPayCycle) : '',
+    notes: c.notes || '',
+  }
+}
+
+// ─── ClaimDetailModal ─────────────────────────────────────────────────────────
+
+function ClaimDetailModal({
+  claim,
+  eobDocs,
+  uploading,
+  deletingId,
+  medicaidStatusCodes,
+  onClose,
+  onSaved,
+  onEobUpload,
+  onEobDelete,
+  onReloadClaims,
+}: {
+  claim: UnifiedClaim
+  eobDocs: EobDoc[]
+  uploading: boolean
+  deletingId: string | null
+  medicaidStatusCodes: { code: string; description: string }[]
+  onClose: () => void
+  onSaved: (updated: UnifiedClaim) => void
+  onEobUpload: (file: File) => void
+  onEobDelete: (docId: string) => void
+  onReloadClaims: () => void
+}) {
+  const [activeTab, setActiveTab] = useState<'details' | 'eobs' | 'history'>('details')
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
+  const [auditLoading, setAuditLoading] = useState(false)
+  const [mCodeInput, setMCodeInput] = useState('')
+  const [mCodeSuggestions, setMCodeSuggestions] = useState<{ code: string; description: string }[]>([])
+
+  const [cForm, setCForm] = useState<CommercialFormState>(() =>
+    initCommercialForm(claim as CommercialClaim)
+  )
+  const [mForm, setMForm] = useState<MedicaidFormState>(() =>
+    initMedicaidForm(claim as MedicaidClaimRow)
+  )
+  const [originalJSON] = useState(() =>
+    claim._type === 'commercial'
+      ? JSON.stringify(initCommercialForm(claim as CommercialClaim))
+      : JSON.stringify(initMedicaidForm(claim as MedicaidClaimRow))
+  )
+
+  async function handleClose() {
+    if (saveStatus === 'saving') return
+    const changed = claim._type === 'commercial'
+      ? JSON.stringify(cForm) !== originalJSON
+      : JSON.stringify(mForm) !== originalJSON
+    if (changed) {
+      setSaveStatus('saving')
+      try {
+        if (claim._type === 'commercial') {
+          const res = await fetch(`/api/admin/claims/${claim.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              claimId: cForm.claimId || null,
+              providerName: cForm.providerName || null,
+              dosStart: cForm.dosStart || null,
+              dosStop: cForm.dosStop || null,
+              totalBilled: cForm.totalBilled || null,
+              claimStage: cForm.claimStage || null,
+              submitDate: cForm.submitDate || null,
+              primaryPayer: cForm.primaryPayer || null,
+              primaryAllowedAmt: cForm.primaryAllowedAmt || null,
+              primaryPaidAmt: cForm.primaryPaidAmt || null,
+              primaryPaidDate: cForm.primaryPaidDate || null,
+              primaryPaidTo: cForm.primaryPaidTo || null,
+              primaryCheckNum: cForm.primaryCheckNum || null,
+              secondaryPayer: cForm.secondaryPayer || null,
+              secondaryAllowedAmt: cForm.secondaryAllowedAmt || null,
+              secondaryPaidAmt: cForm.secondaryPaidAmt || null,
+              secondaryPaidDate: cForm.secondaryPaidDate || null,
+              secondaryPaidTo: cForm.secondaryPaidTo || null,
+              secondaryCheckNum: cForm.secondaryCheckNum || null,
+              totalReimbursed: cForm.totalReimbursed || null,
+              remainingBalance: cForm.remainingBalance || null,
+              dateFullyFinalized: cForm.dateFullyFinalized || null,
+              resubmissionOf: cForm.resubmissionOf || null,
+              processingNotes: cForm.processingNotes || null,
+            }),
+          })
+          if (res.ok) {
+            setSaveStatus('saved')
+            onSaved({ ...claim, ...cForm } as unknown as UnifiedClaim)
+          } else {
+            setSaveStatus('error')
+          }
+        } else {
+          const res = await fetch(`/api/admin/medicaid/claims/${claim.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              patientCtrlNum: mForm.patientCtrlNum,
+              payerCtrlNum: mForm.payerCtrlNum || null,
+              dosStart: mForm.dosStart || null,
+              dosStop: mForm.dosStop || null,
+              totalCharge: mForm.totalCharge,
+              paidAmount: mForm.paidAmount || null,
+              processedDate: mForm.processedDate || null,
+              statusCodes: mForm.statusCodes,
+              estPayCycle: mForm.estPayCycle || null,
+              notes: mForm.notes || null,
+            }),
+          })
+          if (res.ok) {
+            setSaveStatus('saved')
+            onSaved({ ...claim, ...mForm, statusCodes: mForm.statusCodes } as unknown as UnifiedClaim)
+          } else {
+            setSaveStatus('error')
+          }
+        }
+      } catch {
+        setSaveStatus('error')
+      }
+    }
+    onClose()
+  }
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') handleClose() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [cForm, mForm, originalJSON, saveStatus])
+
+  useEffect(() => {
+    if (activeTab !== 'history') return
+    setAuditLoading(true)
+    const param = claim._type === 'commercial' ? `commercialId=${claim.id}` : `medicaidId=${claim.id}`
+    fetch(`/api/admin/claims/audit?${param}`, { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setAuditLogs(data) })
+      .catch(() => {})
+      .finally(() => setAuditLoading(false))
+  }, [activeTab])
+
+  function handleMCodeInput(val: string) {
+    setMCodeInput(val)
+    if (!val.trim()) { setMCodeSuggestions([]); return }
+    const q = val.toLowerCase()
+    setMCodeSuggestions(medicaidStatusCodes.filter(c =>
+      c.code.toLowerCase().includes(q) || c.description.toLowerCase().includes(q)
+    ).slice(0, 6))
+  }
+
+  function addMCode(code: string) {
+    if (!mForm.statusCodes.includes(code)) setMForm(f => ({ ...f, statusCodes: [...f.statusCodes, code] }))
+    setMCodeInput('')
+    setMCodeSuggestions([])
+  }
+
+  function removeMCode(code: string) {
+    setMForm(f => ({ ...f, statusCodes: f.statusCodes.filter(c => c !== code) }))
+  }
+
+  const inp = 'w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]'
+  const lbl = 'block text-xs font-semibold text-[#2F3E4E] mb-1'
+  const sec = 'text-xs font-bold uppercase tracking-widest text-[#7A8F79] mb-3 border-t border-[#D9E1E8] pt-4'
+
+  const isMed = claim._type === 'commercial' && isMedicaidPayer(cForm.primaryPayer)
+
+  const tabs: Array<'details' | 'eobs' | 'history'> = [
+    'details',
+    ...(claim._type === 'commercial' ? ['eobs' as const] : []),
+    'history',
+  ]
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 overflow-y-auto py-6 px-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#D9E1E8]">
+          <div className="flex items-center gap-3 flex-wrap">
+            <h2 className="text-base font-bold text-[#2F3E4E]">
+              {claim._type === 'commercial'
+                ? (cForm.providerName || claim.providerName || 'Claim')
+                : (claim.nurse?.displayName || 'Medicaid Claim')}
+            </h2>
+            {claim._type === 'medicaid' && (
+              <span className="text-xs font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">Medicaid</span>
+            )}
+            {saveStatus === 'saving' && <span className="text-xs text-[#7A8F79] animate-pulse">Saving…</span>}
+            {saveStatus === 'saved' && <span className="text-xs text-green-600">✓ Saved</span>}
+            {saveStatus === 'error' && <span className="text-xs text-red-500">Error saving</span>}
+          </div>
+          <button onClick={handleClose} className="text-[#7A8F79] hover:text-[#2F3E4E] text-xl leading-none">✕</button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-b border-[#D9E1E8]">
+          {tabs.map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-5 py-2.5 text-xs font-semibold transition ${activeTab === tab ? 'border-b-2 border-[#2F3E4E] text-[#2F3E4E]' : 'text-[#7A8F79] hover:text-[#2F3E4E]'}`}
+            >
+              {tab === 'details' ? 'Details' : tab === 'eobs' ? `EOBs${eobDocs.length > 0 ? ` (${eobDocs.length})` : ''}` : 'History'}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab Content */}
+        <div className="px-6 py-5 max-h-[70vh] overflow-y-auto">
+
+          {/* ── Details: Commercial ── */}
+          {activeTab === 'details' && claim._type === 'commercial' && (
+            <div className="space-y-6">
+              <div>
+                <p className={sec}>Claim Info</p>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className={lbl}>{isMed ? 'Patient Ctrl #' : 'Claim ID'}</label>
+                    <input className={inp} value={cForm.claimId} onChange={e => setCForm(f => ({ ...f, claimId: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className={lbl}>Claim Stage</label>
+                    <select className={inp} value={cForm.claimStage} onChange={e => setCForm(f => ({ ...f, claimStage: e.target.value }))}>
+                      <option value="">—</option>
+                      {['Draft','INS-1 Submitted','Resubmitted','Pending','Info Requested','Info Sent','INS-2 Submitted','Appealed','Paid','Denied','Rejected'].map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={lbl}>Submit Date</label>
+                    <input type="date" className={inp} value={cForm.submitDate} onChange={e => setCForm(f => ({ ...f, submitDate: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className={lbl}>DOS Start</label>
+                    <input type="date" className={inp} value={cForm.dosStart} onChange={e => setCForm(f => ({ ...f, dosStart: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className={lbl}>DOS Stop</label>
+                    <input type="date" className={inp} value={cForm.dosStop} onChange={e => setCForm(f => ({ ...f, dosStop: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className={lbl}>Total Billed</label>
+                    <input type="number" step="0.01" className={inp} value={cForm.totalBilled} onChange={e => setCForm(f => ({ ...f, totalBilled: e.target.value }))} />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <p className={sec}>Primary Insurance</p>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="col-span-1">
+                    <label className={lbl}>Payer</label>
+                    <input className={inp} value={cForm.primaryPayer} onChange={e => setCForm(f => ({ ...f, primaryPayer: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className={lbl}>Allowed Amt</label>
+                    <input type="number" step="0.01" className={inp} value={cForm.primaryAllowedAmt} onChange={e => setCForm(f => ({ ...f, primaryAllowedAmt: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className={lbl}>Paid Amt</label>
+                    <input type="number" step="0.01" className={inp} value={cForm.primaryPaidAmt} onChange={e => setCForm(f => ({ ...f, primaryPaidAmt: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className={lbl}>Paid Date</label>
+                    <input type="date" className={inp} value={cForm.primaryPaidDate} onChange={e => setCForm(f => ({ ...f, primaryPaidDate: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className={lbl}>Paid To</label>
+                    <input className={inp} value={cForm.primaryPaidTo} onChange={e => setCForm(f => ({ ...f, primaryPaidTo: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className={lbl}>{isMed ? 'Payer Claim #' : 'Check #'}</label>
+                    <input className={inp} value={cForm.primaryCheckNum} onChange={e => setCForm(f => ({ ...f, primaryCheckNum: e.target.value }))} />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <p className={sec}>Secondary Insurance</p>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="col-span-1">
+                    <label className={lbl}>Payer</label>
+                    <input className={inp} value={cForm.secondaryPayer} onChange={e => setCForm(f => ({ ...f, secondaryPayer: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className={lbl}>Allowed Amt</label>
+                    <input type="number" step="0.01" className={inp} value={cForm.secondaryAllowedAmt} onChange={e => setCForm(f => ({ ...f, secondaryAllowedAmt: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className={lbl}>Paid Amt</label>
+                    <input type="number" step="0.01" className={inp} value={cForm.secondaryPaidAmt} onChange={e => setCForm(f => ({ ...f, secondaryPaidAmt: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className={lbl}>Paid Date</label>
+                    <input type="date" className={inp} value={cForm.secondaryPaidDate} onChange={e => setCForm(f => ({ ...f, secondaryPaidDate: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className={lbl}>Paid To</label>
+                    <input className={inp} value={cForm.secondaryPaidTo} onChange={e => setCForm(f => ({ ...f, secondaryPaidTo: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className={lbl}>Check #</label>
+                    <input className={inp} value={cForm.secondaryCheckNum} onChange={e => setCForm(f => ({ ...f, secondaryCheckNum: e.target.value }))} />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <p className={sec}>Summary</p>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className={lbl}>Total Reimbursed</label>
+                    <input type="number" step="0.01" className={inp} value={cForm.totalReimbursed} onChange={e => setCForm(f => ({ ...f, totalReimbursed: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className={lbl}>Remaining Balance</label>
+                    <input type="number" step="0.01" className={inp} value={cForm.remainingBalance} onChange={e => setCForm(f => ({ ...f, remainingBalance: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className={lbl}>Date Fully Finalized</label>
+                    <input type="date" className={inp} value={cForm.dateFullyFinalized} onChange={e => setCForm(f => ({ ...f, dateFullyFinalized: e.target.value }))} />
+                  </div>
+                  <div className="col-span-3">
+                    <label className={lbl}>Processing Notes</label>
+                    <textarea rows={3} className={`${inp} resize-none`} value={cForm.processingNotes} onChange={e => setCForm(f => ({ ...f, processingNotes: e.target.value }))} />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <p className={sec}>Resubmission</p>
+                <div className="flex items-center gap-3">
+                  <input
+                    className={`${inp} max-w-xs`}
+                    placeholder="Original claim ID (leave blank if none)"
+                    value={cForm.resubmissionOf}
+                    onChange={e => setCForm(f => ({ ...f, resubmissionOf: e.target.value }))}
+                  />
+                  {cForm.resubmissionOf && (
+                    <span className="text-xs text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full font-semibold">↻ resubmission</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Details: Medicaid ── */}
+          {activeTab === 'details' && claim._type === 'medicaid' && (
+            <div className="space-y-6">
+              <div>
+                <p className={sec}>Claim Details</p>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className={lbl}>Patient Ctrl #</label>
+                    <input className={inp} value={mForm.patientCtrlNum} onChange={e => setMForm(f => ({ ...f, patientCtrlNum: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className={lbl}>Payer Ctrl #</label>
+                    <input className={inp} value={mForm.payerCtrlNum} onChange={e => setMForm(f => ({ ...f, payerCtrlNum: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className={lbl}>Total Charge</label>
+                    <input type="number" step="0.01" className={inp} value={mForm.totalCharge} onChange={e => setMForm(f => ({ ...f, totalCharge: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className={lbl}>DOS Start</label>
+                    <input type="date" className={inp} value={mForm.dosStart} onChange={e => setMForm(f => ({ ...f, dosStart: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className={lbl}>DOS Stop</label>
+                    <input type="date" className={inp} value={mForm.dosStop} onChange={e => setMForm(f => ({ ...f, dosStop: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className={lbl}>Paid Amount</label>
+                    <input type="number" step="0.01" className={inp} value={mForm.paidAmount} onChange={e => setMForm(f => ({ ...f, paidAmount: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className={lbl}>Processed Date</label>
+                    <input type="date" className={inp} value={mForm.processedDate} onChange={e => setMForm(f => ({ ...f, processedDate: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className={lbl}>Est. Pay Cycle #</label>
+                    <input type="number" step="1" className={inp} value={mForm.estPayCycle} onChange={e => setMForm(f => ({ ...f, estPayCycle: e.target.value }))} />
+                    {mForm.estPayCycle && !isNaN(parseInt(mForm.estPayCycle)) && (
+                      <p className="text-xs text-[#7A8F79] mt-1">→ {payCycleDateLabel(parseInt(mForm.estPayCycle))}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <p className={sec}>Status Codes</p>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Type code or description…"
+                    value={mCodeInput}
+                    onChange={e => handleMCodeInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        const match = medicaidStatusCodes.find(c => c.code.toLowerCase() === mCodeInput.toLowerCase())
+                        if (match) addMCode(match.code)
+                        else if (mCodeInput.trim()) addMCode(mCodeInput.trim().toUpperCase())
+                      }
+                    }}
+                    className={inp}
+                  />
+                  {mCodeSuggestions.length > 0 && (
+                    <div className="absolute z-10 mt-1 w-full bg-white border border-[#D9E1E8] rounded-xl shadow-lg overflow-hidden">
+                      {mCodeSuggestions.map(c => (
+                        <button key={c.code} type="button" onMouseDown={() => addMCode(c.code)}
+                          className="w-full text-left px-4 py-2.5 text-sm hover:bg-[#f4f6f8] transition">
+                          <span className="font-semibold text-[#2F3E4E]">{c.code}</span>
+                          <span className="text-[#7A8F79] text-xs ml-2 line-clamp-1">{c.description}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {mForm.statusCodes.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {mForm.statusCodes.map(code => (
+                      <span key={code} className="flex items-center gap-1 bg-blue-50 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full">
+                        {code}
+                        <button type="button" onClick={() => removeMCode(code)} className="text-blue-400 hover:text-blue-700 leading-none ml-0.5">✕</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <p className={sec}>Notes</p>
+                <textarea rows={3} className={`${inp} resize-none`} value={mForm.notes} onChange={e => setMForm(f => ({ ...f, notes: e.target.value }))} />
+              </div>
+            </div>
+          )}
+
+          {/* ── EOBs Tab ── */}
+          {activeTab === 'eobs' && claim._type === 'commercial' && (
+            <div className="space-y-3">
+              {eobDocs.length === 0 && (
+                <p className="text-sm text-[#7A8F79]">No EOBs uploaded for this claim.</p>
+              )}
+              {eobDocs.map(eob => (
+                <div key={eob.id} className="flex items-center justify-between border border-[#D9E1E8] rounded-lg px-4 py-3">
+                  <span className="text-sm text-[#2F3E4E] font-medium truncate max-w-xs">{eob.fileName}</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={async () => {
+                        const win = window.open('', '_blank')
+                        try {
+                          const res = await fetch(`/api/admin/documents/${eob.id}`, { credentials: 'include' })
+                          const data = await res.json()
+                          if (data.url && win) { win.location.href = data.url } else { win?.close() }
+                        } catch { win?.close() }
+                      }}
+                      className="text-xs font-semibold text-green-700 bg-green-50 border border-green-200 px-2.5 py-1 rounded-lg hover:bg-green-100 transition"
+                    >
+                      🗂️ View
+                    </button>
+                    <button
+                      onClick={() => onEobDelete(eob.id)}
+                      disabled={deletingId === eob.id}
+                      className="text-xs text-red-500 hover:text-red-700 border border-red-100 px-2 py-1 rounded-lg transition disabled:opacity-40"
+                    >
+                      {deletingId === eob.id ? '…' : '✕'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+              <label className={`flex items-center gap-2 cursor-pointer text-sm font-semibold border-2 border-dashed border-[#D9E1E8] rounded-lg px-4 py-3 hover:border-[#7A8F79] hover:text-[#2F3E4E] transition text-[#7A8F79] ${uploading ? 'opacity-50 cursor-default' : ''}`}>
+                <span>📎 {uploading ? 'Uploading…' : 'Upload EOB'}</span>
+                <input
+                  type="file"
+                  className="hidden"
+                  disabled={uploading}
+                  accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif"
+                  onChange={e => { const f = e.target.files?.[0]; if (f) onEobUpload(f); e.target.value = '' }}
+                />
+              </label>
+            </div>
+          )}
+
+          {/* ── History Tab ── */}
+          {activeTab === 'history' && (
+            <div>
+              {auditLoading ? (
+                <p className="text-sm text-[#7A8F79] animate-pulse">Loading…</p>
+              ) : auditLogs.length === 0 ? (
+                <p className="text-sm text-[#7A8F79]">No history yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {auditLogs.map(log => {
+                    const snap = log.snapshot as Record<string, unknown>
+                    const savedAt = new Date(log.savedAt).toLocaleString('en-US', {
+                      timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit'
+                    })
+                    return (
+                      <div key={log.id} className="border border-[#D9E1E8] rounded-xl px-4 py-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-semibold text-[#7A8F79]">{savedAt}</span>
+                          {log.savedBy && <span className="text-xs text-[#7A8F79]">{log.savedBy}</span>}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs text-[#2F3E4E]">
+                          {!!snap.dosStart && (
+                            <span><span className="text-[#7A8F79]">DOS:</span> {fmtDOS(String(snap.dosStart), snap.dosStop ? String(snap.dosStop) : null)}</span>
+                          )}
+                          {!!(snap.claimStage || snap.statusCodes) && (
+                            <span className="flex items-center gap-1">
+                              <span className="text-[#7A8F79]">Status:</span>
+                              {snap.claimStage
+                                ? <StageBadge stage={String(snap.claimStage)} />
+                                : <span>{(snap.statusCodes as string[] || []).join(', ')}</span>}
+                            </span>
+                          )}
+                          {(snap.totalBilled != null || snap.totalCharge != null) && (
+                            <span><span className="text-[#7A8F79]">Billed:</span> {fmt((snap.totalBilled ?? snap.totalCharge) as number, '$')}</span>
+                          )}
+                          {(snap.paidAmount != null || snap.primaryPaidAmt != null) && (
+                            <span><span className="text-[#7A8F79]">Paid:</span> {fmt((snap.paidAmount ?? snap.primaryPaidAmt) as number, '$')}</span>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── AdminClaimsPage ──────────────────────────────────────────────────────────
+
 export default function AdminClaimsPage() {
-  const [claims, setClaims] = useState<Claim[]>([])
+  const [claims, setClaims] = useState<CommercialClaim[]>([])
+  const [medicaidClaims, setMedicaidClaims] = useState<MedicaidClaimRow[]>([])
   const [loading, setLoading] = useState(true)
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState<{ created: number; updated: number; skipped: number; error?: string } | null>(null)
@@ -280,7 +954,9 @@ export default function AdminClaimsPage() {
   const [filterYear, setFilterYear] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const [expandedOriginals, setExpandedOriginals] = useState<Set<string>>(new Set())
+  // Selected claim for detail modal
+  const [selectedClaimId, setSelectedClaimId] = useState<string | null>(null)
+  const [selectedClaimType, setSelectedClaimType] = useState<'commercial' | 'medicaid' | null>(null)
 
   // Bulk import mode
   const [bulkMode, setBulkMode] = useState(false)
@@ -295,11 +971,6 @@ export default function AdminClaimsPage() {
   const [reminderSaving, setReminderSaving] = useState(false)
   const [reminderError, setReminderError] = useState('')
   const [showReminderList, setShowReminderList] = useState(false)
-
-  // Inline editing
-  const [editCell, setEditCell] = useState<{ id: string; field: string } | null>(null)
-  const [editVal, setEditVal] = useState('')
-  const [editVal2, setEditVal2] = useState('') // used for dosStop when editing dosStart
 
   // Nurse roster for provider autocomplete
   type NurseOption = { id: string; displayName: string; providerAliases: string[] }
@@ -318,6 +989,7 @@ export default function AdminClaimsPage() {
   const [providerSuggestions, setProviderSuggestions] = useState<NurseOption[]>([])
   const [selectedNurseId, setSelectedNurseId] = useState<string | null>(null)
   const providerRef = useRef<HTMLDivElement>(null)
+  const [activeSuggestionIdx, setActiveSuggestionIdx] = useState(0)
 
   // Medicaid add form
   const [medicaidForm, setMedicaidForm] = useState<Record<string, string>>({})
@@ -325,9 +997,6 @@ export default function AdminClaimsPage() {
   const [medicaidSelectedCodes, setMedicaidSelectedCodes] = useState<string[]>([])
   const [medicaidCodeInput, setMedicaidCodeInput] = useState('')
   const [medicaidCodeSuggestions, setMedicaidCodeSuggestions] = useState<{ code: string; description: string }[]>([])
-
-  // Provider autocomplete keyboard nav
-  const [activeSuggestionIdx, setActiveSuggestionIdx] = useState(0)
 
   // Date field refs for auto-advance (commercial)
   const submitDateRef   = useRef<HTMLInputElement>(null)
@@ -353,10 +1022,10 @@ export default function AdminClaimsPage() {
     dryRun: boolean
   } | null>(null)
 
-  // EOB state — keyed by Claim.id (DB UUID), supports multiple EOBs per claim
+  // EOB state — keyed by Claim.id (DB UUID)
   const [eobMap, setEobMap] = useState<Record<string, EobDoc[]>>({})
-  const [eobUploading, setEobUploading] = useState<string | null>(null)  // claim DB id
-  const [eobDeleting, setEobDeleting] = useState<string | null>(null)    // doc id
+  const [eobUploading, setEobUploading] = useState<string | null>(null)
+  const [eobDeleting, setEobDeleting] = useState<string | null>(null)
   const [eobError, setEobError] = useState<string | null>(null)
 
   async function loadEobs() {
@@ -374,11 +1043,10 @@ export default function AdminClaimsPage() {
     }
   }
 
-  async function handleEobUpload(claim: Claim, file: File) {
+  async function handleEobUpload(claim: CommercialClaim, file: File) {
     setEobUploading(claim.id)
     setEobError(null)
     try {
-      // Step 1 — presign
       const presignRes = await fetch('/api/admin/documents/presign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -388,13 +1056,11 @@ export default function AdminClaimsPage() {
       const presign = await presignRes.json()
       if (!presignRes.ok) throw new Error(presign.error || 'Presign failed')
 
-      // Step 2 — upload directly to S3
       const form = new FormData()
       Object.entries(presign.fields as Record<string, string>).forEach(([k, v]) => form.append(k, v))
       form.append('file', file)
       await fetch(presign.url, { method: 'POST', body: form, mode: 'no-cors' })
 
-      // Step 3 — confirm (server verifies file exists in S3 before saving record)
       const providerName = claim.providerName || claim.nurse?.displayName || 'Provider'
       const confirmRes = await fetch('/api/admin/documents/confirm', {
         method: 'POST',
@@ -448,6 +1114,12 @@ export default function AdminClaimsPage() {
     setLoading(false)
   }
 
+  async function loadMedicaidClaims() {
+    const res = await fetch('/api/admin/medicaid/claims', { credentials: 'include' })
+    const data = await res.json()
+    if (Array.isArray(data)) setMedicaidClaims(data)
+  }
+
   async function loadReminders() {
     const res = await fetch('/api/admin/claims/reminders', { credentials: 'include' })
     if (res.ok) setReminders(await res.json())
@@ -495,13 +1167,13 @@ export default function AdminClaimsPage() {
     setReminders(prev => prev.filter(r => r.id !== id))
   }
 
-  // Load initial state
   useEffect(() => {
     fetch('/api/admin/system-settings', { credentials: 'include' })
       .then(r => r.ok ? r.json() : {})
       .then((s: Record<string, string>) => { if (s.bulkImportMode === 'true') setBulkMode(true) })
       .catch(() => {})
     loadClaims()
+    loadMedicaidClaims()
     loadEobs()
     loadReminders()
     fetch('/api/admin/nurses', { credentials: 'include' })
@@ -520,7 +1192,6 @@ export default function AdminClaimsPage() {
     const next = !bulkMode
     setBulkModeLoading(true)
     setBulkFlushMsg(null)
-    // Save the new mode
     await fetch('/api/admin/system-settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -528,11 +1199,7 @@ export default function AdminClaimsPage() {
       body: JSON.stringify({ key: 'bulkImportMode', value: String(next) }),
     })
     if (!next) {
-      // Turning OFF — flush queued notifications
-      const res = await fetch('/api/admin/notifications/flush', {
-        method: 'POST',
-        credentials: 'include',
-      })
+      const res = await fetch('/api/admin/notifications/flush', { method: 'POST', credentials: 'include' })
       const data = await res.json()
       if (data.sent > 0) {
         setBulkFlushMsg(`Summary sent to ${data.sent} provider${data.sent !== 1 ? 's' : ''}.`)
@@ -545,33 +1212,6 @@ export default function AdminClaimsPage() {
     setBulkMode(next)
     setBulkModeLoading(false)
   }
-
-  // Inline editing helpers
-  function startEdit(id: string, field: string, currentVal: string, currentVal2 = '') {
-    setEditCell({ id, field })
-    setEditVal(currentVal)
-    setEditVal2(currentVal2)
-  }
-
-  async function commitEdit() {
-    if (!editCell) return
-    const { id, field } = editCell
-    setEditCell(null)
-    // For DOS, save both start and stop together
-    const body = field === 'dosStart'
-      ? { dosStart: editVal, dosStop: editVal2 }
-      : { [field]: editVal }
-    // Optimistic update in local state
-    setClaims(prev => prev.map(c => c.id !== id ? c : { ...c, ...body }))
-    await fetch(`/api/admin/claims/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(body),
-    }).catch(() => {})
-  }
-
-  function cancelEdit() { setEditCell(null) }
 
   function openAddModal() {
     setAddForm({ claimStage: 'Draft' })
@@ -674,6 +1314,7 @@ export default function AdminClaimsPage() {
       if (!res.ok) { setAddError(data.error || 'Failed to create Medicaid claim.'); setAdding(false); return }
       setShowAddModal(false)
       setAdding(false)
+      loadMedicaidClaims()
       return
     }
 
@@ -726,13 +1367,12 @@ export default function AdminClaimsPage() {
         totalUpdated += data.updated || 0
         totalSkipped += data.skipped || 0
         ;(data.affectedNurseIds || []).forEach((id: string) => allAffectedNurseIds.add(id))
-      } catch (err) {
+      } catch {
         batchError = `Network error on batch ${Math.floor(i / BATCH_SIZE) + 1}`
         break
       }
     }
 
-    // Flush — one summary email per affected nurse (skip if bulk mode is ON; admin will flush manually)
     if (!batchError && allAffectedNurseIds.size > 0 && !bulkMode) {
       await fetch('/api/admin/notifications/flush', {
         method: 'POST',
@@ -767,27 +1407,48 @@ export default function AdminClaimsPage() {
     if (!ediDryRun) loadClaims()
   }
 
+  // ── Merged + filtered claims ──────────────────────────────────────────────
+
+  const allClaims: UnifiedClaim[] = useMemo(() => [
+    ...claims.map(c => ({ ...c, _type: 'commercial' as const })),
+    ...medicaidClaims.map(c => ({ ...c, _type: 'medicaid' as const })),
+  ].sort((a, b) => {
+    const ad = a.dosStart ? new Date(a.dosStart).getTime() : 0
+    const bd = b.dosStart ? new Date(b.dosStart).getTime() : 0
+    return bd - ad
+  }), [claims, medicaidClaims])
+
+  const filteredAll: UnifiedClaim[] = useMemo(() => {
+    return allClaims.filter(uc => {
+      const provName = uc._type === 'commercial' ? (uc.providerName || uc.nurse?.displayName || '') : (uc.nurse?.displayName || '')
+      const id = uc._type === 'commercial' ? (uc.claimId || '') : uc.patientCtrlNum
+      const payer = uc._type === 'commercial' ? (uc.primaryPayer || '') : 'Medicaid'
+      const matchSearch = !search ||
+        provName.toLowerCase().includes(search.toLowerCase()) ||
+        id.toLowerCase().includes(search.toLowerCase()) ||
+        payer.toLowerCase().includes(search.toLowerCase())
+      const matchStage = !filterStage || (uc._type === 'commercial' ? uc.claimStage === filterStage : false)
+      const matchYear = !filterYear || (uc.dosStart ? new Date(uc.dosStart).getUTCFullYear().toString() === filterYear : false)
+      return matchSearch && matchStage && matchYear
+    })
+  }, [allClaims, search, filterStage, filterYear])
+
+  const totalBilled = filteredAll.reduce((s, uc) =>
+    s + (uc._type === 'commercial' ? (uc.totalBilled || 0) : uc.totalCharge), 0)
+  const totalReimbursed = filteredAll.reduce((s, uc) =>
+    s + (uc._type === 'commercial' ? (uc.totalReimbursed || 0) : (uc.paidAmount || 0)), 0)
+  const totalBalance = filteredAll.reduce((s, uc) =>
+    s + (uc._type === 'commercial' ? (uc.remainingBalance || 0) : Math.max(0, uc.totalCharge - (uc.paidAmount || 0))), 0)
+
   const stages = [...new Set(claims.map(c => c.claimStage).filter(Boolean))] as string[]
 
-  const filtered = claims.filter(c => {
-    const matchSearch = !search ||
-      (c.providerName || '').toLowerCase().includes(search.toLowerCase()) ||
-      (c.nurse?.displayName || '').toLowerCase().includes(search.toLowerCase()) ||
-      (c.claimId || '').toLowerCase().includes(search.toLowerCase()) ||
-      (c.primaryPayer || '').toLowerCase().includes(search.toLowerCase()) ||
-      (c.secondaryPayer || '').toLowerCase().includes(search.toLowerCase())
-    const matchStage = !filterStage || c.claimStage === filterStage
-    const matchYear = !filterYear || (c.dosStart ? new Date(c.dosStart).getUTCFullYear().toString() === filterYear : false)
-    return matchSearch && matchStage && matchYear
-  })
+  // Opened claim for detail modal
+  const openedClaim = useMemo(() => {
+    if (!selectedClaimId || !selectedClaimType) return null
+    return allClaims.find(c => c._type === selectedClaimType && c.id === selectedClaimId) || null
+  }, [selectedClaimId, selectedClaimType, allClaims])
 
-  // Exclude superseded originals from totals — only count the most recent submission
-  const filteredResubIds = new Set(filtered.filter(c => c.resubmissionOf).map(c => c.resubmissionOf as string))
-  const activeFiltered = filtered.filter(c => !c.claimId || !filteredResubIds.has(c.claimId))
-
-  const totalBilled = activeFiltered.reduce((s, c) => s + (c.totalBilled || 0), 0)
-  const totalReimbursed = activeFiltered.reduce((s, c) => s + (c.totalReimbursed || 0), 0)
-  const totalBalance = activeFiltered.reduce((s, c) => s + (c.remainingBalance || 0), 0)
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-6">
@@ -801,7 +1462,6 @@ export default function AdminClaimsPage() {
             <p className="text-sm text-[#7A8F79] mt-0.5">Import from CSV or manage claims below.</p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
-            {/* Bulk Import Mode toggle */}
             <button
               onClick={toggleBulkMode}
               disabled={bulkModeLoading}
@@ -883,15 +1543,12 @@ export default function AdminClaimsPage() {
 
         {/* EDI drop zone */}
         <div className="mb-4 bg-white rounded-xl border-2 border-dashed border-[#D9E1E8] overflow-hidden">
-          {/* Mode toggle */}
           <div className="flex border-b border-[#D9E1E8]">
             <button
               type="button"
               onClick={() => setEdiDryRun(false)}
               className={`flex-1 px-4 py-2.5 text-xs font-semibold transition text-center ${
-                !ediDryRun
-                  ? 'bg-[#2F3E4E] text-white'
-                  : 'text-[#7A8F79] hover:bg-[#F4F6F5]'
+                !ediDryRun ? 'bg-[#2F3E4E] text-white' : 'text-[#7A8F79] hover:bg-[#F4F6F5]'
               }`}
             >
               ✅ Update live claims
@@ -900,16 +1557,12 @@ export default function AdminClaimsPage() {
               type="button"
               onClick={() => setEdiDryRun(true)}
               className={`flex-1 px-4 py-2.5 text-xs font-semibold transition text-center border-l border-[#D9E1E8] ${
-                ediDryRun
-                  ? 'bg-amber-500 text-white'
-                  : 'text-[#7A8F79] hover:bg-[#F4F6F5]'
+                ediDryRun ? 'bg-amber-500 text-white' : 'text-[#7A8F79] hover:bg-[#F4F6F5]'
               }`}
             >
               👁 Preview only — email summary, no changes
             </button>
           </div>
-
-          {/* Drop area */}
           <div
             onDragOver={e => { e.preventDefault(); setEdiDragging(true) }}
             onDragLeave={() => setEdiDragging(false)}
@@ -967,8 +1620,6 @@ export default function AdminClaimsPage() {
               </div>
               <button onClick={() => setEdiResult(null)} className="text-xs text-[#7A8F79] hover:text-[#2F3E4E]">✕ Dismiss</button>
             </div>
-
-            {/* Summary pills */}
             <div className="flex flex-wrap gap-3 mb-4">
               <span className="text-xs font-semibold px-3 py-1 rounded-full bg-[#D9E1E8] text-[#2F3E4E]">
                 {ediResult.summary.filesUploaded} files uploaded
@@ -988,8 +1639,6 @@ export default function AdminClaimsPage() {
                 </span>
               )}
             </div>
-
-            {/* Matched detail */}
             {ediResult.matched.length > 0 && (
               <div className="mb-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-2">
@@ -1005,8 +1654,6 @@ export default function AdminClaimsPage() {
                 </div>
               </div>
             )}
-
-            {/* Unmatched */}
             {ediResult.unmatched.length > 0 && (
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-yellow-700 mb-2">
@@ -1026,7 +1673,7 @@ export default function AdminClaimsPage() {
         <div className="grid grid-cols-4 gap-2 md:gap-4 mb-6">
           <div className="bg-white rounded-xl p-2.5 md:p-4 shadow-sm">
             <p className="text-[9px] md:text-xs uppercase tracking-widest text-[#7A8F79] font-semibold leading-tight">Total Claims</p>
-            <p className="text-base md:text-2xl font-bold text-[#2F3E4E] mt-0.5">{filtered.length}</p>
+            <p className="text-base md:text-2xl font-bold text-[#2F3E4E] mt-0.5">{filteredAll.length}</p>
           </div>
           <div className="bg-white rounded-xl p-2.5 md:p-4 shadow-sm">
             <p className="text-[9px] md:text-xs uppercase tracking-widest text-[#7A8F79] font-semibold leading-tight">Total Billed</p>
@@ -1070,7 +1717,6 @@ export default function AdminClaimsPage() {
             ))}
           </select>
 
-          {/* Reminder buttons — pushed to the right */}
           <div className="ml-auto flex items-center gap-2">
             {reminders.filter(r => !r.completed).length > 0 && (
               <button
@@ -1133,319 +1779,148 @@ export default function AdminClaimsPage() {
           </div>
         )}
 
-        {/* Table */}
+        {/* Claims table */}
         {loading ? (
           <div className="text-center text-[#7A8F79] py-16">Loading…</div>
-        ) : filtered.length === 0 ? (
+        ) : allClaims.length === 0 ? (
           <div className="bg-white rounded-xl p-12 text-center text-[#7A8F79] shadow-sm">
             No claims yet. Import a CSV to get started.
           </div>
         ) : (
-          <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
-            <table className="w-full text-sm text-left">
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+            <table className="w-full text-sm">
               <thead className="bg-[#F4F6F5] text-xs uppercase tracking-widest text-[#7A8F79]">
                 <tr>
-                  <th className="px-4 py-3">EOB</th>
-                  <th className="px-4 py-3">Link</th>
-                  <th className="px-4 py-3">Provider</th>
-                  <th className="px-4 py-3">Claim ID</th>
-                  <th className="px-4 py-3">DOS</th>
-                  <th className="px-4 py-3">Stage</th>
-                  <th className="px-4 py-3">Submit Date</th>
-                  <th className="px-4 py-3">Total Billed</th>
-                  <th className="px-4 py-3 border-l border-[#D9E1E8]">Primary Payer</th>
-                  <th className="px-4 py-3">Allowed</th>
-                  <th className="px-4 py-3">Paid</th>
-                  <th className="px-4 py-3">Paid Date</th>
-                  <th className="px-4 py-3">Paid To</th>
-                  <th className="px-4 py-3 border-l border-[#D9E1E8]">Secondary Payer</th>
-                  <th className="px-4 py-3">Allowed</th>
-                  <th className="px-4 py-3">Paid</th>
-                  <th className="px-4 py-3">Paid Date</th>
-                  <th className="px-4 py-3">Paid To</th>
-                  <th className="px-4 py-3 border-l border-[#D9E1E8]">Reimbursed</th>
-                  <th className="px-4 py-3">Balance</th>
-                  <th className="px-4 py-3">Finalized</th>
-                  <th className="px-4 py-3">Notes</th>
+                  <th className="w-10 px-3 py-3"></th>
+                  <th className="w-20 px-3 py-3 text-left">EOB</th>
+                  <th className="px-4 py-3 text-left">Provider / ID</th>
+                  <th className="w-36 px-4 py-3 text-left">DOS</th>
+                  <th className="w-48 px-4 py-3 text-left">Payer / Status</th>
+                  <th className="w-36 px-4 py-3 text-right">$ Summary</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#D9E1E8] text-[#2F3E4E]">
-                {groupClaims(filtered).map(({ primary: c, originals }) => {
-                  const isExpanded = expandedOriginals.has(c.id)
-                  const toggleOriginals = () => setExpandedOriginals(prev => {
-                    const next = new Set(prev)
-                    if (next.has(c.id)) next.delete(c.id); else next.add(c.id)
-                    return next
-                  })
+                {filteredAll.map(uc => {
+                  const eobs = uc._type === 'commercial' ? (eobMap[uc.id] || []) : []
+                  const mostRecentEob = eobs[0] ?? null
+                  const isOpen = selectedClaimId === uc.id && selectedClaimType === uc._type
                   return (
-                    <Fragment key={c.id}>
-                      <tr className="hover:bg-[#F4F6F5] transition">
-                        <td className="px-4 py-3">
-                          <div className="flex flex-col gap-1 min-w-[72px]">
-                            {(eobMap[c.id] || []).map((eob, i) => (
-                              <div key={eob.id} className="flex items-center gap-1">
-                                <button
-                                  onClick={async () => {
-                                    const win = window.open('', '_blank')
-                                    try {
-                                      const res = await fetch(`/api/admin/documents/${eob.id}`, { credentials: 'include' })
-                                      const data = await res.json()
-                                      if (data.url && win) { win.location.href = data.url } else { win?.close() }
-                                    } catch { win?.close() }
-                                  }}
-                                  title={eob.fileName}
-                                  className="text-[10px] font-semibold text-green-700 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded hover:bg-green-100 transition whitespace-nowrap"
-                                >
-                                  📎 EOB {(eobMap[c.id] || []).length > 1 ? i + 1 : ''}
-                                </button>
-                                <button
-                                  onClick={() => deleteEob(eob.id)}
-                                  disabled={eobDeleting === eob.id}
-                                  title="Delete EOB"
-                                  className="text-[10px] text-red-400 hover:text-red-600 border border-red-100 px-1 py-0.5 rounded transition disabled:opacity-40"
-                                >
-                                  {eobDeleting === eob.id ? '…' : '✕'}
-                                </button>
-                              </div>
-                            ))}
-                            <label className={`cursor-pointer text-[10px] font-semibold text-[#7A8F79] border border-dashed border-[#D9E1E8] px-1.5 py-0.5 rounded hover:border-[#7A8F79] hover:text-[#2F3E4E] transition whitespace-nowrap ${eobUploading === c.id ? 'opacity-50 cursor-default' : ''}`}>
-                              {eobUploading === c.id ? '…' : '+ EOB'}
+                    <tr
+                      key={`${uc._type}-${uc.id}`}
+                      className={`hover:bg-[#F4F6F5] transition ${isOpen ? 'bg-[#EEF2EE]' : ''}`}
+                    >
+                      {/* ▶ open modal */}
+                      <td className="px-3 py-2.5">
+                        <button
+                          onClick={() => {
+                            if (isOpen) { setSelectedClaimId(null); setSelectedClaimType(null) }
+                            else { setSelectedClaimId(uc.id); setSelectedClaimType(uc._type) }
+                          }}
+                          className={`text-xs font-bold transition ${isOpen ? 'text-[#2F3E4E]' : 'text-[#7A8F79] hover:text-[#2F3E4E]'}`}
+                          title="Open details"
+                        >▶</button>
+                      </td>
+
+                      {/* EOB column */}
+                      <td className="px-3 py-2.5">
+                        {uc._type === 'commercial' ? (
+                          <div className="flex items-center gap-1">
+                            <label className={`cursor-pointer text-xs font-semibold px-1.5 py-0.5 rounded border border-dashed transition whitespace-nowrap ${eobUploading === uc.id ? 'opacity-50 cursor-default text-[#7A8F79] border-[#D9E1E8]' : 'text-[#7A8F79] border-[#D9E1E8] hover:border-[#7A8F79] hover:text-[#2F3E4E]'}`}>
+                              {eobUploading === uc.id ? '…' : '📎'}
                               <input
                                 type="file"
                                 className="hidden"
-                                disabled={eobUploading === c.id}
+                                disabled={eobUploading === uc.id}
                                 accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif"
                                 onChange={e => {
-                                  const file = e.target.files?.[0]
-                                  if (file) handleEobUpload(c, file)
+                                  const f = e.target.files?.[0]
+                                  if (f) handleEobUpload(uc as CommercialClaim, f)
                                   e.target.value = ''
                                 }}
                               />
                             </label>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-1">
-                            <LinkButton claim={c} onLinked={loadClaims} />
-                            {originals.length > 0 && (
-                              <button onClick={toggleOriginals} title={isExpanded ? 'Hide original' : 'Show original'} className="text-[11px] text-[#7A8F79] hover:text-[#2F3E4E] transition ml-1 leading-none">
-                                {isExpanded ? '▲' : '▼'}
-                              </button>
+                            {mostRecentEob && (
+                              <button
+                                onClick={async () => {
+                                  const win = window.open('', '_blank')
+                                  try {
+                                    const res = await fetch(`/api/admin/documents/${mostRecentEob.id}`, { credentials: 'include' })
+                                    const data = await res.json()
+                                    if (data.url && win) { win.location.href = data.url } else { win?.close() }
+                                  } catch { win?.close() }
+                                }}
+                                title={mostRecentEob.fileName}
+                                className="text-xs text-green-700 hover:text-green-900 transition"
+                              >🗂️</button>
+                            )}
+                            {eobs.length > 1 && (
+                              <span className="text-[10px] text-[#7A8F79]">+{eobs.length - 1}</span>
                             )}
                           </div>
-                        </td>
-                        {/* Provider — editable text */}
-                        <td className="px-4 py-3 font-semibold text-[#2F3E4E] whitespace-nowrap" onDoubleClick={() => startEdit(c.id, 'providerName', c.providerName || '')}>
-                          {editCell?.id === c.id && editCell.field === 'providerName'
-                            ? <input autoFocus className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-sm w-32 focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
-                            : <span title="Double-click to edit">{c.providerName || c.nurse?.displayName}</span>}
-                        </td>
-                        {/* Claim ID — editable text */}
-                        <td className="px-4 py-3 text-[#7A8F79] font-mono text-xs" onDoubleClick={() => startEdit(c.id, 'claimId', c.claimId || '')}>
-                          {c.resubmissionOf && <span className="block text-blue-500 text-[10px] mb-0.5">↻ resubmission</span>}
-                          {editCell?.id === c.id && editCell.field === 'claimId'
-                            ? <input autoFocus className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs font-mono w-28 focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
-                            : <span title="Double-click to edit">{c.claimId || '—'}</span>}
-                        </td>
-                        {/* DOS — editable date pair (dosStart + dosStop together) */}
-                        <td className="px-4 py-3 whitespace-nowrap text-xs text-[#2F3E4E]" onDoubleClick={() => startEdit(c.id, 'dosStart', c.dosStart ? new Date(c.dosStart).toISOString().slice(0,10) : '', c.dosStop ? new Date(c.dosStop).toISOString().slice(0,10) : '')}>
-                          {editCell?.id === c.id && editCell.field === 'dosStart'
-                            ? <div className="flex items-center gap-1">
-                                <input autoFocus type="date" className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
-                                <span className="text-[#7A8F79]">–</span>
-                                <input type="date" className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs focus:outline-none" value={editVal2} onChange={e => setEditVal2(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
-                              </div>
-                            : <span title="Double-click to edit">{fmtDOS(c.dosStart, c.dosStop)}</span>}
-                        </td>
-                        {/* Stage — editable select */}
-                        <td className="px-4 py-3" onDoubleClick={() => startEdit(c.id, 'claimStage', c.claimStage || '')}>
-                          {editCell?.id === c.id && editCell.field === 'claimStage'
-                            ? <select autoFocus className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Escape') cancelEdit() }}>
-                                <option value="">—</option>
-                                {['Draft','INS-1 Submitted','Resubmitted','Pending','Info Requested','Info Sent','INS-2 Submitted','Appealed','Paid','Denied','Rejected'].map(s => <option key={s} value={s}>{s}</option>)}
-                              </select>
-                            : <span title="Double-click to edit"><StageBadge stage={c.claimStage} /></span>}
-                        </td>
-                        {/* Submit Date — editable date */}
-                        <td className="px-4 py-3 text-xs text-[#2F3E4E] whitespace-nowrap" onDoubleClick={() => startEdit(c.id, 'submitDate', c.submitDate ? new Date(c.submitDate).toISOString().slice(0,10) : '')}>
-                          {editCell?.id === c.id && editCell.field === 'submitDate'
-                            ? <input autoFocus type="date" className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
-                            : <span title="Double-click to edit">{fmtDate(c.submitDate)}</span>}
-                        </td>
-                        {/* Total Billed — editable number */}
-                        <td className="px-4 py-3 text-right text-[#2F3E4E]" onDoubleClick={() => startEdit(c.id, 'totalBilled', c.totalBilled != null ? String(c.totalBilled) : '')}>
-                          {editCell?.id === c.id && editCell.field === 'totalBilled'
-                            ? <input autoFocus type="number" step="0.01" className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs text-right w-24 focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
-                            : <span title="Double-click to edit">{fmt(c.totalBilled, '$')}</span>}
-                        </td>
-                        {/* Primary Payer */}
-                        <td className="px-4 py-3 border-l border-[#D9E1E8] text-[#2F3E4E]" onDoubleClick={() => startEdit(c.id, 'primaryPayer', c.primaryPayer || '')}>
-                          {editCell?.id === c.id && editCell.field === 'primaryPayer'
-                            ? <input autoFocus className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs w-28 focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
-                            : <span title="Double-click to edit">{c.primaryPayer || '—'}</span>}
-                        </td>
-                        {/* Primary Allowed */}
-                        <td className="px-4 py-3 text-right text-[#2F3E4E]" onDoubleClick={() => startEdit(c.id, 'primaryAllowedAmt', c.primaryAllowedAmt != null ? String(c.primaryAllowedAmt) : '')}>
-                          {editCell?.id === c.id && editCell.field === 'primaryAllowedAmt'
-                            ? <input autoFocus type="number" step="0.01" className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs text-right w-20 focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
-                            : <span title="Double-click to edit">{fmt(c.primaryAllowedAmt, '$')}</span>}
-                        </td>
-                        {/* Primary Paid */}
-                        <td className="px-4 py-3 text-right font-semibold text-[#7A8F79]" onDoubleClick={() => startEdit(c.id, 'primaryPaidAmt', c.primaryPaidAmt != null ? String(c.primaryPaidAmt) : '')}>
-                          {editCell?.id === c.id && editCell.field === 'primaryPaidAmt'
-                            ? <input autoFocus type="number" step="0.01" className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs text-right w-20 focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
-                            : <span title="Double-click to edit">{fmt(c.primaryPaidAmt, '$')}</span>}
-                        </td>
-                        {/* Primary Paid Date */}
-                        <td className="px-4 py-3 text-xs text-[#7A8F79] whitespace-nowrap" onDoubleClick={() => startEdit(c.id, 'primaryPaidDate', c.primaryPaidDate ? new Date(c.primaryPaidDate).toISOString().slice(0,10) : '')}>
-                          {editCell?.id === c.id && editCell.field === 'primaryPaidDate'
-                            ? <input autoFocus type="date" className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
-                            : <span title="Double-click to edit">{fmtDate(c.primaryPaidDate)}</span>}
-                        </td>
-                        {/* Primary Paid To */}
-                        <td className="px-4 py-3 text-xs text-[#2F3E4E]" onDoubleClick={() => startEdit(c.id, 'primaryPaidTo', c.primaryPaidTo || '')}>
-                          {editCell?.id === c.id && editCell.field === 'primaryPaidTo'
-                            ? <input autoFocus className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs w-24 focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
-                            : <span title="Double-click to edit">{c.primaryPaidTo || '—'}</span>}
-                        </td>
-                        {/* Secondary Payer */}
-                        <td className="px-4 py-3 border-l border-[#D9E1E8] text-[#2F3E4E]" onDoubleClick={() => startEdit(c.id, 'secondaryPayer', c.secondaryPayer || '')}>
-                          {editCell?.id === c.id && editCell.field === 'secondaryPayer'
-                            ? <input autoFocus className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs w-28 focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
-                            : <span title="Double-click to edit">{c.secondaryPayer || '—'}</span>}
-                        </td>
-                        {/* Secondary Allowed */}
-                        <td className="px-4 py-3 text-right text-[#2F3E4E]" onDoubleClick={() => startEdit(c.id, 'secondaryAllowedAmt', c.secondaryAllowedAmt != null ? String(c.secondaryAllowedAmt) : '')}>
-                          {editCell?.id === c.id && editCell.field === 'secondaryAllowedAmt'
-                            ? <input autoFocus type="number" step="0.01" className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs text-right w-20 focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
-                            : <span title="Double-click to edit">{fmt(c.secondaryAllowedAmt, '$')}</span>}
-                        </td>
-                        {/* Secondary Paid */}
-                        <td className="px-4 py-3 text-right font-semibold text-[#7A8F79]" onDoubleClick={() => startEdit(c.id, 'secondaryPaidAmt', c.secondaryPaidAmt != null ? String(c.secondaryPaidAmt) : '')}>
-                          {editCell?.id === c.id && editCell.field === 'secondaryPaidAmt'
-                            ? <input autoFocus type="number" step="0.01" className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs text-right w-20 focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
-                            : <span title="Double-click to edit">{fmt(c.secondaryPaidAmt, '$')}</span>}
-                        </td>
-                        {/* Secondary Paid Date */}
-                        <td className="px-4 py-3 text-xs text-[#7A8F79] whitespace-nowrap" onDoubleClick={() => startEdit(c.id, 'secondaryPaidDate', c.secondaryPaidDate ? new Date(c.secondaryPaidDate).toISOString().slice(0,10) : '')}>
-                          {editCell?.id === c.id && editCell.field === 'secondaryPaidDate'
-                            ? <input autoFocus type="date" className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
-                            : <span title="Double-click to edit">{fmtDate(c.secondaryPaidDate)}</span>}
-                        </td>
-                        {/* Secondary Paid To */}
-                        <td className="px-4 py-3 text-xs text-[#2F3E4E]" onDoubleClick={() => startEdit(c.id, 'secondaryPaidTo', c.secondaryPaidTo || '')}>
-                          {editCell?.id === c.id && editCell.field === 'secondaryPaidTo'
-                            ? <input autoFocus className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs w-24 focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
-                            : <span title="Double-click to edit">{c.secondaryPaidTo || '—'}</span>}
-                        </td>
-                        {/* Total Reimbursed */}
-                        <td className="px-4 py-3 border-l border-[#D9E1E8] text-right font-semibold text-[#7A8F79]" onDoubleClick={() => startEdit(c.id, 'totalReimbursed', c.totalReimbursed != null ? String(c.totalReimbursed) : '')}>
-                          {editCell?.id === c.id && editCell.field === 'totalReimbursed'
-                            ? <input autoFocus type="number" step="0.01" className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs text-right w-20 focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
-                            : <span title="Double-click to edit">{fmt(c.totalReimbursed, '$')}</span>}
-                        </td>
-                        {/* Remaining Balance */}
-                        <td className={`px-4 py-3 text-right font-semibold ${(c.remainingBalance || 0) > 0 ? 'text-red-600' : 'text-[#2F3E4E]'}`} onDoubleClick={() => startEdit(c.id, 'remainingBalance', c.remainingBalance != null ? String(c.remainingBalance) : '')}>
-                          {editCell?.id === c.id && editCell.field === 'remainingBalance'
-                            ? <input autoFocus type="number" step="0.01" className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs text-right w-20 focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
-                            : <span title="Double-click to edit">{fmt(c.remainingBalance, '$')}</span>}
-                        </td>
-                        {/* Date Fully Finalized */}
-                        <td className="px-4 py-3 text-xs text-[#7A8F79] whitespace-nowrap" onDoubleClick={() => startEdit(c.id, 'dateFullyFinalized', c.dateFullyFinalized ? new Date(c.dateFullyFinalized).toISOString().slice(0,10) : '')}>
-                          {editCell?.id === c.id && editCell.field === 'dateFullyFinalized'
-                            ? <input autoFocus type="date" className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
-                            : <span title="Double-click to edit">{fmtDate(c.dateFullyFinalized)}</span>}
-                        </td>
-                        {/* Processing Notes */}
-                        <td className="px-4 py-3 text-xs text-[#7A8F79] max-w-xs truncate" onDoubleClick={() => startEdit(c.id, 'processingNotes', c.processingNotes || '')}>
-                          {editCell?.id === c.id && editCell.field === 'processingNotes'
-                            ? <input autoFocus className="border border-[#7A8F79] rounded px-1.5 py-0.5 text-xs w-48 focus:outline-none" value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }} />
-                            : <span title="Double-click to edit">{c.processingNotes || '—'}</span>}
-                        </td>
-                      </tr>
-                      {isExpanded && originals.map((orig, depth) => {
-                        const depthColors = [
-                          { row: 'bg-red-50 border-l-4 border-red-200',    label: 'text-red-400'    },
-                          { row: 'bg-orange-50 border-l-4 border-orange-200', label: 'text-orange-400' },
-                          { row: 'bg-amber-50 border-l-4 border-amber-200',  label: 'text-amber-500'  },
-                        ]
-                        const dc = depthColors[Math.min(depth, depthColors.length - 1)]
-                        const labelText = depth === 0 ? 'Original' : `v${originals.length - depth} Original`
-                        const indent = (depth + 1) * 12
-                        return (
-                          <tr key={orig.id} className={`text-xs text-[#7A8F79] ${dc.row}`}>
-                            {/* EOB cell */}
-                            <td className="px-4 py-2">
-                              <div className="flex flex-col gap-1 min-w-[72px]">
-                                {(eobMap[orig.id] || []).map((eob, i) => (
-                                  <div key={eob.id} className="flex items-center gap-1">
-                                    <button
-                                      onClick={async () => {
-                                        const win = window.open('', '_blank')
-                                        try {
-                                          const r = await fetch(`/api/admin/documents/${eob.id}`, { credentials: 'include' })
-                                          const d = await r.json()
-                                          if (d.url && win) { win.location.href = d.url } else { win?.close() }
-                                        } catch { win?.close() }
-                                      }}
-                                      title={eob.fileName}
-                                      className="text-[10px] font-semibold text-green-700 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded hover:bg-green-100 transition whitespace-nowrap"
-                                    >
-                                      📎 EOB {(eobMap[orig.id] || []).length > 1 ? i + 1 : ''}
-                                    </button>
-                                    <button
-                                      onClick={() => deleteEob(eob.id)}
-                                      disabled={eobDeleting === eob.id}
-                                      title="Delete EOB"
-                                      className="text-[10px] text-red-400 hover:text-red-600 border border-red-100 px-1 py-0.5 rounded transition disabled:opacity-40"
-                                    >
-                                      {eobDeleting === eob.id ? '…' : '✕'}
-                                    </button>
-                                  </div>
-                                ))}
-                                <label className={`cursor-pointer text-[10px] font-semibold text-[#7A8F79] border border-dashed border-[#D9E1E8] px-1.5 py-0.5 rounded hover:border-[#7A8F79] hover:text-[#2F3E4E] transition whitespace-nowrap ${eobUploading === orig.id ? 'opacity-50 cursor-default' : ''}`}>
-                                  {eobUploading === orig.id ? '…' : '+ EOB'}
-                                  <input
-                                    type="file"
-                                    className="hidden"
-                                    disabled={eobUploading === orig.id}
-                                    accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif"
-                                    onChange={e => {
-                                      const file = e.target.files?.[0]
-                                      if (file) handleEobUpload(orig, file)
-                                      e.target.value = ''
-                                    }}
-                                  />
-                                </label>
-                              </div>
-                            </td>
-                            <td className="py-2 text-[10px] font-semibold whitespace-nowrap" style={{ paddingLeft: `${indent}px` }}>
-                              <span className={dc.label}>{labelText}</span>
-                            </td>
-                            <td className="px-4 py-2">{orig.providerName || orig.nurse?.displayName}</td>
-                            <td className="px-4 py-2 font-mono">{orig.claimId || '—'}</td>
-                            <td className="px-4 py-2 whitespace-nowrap">{fmtDOS(orig.dosStart, orig.dosStop)}</td>
-                            <td className="px-4 py-2"><StageBadge stage={orig.claimStage} /></td>
-                            <td className="px-4 py-2 whitespace-nowrap">{fmtDate(orig.submitDate)}</td>
-                            <td className="px-4 py-2 text-right">{fmt(orig.totalBilled, '$')}</td>
-                            <td className="px-4 py-2 border-l border-[#D9E1E8]">{orig.primaryPayer || '—'}</td>
-                            <td className="px-4 py-2 text-right">{fmt(orig.primaryAllowedAmt, '$')}</td>
-                            <td className="px-4 py-2 text-right">{fmt(orig.primaryPaidAmt, '$')}</td>
-                            <td className="px-4 py-2 whitespace-nowrap">{fmtDate(orig.primaryPaidDate)}</td>
-                            <td className="px-4 py-2">{orig.primaryPaidTo || '—'}</td>
-                            <td className="px-4 py-2 border-l border-[#D9E1E8]">{orig.secondaryPayer || '—'}</td>
-                            <td className="px-4 py-2 text-right">{fmt(orig.secondaryAllowedAmt, '$')}</td>
-                            <td className="px-4 py-2 text-right">{fmt(orig.secondaryPaidAmt, '$')}</td>
-                            <td className="px-4 py-2 whitespace-nowrap">{fmtDate(orig.secondaryPaidDate)}</td>
-                            <td className="px-4 py-2">{orig.secondaryPaidTo || '—'}</td>
-                            <td className="px-4 py-2 border-l border-[#D9E1E8] text-right">{fmt(orig.totalReimbursed, '$')}</td>
-                            <td className="px-4 py-2 text-right">{fmt(orig.remainingBalance, '$')}</td>
-                            <td className="px-4 py-2 whitespace-nowrap">{fmtDate(orig.dateFullyFinalized)}</td>
-                            <td className="px-4 py-2 max-w-xs truncate">{orig.processingNotes || '—'}</td>
-                          </tr>
-                        )
-                      })}
-                    </Fragment>
+                        ) : (
+                          <span className="text-[10px] text-[#7A8F79]">—</span>
+                        )}
+                      </td>
+
+                      {/* Provider / ID */}
+                      <td className="px-4 py-2.5">
+                        <div className="font-semibold text-[#2F3E4E] leading-tight">
+                          {uc._type === 'commercial' ? (uc.providerName || uc.nurse?.displayName || '—') : (uc.nurse?.displayName || '—')}
+                        </div>
+                        <div className="font-mono text-[11px] text-[#7A8F79] mt-0.5">
+                          {uc._type === 'commercial' ? (uc.claimId || '—') : uc.patientCtrlNum}
+                          {uc._type === 'commercial' && uc.resubmissionOf && (
+                            <span className="ml-1 text-blue-500">↻</span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* DOS */}
+                      <td className="px-4 py-2.5 text-xs text-[#2F3E4E] whitespace-nowrap">
+                        {fmtDOS(uc.dosStart, uc.dosStop)}
+                      </td>
+
+                      {/* Payer / Status */}
+                      <td className="px-4 py-2.5">
+                        {uc._type === 'commercial' ? (
+                          <div>
+                            <div className="text-xs text-[#7A8F79] mb-0.5 truncate max-w-[180px]">{uc.primaryPayer || '—'}</div>
+                            <StageBadge stage={uc.claimStage} />
+                          </div>
+                        ) : (
+                          <div>
+                            <span className="text-xs font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">Medicaid</span>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {(uc.statusCodes || []).slice(0, 3).map(sc => (
+                                <span key={sc} className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full font-semibold">{sc}</span>
+                              ))}
+                              {(uc.statusCodes || []).length > 3 && (
+                                <span className="text-[10px] text-[#7A8F79]">+{(uc.statusCodes || []).length - 3}</span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </td>
+
+                      {/* $ Summary */}
+                      <td className="px-4 py-2.5 text-right text-xs">
+                        {uc._type === 'commercial' ? (
+                          <>
+                            <div className="text-[#2F3E4E] font-semibold">{fmt(uc.totalBilled, '$')}</div>
+                            <div className="text-[#7A8F79]">{fmt(uc.primaryPaidAmt, '$')}</div>
+                            <div className={`font-semibold ${(uc.remainingBalance || 0) > 0 ? 'text-red-500' : 'text-[#2F3E4E]'}`}>{fmt(uc.remainingBalance, '$')}</div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="text-[#2F3E4E] font-semibold">{fmt(uc.totalCharge, '$')}</div>
+                            <div className="text-[#7A8F79]">{fmt(uc.paidAmount, '$')}</div>
+                            <div className={`font-semibold ${uc.paidAmount != null && uc.totalCharge > uc.paidAmount ? 'text-red-500' : 'text-[#2F3E4E]'}`}>
+                              {uc.paidAmount != null ? fmt(uc.totalCharge - uc.paidAmount, '$') : '—'}
+                            </div>
+                          </>
+                        )}
+                      </td>
+                    </tr>
                   )
                 })}
               </tbody>
@@ -1455,17 +1930,37 @@ export default function AdminClaimsPage() {
 
       </div>
 
+      {/* Claim Detail Modal */}
+      {openedClaim && (
+        <ClaimDetailModal
+          claim={openedClaim}
+          eobDocs={openedClaim._type === 'commercial' ? (eobMap[openedClaim.id] || []) : []}
+          uploading={eobUploading === selectedClaimId}
+          deletingId={eobDeleting}
+          medicaidStatusCodes={medicaidStatusCodes}
+          onClose={() => { setSelectedClaimId(null); setSelectedClaimType(null) }}
+          onSaved={updated => {
+            if (updated._type === 'commercial') {
+              setClaims(prev => prev.map(c => c.id === updated.id ? (updated as CommercialClaim) : c))
+            } else {
+              setMedicaidClaims(prev => prev.map(c => c.id === updated.id ? (updated as MedicaidClaimRow) : c))
+            }
+          }}
+          onEobUpload={file => handleEobUpload(openedClaim as CommercialClaim, file)}
+          onEobDelete={deleteEob}
+          onReloadClaims={loadClaims}
+        />
+      )}
+
       {/* Add Claim Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 overflow-y-auto py-8 px-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl">
-            {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#D9E1E8]">
               <h2 className="text-lg font-bold text-[#2F3E4E]">Add Claim Manually</h2>
               <button onClick={() => setShowAddModal(false)} className="text-[#7A8F79] hover:text-[#2F3E4E] text-xl leading-none">✕</button>
             </div>
 
-            {/* Claim type toggle */}
             <div className="flex border-b border-[#D9E1E8]">
               <button
                 type="button"
@@ -1489,7 +1984,7 @@ export default function AdminClaimsPage() {
                 <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-2">{addError}</div>
               )}
 
-              {/* Provider autocomplete — shared by both claim types */}
+              {/* Provider autocomplete — shared */}
               <div>
                 <p className="text-xs font-bold uppercase tracking-widest text-[#7A8F79] mb-3">Provider</p>
                 <div ref={providerRef} className="relative max-w-xs">
@@ -1532,7 +2027,6 @@ export default function AdminClaimsPage() {
               {/* ── COMMERCIAL FORM ── */}
               {addClaimType === 'commercial' && <>
 
-              {/* Provider + Claim ID + Stage */}
               <div>
                 <p className="text-xs font-bold uppercase tracking-widest text-[#7A8F79] mb-3 border-t border-[#D9E1E8] pt-4">Claim Info</p>
                 <div className="grid grid-cols-3 gap-4">
@@ -1570,7 +2064,6 @@ export default function AdminClaimsPage() {
                 </div>
               </div>
 
-              {/* Primary Insurance */}
               <div>
                 <p className="text-xs font-bold uppercase tracking-widest text-[#7A8F79] mb-3 border-t border-[#D9E1E8] pt-4">Primary Insurance</p>
                 <div className="grid grid-cols-3 gap-4">
@@ -1601,7 +2094,6 @@ export default function AdminClaimsPage() {
                 </div>
               </div>
 
-              {/* Secondary Insurance */}
               <div>
                 <p className="text-xs font-bold uppercase tracking-widest text-[#7A8F79] mb-3 border-t border-[#D9E1E8] pt-4">Secondary Insurance</p>
                 <div className="grid grid-cols-3 gap-4">
@@ -1632,7 +2124,6 @@ export default function AdminClaimsPage() {
                 </div>
               </div>
 
-              {/* Summary */}
               <div>
                 <p className="text-xs font-bold uppercase tracking-widest text-[#7A8F79] mb-3 border-t border-[#D9E1E8] pt-4">Summary</p>
                 <div className="grid grid-cols-3 gap-4">
@@ -1709,7 +2200,6 @@ export default function AdminClaimsPage() {
                 </div>
               </div>
 
-              {/* Status Codes */}
               <div>
                 <p className="text-xs font-bold uppercase tracking-widest text-[#7A8F79] mb-3 border-t border-[#D9E1E8] pt-4">Claim Status Codes</p>
                 <div className="relative">
@@ -1756,7 +2246,6 @@ export default function AdminClaimsPage() {
                 )}
               </div>
 
-              {/* Notes */}
               <div>
                 <p className="text-xs font-bold uppercase tracking-widest text-[#7A8F79] mb-3 border-t border-[#D9E1E8] pt-4">Notes</p>
                 <textarea rows={2} value={medicaidForm.notes || ''} onChange={e => setMedicaidForm(f => ({ ...f, notes: e.target.value }))}
@@ -1765,7 +2254,6 @@ export default function AdminClaimsPage() {
 
               </>}
 
-              {/* Actions */}
               <div className="flex justify-end gap-3 border-t border-[#D9E1E8] pt-5">
                 <button type="button" onClick={() => setShowAddModal(false)}
                   className="px-5 py-2 rounded-lg border border-[#D9E1E8] text-sm font-semibold text-[#7A8F79] hover:text-[#2F3E4E] hover:border-[#7A8F79] transition">
@@ -1782,7 +2270,7 @@ export default function AdminClaimsPage() {
         </div>
       )}
 
-      {/* ── Follow-Up Reminder Modal ── */}
+      {/* Follow-Up Reminder Modal */}
       {showReminderModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
@@ -1791,7 +2279,6 @@ export default function AdminClaimsPage() {
               <button onClick={() => setShowReminderModal(false)} className="text-[#7A8F79] hover:text-[#2F3E4E] text-xl leading-none">×</button>
             </div>
             <form onSubmit={submitReminder} className="px-6 py-5 space-y-4">
-              {/* Claim selector */}
               <div>
                 <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Claim</label>
                 <select
@@ -1819,7 +2306,6 @@ export default function AdminClaimsPage() {
                 </select>
               </div>
 
-              {/* Due date */}
               <div>
                 <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Follow-Up Date</label>
                 <input
@@ -1831,7 +2317,6 @@ export default function AdminClaimsPage() {
                 />
               </div>
 
-              {/* Reason */}
               <div>
                 <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Reason / Notes</label>
                 <textarea

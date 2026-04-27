@@ -34,7 +34,6 @@ const FEE_LABELS: Record<string, string> = {
 function fmt(d: string | Date) {
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
 }
-
 function currency(n: number) {
   return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 }
@@ -56,7 +55,6 @@ export default function PrintInvoicePage({ params }: { params: Promise<{ id: str
       .then(data => {
         if (data) {
           setInvoice(data)
-          // Auto-trigger print dialog after a short render delay
           setTimeout(() => window.print(), 400)
         }
       })
@@ -71,6 +69,7 @@ export default function PrintInvoicePage({ params }: { params: Promise<{ id: str
   const displayName = invoice.nurse?.displayName || invoice.nurseName
   const email = invoice.nurse?.user?.email || invoice.nurseEmail
   const accountNumber = invoice.nurse?.accountNumber
+  const shortNum = shortInvoiceNumber(invoice.invoiceNumber)
 
   const STATUS_COLOR: Record<string, string> = {
     Paid: '#16a34a', Partial: '#d97706', Sent: '#2563eb',
@@ -78,198 +77,144 @@ export default function PrintInvoicePage({ params }: { params: Promise<{ id: str
   }
   const statusColor = STATUS_COLOR[invoice.status] || '#6b7280'
 
+  const venmoUrl   = `https://venmo.com/AlexMcGann?txn=pay&amount=${balance.toFixed(2)}&note=${encodeURIComponent(shortNum)}`
+  const cashappUrl = `https://cash.app/$myInvoiceCHC/${balance.toFixed(2)}?note=${encodeURIComponent(shortNum)}`
+  const appleUrl   = 'https://applepay.apple.com/person/support@cominghomecare.com'
+
   return (
     <>
       <style>{`
-        @page {
-          size: letter portrait;
-          margin: 0.55in;
-        }
+        @page { size: letter portrait; margin: 0.4in; }
         @media print {
           *, *::before, *::after {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             color-adjust: exact !important;
           }
-          html, body {
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
-          }
-          /* Hide site chrome: Banner (fixed class) + Footer */
+          html, body { margin: 0 !important; padding: 0 !important; background: white !important; }
           .fixed { display: none !important; }
           footer { display: none !important; }
-          .page-wrap { padding: 0 !important; }
           .no-print { display: none !important; }
-          .print-outer {
-            padding-top: 0 !important;
-            background: white !important;
-            min-height: unset !important;
-          }
-          .invoice-wrap {
-            box-shadow: none !important;
-            border-radius: 0 !important;
-            margin: 0 !important;
-            max-width: 100% !important;
-            width: 100% !important;
-          }
-          .print-body { padding: 20px 28px !important; }
-          .print-gap  { gap: 16px !important; }
-          .print-section { margin-bottom: 14px !important; }
+          .print-outer { padding-top: 0 !important; background: white !important; min-height: unset !important; }
+          .invoice-wrap { box-shadow: none !important; border-radius: 0 !important; margin: 0 !important; max-width: 100% !important; width: 100% !important; }
         }
       `}</style>
 
-      {/* Print/email controls */}
+      {/* Toolbar */}
       <div className="no-print fixed top-0 left-0 right-0 bg-[#2F3E4E] text-white px-6 py-3 flex items-center gap-4 z-50 shadow-lg">
-        <span className="text-sm font-semibold text-[#D9E1E8]">{shortInvoiceNumber(invoice.invoiceNumber)}</span>
+        <span className="text-sm font-semibold text-[#D9E1E8]">{shortNum}</span>
         <div className="flex-1" />
-        <button
-          onClick={() => window.print()}
-          className="bg-[#7A8F79] hover:bg-[#657a64] text-white text-sm font-semibold px-5 py-2 rounded-lg transition"
-        >
+        <button onClick={() => window.print()} className="bg-[#7A8F79] hover:bg-[#657a64] text-white text-sm font-semibold px-5 py-2 rounded-lg transition">
           🖨 Print / Save as PDF
         </button>
-        <button
-          onClick={() => {
-            fetch(`/api/admin/invoices/${id}/s3`, { method: 'POST', credentials: 'include' })
-              .then(r => r.json())
-              .then(d => { if (d.url) alert('Saved to S3. Download link copied.') })
-          }}
-          className="bg-slate-600 hover:bg-slate-500 text-white text-sm font-semibold px-5 py-2 rounded-lg transition"
-        >
-          ☁️ Save to S3
-        </button>
-        <button
-          onClick={() => window.close()}
-          className="text-[#D9E1E8] hover:text-white text-sm transition"
-        >
-          ✕ Close
-        </button>
+        <button onClick={() => window.close()} className="text-[#D9E1E8] hover:text-white text-sm transition">✕ Close</button>
       </div>
 
       <div className="print-outer pt-14 min-h-screen bg-gray-100">
-        <div className="invoice-wrap max-w-[720px] mx-auto my-8 bg-white shadow-xl rounded-xl overflow-hidden p-0">
+        <div className="invoice-wrap max-w-[640px] mx-auto my-6 bg-white shadow-xl rounded-xl overflow-hidden">
 
           {/* Header */}
-          <div className="bg-[#2F3E4E] px-8 py-5 flex justify-between items-center">
-            <div className="flex items-center gap-5">
-              {/* Logo on white background for legibility against dark header */}
-              <div className="bg-white rounded-lg px-3 py-2 flex-shrink-0">
-                <img src="/chc_logo.png" alt="Coming Home Care" className="h-12 w-auto block" />
+          <div className="bg-[#2F3E4E] px-6 py-3 flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <div className="bg-white rounded-lg px-2 py-1 flex-shrink-0">
+                <img src="/chc_logo.png" alt="Coming Home Care" className="h-8 w-auto block" />
               </div>
               <div>
-                <p className="text-[9px] font-bold uppercase tracking-widest text-[#7A8F79]">Invoice</p>
-                <h1 className="text-xl font-black text-white leading-tight">Coming Home Care Services, LLC</h1>
-                <p className="text-[11px] text-[#D9E1E8] mt-0.5">support@cominghomecare.com · cominghomecare.com</p>
+                <p className="text-[8px] font-bold uppercase tracking-widest text-[#7A8F79]">Invoice</p>
+                <h1 className="text-sm font-black text-white leading-tight">Coming Home Care Services, LLC</h1>
+                <p className="text-[10px] text-[#D9E1E8] mt-0.5">support@cominghomecare.com · cominghomecare.com</p>
               </div>
             </div>
             <div className="text-right flex-shrink-0">
-              <p className="text-[10px] text-[#7A8F79] font-semibold">Invoice #</p>
-              <p className="text-lg font-black text-white font-mono">{shortInvoiceNumber(invoice.invoiceNumber)}</p>
-              <span
-                className="inline-block mt-1 text-[10px] font-black px-3 py-0.5 rounded-full"
-                style={{ background: `${statusColor}22`, color: statusColor }}
-              >
+              <p className="text-[9px] text-[#7A8F79] font-semibold">Invoice #</p>
+              <p className="text-base font-black text-white font-mono">{shortNum}</p>
+              <span className="inline-block mt-0.5 text-[9px] font-black px-2 py-0.5 rounded-full"
+                style={{ background: `${statusColor}22`, color: statusColor }}>
                 {invoice.status}
               </span>
             </div>
           </div>
 
-          <div className="print-body px-8 py-6 space-y-6">
+          <div className="px-6 py-4 space-y-3">
 
-            {/* Bill To / Invoice Info */}
-            <div className="print-gap print-section grid grid-cols-2 gap-6">
-              <div className="bg-[#F4F6F5] rounded-xl p-4">
-                <p className="text-[9px] font-bold uppercase tracking-widest text-[#7A8F79] mb-2">Bill To</p>
+            {/* Bill To / Invoice Info — flat row */}
+            <div className="flex justify-between items-start pb-3 border-b border-[#D9E1E8]">
+              <div>
+                <p className="text-[8px] font-bold uppercase tracking-widest text-[#7A8F79] mb-1">Bill To</p>
                 {invoice.nurse?.hasBusinessProvider ? (
-                  // Business entity billing info
                   <>
-                    <p className="font-bold text-[#2F3E4E]">{invoice.nurse.bizEntityName || displayName}</p>
-                    {invoice.nurse.bizServiceAddress && (
-                      <p className="text-sm text-[#2F3E4E]">{invoice.nurse.bizServiceAddress}</p>
-                    )}
-                    {invoice.nurse.bizPhone && (
-                      <p className="text-sm text-[#7A8F79] mt-0.5">{fmtPhone(invoice.nurse.bizPhone)}</p>
-                    )}
-                    {invoice.nurse.bizEmail && (
-                      <p className="text-sm text-[#7A8F79] mt-0.5">{invoice.nurse.bizEmail}</p>
-                    )}
+                    <p className="font-bold text-sm text-[#2F3E4E]">{invoice.nurse.bizEntityName || displayName}</p>
+                    {invoice.nurse.bizServiceAddress && <p className="text-xs text-[#7A8F79]">{invoice.nurse.bizServiceAddress}</p>}
+                    {invoice.nurse.bizPhone && <p className="text-xs text-[#7A8F79]">{fmtPhone(invoice.nurse.bizPhone)}</p>}
+                    {invoice.nurse.bizEmail && <p className="text-xs text-[#7A8F79]">{invoice.nurse.bizEmail}</p>}
                   </>
                 ) : (
-                  // Individual provider billing info
                   <>
-                    <p className="font-bold text-[#2F3E4E]">
+                    <p className="font-bold text-sm text-[#2F3E4E]">
                       {invoice.nurse?.firstName && invoice.nurse?.lastName
                         ? `${invoice.nurse.firstName} ${invoice.nurse.lastName}`
                         : displayName}
                     </p>
-                    {invoice.nurse?.address && (
-                      <p className="text-sm text-[#2F3E4E]">{invoice.nurse.address}</p>
-                    )}
+                    {invoice.nurse?.address && <p className="text-xs text-[#7A8F79]">{invoice.nurse.address}</p>}
                     {(invoice.nurse?.city || invoice.nurse?.state || invoice.nurse?.zip) && (
-                      <p className="text-sm text-[#2F3E4E]">
+                      <p className="text-xs text-[#7A8F79]">
                         {[invoice.nurse.city, invoice.nurse.state].filter(Boolean).join(', ')}{invoice.nurse.zip ? ` ${invoice.nurse.zip}` : ''}
                       </p>
                     )}
-                    {invoice.nurse?.phone && (
-                      <p className="text-sm text-[#7A8F79] mt-0.5">{fmtPhone(invoice.nurse.phone)}</p>
-                    )}
-                    <p className="text-sm text-[#7A8F79] mt-0.5">{email}</p>
+                    {invoice.nurse?.phone && <p className="text-xs text-[#7A8F79]">{fmtPhone(invoice.nurse.phone)}</p>}
+                    <p className="text-xs text-[#7A8F79]">{email}</p>
                   </>
                 )}
-                {accountNumber && <p className="text-xs font-mono text-[#7A8F79] mt-0.5">Acct: {accountNumber}</p>}
+                {accountNumber && <p className="text-[10px] font-mono text-[#7A8F79] mt-0.5">Acct: {accountNumber}</p>}
               </div>
-              <div className="bg-[#F4F6F5] rounded-xl p-4">
-                <p className="text-[9px] font-bold uppercase tracking-widest text-[#7A8F79] mb-2">Invoice Details</p>
-                <div className="space-y-0.5 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-[#7A8F79]">Issued</span>
-                    <span className="font-semibold text-[#2F3E4E]">{fmt(invoice.sentAt)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#7A8F79]">Due</span>
-                    <span className={`font-semibold ${balance > 0 && new Date(invoice.dueDate) < new Date() ? 'text-red-500' : 'text-[#2F3E4E]'}`}>
-                      {fmt(invoice.dueDate)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#7A8F79]">Terms</span>
-                    <span className="font-semibold text-[#2F3E4E]">Net {invoice.dueTerm}</span>
-                  </div>
-                  {invoice.paidAt && (
-                    <div className="flex justify-between">
-                      <span className="text-[#7A8F79]">Paid</span>
-                      <span className="font-semibold text-green-600">{fmt(invoice.paidAt)}</span>
-                    </div>
-                  )}
+              <div className="text-right space-y-1">
+                <div className="text-xs">
+                  <span className="text-[#7A8F79]">Issued </span>
+                  <span className="font-semibold text-[#2F3E4E]">{fmt(invoice.sentAt)}</span>
                 </div>
+                <div className="text-xs">
+                  <span className="text-[#7A8F79]">Due </span>
+                  <span className={`font-semibold ${balance > 0 && new Date(invoice.dueDate) < new Date() ? 'text-red-500' : 'text-[#2F3E4E]'}`}>
+                    {fmt(invoice.dueDate)}
+                  </span>
+                </div>
+                <div className="text-xs">
+                  <span className="text-[#7A8F79]">Terms </span>
+                  <span className="font-semibold text-[#2F3E4E]">Net {invoice.dueTerm}</span>
+                </div>
+                {invoice.paidAt && (
+                  <div className="text-xs">
+                    <span className="text-[#7A8F79]">Paid </span>
+                    <span className="font-semibold text-green-600">{fmt(invoice.paidAt)}</span>
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Line items */}
-            <div className="rounded-xl border border-[#D9E1E8] overflow-hidden">
-              <table className="w-full text-sm">
+            <div className="rounded-lg border border-[#D9E1E8] overflow-hidden">
+              <table className="w-full text-xs">
                 <thead>
                   <tr className="bg-[#f4f6f8]">
-                    <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-[#7A8F79]">Date Worked</th>
-                    <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-[#7A8F79]">Plan</th>
-                    <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] hidden sm:table-cell">Description</th>
-                    <th className="text-right px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-[#7A8F79]">Fee</th>
+                    <th className="text-left px-3 py-2 text-[9px] font-bold uppercase tracking-widest text-[#7A8F79]">Date Worked</th>
+                    <th className="text-left px-3 py-2 text-[9px] font-bold uppercase tracking-widest text-[#7A8F79]">Plan</th>
+                    <th className="text-left px-3 py-2 text-[9px] font-bold uppercase tracking-widest text-[#7A8F79] hidden sm:table-cell">Description</th>
+                    <th className="text-right px-3 py-2 text-[9px] font-bold uppercase tracking-widest text-[#7A8F79]">Fee</th>
                   </tr>
                 </thead>
                 <tbody>
                   {invoice.entries.map((e, i) => (
                     <tr key={i} className={`border-t border-[#D9E1E8] ${i % 2 === 0 ? 'bg-white' : 'bg-[#fafbfc]'}`}>
-                      <td className="px-4 py-2.5 font-semibold text-[#2F3E4E]">{fmt(e.workDate)}</td>
-                      <td className="px-4 py-2.5">
-                        <span className="bg-[#2F3E4E] text-white text-[10px] font-bold px-2 py-0.5 rounded">
+                      <td className="px-3 py-1.5 font-semibold text-[#2F3E4E]">{fmt(e.workDate)}</td>
+                      <td className="px-3 py-1.5">
+                        <span className="bg-[#2F3E4E] text-white text-[9px] font-bold px-2 py-0.5 rounded">
                           {e.invoiceFeePlan || '—'}
                         </span>
                       </td>
-                      <td className="px-4 py-2.5 text-[#7A8F79] hidden sm:table-cell">
+                      <td className="px-3 py-1.5 text-[#7A8F79] hidden sm:table-cell">
                         {e.invoiceFeePlan ? (FEE_LABELS[e.invoiceFeePlan] || e.invoiceFeePlan) : ''}
                       </td>
-                      <td className="px-4 py-2.5 text-right font-bold text-[#2F3E4E]">
+                      <td className="px-3 py-1.5 text-right font-bold text-[#2F3E4E]">
                         {currency(e.invoiceFeeAmt || 0)}
                       </td>
                     </tr>
@@ -277,8 +222,8 @@ export default function PrintInvoicePage({ params }: { params: Promise<{ id: str
                 </tbody>
                 <tfoot>
                   <tr className="border-t-2 border-[#2F3E4E] bg-[#f4f6f8]">
-                    <td colSpan={3} className="px-4 py-3 text-xs font-bold uppercase tracking-widest text-[#7A8F79]">Invoice Total</td>
-                    <td className="px-4 py-3 text-right text-xl font-black text-[#2F3E4E]">{currency(invoice.totalAmount)}</td>
+                    <td colSpan={3} className="px-3 py-2 text-[9px] font-bold uppercase tracking-widest text-[#7A8F79]">Invoice Total</td>
+                    <td className="px-3 py-2 text-right text-base font-black text-[#2F3E4E]">{currency(invoice.totalAmount)}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -286,34 +231,34 @@ export default function PrintInvoicePage({ params }: { params: Promise<{ id: str
 
             {/* Payment history */}
             {invoice.payments && invoice.payments.length > 0 && (
-              <div className="rounded-xl border border-[#D9E1E8] overflow-hidden">
-                <table className="w-full text-sm">
+              <div className="rounded-lg border border-[#D9E1E8] overflow-hidden">
+                <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-green-50">
-                      <th className="text-left px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-green-700">Receipt #</th>
-                      <th className="text-left px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-green-700">Date</th>
-                      <th className="text-left px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-green-700">Method</th>
-                      <th className="text-left px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-green-700">Note</th>
-                      <th className="text-right px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-green-700">Amount</th>
+                      <th className="text-left px-3 py-2 text-[9px] font-bold uppercase tracking-widest text-green-700">Receipt #</th>
+                      <th className="text-left px-3 py-2 text-[9px] font-bold uppercase tracking-widest text-green-700">Date</th>
+                      <th className="text-left px-3 py-2 text-[9px] font-bold uppercase tracking-widest text-green-700">Method</th>
+                      <th className="text-left px-3 py-2 text-[9px] font-bold uppercase tracking-widest text-green-700">Note</th>
+                      <th className="text-right px-3 py-2 text-[9px] font-bold uppercase tracking-widest text-green-700">Amount</th>
                     </tr>
                   </thead>
                   <tbody>
                     {invoice.payments.map((p, i) => (
                       <tr key={p.id} className={`border-t border-[#D9E1E8] ${i % 2 === 0 ? 'bg-white' : 'bg-green-50/30'}`}>
-                        <td className="px-4 py-2 font-mono text-xs text-[#7A8F79]">{p.receiptNumber}</td>
-                        <td className="px-4 py-2 text-[#2F3E4E]">{fmt(p.appliedAt)}</td>
-                        <td className="px-4 py-2 text-[#7A8F79]">{p.method || '—'}</td>
-                        <td className="px-4 py-2 text-[#7A8F79] italic">{p.note || '—'}</td>
-                        <td className="px-4 py-2 text-right font-bold text-green-600">-{currency(p.amount)}</td>
+                        <td className="px-3 py-1.5 font-mono text-[#7A8F79]">{p.receiptNumber}</td>
+                        <td className="px-3 py-1.5 text-[#2F3E4E]">{fmt(p.appliedAt)}</td>
+                        <td className="px-3 py-1.5 text-[#7A8F79]">{p.method || '—'}</td>
+                        <td className="px-3 py-1.5 text-[#7A8F79] italic">{p.note || '—'}</td>
+                        <td className="px-3 py-1.5 text-right font-bold text-green-600">-{currency(p.amount)}</td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot>
                     <tr className="border-t-2 border-green-600 bg-green-50">
-                      <td colSpan={4} className="px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-green-700">
+                      <td colSpan={4} className="px-3 py-2 text-[9px] font-bold uppercase tracking-widest text-green-700">
                         {balance <= 0 ? 'Paid in Full' : 'Balance Due'}
                       </td>
-                      <td className={`px-4 py-2.5 text-right text-xl font-black ${balance <= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                      <td className={`px-3 py-2 text-right text-base font-black ${balance <= 0 ? 'text-green-600' : 'text-red-500'}`}>
                         {currency(balance)}
                       </td>
                     </tr>
@@ -324,75 +269,53 @@ export default function PrintInvoicePage({ params }: { params: Promise<{ id: str
 
             {/* Notes */}
             {invoice.notes && (
-              <div className="bg-amber-50 border-l-4 border-amber-400 rounded-r-xl px-5 py-3">
-                <p className="text-xs font-bold text-amber-700 uppercase tracking-wide mb-0.5">Note</p>
-                <p className="text-sm text-amber-900">{invoice.notes}</p>
+              <div className="bg-amber-50 border-l-4 border-amber-400 rounded-r-lg px-4 py-2">
+                <p className="text-[9px] font-bold text-amber-700 uppercase tracking-wide mb-0.5">Note</p>
+                <p className="text-xs text-amber-900">{invoice.notes}</p>
               </div>
             )}
 
             {/* Payment methods */}
             {balance > 0 && (
-              <div className="bg-[#F4F6F5] rounded-xl p-5">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] mb-3">Tap to Pay</p>
-                <div className="flex flex-wrap gap-3 mb-3">
+              <div className="border border-[#D9E1E8] rounded-lg px-4 py-2.5">
+                <p className="text-[8px] font-bold uppercase tracking-widest text-[#7A8F79] mb-2">How to Pay</p>
 
-                  {/* Venmo */}
-                  <a
-                    href={`https://venmo.com/AlexMcGann?txn=pay&amount=${balance.toFixed(2)}&note=${encodeURIComponent(invoice.invoiceNumber)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="no-print flex items-center gap-2 bg-[#3D95CE] hover:bg-[#2d7fb8] text-white font-bold text-sm px-4 py-2.5 rounded-xl transition shadow-sm"
-                  >
-                    <svg viewBox="0 0 24 24" className="w-5 h-5 fill-white" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M19.04 2c.76 1.27 1.1 2.58 1.1 4.23 0 5.27-4.5 12.11-8.16 16.92H4.22L1 4.01l6.77-.65 1.73 13.92c1.6-2.68 3.58-6.9 3.58-9.77 0-1.57-.27-2.64-.68-3.51H19.04z"/>
-                    </svg>
-                    Venmo
+                {/* Screen: small inline buttons */}
+                <div className="no-print flex flex-wrap gap-2 mb-2">
+                  <a href={venmoUrl} target="_blank" rel="noopener noreferrer"
+                    className="text-xs font-bold bg-[#3D95CE] text-white px-3 py-1.5 rounded-lg hover:bg-[#2d7fb8] transition">
+                    Venmo · @AlexMcGann
                   </a>
-
-                  {/* Cash App */}
-                  <a
-                    href={`https://cash.app/$myInvoiceCHC/${balance.toFixed(2)}?note=${encodeURIComponent(invoice.invoiceNumber)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="no-print flex items-center gap-2 bg-[#00D632] hover:bg-[#00b82b] text-white font-bold text-sm px-4 py-2.5 rounded-xl transition shadow-sm"
-                  >
-                    <svg viewBox="0 0 24 24" className="w-5 h-5 fill-white" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M13.567 7.9c.84.23 1.62.69 2.19 1.35l1.67-1.67a6.42 6.42 0 00-3.86-1.88V4h-2v1.72c-2.3.4-3.97 2.06-3.97 4.13 0 2.37 1.85 3.38 3.97 3.93v3.37c-.9-.18-1.74-.64-2.36-1.32L7.4 17.5a6.5 6.5 0 004.16 1.78V21h2v-1.73c2.34-.37 4.03-2.05 4.03-4.2 0-2.44-1.91-3.47-4.03-4v-3.17zm-2 0V5.77c-.88.26-1.47 1-1.47 1.85 0 .8.5 1.35 1.47 1.65v-3.37zm2 8.27c.92-.27 1.53-1.03 1.53-1.9 0-.83-.52-1.4-1.53-1.72v3.62z"/>
-                    </svg>
-                    Cash App
+                  <a href={cashappUrl} target="_blank" rel="noopener noreferrer"
+                    className="text-xs font-bold bg-[#00D632] text-white px-3 py-1.5 rounded-lg hover:bg-[#00b82b] transition">
+                    Cash App · $myInvoiceCHC
                   </a>
-
-                  {/* Apple Pay */}
-                  <a
-                    href="https://applepay.apple.com/person/support@cominghomecare.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="no-print flex items-center gap-2 bg-black hover:bg-gray-800 text-white font-bold text-sm px-4 py-2.5 rounded-xl transition shadow-sm"
-                  >
-                    <svg viewBox="0 0 24 24" className="w-5 h-5 fill-white" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
-                    </svg>
-                    Apple Pay
+                  <a href="mailto:support@cominghomecare.com" target="_blank" rel="noopener noreferrer"
+                    className="text-xs font-bold bg-[#6D1ED4] text-white px-3 py-1.5 rounded-lg hover:bg-[#5a19b0] transition">
+                    Zelle · support@cominghomecare.com
                   </a>
-
+                  <a href={appleUrl} target="_blank" rel="noopener noreferrer"
+                    className="text-xs font-bold bg-black text-white px-3 py-1.5 rounded-lg hover:bg-gray-800 transition">
+                    Apple Pay · support@cominghomecare.com
+                  </a>
                 </div>
 
-                {/* Print fallback — shown only when printing, buttons hidden */}
-                <div className="hidden print:block space-y-1 text-xs text-[#7A8F79]">
-                  <p><strong>Venmo:</strong> @AlexMcGann</p>
-                  <p><strong>Cash App:</strong> $myInvoiceCHC</p>
-                  <p><strong>Apple Pay:</strong> support@cominghomecare.com</p>
+                {/* Print: compact 2-col text */}
+                <div className="hidden print:grid grid-cols-2 gap-x-6 gap-y-0.5 text-xs text-[#2F3E4E] mb-2">
+                  <p><strong>Venmo</strong> @AlexMcGann</p>
+                  <p><strong>Zelle</strong> support@cominghomecare.com</p>
+                  <p><strong>Cash App</strong> $myInvoiceCHC</p>
+                  <p><strong>Apple Pay</strong> support@cominghomecare.com</p>
                 </div>
 
-                <p className="text-[10px] text-[#7A8F79] mt-2">
-                  Please include <strong>{shortInvoiceNumber(invoice.invoiceNumber)}</strong> as your payment note.
+                <p className="text-[9px] text-[#7A8F79]">
+                  Please include <strong>{shortNum}</strong> as your payment note.
                 </p>
               </div>
             )}
 
-            <p className="text-[10px] text-center text-[#7A8F79] pt-2 border-t border-[#D9E1E8]">
-              Coming Home Care Services, LLC · This invoice is confidential.
-              Questions? Email support@cominghomecare.com
+            <p className="text-[9px] text-center text-[#7A8F79] pt-2 border-t border-[#D9E1E8]">
+              Coming Home Care Services, LLC · Questions? support@cominghomecare.com
             </p>
           </div>
         </div>

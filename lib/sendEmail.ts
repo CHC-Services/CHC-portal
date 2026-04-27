@@ -150,13 +150,13 @@ export async function sendInvoiceEmail({
 
   // Reusable payment button builder
   const payBtn = (href: string, bg: string, icon: string, label: string, handle: string) => `
-    <td style="padding:4px;width:50%">
-      <a href="${href}" style="display:block;background:${bg};border-radius:12px;padding:12px 14px;text-decoration:none">
+    <td style="padding:3px;width:50%">
+      <a href="${href}" style="display:block;background:${bg};border-radius:8px;padding:7px 10px;text-decoration:none">
         <table style="border-collapse:collapse;width:100%"><tr>
-          <td style="width:24px;padding:0;vertical-align:middle">${icon}</td>
-          <td style="padding:0 0 0 9px;vertical-align:middle">
-            <p style="margin:0;font-size:13px;font-weight:800;color:#ffffff;line-height:1.2">${label}</p>
-            <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.75);line-height:1">${handle}</p>
+          <td style="width:20px;padding:0;vertical-align:middle">${icon}</td>
+          <td style="padding:0 0 0 7px;vertical-align:middle">
+            <p style="margin:0;font-size:11px;font-weight:800;color:#ffffff;line-height:1.2">${label}</p>
+            <p style="margin:1px 0 0;font-size:9px;color:rgba(255,255,255,0.75);line-height:1">${handle}</p>
           </td>
         </tr></table>
       </a>
@@ -164,12 +164,12 @@ export async function sendInvoiceEmail({
 
   const lineItems = entries.map(e => `
     <tr>
-      <td style="padding:10px 0;font-size:13px;color:#2F3E4E;border-bottom:1px solid #f0f4f0">${fmt(e.workDate)}</td>
-      <td style="padding:10px 12px;font-size:13px;color:#2F3E4E;border-bottom:1px solid #f0f4f0">
-        <span style="background:#2F3E4E;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:0.5px">${e.invoiceFeePlan}</span>
+      <td style="padding:6px 0;font-size:12px;color:#2F3E4E;border-bottom:1px solid #f0f4f0">${fmt(e.workDate)}</td>
+      <td style="padding:6px 10px;font-size:12px;color:#2F3E4E;border-bottom:1px solid #f0f4f0">
+        <span style="background:#2F3E4E;color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;letter-spacing:0.5px">${e.invoiceFeePlan}</span>
       </td>
-      <td style="padding:10px 0;font-size:13px;color:#4a5a6a;border-bottom:1px solid #f0f4f0">${FEE_PLAN_LABELS[e.invoiceFeePlan] || e.invoiceFeePlan}</td>
-      <td style="padding:10px 0;font-size:13px;color:#2F3E4E;font-weight:600;text-align:right;border-bottom:1px solid #f0f4f0">${fmtMoney(e.invoiceFeeAmt)}</td>
+      <td style="padding:6px 0;font-size:12px;color:#4a5a6a;border-bottom:1px solid #f0f4f0">${FEE_PLAN_LABELS[e.invoiceFeePlan] || e.invoiceFeePlan}</td>
+      <td style="padding:6px 0;font-size:12px;color:#2F3E4E;font-weight:600;text-align:right;border-bottom:1px solid #f0f4f0">${fmtMoney(e.invoiceFeeAmt)}</td>
     </tr>
   `).join('')
 
@@ -182,72 +182,72 @@ export async function sendInvoiceEmail({
 <!DOCTYPE html>
 <html>
 <body style="margin:0;padding:0;background:#D9E1E8;font-family:'Helvetica Neue',Arial,sans-serif">
-<div style="padding:40px 16px">
-<div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(47,62,78,0.14)">
+<div style="padding:20px 12px">
+<div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 4px 20px rgba(47,62,78,0.12)">
 
   <!-- Header -->
-  <div style="background:#2F3E4E;padding:32px 40px;display:flex;align-items:center;justify-content:space-between">
-    <div style="display:flex;align-items:center;gap:16px">
-      <div style="background:#ffffff;border-radius:10px;padding:8px 14px;display:inline-block;line-height:0">
-        <img src="${PORTAL_URL}/chc_logo.png" alt="Coming Home Care" style="height:52px;width:auto;display:block"/>
-      </div>
-    </div>
-    <div style="text-align:right">
-      <p style="margin:0;color:#7A8F79;font-size:10px;letter-spacing:3px;text-transform:uppercase;font-weight:700">Invoice</p>
-      <p style="margin:6px 0 0;color:#ffffff;font-size:26px;font-weight:800;letter-spacing:1px">${shortNum}</p>
-    </div>
+  <div style="background:#2F3E4E;padding:18px 28px">
+    <table style="width:100%;border-collapse:collapse"><tr>
+      <td style="vertical-align:middle">
+        <div style="background:#ffffff;border-radius:8px;padding:5px 10px;display:inline-block;line-height:0">
+          <img src="${PORTAL_URL}/chc_logo.png" alt="Coming Home Care" style="height:36px;width:auto;display:block"/>
+        </div>
+      </td>
+      <td style="text-align:right;vertical-align:middle">
+        <p style="margin:0;color:#7A8F79;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700">Invoice</p>
+        <p style="margin:4px 0 0;color:#ffffff;font-size:20px;font-weight:800;letter-spacing:0.5px">${shortNum}</p>
+      </td>
+    </tr></table>
   </div>
 
   <!-- Subheader stripe -->
-  <div style="background:#7A8F79;padding:10px 40px;text-align:right">
-    <p style="margin:0;color:#f0f4f0;font-size:11px">support@cominghomecare.com</p>
+  <div style="background:#7A8F79;padding:6px 28px;text-align:right">
+    <p style="margin:0;color:#f0f4f0;font-size:10px">support@cominghomecare.com</p>
   </div>
 
   <!-- Bill To + Dates -->
-  <div style="padding:28px 40px;display:flex;justify-content:space-between;border-bottom:1px solid #D9E1E8">
-    <div>
-      <p style="margin:0 0 6px;font-size:10px;color:#7A8F79;text-transform:uppercase;letter-spacing:2px;font-weight:700">Billed To</p>
-      <p style="margin:0;font-size:17px;font-weight:800;color:#2F3E4E">${billName}</p>
-      ${addressBlock}
-    </div>
-    <div style="text-align:right">
-      <div style="margin-bottom:10px">
-        <p style="margin:0;font-size:10px;color:#7A8F79;text-transform:uppercase;letter-spacing:2px;font-weight:700">Issued</p>
-        <p style="margin:3px 0 0;font-size:13px;color:#2F3E4E;font-weight:600">${issueDate}</p>
-      </div>
-      <div>
-        <p style="margin:0;font-size:10px;color:#7A8F79;text-transform:uppercase;letter-spacing:2px;font-weight:700">Due</p>
-        <p style="margin:3px 0 0;font-size:13px;color:#2F3E4E;font-weight:800">${dueDateFmt}</p>
-      </div>
-    </div>
+  <div style="padding:14px 28px;border-bottom:1px solid #D9E1E8">
+    <table style="width:100%;border-collapse:collapse"><tr>
+      <td style="vertical-align:top">
+        <p style="margin:0 0 4px;font-size:9px;color:#7A8F79;text-transform:uppercase;letter-spacing:2px;font-weight:700">Billed To</p>
+        <p style="margin:0;font-size:14px;font-weight:800;color:#2F3E4E">${billName}</p>
+        ${addressBlock}
+      </td>
+      <td style="text-align:right;vertical-align:top">
+        <p style="margin:0;font-size:9px;color:#7A8F79;text-transform:uppercase;letter-spacing:2px;font-weight:700">Issued</p>
+        <p style="margin:2px 0 8px;font-size:12px;color:#2F3E4E;font-weight:600">${issueDate}</p>
+        <p style="margin:0;font-size:9px;color:#7A8F79;text-transform:uppercase;letter-spacing:2px;font-weight:700">Due</p>
+        <p style="margin:2px 0 0;font-size:12px;color:#2F3E4E;font-weight:800">${dueDateFmt}</p>
+      </td>
+    </tr></table>
   </div>
 
   <!-- Line Items -->
-  <div style="padding:24px 40px">
+  <div style="padding:14px 28px">
     <table style="width:100%;border-collapse:collapse">
       <thead>
         <tr style="border-bottom:2px solid #2F3E4E">
-          <th style="text-align:left;padding:6px 0 10px;font-size:10px;color:#7A8F79;text-transform:uppercase;letter-spacing:1.5px;font-weight:700">Service Date</th>
-          <th style="text-align:left;padding:6px 12px 10px;font-size:10px;color:#7A8F79;text-transform:uppercase;letter-spacing:1.5px;font-weight:700">Plan</th>
-          <th style="text-align:left;padding:6px 0 10px;font-size:10px;color:#7A8F79;text-transform:uppercase;letter-spacing:1.5px;font-weight:700">Description</th>
-          <th style="text-align:right;padding:6px 0 10px;font-size:10px;color:#7A8F79;text-transform:uppercase;letter-spacing:1.5px;font-weight:700">Fee</th>
+          <th style="text-align:left;padding:4px 0 8px;font-size:9px;color:#7A8F79;text-transform:uppercase;letter-spacing:1.5px;font-weight:700">Service Date</th>
+          <th style="text-align:left;padding:4px 10px 8px;font-size:9px;color:#7A8F79;text-transform:uppercase;letter-spacing:1.5px;font-weight:700">Plan</th>
+          <th style="text-align:left;padding:4px 0 8px;font-size:9px;color:#7A8F79;text-transform:uppercase;letter-spacing:1.5px;font-weight:700">Description</th>
+          <th style="text-align:right;padding:4px 0 8px;font-size:9px;color:#7A8F79;text-transform:uppercase;letter-spacing:1.5px;font-weight:700">Fee</th>
         </tr>
       </thead>
       <tbody>${lineItems}</tbody>
       <tfoot>
         <tr>
-          <td colspan="3" style="padding:16px 0 0;font-size:11px;font-weight:700;color:#7A8F79;text-transform:uppercase;letter-spacing:1.5px">Total Due</td>
-          <td style="padding:16px 0 0;text-align:right;font-size:28px;font-weight:800;color:#2F3E4E">${fmtMoney(totalAmount)}</td>
+          <td colspan="3" style="padding:10px 0 0;font-size:10px;font-weight:700;color:#7A8F79;text-transform:uppercase;letter-spacing:1.5px">Total Due</td>
+          <td style="padding:10px 0 0;text-align:right;font-size:22px;font-weight:800;color:#2F3E4E">${fmtMoney(totalAmount)}</td>
         </tr>
       </tfoot>
     </table>
-    ${notes ? `<div style="margin-top:16px;padding:12px 16px;background:#f4f6f8;border-left:3px solid #7A8F79;border-radius:0 8px 8px 0"><p style="margin:0;font-size:12px;color:#4a5a6a"><strong>Note:</strong> ${notes}</p></div>` : ''}
+    ${notes ? `<div style="margin-top:10px;padding:9px 12px;background:#f4f6f8;border-left:3px solid #7A8F79;border-radius:0 6px 6px 0"><p style="margin:0;font-size:11px;color:#4a5a6a"><strong>Note:</strong> ${notes}</p></div>` : ''}
   </div>
 
   <!-- Payment Options -->
-  <div style="margin:0 40px 32px;background:#f4f6f8;border-radius:14px;padding:24px 28px">
-    <p style="margin:0 0 14px;font-size:10px;color:#7A8F79;text-transform:uppercase;letter-spacing:2px;font-weight:700">How to Pay</p>
-    <table style="width:100%;border-collapse:collapse;margin:-4px">
+  <div style="margin:0 28px 14px;background:#f4f6f8;border-radius:10px;padding:14px 18px">
+    <p style="margin:0 0 10px;font-size:9px;color:#7A8F79;text-transform:uppercase;letter-spacing:2px;font-weight:700">How to Pay</p>
+    <table style="width:100%;border-collapse:collapse;margin:-3px">
       <tr>
         ${payBtn(venmoUrl,   '#3D95CE', venmoIcon,   'Venmo',     '@AlexMcGann')}
         ${payBtn(cashappUrl, '#00C244', cashappIcon, 'Cash App',  '$myInvoiceCHC')}
@@ -257,22 +257,24 @@ export async function sendInvoiceEmail({
         ${payBtn(appleUrl,  '#1c1c1e', appleIcon,  'Apple Pay', 'support@cominghomecare.com')}
       </tr>
     </table>
-    <p style="margin:14px 0 0;font-size:11px;color:#9aabb5">Please include <strong>${shortNum}</strong> as your payment note.</p>
-    ${totalAmount >= 50 ? '<p style="margin:8px 0 0;font-size:11px;color:#7A8F79;border-top:1px solid #D9E1E8;padding-top:10px">Credit card payments accepted for invoices of $50.00 or more — contact us for details.</p>' : ''}
+    <p style="margin:10px 0 0;font-size:10px;color:#9aabb5">Please include <strong>${shortNum}</strong> as your payment note.</p>
+    ${totalAmount >= 50 ? '<p style="margin:6px 0 0;font-size:10px;color:#7A8F79;border-top:1px solid #D9E1E8;padding-top:8px">Credit card payments accepted for invoices of $50.00 or more — contact us for details.</p>' : ''}
   </div>
 
   <!-- CTA -->
-  <div style="text-align:center;padding:0 40px 36px">
+  <div style="text-align:center;padding:0 28px 16px">
     <a href="${PORTAL_URL}/nurse/invoices"
-       style="display:inline-block;background:#2F3E4E;color:#ffffff;text-decoration:none;padding:14px 36px;border-radius:12px;font-size:14px;font-weight:700;letter-spacing:0.5px">
+       style="display:inline-block;background:#2F3E4E;color:#ffffff;text-decoration:none;padding:10px 28px;border-radius:10px;font-size:13px;font-weight:700;letter-spacing:0.5px">
       View Invoice in Portal →
     </a>
   </div>
 
   <!-- Footer -->
-  <div style="background:#2F3E4E;padding:20px 40px;display:flex;justify-content:space-between;align-items:center">
-    <p style="margin:0;font-size:12px;color:#7A8F79;font-weight:600">Coming Home Care Services, LLC</p>
-    <p style="margin:0;font-size:11px;color:#4a5a6a">cominghomecare.com</p>
+  <div style="background:#2F3E4E;padding:12px 28px">
+    <table style="width:100%;border-collapse:collapse"><tr>
+      <td><p style="margin:0;font-size:11px;color:#7A8F79;font-weight:600">Coming Home Care Services, LLC</p></td>
+      <td style="text-align:right"><p style="margin:0;font-size:10px;color:#4a5a6a">cominghomecare.com</p></td>
+    </tr></table>
   </div>
 
 </div>

@@ -85,7 +85,7 @@ export async function POST(req: Request) {
       processingNotes:     parseStr(body.processingNotes),
     },
     include: {
-      nurse: { select: { displayName: true, accountNumber: true } },
+      nurse: { select: { displayName: true, accountNumber: true, isDemo: true } },
     },
   })
 

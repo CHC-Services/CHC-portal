@@ -17,7 +17,7 @@ export async function GET(req: Request) {
 
   const claims = await (prisma.medicaidClaim.findMany as any)({
     where: nurseId ? { nurseId } : {},
-    include: { nurse: { select: { displayName: true } } },
+    include: { nurse: { select: { displayName: true, isDemo: true } } },
     orderBy: { dosStart: 'desc' },
   })
 

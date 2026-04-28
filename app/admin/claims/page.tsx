@@ -133,7 +133,7 @@ type CommercialClaim = {
   dateFullyFinalized: string | null
   resubmissionOf: string | null
   processingNotes: string | null
-  nurse: { displayName: string; accountNumber: string | null }
+  nurse: { displayName: string; accountNumber: string | null; isDemo: boolean }
 }
 
 type MedicaidClaimRow = {
@@ -150,7 +150,7 @@ type MedicaidClaimRow = {
   depositDate: string | null
   statusCodes: string[]
   notes: string | null
-  nurse?: { displayName: string; accountNumber?: string | null }
+  nurse?: { displayName: string; accountNumber?: string | null; isDemo?: boolean }
 }
 
 type UnifiedClaim =
@@ -971,6 +971,7 @@ export default function AdminClaimsPage() {
   const [search, setSearch] = useState('')
   const [filterStage, setFilterStage] = useState('')
   const [filterYear, setFilterYear] = useState('')
+  const [hideDemo, setHideDemo] = useState(true)
   const fileRef = useRef<HTMLInputElement>(null)
 
   // Selected claim for detail modal
@@ -1383,6 +1384,7 @@ export default function AdminClaimsPage() {
       const provName = uc._type === 'commercial' ? (uc.providerName || uc.nurse?.displayName || '') : (uc.nurse?.displayName || '')
       const id = uc._type === 'commercial' ? (uc.claimId || '') : uc.patientCtrlNum
       const payer = uc._type === 'commercial' ? (uc.primaryPayer || '') : 'Medicaid'
+      if (hideDemo && (uc._type === 'commercial' ? uc.nurse?.isDemo : uc.nurse?.isDemo)) return false
       const matchSearch = !search ||
         provName.toLowerCase().includes(search.toLowerCase()) ||
         id.toLowerCase().includes(search.toLowerCase()) ||
@@ -1391,7 +1393,7 @@ export default function AdminClaimsPage() {
       const matchYear = !filterYear || (uc.dosStart ? new Date(uc.dosStart).getUTCFullYear().toString() === filterYear : false)
       return matchSearch && matchStage && matchYear
     })
-  }, [allClaims, search, filterStage, filterYear])
+  }, [allClaims, search, filterStage, filterYear, hideDemo])
 
   const totalBilled = filteredAll.reduce((s, uc) =>
     s + (uc._type === 'commercial' ? (uc.totalBilled || 0) : uc.totalCharge), 0)
@@ -1676,6 +1678,16 @@ export default function AdminClaimsPage() {
               <option key={y} value={y}>{y}</option>
             ))}
           </select>
+
+          <label className="flex items-center gap-2 text-sm text-[#2F3E4E] cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={hideDemo}
+              onChange={e => setHideDemo(e.target.checked)}
+              className="w-4 h-4 accent-[#7A8F79] cursor-pointer"
+            />
+            Hide demo
+          </label>
 
           <div className="ml-auto flex items-center gap-2">
             {reminders.filter(r => !r.completed).length > 0 && (

@@ -190,7 +190,7 @@ export async function sendInvoiceEmail({
     <table style="width:100%;border-collapse:collapse"><tr>
       <td style="vertical-align:middle">
         <div style="background:#ffffff;border-radius:8px;padding:5px 10px;display:inline-block;line-height:0">
-          <img src="${PORTAL_URL}/chc_logo.png" alt="Coming Home Care" style="height:36px;width:auto;display:block"/>
+          <img src="${PORTAL_URL}/chc_logo.png" alt="Coming Home Care" style="height:48px;width:auto;display:block"/>
         </div>
       </td>
       <td style="text-align:right;vertical-align:middle">
@@ -201,8 +201,8 @@ export async function sendInvoiceEmail({
   </div>
 
   <!-- Subheader stripe -->
-  <div style="background:#7A8F79;padding:6px 28px;text-align:right">
-    <p style="margin:0;color:#f0f4f0;font-size:10px">support@cominghomecare.com</p>
+  <div style="background: #7A8F79;padding:6px 28px;text-align:right">
+    <p style="margin:0;color:#ffffff;font-size:10px;font-style:italic;text-align:center">"Show kindness, for everyone we meet is fighting a battle we know nothing of."</p>
   </div>
 
   <!-- Bill To + Dates -->
@@ -246,7 +246,7 @@ export async function sendInvoiceEmail({
 
   <!-- Payment Options -->
   <div style="margin:0 28px 14px;background:#f4f6f8;border-radius:10px;padding:14px 18px">
-    <p style="margin:0 0 10px;font-size:9px;color:#7A8F79;text-transform:uppercase;letter-spacing:2px;font-weight:700">How to Pay</p>
+    <p style="margin:0 0 10px;font-size:9px;color:#7A8F79;text-transform:uppercase;letter-spacing:2px;font-weight:700">Ways to Pay</p>
     <table style="width:100%;border-collapse:collapse;margin:-3px">
       <tr>
         ${payBtn(venmoUrl,   '#3D95CE', venmoIcon,   'Venmo',     '@AlexMcGann')}
@@ -257,7 +257,7 @@ export async function sendInvoiceEmail({
         ${payBtn(appleUrl,  '#1c1c1e', appleIcon,  'Apple Pay', 'support@cominghomecare.com')}
       </tr>
     </table>
-    <p style="margin:10px 0 0;font-size:10px;color:#9aabb5">Please include <strong>${shortNum}</strong> as your payment note.</p>
+    <p style="margin:10px 0 0;font-size:12px;color:#2F3E4E">Please include <strong>${shortNum}</strong> as your payment note.</p>
     ${totalAmount >= 50 ? '<p style="margin:6px 0 0;font-size:10px;color:#7A8F79;border-top:1px solid #D9E1E8;padding-top:8px">Credit card payments accepted for invoices of $50.00 or more — contact us for details.</p>' : ''}
   </div>
 
@@ -273,7 +273,7 @@ export async function sendInvoiceEmail({
   <div style="background:#2F3E4E;padding:12px 28px">
     <table style="width:100%;border-collapse:collapse"><tr>
       <td><p style="margin:0;font-size:11px;color:#7A8F79;font-weight:600">Coming Home Care Services, LLC</p></td>
-      <td style="text-align:right"><p style="margin:0;font-size:10px;color:#4a5a6a">cominghomecare.com</p></td>
+      <td style="text-align:right"><p style="margin:0;font-size:11px;color:#ffffff">cominghomecare.com</p></td>
     </tr></table>
   </div>
 

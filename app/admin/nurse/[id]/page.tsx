@@ -1779,7 +1779,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                               {inv.status}
                             </span>
                             <span className="text-xs text-[#7A8F79]">Issued {fmtD(inv.sentAt)}</span>
-                            <span className="text-xs text-[#7A8F79]">Due {fmtD(inv.dueDate)}</span>
+                            <span className="text-xs text-[#7A8F79]">Due By{fmtD(inv.dueDate)}</span>
                           </div>
                           <div className="flex items-center gap-2 shrink-0 ml-2">
                             <span className="text-sm font-bold text-[#2F3E4E]">${inv.totalAmount.toFixed(2)}</span>

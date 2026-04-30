@@ -296,7 +296,7 @@ export default function Banner({ user }: BannerProps) {
                                     href="/signup"
                                     className="text-sm font-semibold text-[#7A8F79] border border-[#7A8F79] px-5 py-2 rounded-full hover:bg-[#7A8F79] hover:text-white transition"
                                 >
-                                    New User?
+                                    my
                                 </Link>
                             </div>
                         )}

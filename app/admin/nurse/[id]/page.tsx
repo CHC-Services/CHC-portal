@@ -1558,7 +1558,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
               <p className="text-sm text-[#7A8F79] italic">No claims found for {claimsYear}.</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-xs min-w-[900px]">
+                <table className="w-full text-xs min-w-[900px] text-[#2F3E4E]">
                   <thead>
                     <tr className="text-[#7A8F79] uppercase tracking-wide border-b border-[#D9E1E8]">
                       <th className="text-left py-2 pr-3">Claim ID</th>

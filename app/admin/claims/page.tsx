@@ -114,16 +114,19 @@ type CommercialClaim = {
   dosStart: string | null
   dosStop: string | null
   totalBilled: number | null
+  hours: number | null
   claimStage: string | null
   submitDate: string | null
   primaryPayer: string | null
   primaryAllowedAmt: number | null
+  primaryCO: number | null
   primaryPaidAmt: number | null
   primaryPaidDate: string | null
   primaryPaidTo: string | null
   primaryCheckNum: string | null
   secondaryPayer: string | null
   secondaryAllowedAmt: number | null
+  secondaryCO: number | null
   secondaryPaidAmt: number | null
   secondaryPaidDate: string | null
   secondaryPaidTo: string | null
@@ -173,16 +176,19 @@ type CommercialFormState = {
   dosStart: string
   dosStop: string
   totalBilled: string
+  hours: string
   claimStage: string
   submitDate: string
   primaryPayer: string
   primaryAllowedAmt: string
+  primaryCO: string
   primaryPaidAmt: string
   primaryPaidDate: string
   primaryPaidTo: string
   primaryCheckNum: string
   secondaryPayer: string
   secondaryAllowedAmt: string
+  secondaryCO: string
   secondaryPaidAmt: string
   secondaryPaidDate: string
   secondaryPaidTo: string
@@ -369,16 +375,19 @@ function initCommercialForm(c: CommercialClaim): CommercialFormState {
     dosStart: toDateStr(c.dosStart),
     dosStop: toDateStr(c.dosStop),
     totalBilled: c.totalBilled != null ? String(c.totalBilled) : '',
+    hours: c.hours != null ? String(Math.round(c.hours)) : '',
     claimStage: c.claimStage || '',
     submitDate: toDateStr(c.submitDate),
     primaryPayer: c.primaryPayer || '',
     primaryAllowedAmt: c.primaryAllowedAmt != null ? String(c.primaryAllowedAmt) : '',
+    primaryCO: c.primaryCO != null ? String(c.primaryCO) : '',
     primaryPaidAmt: c.primaryPaidAmt != null ? String(c.primaryPaidAmt) : '',
     primaryPaidDate: toDateStr(c.primaryPaidDate),
     primaryPaidTo: c.primaryPaidTo || '',
     primaryCheckNum: c.primaryCheckNum || '',
     secondaryPayer: c.secondaryPayer || '',
     secondaryAllowedAmt: c.secondaryAllowedAmt != null ? String(c.secondaryAllowedAmt) : '',
+    secondaryCO: c.secondaryCO != null ? String(c.secondaryCO) : '',
     secondaryPaidAmt: c.secondaryPaidAmt != null ? String(c.secondaryPaidAmt) : '',
     secondaryPaidDate: toDateStr(c.secondaryPaidDate),
     secondaryPaidTo: c.secondaryPaidTo || '',
@@ -470,16 +479,19 @@ function ClaimDetailModal({
               dosStart: cForm.dosStart || null,
               dosStop: cForm.dosStop || null,
               totalBilled: cForm.totalBilled || null,
+              hours: cForm.hours || null,
               claimStage: cForm.claimStage || null,
               submitDate: cForm.submitDate || null,
               primaryPayer: cForm.primaryPayer || null,
               primaryAllowedAmt: cForm.primaryAllowedAmt || null,
+              primaryCO: cForm.primaryCO || null,
               primaryPaidAmt: cForm.primaryPaidAmt || null,
               primaryPaidDate: cForm.primaryPaidDate || null,
               primaryPaidTo: cForm.primaryPaidTo || null,
               primaryCheckNum: cForm.primaryCheckNum || null,
               secondaryPayer: cForm.secondaryPayer || null,
               secondaryAllowedAmt: cForm.secondaryAllowedAmt || null,
+              secondaryCO: cForm.secondaryCO || null,
               secondaryPaidAmt: cForm.secondaryPaidAmt || null,
               secondaryPaidDate: cForm.secondaryPaidDate || null,
               secondaryPaidTo: cForm.secondaryPaidTo || null,
@@ -605,7 +617,21 @@ function ClaimDetailModal({
             {saveStatus === 'saved' && <span className="text-xs text-green-600">✓ Saved</span>}
             {saveStatus === 'error' && <span className="text-xs text-red-500">Error saving</span>}
           </div>
-          <button onClick={handleClose} className="text-[#7A8F79] hover:text-[#2F3E4E] text-xl leading-none">✕</button>
+          <div className="flex items-center gap-2">
+            {claim._type === 'commercial' && (
+              <select
+                value={cForm.claimStage}
+                onChange={e => setCForm(f => ({ ...f, claimStage: e.target.value }))}
+                className="text-xs border border-[#D9E1E8] rounded-lg px-2 py-1.5 text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] bg-white"
+              >
+                <option value="">— Stage —</option>
+                {['Draft','INS-1 Submitted','Resubmitted','Pending','Info Requested','Info Sent','INS-2 Submitted','Appealed','Paid','Denied','Rejected'].map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            )}
+            <button onClick={handleClose} className="text-[#7A8F79] hover:text-[#2F3E4E] text-xl leading-none">✕</button>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -635,13 +661,9 @@ function ClaimDetailModal({
                     <input className={inp} value={cForm.claimId} onChange={e => setCForm(f => ({ ...f, claimId: e.target.value }))} />
                   </div>
                   <div>
-                    <label className={lbl}>Claim Stage</label>
-                    <select className={inp} value={cForm.claimStage} onChange={e => setCForm(f => ({ ...f, claimStage: e.target.value }))}>
-                      <option value="">—</option>
-                      {['Draft','INS-1 Submitted','Resubmitted','Pending','Info Requested','Info Sent','INS-2 Submitted','Appealed','Paid','Denied','Rejected'].map(s => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
+                    <label className={lbl}>Hours Billed</label>
+                    <input type="number" min="0" max="999" step="1" className={inp} value={cForm.hours}
+                      onChange={e => setCForm(f => ({ ...f, hours: e.target.value.slice(0, 3) }))} />
                   </div>
                   <div>
                     <label className={lbl}>Submit Date</label>
@@ -657,7 +679,10 @@ function ClaimDetailModal({
                   </div>
                   <div>
                     <label className={lbl}>Total Billed</label>
-                    <input type="number" step="0.01" className={inp} value={cForm.totalBilled} onChange={e => setCForm(f => ({ ...f, totalBilled: e.target.value }))} />
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
+                      <input type="number" step="0.01" className={`${inp} pl-6`} value={cForm.totalBilled} onChange={e => setCForm(f => ({ ...f, totalBilled: e.target.value }))} />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -665,27 +690,40 @@ function ClaimDetailModal({
               <div>
                 <p className={sec}>Primary Insurance</p>
                 <div className="grid grid-cols-3 gap-4">
-                  <div className="col-span-1">
+                  <div className="col-start-1">
                     <label className={lbl}>Payer</label>
                     <input className={inp} value={cForm.primaryPayer} onChange={e => setCForm(f => ({ ...f, primaryPayer: e.target.value }))} />
                   </div>
-                  <div>
+                  <div className="col-start-2">
                     <label className={lbl}>Allowed Amt</label>
-                    <input type="number" step="0.01" className={inp} value={cForm.primaryAllowedAmt} onChange={e => setCForm(f => ({ ...f, primaryAllowedAmt: e.target.value }))} />
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
+                      <input type="number" step="0.01" className={`${inp} pl-6`} value={cForm.primaryAllowedAmt} onChange={e => setCForm(f => ({ ...f, primaryAllowedAmt: e.target.value }))} />
+                    </div>
                   </div>
-                  <div>
+                  <div className="col-start-3">
                     <label className={lbl}>Paid Amt</label>
-                    <input type="number" step="0.01" className={inp} value={cForm.primaryPaidAmt} onChange={e => setCForm(f => ({ ...f, primaryPaidAmt: e.target.value }))} />
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
+                      <input type="number" step="0.01" className={`${inp} pl-6`} value={cForm.primaryPaidAmt} onChange={e => setCForm(f => ({ ...f, primaryPaidAmt: e.target.value }))} />
+                    </div>
                   </div>
-                  <div>
+                  <div className="col-start-1">
                     <label className={lbl}>Paid Date</label>
                     <input type="date" className={inp} value={cForm.primaryPaidDate} onChange={e => setCForm(f => ({ ...f, primaryPaidDate: e.target.value }))} />
                   </div>
-                  <div>
+                  <div className="col-start-2">
+                    <label className={lbl}>Provider Writeoff</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
+                      <input type="number" step="0.01" className={`${inp} pl-6`} value={cForm.primaryCO} onChange={e => setCForm(f => ({ ...f, primaryCO: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div className="col-start-2">
                     <label className={lbl}>Paid To</label>
                     <input className={inp} value={cForm.primaryPaidTo} onChange={e => setCForm(f => ({ ...f, primaryPaidTo: e.target.value }))} />
                   </div>
-                  <div>
+                  <div className="col-start-3">
                     <label className={lbl}>{isMed ? 'Payer Claim #' : 'Check #'}</label>
                     <input className={inp} value={cForm.primaryCheckNum} onChange={e => setCForm(f => ({ ...f, primaryCheckNum: e.target.value }))} />
                   </div>
@@ -695,27 +733,40 @@ function ClaimDetailModal({
               <div>
                 <p className={sec}>Secondary Insurance</p>
                 <div className="grid grid-cols-3 gap-4">
-                  <div className="col-span-1">
+                  <div className="col-start-1">
                     <label className={lbl}>Payer</label>
                     <input className={inp} value={cForm.secondaryPayer} onChange={e => setCForm(f => ({ ...f, secondaryPayer: e.target.value }))} />
                   </div>
-                  <div>
+                  <div className="col-start-2">
                     <label className={lbl}>Allowed Amt</label>
-                    <input type="number" step="0.01" className={inp} value={cForm.secondaryAllowedAmt} onChange={e => setCForm(f => ({ ...f, secondaryAllowedAmt: e.target.value }))} />
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
+                      <input type="number" step="0.01" className={`${inp} pl-6`} value={cForm.secondaryAllowedAmt} onChange={e => setCForm(f => ({ ...f, secondaryAllowedAmt: e.target.value }))} />
+                    </div>
                   </div>
-                  <div>
+                  <div className="col-start-3">
                     <label className={lbl}>Paid Amt</label>
-                    <input type="number" step="0.01" className={inp} value={cForm.secondaryPaidAmt} onChange={e => setCForm(f => ({ ...f, secondaryPaidAmt: e.target.value }))} />
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
+                      <input type="number" step="0.01" className={`${inp} pl-6`} value={cForm.secondaryPaidAmt} onChange={e => setCForm(f => ({ ...f, secondaryPaidAmt: e.target.value }))} />
+                    </div>
                   </div>
-                  <div>
+                  <div className="col-start-1">
                     <label className={lbl}>Paid Date</label>
                     <input type="date" className={inp} value={cForm.secondaryPaidDate} onChange={e => setCForm(f => ({ ...f, secondaryPaidDate: e.target.value }))} />
                   </div>
-                  <div>
+                  <div className="col-start-2">
+                    <label className={lbl}>Provider Writeoff</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
+                      <input type="number" step="0.01" className={`${inp} pl-6`} value={cForm.secondaryCO} onChange={e => setCForm(f => ({ ...f, secondaryCO: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div className="col-start-2">
                     <label className={lbl}>Paid To</label>
                     <input className={inp} value={cForm.secondaryPaidTo} onChange={e => setCForm(f => ({ ...f, secondaryPaidTo: e.target.value }))} />
                   </div>
-                  <div>
+                  <div className="col-start-3">
                     <label className={lbl}>Check #</label>
                     <input className={inp} value={cForm.secondaryCheckNum} onChange={e => setCForm(f => ({ ...f, secondaryCheckNum: e.target.value }))} />
                   </div>
@@ -727,17 +778,31 @@ function ClaimDetailModal({
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className={lbl}>Total Reimbursed</label>
-                    <input type="number" step="0.01" className={inp} value={cForm.totalReimbursed} onChange={e => setCForm(f => ({ ...f, totalReimbursed: e.target.value }))} />
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
+                      <input type="number" step="0.01" className={`${inp} pl-6`} value={cForm.totalReimbursed} onChange={e => setCForm(f => ({ ...f, totalReimbursed: e.target.value }))} />
+                    </div>
                   </div>
                   <div>
                     <label className={lbl}>Remaining Balance</label>
-                    <input type="number" step="0.01" className={inp} value={cForm.remainingBalance} onChange={e => setCForm(f => ({ ...f, remainingBalance: e.target.value }))} />
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
+                      <input type="number" step="0.01" className={`${inp} pl-6`} value={cForm.remainingBalance} onChange={e => setCForm(f => ({ ...f, remainingBalance: e.target.value }))} />
+                    </div>
                   </div>
                   <div>
                     <label className={lbl}>Date Fully Finalized</label>
                     <input type="date" className={inp} value={cForm.dateFullyFinalized} onChange={e => setCForm(f => ({ ...f, dateFullyFinalized: e.target.value }))} />
                   </div>
-                  <div className="col-span-3">
+                  <div>
+                    <label className={lbl}>Avg Hourly Rate</label>
+                    <div className={`${inp} bg-[#F4F6F5] cursor-default text-[#2F3E4E]`}>
+                      {cForm.primaryAllowedAmt && cForm.hours && Number(cForm.hours) > 0
+                        ? `$${(Number(cForm.primaryAllowedAmt) / Number(cForm.hours)).toFixed(2)}`
+                        : '—'}
+                    </div>
+                  </div>
+                  <div className="col-span-2">
                     <label className={lbl}>Processing Notes</label>
                     <textarea rows={3} className={`${inp} resize-none`} value={cForm.processingNotes} onChange={e => setCForm(f => ({ ...f, processingNotes: e.target.value }))} />
                   </div>
@@ -1396,7 +1461,7 @@ export default function AdminClaimsPage() {
   }, [allClaims, search, filterStage, filterYear, hideDemo])
 
   const totalBilled = filteredAll.reduce((s, uc) =>
-    s + (uc._type === 'commercial' ? (uc.totalBilled || 0) : uc.totalCharge), 0)
+    s + (uc._type === 'commercial' ? (Number(uc.totalBilled) || 0) : uc.totalCharge), 0)
   const totalReimbursed = filteredAll.reduce((s, uc) =>
     s + (uc._type === 'commercial' ? (uc.totalReimbursed || 0) : (uc.paidAmount || 0)), 0)
   const totalBalance = filteredAll.reduce((s, uc) =>
@@ -1937,7 +2002,15 @@ export default function AdminClaimsPage() {
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl">
               <div className="flex items-center justify-between px-6 py-4 border-b border-[#D9E1E8]">
                 <h2 className="text-lg font-bold text-[#2F3E4E]">Add Claim Manually</h2>
-                <button onClick={() => setShowAddModal(false)} className="text-[#7A8F79] hover:text-[#2F3E4E] text-xl leading-none">✕</button>
+                <div className="flex items-center gap-2">
+                  <select value={addForm.claimStage || 'Draft'} onChange={e => setAddForm(f => ({ ...f, claimStage: e.target.value }))}
+                    className="text-xs border border-[#D9E1E8] rounded-lg px-2 py-1.5 text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] bg-white">
+                    {['Draft','INS-1 Submitted','Resubmitted','Pending','Info Requested','Info Sent','INS-2 Submitted','Appealed','Paid','Denied','Rejected'].map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                  <button onClick={() => setShowAddModal(false)} className="text-[#7A8F79] hover:text-[#2F3E4E] text-xl leading-none">✕</button>
+                </div>
               </div>
 
               <form onSubmit={submitClaim} className="px-6 py-5 space-y-6">
@@ -1993,12 +2066,9 @@ export default function AdminClaimsPage() {
                       <input type="text" value={addForm.claimId || ''} onChange={e => setAddForm(f => ({ ...f, claimId: e.target.value }))} className={fi} />
                     </div>
                     <div>
-                      <label className={lbl}>Claim Stage</label>
-                      <select value={addForm.claimStage || 'Draft'} onChange={e => setAddForm(f => ({ ...f, claimStage: e.target.value }))} className={fi}>
-                        {['Draft','INS-1 Submitted','Resubmitted','Pending','Info Requested','Info Sent','INS-2 Submitted','Appealed','Paid','Denied','Rejected'].map(s => (
-                          <option key={s} value={s}>{s}</option>
-                        ))}
-                      </select>
+                      <label className={lbl}>Hours Billed</label>
+                      <input type="number" min="0" max="999" step="1" value={addForm.hours || ''}
+                        onChange={e => setAddForm(f => ({ ...f, hours: e.target.value.slice(0, 3) }))} className={fi} />
                     </div>
                     <div>
                       <label className={lbl}>Submit Date</label>
@@ -2014,7 +2084,10 @@ export default function AdminClaimsPage() {
                     </div>
                     <div>
                       <label className={lbl}>Total Billed</label>
-                      <input type="number" step="0.01" min="0" value={addForm.totalBilled || ''} onChange={e => setAddForm(f => ({ ...f, totalBilled: e.target.value }))} className={fi} />
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
+                        <input type="number" step="0.01" min="0" value={addForm.totalBilled || ''} onChange={e => setAddForm(f => ({ ...f, totalBilled: e.target.value }))} className={`${fi} pl-6`} />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -2023,7 +2096,7 @@ export default function AdminClaimsPage() {
                 <div>
                   <p className={sec}>Primary Insurance</p>
                   <div className="grid grid-cols-3 gap-4">
-                    <div className="col-span-1">
+                    <div className="col-start-1">
                       <label className={lbl}>Payer</label>
                       <select
                         value={addForm.primaryPayer || ''}
@@ -2033,15 +2106,21 @@ export default function AdminClaimsPage() {
                         {PAYER_OPTIONS.map(p => <option key={p} value={p}>{p || '— Select —'}</option>)}
                       </select>
                     </div>
-                    <div>
+                    <div className="col-start-2">
                       <label className={lbl}>Allowed Amt</label>
-                      <input type="number" step="0.01" min="0" value={addForm.primaryAllowedAmt || ''} onChange={e => setAddForm(f => ({ ...f, primaryAllowedAmt: e.target.value }))} className={fi} />
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
+                        <input type="number" step="0.01" min="0" value={addForm.primaryAllowedAmt || ''} onChange={e => setAddForm(f => ({ ...f, primaryAllowedAmt: e.target.value }))} className={`${fi} pl-6`} />
+                      </div>
                     </div>
-                    <div>
+                    <div className="col-start-3">
                       <label className={lbl}>Paid Amt</label>
-                      <input type="number" step="0.01" min="0" value={addForm.primaryPaidAmt || ''} onChange={e => setAddForm(f => ({ ...f, primaryPaidAmt: e.target.value }))} className={fi} />
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
+                        <input type="number" step="0.01" min="0" value={addForm.primaryPaidAmt || ''} onChange={e => setAddForm(f => ({ ...f, primaryPaidAmt: e.target.value }))} className={`${fi} pl-6`} />
+                      </div>
                     </div>
-                    <div>
+                    <div className="col-start-1">
                       <label className={lbl}>{primaryIsMedicaid ? 'Proc Date' : 'Paid Date'}</label>
                       <SmartDateInput key={`${modalResetKey}-primPaid`} ref={primPaidDateRef} nextRef={primaryIsMedicaid ? finalDateRef : secPaidDateRef} value={addForm.primaryPaidDate || ''} onChange={v => setAddForm(f => ({ ...f, primaryPaidDate: v }))} />
                       {primaryIsMedicaid && addForm.primaryPaidDate && (() => {
@@ -2051,11 +2130,18 @@ export default function AdminClaimsPage() {
                         ) : null
                       })()}
                     </div>
-                    <div>
+                    <div className="col-start-2">
+                      <label className={lbl}>Provider Writeoff</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
+                        <input type="number" step="0.01" min="0" value={addForm.primaryCO || ''} onChange={e => setAddForm(f => ({ ...f, primaryCO: e.target.value }))} className={`${fi} pl-6`} />
+                      </div>
+                    </div>
+                    <div className="col-start-2">
                       <label className={lbl}>Paid To</label>
                       <input type="text" value={addForm.primaryPaidTo || ''} onChange={e => setAddForm(f => ({ ...f, primaryPaidTo: e.target.value }))} className={fi} />
                     </div>
-                    <div>
+                    <div className="col-start-3">
                       <label className={lbl}>{primaryIsMedicaid ? 'Payer Claim #' : 'Check #'}</label>
                       <input type="text" value={addForm.primaryCheckNum || ''} onChange={e => setAddForm(f => ({ ...f, primaryCheckNum: e.target.value }))} className={fi} />
                     </div>
@@ -2067,29 +2153,42 @@ export default function AdminClaimsPage() {
                   <div>
                     <p className={sec}>Secondary Insurance</p>
                     <div className="grid grid-cols-3 gap-4">
-                      <div className="col-span-1">
+                      <div className="col-start-1">
                         <label className={lbl}>Payer</label>
                         <select value={addForm.secondaryPayer || ''} onChange={e => setAddForm(f => ({ ...f, secondaryPayer: e.target.value }))} className={fi}>
                           {PAYER_OPTIONS.map(p => <option key={p} value={p}>{p || '— None —'}</option>)}
                         </select>
                       </div>
-                      <div>
+                      <div className="col-start-2">
                         <label className={lbl}>Allowed Amt</label>
-                        <input type="number" step="0.01" min="0" value={addForm.secondaryAllowedAmt || ''} onChange={e => setAddForm(f => ({ ...f, secondaryAllowedAmt: e.target.value }))} className={fi} />
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
+                          <input type="number" step="0.01" min="0" value={addForm.secondaryAllowedAmt || ''} onChange={e => setAddForm(f => ({ ...f, secondaryAllowedAmt: e.target.value }))} className={`${fi} pl-6`} />
+                        </div>
                       </div>
-                      <div>
+                      <div className="col-start-3">
                         <label className={lbl}>Paid Amt</label>
-                        <input type="number" step="0.01" min="0" value={addForm.secondaryPaidAmt || ''} onChange={e => setAddForm(f => ({ ...f, secondaryPaidAmt: e.target.value }))} className={fi} />
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
+                          <input type="number" step="0.01" min="0" value={addForm.secondaryPaidAmt || ''} onChange={e => setAddForm(f => ({ ...f, secondaryPaidAmt: e.target.value }))} className={`${fi} pl-6`} />
+                        </div>
                       </div>
-                      <div>
+                      <div className="col-start-1">
                         <label className={lbl}>Paid Date</label>
                         <SmartDateInput key={`${modalResetKey}-secPaid`} ref={secPaidDateRef} nextRef={finalDateRef} value={addForm.secondaryPaidDate || ''} onChange={v => setAddForm(f => ({ ...f, secondaryPaidDate: v }))} />
                       </div>
-                      <div>
+                      <div className="col-start-2">
+                        <label className={lbl}>Provider Writeoff</label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
+                          <input type="number" step="0.01" min="0" value={addForm.secondaryCO || ''} onChange={e => setAddForm(f => ({ ...f, secondaryCO: e.target.value }))} className={`${fi} pl-6`} />
+                        </div>
+                      </div>
+                      <div className="col-start-2">
                         <label className={lbl}>Paid To</label>
                         <input type="text" value={addForm.secondaryPaidTo || ''} onChange={e => setAddForm(f => ({ ...f, secondaryPaidTo: e.target.value }))} className={fi} />
                       </div>
-                      <div>
+                      <div className="col-start-3">
                         <label className={lbl}>{secondaryIsMedicaid ? 'Payer Claim #' : 'Check #'}</label>
                         <input type="text" value={addForm.secondaryCheckNum || ''} onChange={e => setAddForm(f => ({ ...f, secondaryCheckNum: e.target.value }))} className={fi} />
                       </div>
@@ -2115,17 +2214,31 @@ export default function AdminClaimsPage() {
                   <div className="grid grid-cols-3 gap-4">
                     <div>
                       <label className={lbl}>Total Reimbursed</label>
-                      <input type="number" step="0.01" min="0" value={addForm.totalReimbursed || ''} onChange={e => setAddForm(f => ({ ...f, totalReimbursed: e.target.value }))} className={fi} />
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
+                        <input type="number" step="0.01" min="0" value={addForm.totalReimbursed || ''} onChange={e => setAddForm(f => ({ ...f, totalReimbursed: e.target.value }))} className={`${fi} pl-6`} />
+                      </div>
                     </div>
                     <div>
                       <label className={lbl}>Remaining Balance</label>
-                      <input type="number" step="0.01" min="0" value={addForm.remainingBalance || ''} onChange={e => setAddForm(f => ({ ...f, remainingBalance: e.target.value }))} className={fi} />
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
+                        <input type="number" step="0.01" min="0" value={addForm.remainingBalance || ''} onChange={e => setAddForm(f => ({ ...f, remainingBalance: e.target.value }))} className={`${fi} pl-6`} />
+                      </div>
                     </div>
                     <div>
                       <label className={lbl}>Date Fully Finalized</label>
                       <SmartDateInput key={`${modalResetKey}-finalDate`} ref={finalDateRef} value={addForm.dateFullyFinalized || ''} onChange={v => setAddForm(f => ({ ...f, dateFullyFinalized: v }))} />
                     </div>
-                    <div className="col-span-3">
+                    <div>
+                      <label className={lbl}>Avg Hourly Rate</label>
+                      <div className={`${fi} bg-[#F4F6F5] cursor-default text-[#2F3E4E]`}>
+                        {addForm.primaryAllowedAmt && addForm.hours && Number(addForm.hours) > 0
+                          ? `$${(Number(addForm.primaryAllowedAmt) / Number(addForm.hours)).toFixed(2)}`
+                          : '—'}
+                      </div>
+                    </div>
+                    <div className="col-span-2">
                       <label className={lbl}>Processing Notes</label>
                       <textarea rows={2} value={addForm.processingNotes || ''} onChange={e => setAddForm(f => ({ ...f, processingNotes: e.target.value }))}
                         className={`${fi} resize-none`} />

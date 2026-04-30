@@ -408,6 +408,7 @@ model Claim {
   // Primary Insurance
   primaryPayer        String?
   primaryAllowedAmt   Float?
+  primaryCO           Float?   // provider obligation / write-off (p-co)
   primaryPaidAmt      Float?
   primaryPaidDate     DateTime?
   primaryPaidTo       String?
@@ -416,6 +417,7 @@ model Claim {
   // Secondary Insurance
   secondaryPayer      String?
   secondaryAllowedAmt Float?
+  secondaryCO         Float?   // provider obligation / write-off (s-co)
   secondaryPaidAmt    Float?
   secondaryPaidDate   DateTime?
   secondaryPaidTo     String?

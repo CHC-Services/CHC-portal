@@ -204,7 +204,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
   const [showInvoicePreview, setShowInvoicePreview] = useState(false)
   const [invoiceDueTerm, setInvoiceDueTerm] = useState('30')
-  const [invoiceNotes, setInvoiceNotes] = useState('Thank you for your continued support. The above dates have been processed for billing. If any dates were omitted, please notify me and I will submit them for reimbursement.')
+  const [invoiceNotes, setInvoiceNotes] = useState('The dates above have been submitted for processing. If any dates were omitted, please let me know. Thank you for your support (and patience). — Alex')
   const [invoiceSending, setInvoiceSending] = useState(false)
   const [invoiceMessage, setInvoiceMessage] = useState('')
 

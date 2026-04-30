@@ -303,7 +303,7 @@ export default function PrintInvoicePage({ params }: { params: Promise<{ id: str
                 {/* Print: compact 2-col text */}
                 <div className="hidden print:grid grid-cols-2 gap-x-6 gap-y-0.5 text-xs text-[#2F3E4E] mb-2">
                   <p><strong>Venmo</strong> @AlexMcGann</p>
-                  <p><strong>Zelle</strong> support@cominghomecare.com</p>
+                  <p><strong>Zelle</strong> Alex McGann<br/> support@cominghomecare.com</p>
                   <p><strong>Cash App</strong> $myInvoiceCHC</p>
                   <p><strong>Apple Pay</strong> support@cominghomecare.com</p>
                 </div>

@@ -1444,8 +1444,22 @@ export default function AdminClaimsPage() {
     return bd - ad
   }), [claims, medicaidClaims])
 
+  // claimId values that are pointed to as an original by another claim's resubmissionOf
+  const supersededClaimIds = useMemo(() => {
+    const ids = new Set<string>()
+    claims.forEach(c => { if (c.resubmissionOf) ids.add(c.resubmissionOf) })
+    return ids
+  }, [claims])
+
+  // lookup map for walking resubmission chains
+  const claimByClaimId = useMemo(() =>
+    new Map(claims.filter(c => c.claimId).map(c => [c.claimId!, c]))
+  , [claims])
+
   const filteredAll: UnifiedClaim[] = useMemo(() => {
     return allClaims.filter(uc => {
+      // never show superseded originals in the main list — they appear tucked under their resubmission
+      if (uc._type === 'commercial' && supersededClaimIds.has(uc.claimId || '')) return false
       const provName = uc._type === 'commercial' ? (uc.providerName || uc.nurse?.displayName || '') : (uc.nurse?.displayName || '')
       const id = uc._type === 'commercial' ? (uc.claimId || '') : uc.patientCtrlNum
       const payer = uc._type === 'commercial' ? (uc.primaryPayer || '') : 'Medicaid'
@@ -1458,7 +1472,7 @@ export default function AdminClaimsPage() {
       const matchYear = !filterYear || (uc.dosStart ? new Date(uc.dosStart).getUTCFullYear().toString() === filterYear : false)
       return matchSearch && matchStage && matchYear
     })
-  }, [allClaims, search, filterStage, filterYear, hideDemo])
+  }, [allClaims, search, filterStage, filterYear, hideDemo, supersededClaimIds])
 
   const totalBilled = filteredAll.reduce((s, uc) =>
     s + (uc._type === 'commercial' ? (Number(uc.totalBilled) || 0) : uc.totalCharge), 0)
@@ -1836,15 +1850,31 @@ export default function AdminClaimsPage() {
                   <th className="w-36 px-4 py-3 text-right">$ Summary</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#D9E1E8] text-[#2F3E4E]">
+              <tbody className="text-[#2F3E4E]">
                 {filteredAll.map(uc => {
                   const eobs = uc._type === 'commercial' ? (eobMap[uc.id] || []) : []
                   const mostRecentEob = eobs[0] ?? null
                   const isOpen = selectedClaimId === uc.id && selectedClaimType === uc._type
+
+                  // Build the resubmission chain (originals tucked under this row)
+                  const chainColors = ['#D97706', '#EA580C', '#DC2626', '#991B1B']
+                  const chainBgs   = ['#FFFBEB', '#FFF7ED', '#FEF2F2', '#FFF1F2']
+                  const originals: CommercialClaim[] = []
+                  if (uc._type === 'commercial' && uc.resubmissionOf) {
+                    let cur: CommercialClaim = uc as CommercialClaim
+                    const seen = new Set<string>()
+                    while (cur.resubmissionOf && claimByClaimId.has(cur.resubmissionOf) && !seen.has(cur.resubmissionOf)) {
+                      seen.add(cur.resubmissionOf)
+                      const orig = claimByClaimId.get(cur.resubmissionOf)!
+                      originals.push(orig)
+                      cur = orig
+                    }
+                  }
+
                   return (
+                    <Fragment key={`${uc._type}-${uc.id}`}>
                     <tr
-                      key={`${uc._type}-${uc.id}`}
-                      className={`hover:bg-[#F4F6F5] transition ${isOpen ? 'bg-[#EEF2EE]' : ''}`}
+                      className={`border-b border-[#D9E1E8] hover:bg-[#F4F6F5] transition ${isOpen ? 'bg-[#EEF2EE]' : ''}`}
                     >
                       {/* ▶ open modal */}
                       <td className="px-3 py-2.5">
@@ -1958,6 +1988,43 @@ export default function AdminClaimsPage() {
                         )}
                       </td>
                     </tr>
+
+                    {/* ── Resubmission chain: original claims tucked under ── */}
+                    {originals.map((orig, depth) => {
+                      const color = chainColors[Math.min(depth, chainColors.length - 1)]
+                      const bg    = chainBgs[Math.min(depth, chainBgs.length - 1)]
+                      return (
+                        <tr key={`orig-${orig.id}`} className="border-0">
+                          <td colSpan={6} className="px-4 pb-2 pt-0">
+                            <div
+                              className="flex items-center gap-3 px-3 py-1.5 text-xs cursor-pointer transition-opacity hover:opacity-75"
+                              style={{
+                                marginTop: '-2px',
+                                marginLeft: `${(depth + 1) * 12}px`,
+                                background: bg,
+                                borderLeft:   `3px solid ${color}`,
+                                borderRight:  `1px solid ${color}33`,
+                                borderBottom: `1px solid ${color}55`,
+                                borderRadius: '0 0 6px 6px',
+                                boxShadow: `0 6px 14px -6px ${color}55, 0 2px 6px -4px ${color}33`,
+                              }}
+                              onClick={() => { setSelectedClaimId(orig.id); setSelectedClaimType('commercial') }}
+                              title="Open original claim"
+                            >
+                              <span className="font-bold uppercase tracking-wide shrink-0 text-[10px]" style={{ color }}>
+                                ↻ {depth === 0 ? 'Original' : `Orig. −${depth + 1}`}
+                              </span>
+                              <span className="font-mono text-[#2F3E4E] font-semibold">{orig.claimId || '—'}</span>
+                              <span className="text-[#7A8F79]">{fmtDOS(orig.dosStart, orig.dosStop)}</span>
+                              <span className="ml-1"><StageBadge stage={orig.claimStage} /></span>
+                              <span className="ml-auto text-[#2F3E4E] font-semibold tabular-nums">{fmt(orig.totalBilled, '$')}</span>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+
+                    </Fragment>
                   )
                 })}
               </tbody>

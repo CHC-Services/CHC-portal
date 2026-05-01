@@ -1988,6 +1988,43 @@ export default function AdminClaimsPage() {
                         )}
                       </td>
                     </tr>
+
+                    {/* ── Resubmission chain: original claims tucked under ── */}
+                    {originals.map((orig, depth) => {
+                      const color = chainColors[Math.min(depth, chainColors.length - 1)]
+                      const bg    = chainBgs[Math.min(depth, chainBgs.length - 1)]
+                      return (
+                        <tr key={`orig-${orig.id}`} className="border-0">
+                          <td colSpan={6} className="px-4 pb-2 pt-0">
+                            <div
+                              className="flex items-center gap-3 px-3 py-1.5 text-xs cursor-pointer transition-opacity hover:opacity-75"
+                              style={{
+                                marginTop: '-2px',
+                                marginLeft: `${(depth + 1) * 12}px`,
+                                background: bg,
+                                borderLeft:   `3px solid ${color}`,
+                                borderRight:  `1px solid ${color}33`,
+                                borderBottom: `1px solid ${color}55`,
+                                borderRadius: '0 0 6px 6px',
+                                boxShadow: `0 6px 14px -6px ${color}55, 0 2px 6px -4px ${color}33`,
+                              }}
+                              onClick={() => { setSelectedClaimId(orig.id); setSelectedClaimType('commercial') }}
+                              title="Open original claim"
+                            >
+                              <span className="font-bold uppercase tracking-wide shrink-0 text-[10px]" style={{ color }}>
+                                ↻ {depth === 0 ? 'Original' : `Orig. −${depth + 1}`}
+                              </span>
+                              <span className="font-mono text-[#2F3E4E] font-semibold">{orig.claimId || '—'}</span>
+                              <span className="text-[#7A8F79]">{fmtDOS(orig.dosStart, orig.dosStop)}</span>
+                              <span className="ml-1"><StageBadge stage={orig.claimStage} /></span>
+                              <span className="ml-auto text-[#2F3E4E] font-semibold tabular-nums">{fmt(orig.totalBilled, '$')}</span>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+
+                    </Fragment>
                   )
                 })}
               </tbody>

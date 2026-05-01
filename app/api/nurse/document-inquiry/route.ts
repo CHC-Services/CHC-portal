@@ -18,8 +18,8 @@ export async function POST(req: Request) {
   const resend = new Resend(process.env.RESEND_API_KEY)
   const { error } = await resend.emails.send({
     from: 'Coming Home Care <support@cominghomecare.com>',
-    to: 'admin@cominghomecare.com',
-    subject,
+    to: 'support@cominghomecare.com',
+    subject: `HELP: ${subject}`,
     html: `
       <div style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;color:#1e293b">
         <div style="background:${isUrgent ? '#dc2626' : '#2F3E4E'};padding:16px 24px;border-radius:10px 10px 0 0">

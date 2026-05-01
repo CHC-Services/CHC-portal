@@ -18,8 +18,8 @@ export async function POST(req: Request) {
   const body = await req.json()
   const s = body.settings || {}
 
-  const toEmail        = s['promptPay.toEmail']        || 'support@cominghomecare.com'
-  const fromEmail      = s['promptPay.fromEmail']      || 'alerts@cominghomecare.com'
+  const toEmail        = s['promptPay.toEmail']        || 'billing@cominghomecare.com'
+  const fromEmail      = s['promptPay.fromEmail']      || 'billing@cominghomecare.com'
   const formLinkName   = s['promptPay.formLinkName']   || 'Prompt Pay Interest Form'
   const formUrl        = s['promptPay.formUrl']        || null
   const subjectTemplate = s['promptPay.subjectTemplate'] || 'Prompt Pay Alert: Claim {claimId} — {provider} — Day 30 on {day30}'

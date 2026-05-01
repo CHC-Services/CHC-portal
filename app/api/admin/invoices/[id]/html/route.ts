@@ -67,7 +67,7 @@ function buildInvoiceHtml(invoice: any): string {
     <div>
       <p style="margin:0;font-size:11px;font-weight:700;letter-spacing:.1em;color:#64748b;text-transform:uppercase">Invoice</p>
       <h2 style="margin:4px 0 2px;font-size:22px;font-weight:900">Coming Home Care Services, LLC</h2>
-      <p style="margin:0;font-size:12px;color:#64748b">support@cominghomecare.com · cominghomecare.com</p>
+      <p style="margin:0;font-size:12px;color:#64748b">billing@cominghomecare.com · cominghomecare.com</p>
     </div>
     <div style="text-align:right">
       <p style="margin:0;font-family:monospace;font-size:16px;font-weight:700">${invoice.invoiceNumber}</p>
@@ -107,9 +107,9 @@ function buildInvoiceHtml(invoice: any): string {
     <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.08em;color:#64748b;text-transform:uppercase">Payment Methods</p>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <div><p style="margin:0;font-size:12px;font-weight:700">💚 Venmo</p><p style="margin:0;font-size:12px;color:#64748b">@AlexMcGann</p></div>
-      <div><p style="margin:0;font-size:12px;font-weight:700">💚 Zelle</p><p style="margin:0;font-size:12px;color:#64748b">support@cominghomecare.com</p></div>
+      <div><p style="margin:0;font-size:12px;font-weight:700">💚 Zelle</p><p style="margin:0;font-size:12px;color:#64748b">billing@cominghomecare.com</p></div>
       <div><p style="margin:0;font-size:12px;font-weight:700">💚 CashApp</p><p style="margin:0;font-size:12px;color:#64748b">$myInvoiceCHC</p></div>
-      <div><p style="margin:0;font-size:12px;font-weight:700">🍎 Apple Pay</p><p style="margin:0;font-size:12px;color:#64748b">support@cominghomecare.com</p></div>
+      <div><p style="margin:0;font-size:12px;font-weight:700">🍎 Apple Pay</p><p style="margin:0;font-size:12px;color:#64748b">billing@cominghomecare.com</p></div>
     </div>
   </div>
 
@@ -172,9 +172,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const resend = new Resend(process.env.RESEND_API_KEY)
   const { error } = await resend.emails.send({
-    from: 'Coming Home Care <support@cominghomecare.com>',
+    from: 'Coming Home Care Billing <billing@cominghomecare.com>',
     to: nurseEmail,
-    subject: `Invoice ${invoice.invoiceNumber} — Coming Home Care Services`,
+    subject: `INV #${invoice.invoiceNumber.slice(-4)}: ${nurseName.split(' ').pop()} - $${invoice.totalAmount.toFixed(2)}`,
     html: `<p>Dear ${nurseName},</p>
            <p>Please find your invoice <strong>${invoice.invoiceNumber}</strong> attached below.</p>
            <p><strong>Total:</strong> $${invoice.totalAmount.toFixed(2)}<br/>

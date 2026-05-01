@@ -27,10 +27,14 @@ export async function POST(req: Request) {
     }
   })
 
+  const lastName  = profile.lastName || profile.displayName.split(' ').slice(-1)[0] || profile.displayName
+  const alertDate = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   sendEnrollmentAlert({
     nurseName: profile.displayName,
     action: 'opted_out',
-    details: 'Requested via myProfile > myBilling unenrollment button'
+    details: 'Requested via myProfile > myBilling unenrollment button',
+    lastName,
+    date: alertDate,
   })
 
   return NextResponse.json({ ok: true })

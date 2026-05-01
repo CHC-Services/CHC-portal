@@ -55,8 +55,12 @@ export async function POST(req: Request) {
     data,
   })
 
+  const lastName = (session as any).lastName || nurseName.split(' ').slice(-1)[0] || nurseName
+  const insType  = (carrierCount || 1) >= 3 ? 'Multi' : (carrierCount || 1) === 2 ? 'Dual' : 'Single'
+  const alertDate = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+
   // Fire email alert (non-blocking)
-  const emailSent = await sendEnrollmentAlert({ nurseName, action, details: emailDetails })
+  const emailSent = await sendEnrollmentAlert({ nurseName, action, details: emailDetails, lastName, insType, date: alertDate })
 
   // Log the event
   await prisma.enrollmentLog.create({

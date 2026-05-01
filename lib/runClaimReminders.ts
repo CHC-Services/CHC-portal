@@ -27,8 +27,8 @@ export async function runClaimReminders(): Promise<{ sent: number; total: number
 
   const enabled         = s['promptPay.reminderEnabled'] !== 'false'
   const triggerDays     = parseInt(s['promptPay.triggerDays'] || '28', 10)
-  const fromEmail       = s['promptPay.fromEmail']       || 'alerts@cominghomecare.com'
-  const toEmail         = s['promptPay.toEmail']         || 'support@cominghomecare.com'
+  const fromEmail       = s['promptPay.fromEmail']       || 'billing@cominghomecare.com'
+  const toEmail         = s['promptPay.toEmail']         || 'billing@cominghomecare.com'
   const formS3Key       = s['promptPay.formS3Key']       || null
   const formLinkName    = s['promptPay.formLinkName']    || 'Prompt Pay Interest Form'
   const subjectTemplate = s['promptPay.subjectTemplate'] || 'Prompt Pay Alert: Claim {claimId} — {provider} — Day 30 on {day30}'

@@ -24,9 +24,13 @@ function createLoggedResend(category: EmailCategory, recipientName: string | nul
   return client
 }
 
-const ALERT_TO = 'enroll@cominghomecare.com'
-const FROM = 'Coming Home Care <support@cominghomecare.com>'
-const PORTAL_URL = process.env.BASE_URL || 'https://portal.cominghomecare.com'
+const FROM         = 'Coming Home Care <support@cominghomecare.com>'
+const BILLING_FROM = 'Coming Home Care Billing <billing@cominghomecare.com>'
+const ENROLL_TO    = 'enroll@cominghomecare.com'
+const BILLING_TO   = 'billing@cominghomecare.com'
+const SUPPORT_TO   = 'support@cominghomecare.com'
+const PORTAL_URL   = process.env.BASE_URL || 'https://portal.cominghomecare.com'
+const last4 = (s: string) => s.slice(-4)
 
 export async function sendWelcomeEmail({
   to,
@@ -145,8 +149,8 @@ export async function sendInvoiceEmail({
   const shortNum   = shortInvoiceNumber(invoiceNumber)
   const venmoUrl   = `https://venmo.com/AlexMcGann?txn=pay&amount=${totalAmount.toFixed(2)}&note=${encodeURIComponent(shortNum)}`
   const cashappUrl = `https://cash.app/$myInvoiceCHC/${totalAmount.toFixed(2)}`
-  const zelleUrl   = `mailto:support@cominghomecare.com?subject=${encodeURIComponent(`Zelle Payment – ${shortNum}`)}`
-  const appleUrl   = `mailto:support@cominghomecare.com?subject=${encodeURIComponent(`Apple Pay – ${shortNum}`)}`
+  const zelleUrl   = `mailto:billing@cominghomecare.com?subject=${encodeURIComponent(`Zelle Payment – ${shortNum}`)}`
+  const appleUrl   = `mailto:billing@cominghomecare.com?subject=${encodeURIComponent(`Apple Pay – ${shortNum}`)}`
 
   // Reusable payment button builder
   const payBtn = (href: string, bg: string, icon: string, label: string, handle: string) => `
@@ -175,9 +179,9 @@ export async function sendInvoiceEmail({
 
   try {
     const { error } = await resend.emails.send({
-      from: FROM,
+      from: BILLING_FROM,
       to,
-      subject: `INVOICE ${shortNum} — Coming Home Care Services, LLC`,
+      subject: `INV #${last4(invoiceNumber)}: ${nurseLastName || nurseName.split(' ').pop() || nurseName} - $${totalAmount.toFixed(2)}`,
       html: `
 <!DOCTYPE html>
 <html>
@@ -253,10 +257,15 @@ export async function sendInvoiceEmail({
         ${payBtn(cashappUrl, '#00C244', cashappIcon, 'Cash App',  '$myInvoiceCHC')}
       </tr>
       <tr>
-        ${payBtn(zelleUrl,  '#6D1ED4', zelleIcon,  'Zelle',     'support@cominghomecare.com')}
-        ${payBtn(appleUrl,  '#1c1c1e', appleIcon,  'Apple Pay', 'support@cominghomecare.com')}
+        ${payBtn(zelleUrl,  '#6D1ED4', zelleIcon,  'Zelle',     'billing@cominghomecare.com')}
+        ${payBtn(appleUrl,  '#1c1c1e', appleIcon,  'Apple Pay', 'billing@cominghomecare.com')}
       </tr>
     </table>
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid #D9E1E8;text-align:center">
+      <p style="margin:0 0 5px;font-size:9px;color:#7A8F79;text-transform:uppercase;letter-spacing:1.5px;font-weight:700">Scan to Pay · Zelle</p>
+      <img src="${PORTAL_URL}/zelle_qr.png" width="88" height="88" alt="Zelle QR Code" style="display:block;margin:0 auto;border-radius:6px"/>
+      <p style="margin:4px 0 0;font-size:9px;color:#7A8F79">billing@cominghomecare.com · ALEX MCGANN</p>
+    </div>
     <p style="margin:10px 0 0;font-size:12px;color:#2F3E4E">Please include <strong>${shortNum}</strong> as your payment note.</p>
     ${totalAmount >= 50 ? '<p style="margin:6px 0 0;font-size:10px;color:#7A8F79;border-top:1px solid #D9E1E8;padding-top:8px">Credit card payments accepted for invoices of $50.00 or more — contact us for details.</p>' : ''}
   </div>
@@ -469,9 +478,9 @@ export async function sendBillingInquiry({
 
   try {
     const { error } = await resend.emails.send({
-      from: FROM,
-      to: ALERT_TO,
-      subject: `BILLING INQUIRY: ${firstName} ${lastName}`,
+      from: BILLING_FROM,
+      to: BILLING_TO,
+      subject: `HELP: Billing Inquiry — ${firstName} ${lastName}`,
       html: `
         <div style="font-family:sans-serif;max-width:520px;padding:32px;color:#2F3E4E">
           <h2 style="margin:0 0 8px;color:#2F3E4E">New Billing Services Inquiry</h2>
@@ -501,18 +510,27 @@ export async function sendEnrollmentAlert({
   nurseName,
   action,
   details,
+  lastName,
+  insType,
+  date,
 }: {
   nurseName: string
   action: 'opted_out' | 'opted_in' | 're_enrolled'
   details?: string
+  lastName?: string
+  insType?: string
+  date?: string
 }): Promise<boolean> {
   if (!process.env.RESEND_API_KEY) return false
   const resend = createLoggedResend('alert', nurseName)
 
+  const displayName = lastName || nurseName
+  const alertDate   = date || new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+
   const subject =
-    action === 'opted_out'   ? `BILLING: ${nurseName} – Opted Out of Billing Services` :
-    action === 'opted_in'    ? `BILLING: ${nurseName} – Enrolled in Billing Services` :
-                               `BILLING: ${nurseName} – Re-Enrolled in Billing Services`
+    action === 'opted_out'
+      ? `END 📂 - ${displayName} - Term Date: ${alertDate}`
+      : `NEW 📂 - ${displayName}${insType ? ` - INS:${insType}` : ''} - Est Start: ${alertDate}`
 
   const body =
     action === 'opted_out'
@@ -524,7 +542,7 @@ export async function sendEnrollmentAlert({
   try {
     const { error } = await resend.emails.send({
       from: FROM,
-      to: ALERT_TO,
+      to: ENROLL_TO,
       subject,
       html: `
         <div style="font-family:sans-serif;max-width:480px;padding:24px">
@@ -661,9 +679,9 @@ export async function sendEdiSummaryEmail({
 
   try {
     const { error } = await resend.emails.send({
-      from: FROM,
+      from: BILLING_FROM,
       to: 'alex@cominghomecare.com',
-      replyTo: 'support@cominghomecare.com',
+      replyTo: 'billing@cominghomecare.com',
       subject: dryRun
         ? `[PREVIEW] EDI Summary — ${unmatched.length} unmatched · No changes made`
         : `EDI Upload Summary — ${unmatched.length} unmatched claim${unmatched.length !== 1 ? 's' : ''}`,
@@ -894,8 +912,8 @@ export async function sendNurseSharedDocumentAlert({
   try {
     const { error } = await resend.emails.send({
       from: FROM,
-      to: ALERT_TO,
-      subject: `New Document Shared for Review — ${nurseName}`,
+      to: SUPPORT_TO,
+      subject: `HELP: New Document Shared for Review — ${nurseName}`,
       html: `
         <div style="font-family:sans-serif;max-width:520px;padding:32px;color:#2F3E4E">
           <h2 style="margin:0 0 8px;color:#2F3E4E">Document Shared for Review</h2>
@@ -1186,9 +1204,9 @@ export async function sendReceiptEmail({
 
   try {
     const { error } = await resend.emails.send({
-      from: FROM,
+      from: BILLING_FROM,
       to,
-      subject: `RECEIPT ${receiptNumber} — Payment Applied to ${shortInvoiceNumber(invoiceNumber)}`,
+      subject: `RCPT #${last4(receiptNumber)}: ${nurseLastName || nurseName.split(' ').pop() || nurseName} - $${paymentAmount.toFixed(2)} (INV #${last4(invoiceNumber)})`,
       html: `
 <!DOCTYPE html>
 <html>

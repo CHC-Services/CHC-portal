@@ -71,7 +71,7 @@ function buildInvoiceHtml(invoice: any): string {
       <div>
         <p style="margin:0;font-size:10px;font-weight:700;letter-spacing:.1em;color:#7A8F79;text-transform:uppercase">Invoice</p>
         <p style="margin:2px 0 0;font-size:18px;font-weight:900;color:white">Coming Home Care Services, LLC</p>
-        <p style="margin:2px 0 0;font-size:11px;color:#D9E1E8">support@cominghomecare.com · cominghomecare.com</p>
+        <p style="margin:2px 0 0;font-size:11px;color:#D9E1E8">billing@cominghomecare.com · cominghomecare.com</p>
       </div>
     </div>
     <div style="text-align:right">
@@ -114,9 +114,9 @@ function buildInvoiceHtml(invoice: any): string {
     <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.08em;color:#64748b;text-transform:uppercase">Payment Methods</p>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <div><p style="margin:0;font-size:12px;font-weight:700">Venmo</p><p style="margin:0;font-size:12px;color:#64748b">@AlexMcGann</p></div>
-      <div><p style="margin:0;font-size:12px;font-weight:700">Zelle</p><p style="margin:0;font-size:12px;color:#64748b">support@cominghomecare.com</p></div>
+      <div><p style="margin:0;font-size:12px;font-weight:700">Zelle</p><p style="margin:0;font-size:12px;color:#64748b">billing@cominghomecare.com</p></div>
       <div><p style="margin:0;font-size:12px;font-weight:700">CashApp</p><p style="margin:0;font-size:12px;color:#64748b">$myInvoiceCHC</p></div>
-      <div><p style="margin:0;font-size:12px;font-weight:700">Apple Pay</p><p style="margin:0;font-size:12px;color:#64748b">support@cominghomecare.com</p></div>
+      <div><p style="margin:0;font-size:12px;font-weight:700">Apple Pay</p><p style="margin:0;font-size:12px;color:#64748b">billing@cominghomecare.com</p></div>
     </div>
   </div>
 

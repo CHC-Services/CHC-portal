@@ -8,7 +8,7 @@ function adminOnly(req: Request) {
   return token ? verifyToken(token) : null
 }
 
-const PREVIEW_TO = 'support@cominghomecare.com'
+const PREVIEW_TO = 'billing@cominghomecare.com'
 
 export async function POST(req: Request) {
   const session = adminOnly(req)

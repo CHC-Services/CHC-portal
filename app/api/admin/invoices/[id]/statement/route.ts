@@ -215,7 +215,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const totalPaid    = invoices.reduce((s: number, i: any) => s + (i.paidAmount || 0), 0)
 
   const { error } = await resend.emails.send({
-    from: 'Coming Home Care <support@cominghomecare.com>',
+    from: 'Coming Home Care Billing <billing@cominghomecare.com>',
     to: nurse.user.email,
     subject: `Account Statement — ${statementDate}`,
     html: `<p>Dear ${nurse.displayName},</p>

@@ -79,7 +79,7 @@ export default function PrintInvoicePage({ params }: { params: Promise<{ id: str
 
   const venmoUrl   = `https://venmo.com/AlexMcGann?txn=pay&amount=${balance.toFixed(2)}&note=${encodeURIComponent(shortNum)}`
   const cashappUrl = `https://cash.app/$myInvoiceCHC/${balance.toFixed(2)}?note=${encodeURIComponent(shortNum)}`
-  const appleUrl   = 'https://applepay.apple.com/person/support@cominghomecare.com'
+  const appleUrl   = 'https://applepay.apple.com/person/billing@cominghomecare.com'
 
   return (
     <>
@@ -122,7 +122,7 @@ export default function PrintInvoicePage({ params }: { params: Promise<{ id: str
               <div>
                 <p className="text-[8px] font-bold uppercase tracking-widest text-[#7A8F79]">Invoice</p>
                 <h1 className="text-sm font-black text-white leading-tight">Coming Home Care Services, LLC</h1>
-                <p className="text-[10px] text-[#D9E1E8] mt-0.5">support@cominghomecare.com · cominghomecare.com</p>
+                <p className="text-[10px] text-[#D9E1E8] mt-0.5">billing@cominghomecare.com · cominghomecare.com</p>
               </div>
             </div>
             <div className="text-right flex-shrink-0">
@@ -290,22 +290,29 @@ export default function PrintInvoicePage({ params }: { params: Promise<{ id: str
                     className="text-xs font-bold bg-[#00D632] text-white px-3 py-1.5 rounded-lg hover:bg-[#00b82b] transition">
                     Cash App · $myInvoiceCHC
                   </a>
-                  <a href="mailto:support@cominghomecare.com" target="_blank" rel="noopener noreferrer"
+                  <a href="mailto:billing@cominghomecare.com" target="_blank" rel="noopener noreferrer"
                     className="text-xs font-bold bg-[#6D1ED4] text-white px-3 py-1.5 rounded-lg hover:bg-[#5a19b0] transition">
-                    Zelle · support@cominghomecare.com
+                    Zelle · billing@cominghomecare.com
                   </a>
                   <a href={appleUrl} target="_blank" rel="noopener noreferrer"
                     className="text-xs font-bold bg-black text-white px-3 py-1.5 rounded-lg hover:bg-gray-800 transition">
-                    Apple Pay · support@cominghomecare.com
+                    Apple Pay · billing@cominghomecare.com
                   </a>
                 </div>
 
-                {/* Print: compact 2-col text */}
-                <div className="hidden print:grid grid-cols-2 gap-x-6 gap-y-0.5 text-xs text-[#2F3E4E] mb-2">
-                  <p><strong>Venmo</strong> @AlexMcGann</p>
-                  <p><strong>Zelle</strong> Alex McGann<br/> support@cominghomecare.com</p>
-                  <p><strong>Cash App</strong> $myInvoiceCHC</p>
-                  <p><strong>Apple Pay</strong> support@cominghomecare.com</p>
+                {/* Print: 3-col — Venmo | Zelle QR | CashApp + Apple Pay */}
+                <div className="hidden print:flex items-start gap-6 mb-2">
+                  <div className="text-xs text-[#2F3E4E] space-y-0.5 pt-1">
+                    <p><strong>Venmo</strong> @AlexMcGann</p>
+                    <p><strong>Cash App</strong> $myInvoiceCHC</p>
+                    <p><strong>Apple Pay</strong> billing@cominghomecare.com</p>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/zelle_qr.png" alt="Zelle QR" className="w-20 h-20 rounded" />
+                    <p className="text-[8px] text-[#6D1ED4] font-bold mt-0.5">Scan · Zelle</p>
+                    <p className="text-[7px] text-[#7A8F79]">billing@cominghomecare.com</p>
+                  </div>
                 </div>
 
                 <p className="text-[9px] text-[#7A8F79]">
@@ -315,7 +322,7 @@ export default function PrintInvoicePage({ params }: { params: Promise<{ id: str
             )}
 
             <p className="text-[9px] text-center text-[#7A8F79] pt-2 border-t border-[#D9E1E8]">
-              Coming Home Care Services, LLC · Questions? support@cominghomecare.com
+              Coming Home Care Services, LLC · Questions? billing@cominghomecare.com
             </p>
           </div>
         </div>

@@ -2081,7 +2081,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="text-xl font-black tracking-tight">Coming Home Care Services, LLC</p>
-                        <p className="text-xs text-[#7A8F79] mt-0.5">cominghomecare.com · support@cominghomecare.com</p>
+                        <p className="text-xs text-[#7A8F79] mt-0.5">cominghomecare.com · billing@cominghomecare.com</p>
                       </div>
                       <div className="text-right">
                         <p className="text-xs text-[#7A8F79] uppercase tracking-widest font-semibold mb-0.5">Invoice</p>
@@ -2287,7 +2287,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                   <div className="flex items-start justify-between">
                     <div>
                       <p className="text-xl font-black tracking-tight">Coming Home Care Services, LLC</p>
-                      <p className="text-xs text-[#7A8F79] mt-0.5">cominghomecare.com · support@cominghomecare.com</p>
+                      <p className="text-xs text-[#7A8F79] mt-0.5">cominghomecare.com · billing@cominghomecare.com</p>
                     </div>
                     <span className="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1 rounded-full">PREVIEW</span>
                   </div>
@@ -2346,9 +2346,9 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                     <div className="grid grid-cols-2 gap-2">
                       {[
                         { label: '💚 Venmo', value: '@AlexMcGann' },
-                        { label: '💚 Zelle', value: 'support@cominghomecare.com' },
+                        { label: '💚 Zelle', value: 'billing@cominghomecare.com' },
                         { label: '💚 CashApp', value: '$myInvoiceCHC' },
-                        { label: '🍎 Apple Pay', value: 'support@cominghomecare.com' },
+                        { label: '🍎 Apple Pay', value: 'billing@cominghomecare.com' },
                       ].map(m => (
                         <div key={m.label} className="bg-white rounded-lg px-3 py-2 border border-[#D9E1E8]">
                           <p className="text-xs font-bold">{m.label}</p>

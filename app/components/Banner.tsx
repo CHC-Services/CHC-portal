@@ -275,14 +275,14 @@ export default function Banner({ user }: BannerProps) {
                                     <span style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.5rem' }}>&nbsp;{displayName}</span>
                                 </div>
                             )}
+                            <nav className={`flex flex-wrap gap-6 text-sm font-semibold items-center text-[#2F3E4E] mt-3`}>
+                                {generalRow}
+                            </nav>
                             {myRow && (
-                                <nav className="flex flex-wrap gap-6 text-sm font-semibold mt-3 items-center">
+                                <nav className="flex flex-wrap gap-6 text-sm font-semibold mt-2 items-center">
                                     {myRow}
                                 </nav>
                             )}
-                            <nav className={`flex flex-wrap gap-6 text-sm font-semibold items-center text-[#2F3E4E] ${myRow ? 'mt-2' : 'mt-3'}`}>
-                                {generalRow}
-                            </nav>
                         </div>
                     ) : (
                         <div className="h-full flex items-center gap-10 mt-6">
@@ -300,7 +300,7 @@ export default function Banner({ user }: BannerProps) {
                                 </Link>
                                 <Link href="/signup" className="text-xs transition">
                                     <span style={{ color: '#7A8F79' }}>New User? </span>
-                                    <span className="text-[#2F3E4E]-600 hover:font-bold transition">Click Here</span>
+                                    <span style={{ color: '#2F3E4E' }} className="hover:font-bold transition">Click Here</span>
                                 </Link>
                             </div>
                         </div>

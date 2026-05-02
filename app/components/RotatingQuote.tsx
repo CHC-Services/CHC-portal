@@ -74,7 +74,7 @@ export default function RotatingQuote({
     return (
       <div className={`flex flex-col justify-center text-right ${className}`}>
         <div className="transition-opacity duration-300" style={{ opacity: visible ? 1 : 0 }}>
-          <p className="font-cormorant font-semibold text-[#2F3E4E] text-base leading-snug">
+          <p className="font-cormorant font-semibold text-[#2F3E4E] text-lg leading-snug">
             &ldquo;{quote.text}&rdquo;
           </p>
           <p className="font-cormorant text-[#7A8F79] text-sm uppercase tracking-widest mt-1 text-right">

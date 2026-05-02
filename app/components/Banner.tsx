@@ -267,40 +267,44 @@ export default function Banner({ user }: BannerProps) {
                     </div>
 
                     {/* Right: welcome + nav */}
-                    <div className="h-full flex flex-col justify-center items-end mt-6">
-                        {displayName && (
-                            <div className="mt-1 text-lg font-bold">
-                                <span style={{ fontFamily: "'Lato', sans-serif", fontStyle: 'italic' }}>Welcome home,</span>
-                                <span style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.5rem' }}>&nbsp;{displayName}</span>
-                            </div>
-                        )}
-                        {/* Row 1: role-specific links (hidden when logged out — myPortal Login moves to row 2) */}
-                        {myRow && (
-                            <nav className="flex flex-wrap gap-6 text-sm font-semibold mt-3 items-center">
-                                {myRow}
+                    {role ? (
+                        <div className="h-full flex flex-col justify-center items-end mt-6">
+                            {displayName && (
+                                <div className="mt-1 text-lg font-bold">
+                                    <span style={{ fontFamily: "'Lato', sans-serif", fontStyle: 'italic' }}>Welcome home,</span>
+                                    <span style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.5rem' }}>&nbsp;{displayName}</span>
+                                </div>
+                            )}
+                            {myRow && (
+                                <nav className="flex flex-wrap gap-6 text-sm font-semibold mt-3 items-center">
+                                    {myRow}
+                                </nav>
+                            )}
+                            <nav className={`flex flex-wrap gap-6 text-sm font-semibold items-center text-[#2F3E4E] ${myRow ? 'mt-2' : 'mt-3'}`}>
+                                {generalRow}
                             </nav>
-                        )}
-                        {/* Row 2: general links (+ myPortal Login when logged out) */}
-                        <nav className={`flex flex-wrap gap-6 text-sm font-semibold items-center text-[#2F3E4E] ${myRow ? 'mt-2' : 'mt-3'}`}>
-                            {generalRow}
-                        </nav>
-                        {!role && (
-                            <div className="flex flex-col items-end gap-2 mt-2">
+                        </div>
+                    ) : (
+                        <div className="h-full flex items-center gap-10 mt-6">
+                            {/* Nav links left of login */}
+                            <nav className="flex flex-wrap gap-6 text-sm font-semibold items-center text-[#2F3E4E]">
+                                {generalRow}
+                            </nav>
+                            {/* Login button + New User centered beneath */}
+                            <div className="flex flex-col items-center gap-1.5">
                                 <Link
                                     href="/login"
-                                    className="text-sm font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition"
-                                >
-                                    <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Portal Login
-                                </Link>
-                                <Link
-                                    href="/signup"
                                     className="text-sm font-semibold text-[#7A8F79] border border-[#7A8F79] px-5 py-2 rounded-full hover:bg-[#7A8F79] hover:text-white transition"
                                 >
-                                    my
+                                    <i>my</i><span style={{ color: 'inherit', fontSize: '0.905rem' }}>Portal Login</span>
+                                </Link>
+                                <Link href="/signup" className="text-xs transition">
+                                    <span style={{ color: '#7A8F79' }}>New User? </span>
+                                    <span className="text-[#2F3E4E]-600 hover:font-bold transition">Click Here</span>
                                 </Link>
                             </div>
-                        )}
-                    </div>
+                        </div>
+                    )}
 
                 </div>
             </div>

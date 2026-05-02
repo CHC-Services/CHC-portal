@@ -23,7 +23,6 @@ const QUOTES = [
   { text: "Life is not easy for any of us. But what of that? We must have perseverance and, above all, confidence in ourselves. We must believe that we are gifted for something and that this something, at whatever cost, must be attained.", author: "Marie Curie" },
   { text: "Nursing is not for everyeone. It takes a special kind of person to be a nurse, but those who are nurses know they have found their calling.", author: "Unknown" },
   { text: "Start by doing what's necessary; then do what's possible; and suddenly you are doing the impossible.", author: "Francis of Assisi" },
-  { text: "The best way to not feel hopeless is to get up and do something. Don't wait for good things to happen to you. If you go out and make some good things happen, you will fill the world with hope, you will fill yourself with hope.", author: "Barack Obama" },
   { text: "I didn't want just any career, so I'm not going to be just any nurse.", author: "Unknown" },
 
 

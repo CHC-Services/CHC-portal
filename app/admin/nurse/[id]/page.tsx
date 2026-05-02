@@ -446,7 +446,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
       })
       .then(data => {
         if (data) {
-          setProfile(data)
+          setProfile({ ...data, 'user.email': data.user?.email || '' })
           setUserRole(data.user?.role || 'nurse')
           setIsDemo(data.isDemo ?? false)
           setNotifEnabled(data.receiveNotifications !== false)

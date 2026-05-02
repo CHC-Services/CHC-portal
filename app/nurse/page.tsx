@@ -30,6 +30,7 @@ export default function NurseDashboard() {
   const [claimSummary, setClaimSummary] = useState<{ totalBilled: number; totalAllowed: number; totalPaid: number; avgPerHour: number | null; statusCounts: { submitted: number; pending: number; paid: number; denied: number } } | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [deleting, setDeleting] = useState(false)
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
 
   function loadEntries() {
     return fetch('/api/time-entry', { credentials: 'include' })
@@ -63,7 +64,7 @@ export default function NurseDashboard() {
   }
 
   function toggleAll() {
-    const selectable = entries.filter(e => !e.billed)
+    const selectable = yearEntries.filter(e => !e.billed)
     setSelected(prev =>
       prev.size === selectable.length ? new Set() : new Set(selectable.map(e => e.id))
     )
@@ -118,19 +119,23 @@ export default function NurseDashboard() {
   const priorMonth = thisMonth === 0 ? 11 : thisMonth - 1
   const priorMonthYear = thisMonth === 0 ? thisYear - 1 : thisYear
 
-  const hoursThisMonth = entries
-    .filter(e => { const d = new Date(e.workDate); return d.getMonth() === thisMonth && d.getFullYear() === thisYear })
+  const yearOptions = Array.from(
+    new Set([thisYear, ...entries.map(e => new Date(e.workDate).getFullYear())])
+  ).sort((a, b) => b - a)
+
+  const yearEntries = entries.filter(e => new Date(e.workDate).getFullYear() === selectedYear)
+
+  const hoursThisMonth = yearEntries
+    .filter(e => { const d = new Date(e.workDate); return d.getMonth() === thisMonth && d.getFullYear() === selectedYear })
     .reduce((sum, e) => sum + e.hours, 0)
 
-  const hoursPriorMonth = entries
-    .filter(e => { const d = new Date(e.workDate); return d.getMonth() === priorMonth && d.getFullYear() === priorMonthYear })
+  const hoursPriorMonth = yearEntries
+    .filter(e => { const d = new Date(e.workDate); return d.getMonth() === priorMonth && d.getFullYear() === (priorMonth === 11 ? selectedYear - 1 : selectedYear) })
     .reduce((sum, e) => sum + e.hours, 0)
 
-  const hoursYTD = entries
-    .filter(e => new Date(e.workDate).getFullYear() === thisYear)
-    .reduce((sum, e) => sum + e.hours, 0)
+  const hoursYTD = yearEntries.reduce((sum, e) => sum + e.hours, 0)
 
-  const hoursUnbilled = entries
+  const hoursUnbilled = yearEntries
     .filter(e => !e.billed)
     .reduce((sum, e) => sum + e.hours, 0)
 
@@ -138,10 +143,10 @@ export default function NurseDashboard() {
   const priorMonthName = new Date(priorMonthYear, priorMonth).toLocaleString('default', { month: 'long' })
 
   return (
-    <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">
+    <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6">
 
       {/* Page header */}
-      <div className="flex items-stretch gap-6 mb-8">
+      <div className="flex items-stretch gap-6 mb-5">
         <div className="shrink-0">
           <h1 className="text-3xl font-bold text-[#2F3E4E]">
             <span className="text-[#7A8F79] italic">my</span>Dashboard
@@ -155,9 +160,27 @@ export default function NurseDashboard() {
 
       <PortalMessages priority="General" />
 
+      {/* Year filter */}
+      <div className="flex items-center gap-2 my-4 flex-wrap">
+        <span className="text-xs font-semibold uppercase tracking-widest text-[#7A8F79]">Year</span>
+        {yearOptions.map(y => (
+          <button
+            key={y}
+            onClick={() => setSelectedYear(y)}
+            className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+              selectedYear === y
+                ? 'bg-[#2F3E4E] text-white'
+                : 'bg-white text-[#2F3E4E] border border-[#D9E1E8] hover:bg-[#D9E1E8]'
+            }`}
+          >
+            {y}
+          </button>
+        ))}
+      </div>
+
       {/* Account Summary */}
       {invoiceSummary && (
-        <div className="bg-white rounded-xl shadow-sm p-5 mb-6">
+        <div className="bg-white rounded-xl shadow-sm p-5 mb-4">
           <p className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] mb-4">
             Account Summary
           </p>
@@ -183,7 +206,7 @@ export default function NurseDashboard() {
 
       {/* Reimbursement Summary */}
       {claimSummary && (
-        <div className="bg-white rounded-xl shadow-sm p-5 mb-6">
+        <div className="bg-white rounded-xl shadow-sm p-5 mb-4">
           <p className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] mb-4">
             Reimbursement Summary
           </p>
@@ -214,7 +237,7 @@ export default function NurseDashboard() {
 
       {/* Claims Summary */}
       {claimSummary && (
-        <div className="bg-white rounded-xl shadow-sm p-5 mb-6">
+        <div className="bg-white rounded-xl shadow-sm p-5 mb-4">
           <p className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] mb-4">
             Claims Summary
           </p>
@@ -240,7 +263,7 @@ export default function NurseDashboard() {
       )}
 
       {/* Logged Hours Summary */}
-      <div className="bg-white rounded-xl shadow-sm p-5 mb-8">
+      <div className="bg-white rounded-xl shadow-sm p-5 mb-4">
         <p className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] mb-4">
           Logged Hours Summary
         </p>
@@ -254,7 +277,7 @@ export default function NurseDashboard() {
             <p className="text-2xl font-black text-[#2F3E4E]">{hoursPriorMonth}</p>
           </div>
           <div className="bg-[#F4F6F5] rounded-xl p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Year to Date</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">{selectedYear} Total</p>
             <p className="text-2xl font-black text-[#2F3E4E]">{hoursYTD}</p>
           </div>
           <div className="bg-[#F4F6F5] rounded-xl p-4">
@@ -264,10 +287,10 @@ export default function NurseDashboard() {
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid md:grid-cols-2 gap-4">
 
         {/* Submit Hours form */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
+        <div className="bg-white rounded-xl shadow-sm p-5">
           <h2 className="text-lg font-semibold text-[#2F3E4E] mb-4 pb-2 border-b border-[#D9E1E8]">
             Submit Hours
           </h2>
@@ -353,7 +376,7 @@ export default function NurseDashboard() {
         </div>
 
         {/* History panel */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
+        <div className="bg-white rounded-xl shadow-sm p-5">
           <div className="flex items-center justify-between mb-1 pb-2 border-b border-[#D9E1E8]">
             <h2 className="text-lg font-semibold text-[#2F3E4E]">Submission History</h2>
             {selected.size > 0 && (
@@ -370,8 +393,8 @@ export default function NurseDashboard() {
 
           {loadingHistory ? (
             <p className="text-sm text-[#7A8F79]">Loading…</p>
-          ) : entries.length === 0 ? (
-            <p className="text-sm text-[#7A8F79] italic">No submissions yet.</p>
+          ) : yearEntries.length === 0 ? (
+            <p className="text-sm text-[#7A8F79] italic">No submissions for {selectedYear}.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -380,7 +403,7 @@ export default function NurseDashboard() {
                     <th className="py-2 pr-2 w-6">
                       <input
                         type="checkbox"
-                        checked={entries.filter(e => !e.billed).length > 0 && selected.size === entries.filter(e => !e.billed).length}
+                        checked={yearEntries.filter(e => !e.billed).length > 0 && selected.size === yearEntries.filter(e => !e.billed).length}
                         onChange={toggleAll}
                         className="accent-[#7A8F79]"
                       />
@@ -392,7 +415,7 @@ export default function NurseDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {[...entries].sort((a, b) => new Date(a.workDate).getTime() - new Date(b.workDate).getTime()).map((entry, i) => (
+                  {[...yearEntries].sort((a, b) => new Date(a.workDate).getTime() - new Date(b.workDate).getTime()).map((entry, i) => (
                     <tr
                       key={entry.id}
                       className={`border-b border-[#D9E1E8] last:border-0 ${

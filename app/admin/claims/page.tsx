@@ -586,9 +586,10 @@ function ClaimDetailModal({
     setMForm(f => ({ ...f, statusCodes: f.statusCodes.filter(c => c !== code) }))
   }
 
-  const inp = 'w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]'
-  const lbl = 'block text-xs font-semibold text-[#2F3E4E] mb-1'
-  const sec = 'text-xs font-bold uppercase tracking-widest text-[#7A8F79] mb-3 border-t border-[#D9E1E8] pt-4'
+  const inp = 'w-full border border-[#D9E1E8] rounded-lg px-2 py-1.5 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]'
+  const dateInp = 'border border-[#D9E1E8] rounded-lg px-2 py-1.5 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] max-w-[145px] w-full'
+  const lbl = 'block text-xs font-semibold text-[#2F3E4E] mb-0.5'
+  const sec = 'text-xs font-bold uppercase tracking-widest text-[#7A8F79] mb-2 border-t border-[#D9E1E8] pt-3'
 
   const isMed = claim._type === 'commercial' && isMedicaidPayer(cForm.primaryPayer)
 
@@ -599,11 +600,11 @@ function ClaimDetailModal({
   ]
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 overflow-y-auto py-6 px-4">
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 overflow-y-auto py-4 px-3">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#D9E1E8]">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[#D9E1E8]">
           <div className="flex items-center gap-3 flex-wrap">
             <h2 className="text-base font-bold text-[#2F3E4E]">
               {claim._type === 'commercial'
@@ -648,82 +649,82 @@ function ClaimDetailModal({
         </div>
 
         {/* Tab Content */}
-        <div className="px-6 py-5 max-h-[70vh] overflow-y-auto">
+        <div className="px-4 py-3 max-h-[75vh] overflow-y-auto">
 
           {/* ── Details: Commercial ── */}
           {activeTab === 'details' && claim._type === 'commercial' && (
-            <div className="space-y-6">
+            <div className="space-y-4">
               <div>
                 <p className={sec}>Claim Info</p>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
+                <div className="grid grid-cols-4 gap-3">
+                  <div className="col-span-2">
                     <label className={lbl}>{isMed ? 'Patient Ctrl #' : 'Claim ID'}</label>
                     <input className={inp} value={cForm.claimId} onChange={e => setCForm(f => ({ ...f, claimId: e.target.value }))} />
                   </div>
                   <div>
-                    <label className={lbl}>Hours Billed</label>
+                    <label className={lbl}>Hours</label>
                     <input type="number" min="0" max="999" step="1" className={inp} value={cForm.hours}
                       onChange={e => setCForm(f => ({ ...f, hours: e.target.value.slice(0, 3) }))} />
                   </div>
                   <div>
+                    <label className={lbl}>Total Billed</label>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
+                      <input type="number" step="0.01" className={`${inp} pl-5`} value={cForm.totalBilled} onChange={e => setCForm(f => ({ ...f, totalBilled: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div>
                     <label className={lbl}>Submit Date</label>
-                    <input type="date" className={inp} value={cForm.submitDate} onChange={e => setCForm(f => ({ ...f, submitDate: e.target.value }))} />
+                    <input type="date" className={dateInp} value={cForm.submitDate} onChange={e => setCForm(f => ({ ...f, submitDate: e.target.value }))} />
                   </div>
                   <div>
                     <label className={lbl}>DOS Start</label>
-                    <input type="date" className={inp} value={cForm.dosStart} onChange={e => setCForm(f => ({ ...f, dosStart: e.target.value }))} />
+                    <input type="date" className={dateInp} value={cForm.dosStart} onChange={e => setCForm(f => ({ ...f, dosStart: e.target.value }))} />
                   </div>
                   <div>
                     <label className={lbl}>DOS Stop</label>
-                    <input type="date" className={inp} value={cForm.dosStop} onChange={e => setCForm(f => ({ ...f, dosStop: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label className={lbl}>Total Billed</label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
-                      <input type="number" step="0.01" className={`${inp} pl-6`} value={cForm.totalBilled} onChange={e => setCForm(f => ({ ...f, totalBilled: e.target.value }))} />
-                    </div>
+                    <input type="date" className={dateInp} value={cForm.dosStop} onChange={e => setCForm(f => ({ ...f, dosStop: e.target.value }))} />
                   </div>
                 </div>
               </div>
 
               <div>
                 <p className={sec}>Primary Insurance</p>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="col-start-1">
+                <div className="grid grid-cols-4 gap-3">
+                  <div className="col-span-2">
                     <label className={lbl}>Payer</label>
                     <input className={inp} value={cForm.primaryPayer} onChange={e => setCForm(f => ({ ...f, primaryPayer: e.target.value }))} />
                   </div>
-                  <div className="col-start-2">
+                  <div>
                     <label className={lbl}>Allowed Amt</label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
-                      <input type="number" step="0.01" className={`${inp} pl-6`} value={cForm.primaryAllowedAmt} onChange={e => setCForm(f => ({ ...f, primaryAllowedAmt: e.target.value }))} />
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
+                      <input type="number" step="0.01" className={`${inp} pl-5`} value={cForm.primaryAllowedAmt} onChange={e => setCForm(f => ({ ...f, primaryAllowedAmt: e.target.value }))} />
                     </div>
                   </div>
-                  <div className="col-start-3">
+                  <div>
                     <label className={lbl}>Paid Amt</label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
-                      <input type="number" step="0.01" className={`${inp} pl-6`} value={cForm.primaryPaidAmt} onChange={e => setCForm(f => ({ ...f, primaryPaidAmt: e.target.value }))} />
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
+                      <input type="number" step="0.01" className={`${inp} pl-5`} value={cForm.primaryPaidAmt} onChange={e => setCForm(f => ({ ...f, primaryPaidAmt: e.target.value }))} />
                     </div>
                   </div>
-                  <div className="col-start-1">
+                  <div>
                     <label className={lbl}>Paid Date</label>
-                    <input type="date" className={inp} value={cForm.primaryPaidDate} onChange={e => setCForm(f => ({ ...f, primaryPaidDate: e.target.value }))} />
+                    <input type="date" className={dateInp} value={cForm.primaryPaidDate} onChange={e => setCForm(f => ({ ...f, primaryPaidDate: e.target.value }))} />
                   </div>
-                  <div className="col-start-2">
-                    <label className={lbl}>Provider Writeoff</label>
+                  <div>
+                    <label className={lbl}>Writeoff</label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
-                      <input type="number" step="0.01" className={`${inp} pl-6`} value={cForm.primaryCO} onChange={e => setCForm(f => ({ ...f, primaryCO: e.target.value }))} />
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
+                      <input type="number" step="0.01" className={`${inp} pl-5`} value={cForm.primaryCO} onChange={e => setCForm(f => ({ ...f, primaryCO: e.target.value }))} />
                     </div>
                   </div>
-                  <div className="col-start-2">
+                  <div>
                     <label className={lbl}>Paid To</label>
                     <input className={inp} value={cForm.primaryPaidTo} onChange={e => setCForm(f => ({ ...f, primaryPaidTo: e.target.value }))} />
                   </div>
-                  <div className="col-start-3">
+                  <div>
                     <label className={lbl}>{isMed ? 'Payer Claim #' : 'Check #'}</label>
                     <input className={inp} value={cForm.primaryCheckNum} onChange={e => setCForm(f => ({ ...f, primaryCheckNum: e.target.value }))} />
                   </div>
@@ -732,41 +733,41 @@ function ClaimDetailModal({
 
               <div>
                 <p className={sec}>Secondary Insurance</p>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="col-start-1">
+                <div className="grid grid-cols-4 gap-3">
+                  <div className="col-span-2">
                     <label className={lbl}>Payer</label>
                     <input className={inp} value={cForm.secondaryPayer} onChange={e => setCForm(f => ({ ...f, secondaryPayer: e.target.value }))} />
                   </div>
-                  <div className="col-start-2">
+                  <div>
                     <label className={lbl}>Allowed Amt</label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
-                      <input type="number" step="0.01" className={`${inp} pl-6`} value={cForm.secondaryAllowedAmt} onChange={e => setCForm(f => ({ ...f, secondaryAllowedAmt: e.target.value }))} />
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
+                      <input type="number" step="0.01" className={`${inp} pl-5`} value={cForm.secondaryAllowedAmt} onChange={e => setCForm(f => ({ ...f, secondaryAllowedAmt: e.target.value }))} />
                     </div>
                   </div>
-                  <div className="col-start-3">
+                  <div>
                     <label className={lbl}>Paid Amt</label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
-                      <input type="number" step="0.01" className={`${inp} pl-6`} value={cForm.secondaryPaidAmt} onChange={e => setCForm(f => ({ ...f, secondaryPaidAmt: e.target.value }))} />
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
+                      <input type="number" step="0.01" className={`${inp} pl-5`} value={cForm.secondaryPaidAmt} onChange={e => setCForm(f => ({ ...f, secondaryPaidAmt: e.target.value }))} />
                     </div>
                   </div>
-                  <div className="col-start-1">
+                  <div>
                     <label className={lbl}>Paid Date</label>
-                    <input type="date" className={inp} value={cForm.secondaryPaidDate} onChange={e => setCForm(f => ({ ...f, secondaryPaidDate: e.target.value }))} />
+                    <input type="date" className={dateInp} value={cForm.secondaryPaidDate} onChange={e => setCForm(f => ({ ...f, secondaryPaidDate: e.target.value }))} />
                   </div>
-                  <div className="col-start-2">
-                    <label className={lbl}>Provider Writeoff</label>
+                  <div>
+                    <label className={lbl}>Writeoff</label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
-                      <input type="number" step="0.01" className={`${inp} pl-6`} value={cForm.secondaryCO} onChange={e => setCForm(f => ({ ...f, secondaryCO: e.target.value }))} />
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
+                      <input type="number" step="0.01" className={`${inp} pl-5`} value={cForm.secondaryCO} onChange={e => setCForm(f => ({ ...f, secondaryCO: e.target.value }))} />
                     </div>
                   </div>
-                  <div className="col-start-2">
+                  <div>
                     <label className={lbl}>Paid To</label>
                     <input className={inp} value={cForm.secondaryPaidTo} onChange={e => setCForm(f => ({ ...f, secondaryPaidTo: e.target.value }))} />
                   </div>
-                  <div className="col-start-3">
+                  <div>
                     <label className={lbl}>Check #</label>
                     <input className={inp} value={cForm.secondaryCheckNum} onChange={e => setCForm(f => ({ ...f, secondaryCheckNum: e.target.value }))} />
                   </div>
@@ -775,52 +776,38 @@ function ClaimDetailModal({
 
               <div>
                 <p className={sec}>Summary</p>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-4 gap-3">
                   <div>
-                    <label className={lbl}>Total Reimbursed</label>
+                    <label className={lbl}>Total Reimb.</label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
-                      <input type="number" step="0.01" className={`${inp} pl-6`} value={cForm.totalReimbursed} onChange={e => setCForm(f => ({ ...f, totalReimbursed: e.target.value }))} />
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
+                      <input type="number" step="0.01" className={`${inp} pl-5`} value={cForm.totalReimbursed} onChange={e => setCForm(f => ({ ...f, totalReimbursed: e.target.value }))} />
                     </div>
                   </div>
                   <div>
-                    <label className={lbl}>Remaining Balance</label>
+                    <label className={lbl}>Remaining Bal.</label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
-                      <input type="number" step="0.01" className={`${inp} pl-6`} value={cForm.remainingBalance} onChange={e => setCForm(f => ({ ...f, remainingBalance: e.target.value }))} />
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
+                      <input type="number" step="0.01" className={`${inp} pl-5`} value={cForm.remainingBalance} onChange={e => setCForm(f => ({ ...f, remainingBalance: e.target.value }))} />
                     </div>
                   </div>
                   <div>
-                    <label className={lbl}>Date Fully Finalized</label>
-                    <input type="date" className={inp} value={cForm.dateFullyFinalized} onChange={e => setCForm(f => ({ ...f, dateFullyFinalized: e.target.value }))} />
+                    <label className={lbl}>Finalized</label>
+                    <input type="date" className={dateInp} value={cForm.dateFullyFinalized} onChange={e => setCForm(f => ({ ...f, dateFullyFinalized: e.target.value }))} />
                   </div>
                   <div>
-                    <label className={lbl}>Avg Hourly Rate</label>
-                    <div className={`${inp} bg-[#F4F6F5] cursor-default text-[#2F3E4E]`}>
-                      {cForm.primaryAllowedAmt && cForm.hours && Number(cForm.hours) > 0
-                        ? `$${(Number(cForm.primaryAllowedAmt) / Number(cForm.hours)).toFixed(2)}`
-                        : '—'}
-                    </div>
+                    <label className={lbl}>Resubmission Of</label>
+                    <input
+                      className={inp}
+                      placeholder="Original claim ID"
+                      value={cForm.resubmissionOf}
+                      onChange={e => setCForm(f => ({ ...f, resubmissionOf: e.target.value }))}
+                    />
                   </div>
-                  <div className="col-span-2">
+                  <div className="col-span-4">
                     <label className={lbl}>Processing Notes</label>
                     <textarea rows={3} className={`${inp} resize-none`} value={cForm.processingNotes} onChange={e => setCForm(f => ({ ...f, processingNotes: e.target.value }))} />
                   </div>
-                </div>
-              </div>
-
-              <div>
-                <p className={sec}>Resubmission</p>
-                <div className="flex items-center gap-3">
-                  <input
-                    className={`${inp} max-w-xs`}
-                    placeholder="Original claim ID (leave blank if none)"
-                    value={cForm.resubmissionOf}
-                    onChange={e => setCForm(f => ({ ...f, resubmissionOf: e.target.value }))}
-                  />
-                  {cForm.resubmissionOf && (
-                    <span className="text-xs text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full font-semibold">↻ resubmission</span>
-                  )}
                 </div>
               </div>
             </div>
@@ -828,50 +815,50 @@ function ClaimDetailModal({
 
           {/* ── Details: Medicaid ── */}
           {activeTab === 'details' && claim._type === 'medicaid' && (
-            <div className="space-y-6">
+            <div className="space-y-4">
               <div>
                 <p className={sec}>Claim Details</p>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
+                <div className="grid grid-cols-4 gap-3">
+                  <div className="col-span-2">
                     <label className={lbl}>Patient Ctrl #</label>
                     <input className={inp} value={mForm.patientCtrlNum} onChange={e => setMForm(f => ({ ...f, patientCtrlNum: e.target.value }))} />
                   </div>
-                  <div>
+                  <div className="col-span-2">
                     <label className={lbl}>Payer Ctrl #</label>
                     <input className={inp} value={mForm.payerCtrlNum} onChange={e => setMForm(f => ({ ...f, payerCtrlNum: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className={lbl}>DOS Start</label>
+                    <input type="date" className={dateInp} value={mForm.dosStart} onChange={e => setMForm(f => ({ ...f, dosStart: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className={lbl}>DOS Stop</label>
+                    <input type="date" className={dateInp} value={mForm.dosStop} onChange={e => setMForm(f => ({ ...f, dosStop: e.target.value }))} />
                   </div>
                   <div>
                     <label className={lbl}>Total Charge</label>
                     <input type="number" step="0.01" className={inp} value={mForm.totalCharge} onChange={e => setMForm(f => ({ ...f, totalCharge: e.target.value }))} />
                   </div>
                   <div>
-                    <label className={lbl}>DOS Start</label>
-                    <input type="date" className={inp} value={mForm.dosStart} onChange={e => setMForm(f => ({ ...f, dosStart: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label className={lbl}>DOS Stop</label>
-                    <input type="date" className={inp} value={mForm.dosStop} onChange={e => setMForm(f => ({ ...f, dosStop: e.target.value }))} />
-                  </div>
-                  <div>
                     <label className={lbl}>Paid Amount</label>
                     <input type="number" step="0.01" className={inp} value={mForm.paidAmount} onChange={e => setMForm(f => ({ ...f, paidAmount: e.target.value }))} />
                   </div>
                   <div>
-                    <label className={lbl}>Proc Date <span className="text-[#7A8F79] font-normal normal-case">(auto-calcs cycle &amp; deposit)</span></label>
-                    <input type="date" className={inp} value={mForm.processedDate} onChange={e => setMForm(f => ({ ...f, processedDate: e.target.value }))} />
+                    <label className={lbl}>Proc Date <span className="text-[#7A8F79] font-normal normal-case text-[10px]">(auto-calcs cycle)</span></label>
+                    <input type="date" className={dateInp} value={mForm.processedDate} onChange={e => setMForm(f => ({ ...f, processedDate: e.target.value }))} />
                   </div>
                   <div>
                     <label className={lbl}>Pay Cycle #</label>
-                    <input type="number" step="1" className={`${inp} bg-[#f8faf8]`} value={mForm.estPayCycle} onChange={e => setMForm(f => ({ ...f, estPayCycle: e.target.value }))} placeholder="Auto from Proc Date" />
+                    <input type="number" step="1" className={`${inp} bg-[#f8faf8]`} value={mForm.estPayCycle} onChange={e => setMForm(f => ({ ...f, estPayCycle: e.target.value }))} placeholder="Auto" />
                     {mForm.estPayCycle && !isNaN(parseInt(mForm.estPayCycle)) && (
-                      <p className="text-xs text-[#7A8F79] mt-1">Deposits {payCycleDateLabel(parseInt(mForm.estPayCycle))}</p>
+                      <p className="text-xs text-[#7A8F79] mt-0.5">Deposits {payCycleDateLabel(parseInt(mForm.estPayCycle))}</p>
                     )}
                   </div>
                   <div>
                     <label className={lbl}>Deposit Date</label>
-                    <input type="date" className={`${inp} bg-[#f8faf8]`} value={mForm.depositDate} onChange={e => setMForm(f => ({ ...f, depositDate: e.target.value }))} placeholder="Auto from Proc Date" />
+                    <input type="date" className={`${dateInp} bg-[#f8faf8]`} value={mForm.depositDate} onChange={e => setMForm(f => ({ ...f, depositDate: e.target.value }))} />
                     {mForm.depositDate && (
-                      <p className="text-xs text-[#7A8F79] mt-1">Thu · {new Date(mForm.depositDate + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</p>
+                      <p className="text-xs text-[#7A8F79] mt-0.5">Thu · {new Date(mForm.depositDate + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</p>
                     )}
                   </div>
                 </div>
@@ -1021,6 +1008,132 @@ function ClaimDetailModal({
 
         </div>
       </div>
+    </div>
+  )
+}
+
+// ─── AdminClaimCard ───────────────────────────────────────────────────────────
+
+function AdminClaimCard({
+  uc,
+  eobs,
+  eobUploading,
+  isOpen,
+  onToggle,
+  onEobUpload,
+  onOpenChain,
+}: {
+  uc: UnifiedClaim
+  eobs: EobDoc[]
+  eobUploading: string | null
+  isOpen: boolean
+  onToggle: () => void
+  onEobUpload: (file: File) => void
+  onOpenChain: (id: string) => void
+}) {
+  const isMedicaid = uc._type === 'medicaid'
+  const c = !isMedicaid ? (uc as CommercialClaim) : null
+  const m = isMedicaid ? (uc as MedicaidClaimRow) : null
+
+  const claimId = c?.claimId ?? m?.patientCtrlNum ?? null
+  const dosStart = c?.dosStart ?? m?.dosStart ?? null
+  const dosStop  = c?.dosStop  ?? m?.dosStop  ?? null
+  const billed   = c?.totalBilled != null ? c.totalBilled : (m ? m.totalCharge : null)
+  const reimb    = c?.totalReimbursed ?? m?.paidAmount ?? null
+  const stage    = c?.claimStage ?? null
+  const providerName = c?.providerName ?? uc.nurse?.displayName ?? null
+
+  const isFinal = ['paid', 'denied', 'rejected', 'finalized'].includes((stage || '').toLowerCase())
+  const dateLabel = isFinal ? 'Finalized' : 'Updated'
+  const dateValue = isFinal ? (c?.dateFullyFinalized || c?.primaryPaidDate || null) : null
+  const firstNoteLine = c?.processingNotes?.split('\n').find(l => l.trim()) ?? null
+
+  return (
+    <div className={`bg-white rounded-xl shadow-sm overflow-hidden ${isOpen ? 'ring-2 ring-[#7A8F79]' : ''}`}>
+      <button
+        onClick={onToggle}
+        className="w-full text-left px-4 pt-3 pb-2.5 hover:bg-[#F4F6F5] transition-colors"
+      >
+        {/* Row 1: provider + badges | EOB | stage + chevron */}
+        <div className="flex items-center justify-between mb-1.5">
+          <div className="flex items-center gap-2 min-w-0">
+            {providerName && (
+              <span className="text-xs font-semibold text-[#2F3E4E] truncate max-w-[180px]">{providerName}</span>
+            )}
+            {c?.resubmissionOf && (
+              <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full whitespace-nowrap shrink-0">↻ Resub</span>
+            )}
+            {isMedicaid && (
+              <span className="text-[10px] font-semibold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded-full shrink-0">Medicaid</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 shrink-0 ml-2">
+            {!isMedicaid && (
+              <label
+                className={`cursor-pointer text-[11px] px-1.5 py-0.5 rounded border border-dashed transition ${eobUploading === uc.id ? 'opacity-50 cursor-default text-[#7A8F79] border-[#D9E1E8]' : 'text-[#7A8F79] border-[#D9E1E8] hover:border-[#7A8F79] hover:text-[#2F3E4E]'}`}
+                onClick={e => e.stopPropagation()}
+              >
+                {eobUploading === uc.id ? '…' : '📎'}
+                <input type="file" className="hidden" disabled={eobUploading === uc.id}
+                  accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif"
+                  onChange={e => { const f = e.target.files?.[0]; if (f) onEobUpload(f); e.target.value = '' }}
+                />
+              </label>
+            )}
+            {!isMedicaid && eobs.length > 0 && (
+              <button
+                className="text-xs text-green-700 hover:text-green-900 transition"
+                title={eobs[0].fileName}
+                onClick={async e => {
+                  e.stopPropagation()
+                  const win = window.open('', '_blank')
+                  try {
+                    const res = await fetch(`/api/admin/documents/${eobs[0].id}`, { credentials: 'include' })
+                    const data = await res.json()
+                    if (data.url && win) { win.location.href = data.url } else { win?.close() }
+                  } catch { win?.close() }
+                }}
+              >
+                🗂️{eobs.length > 1 && <span className="text-[10px] text-[#7A8F79] ml-0.5">+{eobs.length - 1}</span>}
+              </button>
+            )}
+            {!isMedicaid && <StageBadge stage={stage} />}
+            {isMedicaid && (m?.statusCodes || []).slice(0, 2).map(sc => (
+              <span key={sc} className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full font-semibold">{sc}</span>
+            ))}
+            <span className="text-[#7A8F79] text-[10px]">▼</span>
+          </div>
+        </div>
+
+        {/* Row 2: labels */}
+        <div className="grid grid-cols-4 gap-2 items-end">
+          <div><p className="text-[10px] text-[#7A8F79] leading-tight">{isMedicaid ? 'Patient Ctrl #' : 'Claim ID'}</p></div>
+          <div><p className="text-[10px] text-[#7A8F79] leading-tight">Total Billed</p></div>
+          <div><p className="text-[10px] text-[#7A8F79] leading-tight">Total Reimb.</p></div>
+          <div className="text-right"><p className="text-xs font-semibold text-[#2F3E4E] leading-tight">{dateValue ? fmtDate(dateValue) : ''}</p></div>
+        </div>
+
+        {/* Row 3: values */}
+        <div className="grid grid-cols-4 gap-2 items-start mt-0.5">
+          <div>
+            <p className="text-xs font-mono font-semibold text-[#2F3E4E] truncate leading-tight">{claimId || '—'}</p>
+            <p className="text-[10px] text-[#7A8F79] leading-tight mt-0.5">{fmtDOS(dosStart, dosStop)}</p>
+          </div>
+          <div><p className="text-xs font-semibold text-[#2F3E4E] leading-tight">{fmt(billed, '$')}</p></div>
+          <div><p className="text-xs font-semibold text-[#7A8F79] leading-tight">{fmt(reimb, '$')}</p></div>
+          <div className="text-right"><p className={`text-[10px] leading-tight ${isFinal ? 'text-green-700' : 'text-[#7A8F79]'}`}>{dateLabel}</p></div>
+        </div>
+
+        {/* Row 4: notes preview */}
+        {firstNoteLine && (
+          <div className="mt-2 pt-2 border-t border-[#D9E1E8]">
+            <p className="text-[11px] text-[#7A8F79] truncate leading-tight">
+              <span className="font-semibold text-[#7A8F79] uppercase tracking-wide text-[10px]">Note · </span>
+              {firstNoteLine}
+            </p>
+          </div>
+        )}
+      </button>
     </div>
   )
 }
@@ -1830,7 +1943,7 @@ export default function AdminClaimsPage() {
           </div>
         )}
 
-        {/* Claims table */}
+        {/* Claims list */}
         {loading ? (
           <div className="text-center text-[#7A8F79] py-16">Loading…</div>
         ) : allClaims.length === 0 ? (
@@ -1838,25 +1951,12 @@ export default function AdminClaimsPage() {
             No claims yet. Import a CSV to get started.
           </div>
         ) : (
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-[#F4F6F5] text-xs uppercase tracking-widest text-[#7A8F79]">
-                <tr>
-                  <th className="w-10 px-3 py-3"></th>
-                  <th className="w-20 px-3 py-3 text-left">EOB</th>
-                  <th className="px-4 py-3 text-left">Provider / ID</th>
-                  <th className="w-36 px-4 py-3 text-left">DOS</th>
-                  <th className="w-48 px-4 py-3 text-left">Payer / Status</th>
-                  <th className="w-36 px-4 py-3 text-right">$ Summary</th>
-                </tr>
-              </thead>
-              <tbody className="text-[#2F3E4E]">
-                {filteredAll.map(uc => {
+          <div className="space-y-2">
+            {filteredAll.map(uc => {
                   const eobs = uc._type === 'commercial' ? (eobMap[uc.id] || []) : []
-                  const mostRecentEob = eobs[0] ?? null
                   const isOpen = selectedClaimId === uc.id && selectedClaimType === uc._type
 
-                  // Build the resubmission chain (originals tucked under this row)
+                  // Build the resubmission chain (originals tucked under this card)
                   const chainColors = ['#D97706', '#EA580C', '#DC2626', '#991B1B']
                   const chainBgs   = ['#FFFBEB', '#FFF7ED', '#FEF2F2', '#FFF1F2']
                   const originals: CommercialClaim[] = []
@@ -1873,162 +1973,51 @@ export default function AdminClaimsPage() {
 
                   return (
                     <Fragment key={`${uc._type}-${uc.id}`}>
-                    <tr
-                      className={`border-b border-[#D9E1E8] hover:bg-[#F4F6F5] transition ${isOpen ? 'bg-[#EEF2EE]' : ''}`}
-                    >
-                      {/* ▶ open modal */}
-                      <td className="px-3 py-2.5">
-                        <button
-                          onClick={() => {
-                            if (isOpen) { setSelectedClaimId(null); setSelectedClaimType(null) }
-                            else { setSelectedClaimId(uc.id); setSelectedClaimType(uc._type) }
-                          }}
-                          className={`text-xs font-bold transition ${isOpen ? 'text-[#2F3E4E]' : 'text-[#7A8F79] hover:text-[#2F3E4E]'}`}
-                          title="Open details"
-                        >▶</button>
-                      </td>
+                      <AdminClaimCard
+                        uc={uc}
+                        eobs={eobs}
+                        eobUploading={eobUploading}
+                        isOpen={isOpen}
+                        onToggle={() => {
+                          if (isOpen) { setSelectedClaimId(null); setSelectedClaimType(null) }
+                          else { setSelectedClaimId(uc.id); setSelectedClaimType(uc._type) }
+                        }}
+                        onEobUpload={file => handleEobUpload(uc as CommercialClaim, file)}
+                        onOpenChain={id => { setSelectedClaimId(id); setSelectedClaimType('commercial') }}
+                      />
 
-                      {/* EOB column */}
-                      <td className="px-3 py-2.5">
-                        {uc._type === 'commercial' ? (
-                          <div className="flex items-center gap-1">
-                            <label className={`cursor-pointer text-xs font-semibold px-1.5 py-0.5 rounded border border-dashed transition whitespace-nowrap ${eobUploading === uc.id ? 'opacity-50 cursor-default text-[#7A8F79] border-[#D9E1E8]' : 'text-[#7A8F79] border-[#D9E1E8] hover:border-[#7A8F79] hover:text-[#2F3E4E]'}`}>
-                              {eobUploading === uc.id ? '…' : '📎'}
-                              <input
-                                type="file"
-                                className="hidden"
-                                disabled={eobUploading === uc.id}
-                                accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif"
-                                onChange={e => {
-                                  const f = e.target.files?.[0]
-                                  if (f) handleEobUpload(uc as CommercialClaim, f)
-                                  e.target.value = ''
-                                }}
-                              />
-                            </label>
-                            {mostRecentEob && (
-                              <button
-                                onClick={async () => {
-                                  const win = window.open('', '_blank')
-                                  try {
-                                    const res = await fetch(`/api/admin/documents/${mostRecentEob.id}`, { credentials: 'include' })
-                                    const data = await res.json()
-                                    if (data.url && win) { win.location.href = data.url } else { win?.close() }
-                                  } catch { win?.close() }
-                                }}
-                                title={mostRecentEob.fileName}
-                                className="text-xs text-green-700 hover:text-green-900 transition"
-                              >🗂️</button>
-                            )}
-                            {eobs.length > 1 && (
-                              <span className="text-[10px] text-[#7A8F79]">+{eobs.length - 1}</span>
-                            )}
+                      {/* Resubmission chain: original claims tucked under card */}
+                      {originals.map((orig, depth) => {
+                        const color = chainColors[Math.min(depth, chainColors.length - 1)]
+                        const bg    = chainBgs[Math.min(depth, chainBgs.length - 1)]
+                        return (
+                          <div
+                            key={`orig-${orig.id}`}
+                            className="flex items-center gap-3 px-3 py-1.5 text-xs cursor-pointer transition-opacity hover:opacity-75 -mt-1 rounded-b-lg"
+                            style={{
+                              marginLeft: `${(depth + 1) * 12}px`,
+                              background: bg,
+                              borderLeft:   `3px solid ${color}`,
+                              borderRight:  `1px solid ${color}33`,
+                              borderBottom: `1px solid ${color}55`,
+                              boxShadow: `0 4px 10px -4px ${color}44`,
+                            }}
+                            onClick={() => { setSelectedClaimId(orig.id); setSelectedClaimType('commercial') }}
+                            title="Open original claim"
+                          >
+                            <span className="font-bold uppercase tracking-wide shrink-0 text-[10px]" style={{ color }}>
+                              ↻ {depth === 0 ? 'Original' : `Orig. −${depth + 1}`}
+                            </span>
+                            <span className="font-mono text-[#2F3E4E] font-semibold">{orig.claimId || '—'}</span>
+                            <span className="text-[#7A8F79]">{fmtDOS(orig.dosStart, orig.dosStop)}</span>
+                            <StageBadge stage={orig.claimStage} />
+                            <span className="ml-auto text-[#2F3E4E] font-semibold tabular-nums">{fmt(orig.totalBilled, '$')}</span>
                           </div>
-                        ) : (
-                          <span className="text-[10px] text-[#7A8F79]">—</span>
-                        )}
-                      </td>
-
-                      {/* Provider / ID */}
-                      <td className="px-4 py-2.5">
-                        <div className="font-semibold text-[#2F3E4E] leading-tight">
-                          {uc._type === 'commercial' ? (uc.providerName || uc.nurse?.displayName || '—') : (uc.nurse?.displayName || '—')}
-                        </div>
-                        <div className="font-mono text-[11px] text-[#7A8F79] mt-0.5">
-                          {uc._type === 'commercial' ? (uc.claimId || '—') : uc.patientCtrlNum}
-                          {uc._type === 'commercial' && uc.resubmissionOf && (
-                            <span className="ml-1 text-blue-500">↻</span>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* DOS */}
-                      <td className="px-4 py-2.5 text-xs text-[#2F3E4E] whitespace-nowrap">
-                        {fmtDOS(uc.dosStart, uc.dosStop)}
-                      </td>
-
-                      {/* Payer / Status */}
-                      <td className="px-4 py-2.5">
-                        {uc._type === 'commercial' ? (
-                          <div>
-                            <div className="text-xs text-[#7A8F79] mb-0.5 truncate max-w-[180px]">{uc.primaryPayer || '—'}</div>
-                            <StageBadge stage={uc.claimStage} />
-                          </div>
-                        ) : (
-                          <div>
-                            <span className="text-xs font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">Medicaid</span>
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {(uc.statusCodes || []).slice(0, 3).map(sc => (
-                                <span key={sc} className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full font-semibold">{sc}</span>
-                              ))}
-                              {(uc.statusCodes || []).length > 3 && (
-                                <span className="text-[10px] text-[#7A8F79]">+{(uc.statusCodes || []).length - 3}</span>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </td>
-
-                      {/* $ Summary */}
-                      <td className="px-4 py-2.5 text-right text-xs">
-                        {uc._type === 'commercial' ? (
-                          <>
-                            <div className="text-[#2F3E4E] font-semibold">{fmt(uc.totalBilled, '$')}</div>
-                            <div className="text-[#7A8F79]">{fmt(uc.primaryPaidAmt, '$')}</div>
-                            <div className={`font-semibold ${(uc.remainingBalance || 0) > 0 ? 'text-red-500' : 'text-[#2F3E4E]'}`}>{fmt(uc.remainingBalance, '$')}</div>
-                          </>
-                        ) : (
-                          <>
-                            <div className="text-[#2F3E4E] font-semibold">{fmt(uc.totalCharge, '$')}</div>
-                            <div className="text-[#7A8F79]">{fmt(uc.paidAmount, '$')}</div>
-                            <div className={`font-semibold ${uc.paidAmount != null && uc.totalCharge > uc.paidAmount ? 'text-red-500' : 'text-[#2F3E4E]'}`}>
-                              {uc.paidAmount != null ? fmt(uc.totalCharge - uc.paidAmount, '$') : '—'}
-                            </div>
-                          </>
-                        )}
-                      </td>
-                    </tr>
-
-                    {/* ── Resubmission chain: original claims tucked under ── */}
-                    {originals.map((orig, depth) => {
-                      const color = chainColors[Math.min(depth, chainColors.length - 1)]
-                      const bg    = chainBgs[Math.min(depth, chainBgs.length - 1)]
-                      return (
-                        <tr key={`orig-${orig.id}`} className="border-0">
-                          <td colSpan={6} className="px-4 pb-2 pt-0">
-                            <div
-                              className="flex items-center gap-3 px-3 py-1.5 text-xs cursor-pointer transition-opacity hover:opacity-75"
-                              style={{
-                                marginTop: '-2px',
-                                marginLeft: `${(depth + 1) * 12}px`,
-                                background: bg,
-                                borderLeft:   `3px solid ${color}`,
-                                borderRight:  `1px solid ${color}33`,
-                                borderBottom: `1px solid ${color}55`,
-                                borderRadius: '0 0 6px 6px',
-                                boxShadow: `0 6px 14px -6px ${color}55, 0 2px 6px -4px ${color}33`,
-                              }}
-                              onClick={() => { setSelectedClaimId(orig.id); setSelectedClaimType('commercial') }}
-                              title="Open original claim"
-                            >
-                              <span className="font-bold uppercase tracking-wide shrink-0 text-[10px]" style={{ color }}>
-                                ↻ {depth === 0 ? 'Original' : `Orig. −${depth + 1}`}
-                              </span>
-                              <span className="font-mono text-[#2F3E4E] font-semibold">{orig.claimId || '—'}</span>
-                              <span className="text-[#7A8F79]">{fmtDOS(orig.dosStart, orig.dosStop)}</span>
-                              <span className="ml-1"><StageBadge stage={orig.claimStage} /></span>
-                              <span className="ml-auto text-[#2F3E4E] font-semibold tabular-nums">{fmt(orig.totalBilled, '$')}</span>
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    })}
-
+                        )
+                      })}
                     </Fragment>
                   )
                 })}
-              </tbody>
-            </table>
           </div>
         )}
 

@@ -132,6 +132,7 @@ model NurseProfile {
   invoiceActivities InvoiceActivity[]
   caseAssignments  CaseAssignment[]
   medicaidClaims   MedicaidClaim[]
+  campaignEnrollments CampaignEnrollment[]
 }
 
 model GlobalEvent {
@@ -204,7 +205,10 @@ model Invoice {
   id            String   @id @default(uuid())
   nurseId       String
   invoiceNumber String   @unique
-  totalAmount   Float
+  grossAmount   Float    // sum of entry fees before discount
+  discountAmt   Float    @default(0)
+  discountNote  String?  // e.g. "Campaign: FB Spring 2026" or "Manual courtesy"
+  totalAmount   Float    // grossAmount - discountAmt (what nurse owes)
   paidAmount    Float    @default(0)
   dueTerm       String   // '30' | '60' | '90' | 'ASAP'
   dueDate       DateTime
@@ -216,6 +220,9 @@ model Invoice {
   paidAt        DateTime?
   s3Key         String?
 
+  campaignEnrollmentId String?
+  campaignEnrollment   CampaignEnrollment? @relation(fields: [campaignEnrollmentId], references: [id], onDelete: SetNull)
+
   entries           TimeEntry[]
   payments          Payment[]
   activities        InvoiceActivity[]
@@ -223,6 +230,52 @@ model Invoice {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Campaign {
+  id           String   @id @default(uuid())
+  name         String
+  description  String?
+  type         String   // 'flat_per_dos' | 'percent_off'
+
+  // flat_per_dos: charge $X per date of service, capped at $Y per Mon-Sun week
+  flatAmtPerDos  Float?
+  weeklyMaxAmt   Float?
+
+  // percent_off: discount X% off the gross invoice total
+  percentOff     Float?
+
+  // Time bounds
+  startDate    DateTime?  // when the campaign begins (null = immediate)
+  weekCount    Int?       // how many Mon-Sun weeks it applies (null = indefinite)
+
+  // Promo link hook — unique slug for future /join?ref= flow
+  promoSlug    String?  @unique
+
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  enrollments  CampaignEnrollment[]
+
+  @@index([active])
+  @@index([promoSlug])
+}
+
+model CampaignEnrollment {
+  id         String   @id @default(uuid())
+  nurseId    String
+  campaignId String
+  enrolledAt DateTime @default(now())
+  active     Boolean  @default(true)
+
+  nurse    NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
+  campaign Campaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  invoices Invoice[]
+
+  @@unique([nurseId, campaignId])
+  @@index([nurseId])
+  @@index([campaignId])
 }
 
 model Payment {

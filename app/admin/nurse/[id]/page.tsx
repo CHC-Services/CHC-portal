@@ -213,6 +213,17 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   const [bulkDeleting, setBulkDeleting] = useState(false)
   const [bulkFlagging, setBulkFlagging] = useState(false)
 
+  // Campaign enrollment
+  const [campaigns, setCampaigns] = useState<any[]>([])
+  const [activeEnrollment, setActiveEnrollment] = useState<any | null>(null)
+  const [enrollmentLoading, setEnrollmentLoading] = useState(false)
+  const [enrollmentSaving, setEnrollmentSaving] = useState(false)
+  const [enrollmentMsg, setEnrollmentMsg] = useState('')
+  const [selectedCampaignId, setSelectedCampaignId] = useState('')
+  const [manualDiscountAmt, setManualDiscountAmt] = useState('')
+  const [manualDiscountNote, setManualDiscountNote] = useState('')
+  const [invoicePreview, setInvoicePreview] = useState<any | null>(null)
+
   // Tab navigation
   const [activeTab, setActiveTab] = useState('profile')
 
@@ -438,6 +449,58 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
     }
   }
 
+  async function fetchCampaigns() {
+    const [campRes, enrollRes] = await Promise.all([
+      fetch('/api/admin/campaigns', { credentials: 'include' }),
+      fetch(`/api/admin/invoices/preview?nurseId=${id}`, { credentials: 'include' }),
+    ])
+    if (campRes.ok) setCampaigns(await campRes.json())
+    if (enrollRes.ok) {
+      const data = await enrollRes.json()
+      setActiveEnrollment(data.enrollment || null)
+      setInvoicePreview(data)
+    }
+  }
+
+  async function enrollInCampaign() {
+    if (!selectedCampaignId) return
+    setEnrollmentSaving(true)
+    setEnrollmentMsg('')
+    const res = await fetch(`/api/admin/campaigns/${selectedCampaignId}/enroll`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nurseId: id }),
+    })
+    setEnrollmentSaving(false)
+    if (res.ok) {
+      setEnrollmentMsg('Campaign applied.')
+      setSelectedCampaignId('')
+      fetchCampaigns()
+    } else {
+      const d = await res.json()
+      setEnrollmentMsg(d.error || 'Failed to enroll.')
+    }
+  }
+
+  async function unenrollFromCampaign(campaignId: string) {
+    setEnrollmentSaving(true)
+    setEnrollmentMsg('')
+    const res = await fetch(`/api/admin/campaigns/${campaignId}/enroll`, {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nurseId: id }),
+    })
+    setEnrollmentSaving(false)
+    if (res.ok) {
+      setEnrollmentMsg('Campaign removed.')
+      fetchCampaigns()
+    } else {
+      setEnrollmentMsg('Failed to remove campaign.')
+    }
+  }
+
   useEffect(() => {
     fetch(`/api/admin/nurses/${id}`, { credentials: 'include' })
       .then(r => {
@@ -460,6 +523,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
     fetchInvoiceHistory()
     fetchClaims()
     fetchActivity()
+    fetchCampaigns()
   }, [id, router])
 
   async function handleDocUpload(e: React.FormEvent) {
@@ -587,11 +651,18 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   async function createInvoice() {
     setInvoiceSending(true)
     setInvoiceMessage('')
+    const manualAmt = parseFloat(manualDiscountAmt)
     const res = await fetch('/api/admin/invoices', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ nurseId: id, dueTerm: invoiceDueTerm, notes: invoiceNotes }),
+      body: JSON.stringify({
+        nurseId: id,
+        dueTerm: invoiceDueTerm,
+        notes: invoiceNotes,
+        manualDiscountAmt: manualAmt > 0 ? manualAmt : undefined,
+        manualDiscountNote: manualAmt > 0 ? (manualDiscountNote || 'Manual discount') : undefined,
+      }),
     })
     const data = await res.json()
     setInvoiceSending(false)
@@ -599,8 +670,11 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
       setInvoiceMessage(`Invoice ${shortInvoiceNumber(data.invoiceNumber)} sent successfully.`)
       setShowInvoiceModal(false)
       setInvoiceNotes('')
+      setManualDiscountAmt('')
+      setManualDiscountNote('')
       fetchEntries()
       fetchInvoiceHistory()
+      fetchCampaigns()
     } else {
       setInvoiceMessage(data.error || 'Failed to create invoice.')
     }
@@ -1248,6 +1322,80 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                 <Field label="Routing #"       field="bankRouting"    profile={profile} setProfile={setProfile} sensitive />
                 <Field label="Account #"       field="bankAccount"    profile={profile} setProfile={setProfile} sensitive />
               </div>
+            </Section>
+
+            {/* ── Billing Campaign ── */}
+            <Section title="Billing Campaign">
+              {enrollmentLoading ? (
+                <p className="text-xs text-[#7A8F79]">Loading…</p>
+              ) : activeEnrollment ? (
+                <div className="space-y-3">
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-widest text-green-700 mb-0.5">Active Campaign</p>
+                        <p className="text-sm font-bold text-[#2F3E4E]">{activeEnrollment.campaignName}</p>
+                        <p className="text-xs text-[#7A8F79] mt-0.5">{activeEnrollment.ruleLabel}</p>
+                        <p className="text-xs text-[#7A8F79]">{activeEnrollment.windowLabel}</p>
+                      </div>
+                      <button
+                        onClick={() => unenrollFromCampaign(activeEnrollment.campaignId)}
+                        disabled={enrollmentSaving}
+                        className="text-xs text-red-400 hover:text-red-600 font-semibold whitespace-nowrap transition disabled:opacity-50"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    {invoicePreview && invoicePreview.discountAmt > 0 && (
+                      <div className="mt-3 pt-3 border-t border-green-200 grid grid-cols-3 gap-2 text-center">
+                        <div>
+                          <p className="text-[10px] text-green-600 uppercase tracking-widest font-semibold">Gross</p>
+                          <p className="text-sm font-bold text-[#2F3E4E]">${invoicePreview.grossAmount.toFixed(2)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-green-600 uppercase tracking-widest font-semibold">Discount</p>
+                          <p className="text-sm font-bold text-green-700">−${invoicePreview.discountAmt.toFixed(2)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-green-600 uppercase tracking-widest font-semibold">Total</p>
+                          <p className="text-sm font-bold text-[#2F3E4E]">${invoicePreview.totalAmount.toFixed(2)}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs text-[#7A8F79]">To switch campaigns, remove this one then assign a new one.</p>
+                  {enrollmentMsg && <p className="text-xs font-semibold text-[#7A8F79]">{enrollmentMsg}</p>}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-xs text-[#7A8F79]">No active campaign. Select one to apply a discount to future invoices.</p>
+                  <div className="flex gap-2">
+                    <select
+                      value={selectedCampaignId}
+                      onChange={e => setSelectedCampaignId(e.target.value)}
+                      className="flex-1 border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                    >
+                      <option value="">— Select a campaign —</option>
+                      {campaigns.filter(c => c.active).map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={enrollInCampaign}
+                      disabled={!selectedCampaignId || enrollmentSaving}
+                      className="bg-[#7A8F79] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#2F3E4E] transition disabled:opacity-50"
+                    >
+                      {enrollmentSaving ? 'Applying…' : 'Apply'}
+                    </button>
+                  </div>
+                  {campaigns.length === 0 && (
+                    <p className="text-xs text-[#7A8F79]">
+                      No campaigns created yet. <a href="/admin/campaigns" className="underline text-[#2F3E4E]">Create one →</a>
+                    </p>
+                  )}
+                  {enrollmentMsg && <p className="text-xs font-semibold text-[#7A8F79]">{enrollmentMsg}</p>}
+                </div>
+              )}
             </Section>
 
           </div>
@@ -2258,6 +2406,73 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                     </p>
                   </div>
 
+                  {/* Campaign discount preview */}
+                  {(() => {
+                    const manualAmt = parseFloat(manualDiscountAmt) || 0
+                    const preview = invoicePreview
+                    const campDiscount = preview?.discountAmt ?? 0
+                    const effectiveDiscount = manualAmt > 0 ? manualAmt : campDiscount
+                    const finalTotal = Math.max(0, pendingTotal - effectiveDiscount)
+
+                    return (
+                      <div className="rounded-xl border border-[#D9E1E8] overflow-hidden">
+                        {/* Subtotal row */}
+                        <div className="flex items-center justify-between px-4 py-2.5 bg-[#F4F6F5]">
+                          <span className="text-xs text-[#7A8F79] font-semibold uppercase tracking-wide">Subtotal</span>
+                          <span className="text-sm font-bold text-[#2F3E4E]">${pendingTotal.toFixed(2)}</span>
+                        </div>
+
+                        {/* Campaign auto-discount */}
+                        {campDiscount > 0 && manualAmt === 0 && (
+                          <div className="flex items-center justify-between px-4 py-2 border-t border-[#D9E1E8] bg-green-50">
+                            <div>
+                              <span className="text-xs font-semibold text-green-700 uppercase tracking-wide">Campaign Discount</span>
+                              {preview?.enrollment && (
+                                <p className="text-[10px] text-green-600 mt-0.5">{preview.enrollment.campaignName} · {preview.enrollment.ruleLabel}</p>
+                              )}
+                            </div>
+                            <span className="text-sm font-bold text-green-700">−${campDiscount.toFixed(2)}</span>
+                          </div>
+                        )}
+
+                        {/* Manual discount fields */}
+                        <div className="border-t border-[#D9E1E8] px-4 py-3 space-y-2">
+                          <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">
+                            Manual Discount Override
+                            {campDiscount > 0 && <span className="ml-2 normal-case font-normal text-amber-600">(overrides campaign)</span>}
+                          </label>
+                          <div className="flex gap-2">
+                            <div className="relative w-28">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7A8F79] text-sm">$</span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={manualDiscountAmt}
+                                onChange={e => setManualDiscountAmt(e.target.value)}
+                                placeholder="0.00"
+                                className="w-full border border-[#D9E1E8] rounded-lg pl-6 pr-2 py-1.5 text-sm text-[#2F3E4E] focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
+                              />
+                            </div>
+                            <input
+                              type="text"
+                              value={manualDiscountNote}
+                              onChange={e => setManualDiscountNote(e.target.value)}
+                              placeholder="Reason (optional)"
+                              className="flex-1 border border-[#D9E1E8] rounded-lg px-3 py-1.5 text-sm text-[#2F3E4E] focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Total due */}
+                        <div className="flex items-center justify-between px-4 py-3 border-t-2 border-[#2F3E4E] bg-[#F4F6F5]">
+                          <span className="text-xs font-bold uppercase tracking-widest text-[#7A8F79]">Total Due</span>
+                          <span className="text-xl font-black text-[#2F3E4E]">${finalTotal.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    )
+                  })()}
+
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Due Terms</label>
                     <select value={invoiceDueTerm} onChange={e => setInvoiceDueTerm(e.target.value)} className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E]">
@@ -2327,10 +2542,34 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                         ))}
                       </tbody>
                       <tfoot>
-                        <tr className="border-t-2 border-[#2F3E4E] bg-[#f4f6f8]">
-                          <td colSpan={3} className="px-4 py-3 text-xs font-bold uppercase tracking-widest text-[#7A8F79]">Total Due</td>
-                          <td className="px-4 py-3 text-right text-xl font-black">${pendingTotal.toFixed(2)}</td>
-                        </tr>
+                        {(() => {
+                          const manualAmt = parseFloat(manualDiscountAmt) || 0
+                          const campDiscount = invoicePreview?.discountAmt ?? 0
+                          const effectiveDiscount = manualAmt > 0 ? manualAmt : campDiscount
+                          const finalTotal = Math.max(0, pendingTotal - effectiveDiscount)
+                          const discountLabel = manualAmt > 0
+                            ? (manualDiscountNote || 'Manual discount')
+                            : invoicePreview?.enrollment?.campaignName
+                          return effectiveDiscount > 0 ? (<>
+                            <tr className="border-t border-[#D9E1E8]">
+                              <td colSpan={3} className="px-4 py-2 text-xs text-[#7A8F79]">Subtotal</td>
+                              <td className="px-4 py-2 text-right text-sm font-semibold text-[#7A8F79]">${pendingTotal.toFixed(2)}</td>
+                            </tr>
+                            <tr>
+                              <td colSpan={3} className="px-4 py-2 text-xs text-green-700 font-semibold">Discount — {discountLabel}</td>
+                              <td className="px-4 py-2 text-right text-sm font-bold text-green-700">−${effectiveDiscount.toFixed(2)}</td>
+                            </tr>
+                            <tr className="border-t-2 border-[#2F3E4E] bg-[#f4f6f8]">
+                              <td colSpan={3} className="px-4 py-3 text-xs font-bold uppercase tracking-widest text-[#7A8F79]">Total Due</td>
+                              <td className="px-4 py-3 text-right text-xl font-black">${finalTotal.toFixed(2)}</td>
+                            </tr>
+                          </>) : (
+                            <tr className="border-t-2 border-[#2F3E4E] bg-[#f4f6f8]">
+                              <td colSpan={3} className="px-4 py-3 text-xs font-bold uppercase tracking-widest text-[#7A8F79]">Total Due</td>
+                              <td className="px-4 py-3 text-right text-xl font-black">${pendingTotal.toFixed(2)}</td>
+                            </tr>
+                          )
+                        })()}
                       </tfoot>
                     </table>
                   </div>

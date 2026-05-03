@@ -100,6 +100,9 @@ export async function sendInvoiceEmail({
   nurseState,
   nurseZip,
   invoiceNumber,
+  grossAmount,
+  discountAmt = 0,
+  discountNote,
   totalAmount,
   dueTerm,
   dueDate,
@@ -115,6 +118,9 @@ export async function sendInvoiceEmail({
   nurseState?: string
   nurseZip?: string
   invoiceNumber: string
+  grossAmount?: number
+  discountAmt?: number
+  discountNote?: string
   totalAmount: number
   dueTerm: string
   dueDate: Date
@@ -239,6 +245,17 @@ export async function sendInvoiceEmail({
       </thead>
       <tbody>${lineItems}</tbody>
       <tfoot>
+        ${discountAmt > 0 ? `
+        <tr>
+          <td colspan="3" style="padding:8px 0 0;font-size:10px;font-weight:700;color:#7A8F79;text-transform:uppercase;letter-spacing:1.5px">Subtotal</td>
+          <td style="padding:8px 0 0;text-align:right;font-size:14px;font-weight:600;color:#7A8F79">${fmtMoney(grossAmount ?? totalAmount + discountAmt)}</td>
+        </tr>
+        <tr>
+          <td colspan="3" style="padding:4px 0 0;font-size:10px;font-weight:700;color:#22863a;text-transform:uppercase;letter-spacing:1.5px">Discount${discountNote ? ` — ${discountNote}` : ''}</td>
+          <td style="padding:4px 0 0;text-align:right;font-size:14px;font-weight:700;color:#22863a">−${fmtMoney(discountAmt)}</td>
+        </tr>
+        <tr><td colspan="4" style="padding:2px 0"><hr style="border:none;border-top:1px solid #D9E1E8;margin:0"/></td></tr>
+        ` : ''}
         <tr>
           <td colspan="3" style="padding:10px 0 0;font-size:10px;font-weight:700;color:#7A8F79;text-transform:uppercase;letter-spacing:1.5px">Total Due</td>
           <td style="padding:10px 0 0;text-align:right;font-size:22px;font-weight:800;color:#2F3E4E">${fmtMoney(totalAmount)}</td>
@@ -1169,7 +1186,7 @@ export async function sendReceiptEmail({
   appliedAt,
   invoiceTotal,
   previouslyPaid,
-  newTotalPaid,
+  newTotalPaid: _newTotalPaid,
   balance,
   newStatus,
 }: {

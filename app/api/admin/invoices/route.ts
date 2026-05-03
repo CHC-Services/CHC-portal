@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '../../../../lib/prisma'
 import { verifyToken } from '../../../../lib/auth'
 import { sendInvoiceEmail } from '../../../../lib/sendEmail'
+import { calcCampaignDiscount, campaignRuleLabel } from '../../../../lib/campaignDiscount'
 
 function adminOnly(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -24,7 +25,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { nurseId, dueTerm, notes } = await req.json()
+  const { nurseId, dueTerm, notes, manualDiscountAmt, manualDiscountNote } = await req.json()
   if (!nurseId || !dueTerm) {
     return NextResponse.json({ error: 'nurseId and dueTerm required' }, { status: 400 })
   }
@@ -50,14 +51,44 @@ export async function POST(req: Request) {
   const count = await prisma.invoice.count()
   const invoiceNumber = `CHC-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`
 
-  const totalAmount = entries.reduce((sum, e) => sum + (e.invoiceFeeAmt ?? 0), 0)
+  const grossAmount = entries.reduce((sum, e) => sum + (e.invoiceFeeAmt ?? 0), 0)
   const dueDate = calcDueDate(dueTerm)
+
+  // Determine discount: campaign auto-calc OR manual override (manual takes full precedence)
+  let discountAmt = 0
+  let discountNote: string | null = null
+  let campaignEnrollmentId: string | null = null
+
+  if (manualDiscountAmt != null && manualDiscountAmt > 0) {
+    discountAmt = Math.min(manualDiscountAmt, grossAmount)
+    discountNote = manualDiscountNote || 'Manual discount'
+  } else {
+    // Check for active campaign enrollment
+    const enrollment = await prisma.campaignEnrollment.findFirst({
+      where: { nurseId, active: true },
+      include: { campaign: true },
+    })
+
+    if (enrollment) {
+      const result = calcCampaignDiscount(enrollment.campaign, entries)
+      discountAmt = result.discountAmt
+      if (discountAmt > 0) {
+        discountNote = `Campaign: ${enrollment.campaign.name} (${campaignRuleLabel(enrollment.campaign)})`
+        campaignEnrollmentId = enrollment.id
+      }
+    }
+  }
+
+  const totalAmount = Math.max(0, grossAmount - discountAmt)
 
   // Create invoice + link entries
   const invoice = await prisma.invoice.create({
     data: {
       nurseId,
       invoiceNumber,
+      grossAmount,
+      discountAmt,
+      discountNote,
       totalAmount,
       dueTerm,
       dueDate,
@@ -65,6 +96,7 @@ export async function POST(req: Request) {
       notes: notes || null,
       nurseEmail: nurse.user.email,
       nurseName: nurse.displayName,
+      campaignEnrollmentId,
       entries: { connect: entries.map(e => ({ id: e.id })) },
     },
     include: { entries: true },
@@ -81,6 +113,9 @@ export async function POST(req: Request) {
     nurseState:     nurse.state      ?? undefined,
     nurseZip:       nurse.zip        ?? undefined,
     invoiceNumber,
+    grossAmount,
+    discountAmt,
+    discountNote:   discountNote ?? undefined,
     totalAmount,
     dueTerm,
     dueDate,

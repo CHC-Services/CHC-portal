@@ -28,6 +28,9 @@ type Entry = {
 type Invoice = {
   id: string
   invoiceNumber: string
+  grossAmount: number
+  discountAmt: number
+  discountNote?: string
   totalAmount: number
   dueTerm: string
   dueDate: string
@@ -161,6 +164,20 @@ export default function NurseInvoicesPage() {
                         ))}
                       </tbody>
                       <tfoot>
+                        {inv.discountAmt > 0 && (
+                          <>
+                            <tr className="border-t border-[#D9E1E8]">
+                              <td colSpan={3} className="px-4 py-2 text-xs text-[#7A8F79]">Subtotal</td>
+                              <td className="px-4 py-2 text-right text-sm font-semibold text-[#7A8F79]">{fmtMoney(inv.grossAmount)}</td>
+                            </tr>
+                            <tr>
+                              <td colSpan={3} className="px-4 py-2 text-xs font-semibold text-green-700">
+                                Discount{inv.discountNote ? ` — ${inv.discountNote}` : ''}
+                              </td>
+                              <td className="px-4 py-2 text-right text-sm font-bold text-green-700">−{fmtMoney(inv.discountAmt)}</td>
+                            </tr>
+                          </>
+                        )}
                         <tr className="border-t-2 border-[#2F3E4E] bg-[#f4f6f8]">
                           <td colSpan={3} className="px-4 py-3 text-xs font-bold uppercase tracking-widest text-[#7A8F79]">Total Due</td>
                           <td className="px-4 py-3 text-right text-xl font-black text-[#2F3E4E]">{fmtMoney(inv.totalAmount)}</td>

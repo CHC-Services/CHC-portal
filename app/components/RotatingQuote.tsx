@@ -24,6 +24,7 @@ const QUOTES = [
   { text: "Nursing is not for everyeone. It takes a special kind of person to be a nurse, but those who are nurses know they have found their calling.", author: "Unknown" },
   { text: "Start by doing what's necessary; then do what's possible; and suddenly you are doing the impossible.", author: "Francis of Assisi" },
   { text: "I didn't want just any career, so I'm not going to be just any nurse.", author: "Unknown" },
+  { text: "Show kindness in every interaction, you never know how much it might mean to someone who is struggling.", author: "Unknown" },
 
 
 ]

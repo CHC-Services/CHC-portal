@@ -25,7 +25,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { nurseId, dueTerm, notes, manualDiscountAmt, manualDiscountNote } = await req.json()
+  const {
+    nurseId, dueTerm, notes,
+    manualDiscountAmt, manualDiscountNote,
+    lateFeePlan, lateFeeAmt, lateFeePercent,
+    promptPayDays, promptPayCredit,
+  } = await req.json()
   if (!nurseId || !dueTerm) {
     return NextResponse.json({ error: 'nurseId and dueTerm required' }, { status: 400 })
   }
@@ -97,6 +102,11 @@ export async function POST(req: Request) {
       nurseEmail: nurse.user.email,
       nurseName: nurse.displayName,
       campaignEnrollmentId,
+      lateFeePlan:    lateFeePlan   ?? null,
+      lateFeeAmt:     lateFeePlan === 'flat'    ? (lateFeeAmt    ?? null) : null,
+      lateFeePercent: lateFeePlan === 'percent' ? (lateFeePercent ?? null) : null,
+      promptPayDays:  promptPayDays   ?? null,
+      promptPayCredit: promptPayCredit ?? null,
       entries: { connect: entries.map(e => ({ id: e.id })) },
     },
     include: { entries: true },
@@ -115,10 +125,15 @@ export async function POST(req: Request) {
     invoiceNumber,
     grossAmount,
     discountAmt,
-    discountNote:   discountNote ?? undefined,
+    discountNote:    discountNote     ?? undefined,
     totalAmount,
     dueTerm,
     dueDate,
+    lateFeePlan:     lateFeePlan     ?? undefined,
+    lateFeeAmt:      lateFeePlan === 'flat'    ? (lateFeeAmt    ?? undefined) : undefined,
+    lateFeePercent:  lateFeePlan === 'percent' ? (lateFeePercent ?? undefined) : undefined,
+    promptPayDays:   promptPayDays   ?? undefined,
+    promptPayCredit: promptPayCredit ?? undefined,
     entries: entries.map(e => ({
       workDate: e.workDate,
       invoiceFeePlan: e.invoiceFeePlan ?? '',

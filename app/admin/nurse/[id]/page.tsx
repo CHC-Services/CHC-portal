@@ -224,6 +224,14 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   const [manualDiscountNote, setManualDiscountNote] = useState('')
   const [invoicePreview, setInvoicePreview] = useState<any | null>(null)
 
+  // Late fee + prompt pay
+  const [lateFeePlan, setLateFeePlan] = useState<'none' | 'flat' | 'percent'>('none')
+  const [lateFeeAmt, setLateFeeAmt] = useState('')
+  const [lateFeePercent, setLateFeePercent] = useState('')
+  const [promptPayEnabled, setPromptPayEnabled] = useState(false)
+  const [promptPayDays, setPromptPayDays] = useState('14')
+  const [promptPayCredit, setPromptPayCredit] = useState('5')
+
   // Tab navigation
   const [activeTab, setActiveTab] = useState('profile')
 
@@ -652,17 +660,29 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
     setInvoiceSending(true)
     setInvoiceMessage('')
     const manualAmt = parseFloat(manualDiscountAmt)
+    const body: Record<string, unknown> = {
+      nurseId: id,
+      dueTerm: invoiceDueTerm,
+      notes: invoiceNotes,
+      manualDiscountAmt: manualAmt > 0 ? manualAmt : undefined,
+      manualDiscountNote: manualAmt > 0 ? (manualDiscountNote || 'Manual discount') : undefined,
+    }
+    if (lateFeePlan === 'flat') {
+      body.lateFeePlan = 'flat'
+      body.lateFeeAmt = parseFloat(lateFeeAmt) || 0
+    } else if (lateFeePlan === 'percent') {
+      body.lateFeePlan = 'percent'
+      body.lateFeePercent = parseFloat(lateFeePercent) || 0
+    }
+    if (promptPayEnabled) {
+      body.promptPayDays = parseInt(promptPayDays) || 14
+      body.promptPayCredit = parseFloat(promptPayCredit) || 5
+    }
     const res = await fetch('/api/admin/invoices', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({
-        nurseId: id,
-        dueTerm: invoiceDueTerm,
-        notes: invoiceNotes,
-        manualDiscountAmt: manualAmt > 0 ? manualAmt : undefined,
-        manualDiscountNote: manualAmt > 0 ? (manualDiscountNote || 'Manual discount') : undefined,
-      }),
+      body: JSON.stringify(body),
     })
     const data = await res.json()
     setInvoiceSending(false)
@@ -672,6 +692,12 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
       setInvoiceNotes('')
       setManualDiscountAmt('')
       setManualDiscountNote('')
+      setLateFeePlan('none')
+      setLateFeeAmt('')
+      setLateFeePercent('')
+      setPromptPayEnabled(false)
+      setPromptPayDays('14')
+      setPromptPayCredit('5')
       fetchEntries()
       fetchInvoiceHistory()
       fetchCampaigns()
@@ -2482,6 +2508,94 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                       <option value="ASAP">ASAP — due immediately</option>
                     </select>
                   </div>
+
+                  {/* Late fee policy */}
+                  <div className="rounded-xl border border-[#D9E1E8] overflow-hidden">
+                    <div className="bg-[#F4F6F5] px-4 py-2.5 flex items-center justify-between">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Late Fee Policy</span>
+                      <select
+                        value={lateFeePlan}
+                        onChange={e => setLateFeePlan(e.target.value as 'none' | 'flat' | 'percent')}
+                        className="text-xs border border-[#D9E1E8] rounded px-2 py-1 text-[#2F3E4E] bg-white"
+                      >
+                        <option value="none">None</option>
+                        <option value="flat">Flat $ / month</option>
+                        <option value="percent">% / month</option>
+                      </select>
+                    </div>
+                    {lateFeePlan === 'flat' && (
+                      <div className="px-4 py-3 flex items-center gap-2">
+                        <span className="text-xs text-[#7A8F79]">Charge</span>
+                        <div className="relative w-28">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7A8F79] text-sm">$</span>
+                          <input
+                            type="number" min="0" step="0.01"
+                            value={lateFeeAmt}
+                            onChange={e => setLateFeeAmt(e.target.value)}
+                            placeholder="5.00"
+                            className="w-full border border-[#D9E1E8] rounded-lg pl-6 pr-2 py-1.5 text-sm text-[#2F3E4E] focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
+                          />
+                        </div>
+                        <span className="text-xs text-[#7A8F79]">per month after due date</span>
+                      </div>
+                    )}
+                    {lateFeePlan === 'percent' && (
+                      <div className="px-4 py-3 flex items-center gap-2">
+                        <span className="text-xs text-[#7A8F79]">Charge</span>
+                        <div className="relative w-24">
+                          <input
+                            type="number" min="0" step="0.1" max="100"
+                            value={lateFeePercent}
+                            onChange={e => setLateFeePercent(e.target.value)}
+                            placeholder="1.5"
+                            className="w-full border border-[#D9E1E8] rounded-lg pl-3 pr-6 py-1.5 text-sm text-[#2F3E4E] focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#7A8F79] text-sm">%</span>
+                        </div>
+                        <span className="text-xs text-[#7A8F79]">per month after due date</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Prompt pay bonus */}
+                  <div className="rounded-xl border border-[#D9E1E8] overflow-hidden">
+                    <div className="bg-[#F4F6F5] px-4 py-2.5 flex items-center justify-between">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Prompt Pay Bonus</span>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={promptPayEnabled}
+                          onChange={e => setPromptPayEnabled(e.target.checked)}
+                          className="accent-[#7A8F79] w-4 h-4"
+                        />
+                        <span className="text-xs text-[#2F3E4E]">{promptPayEnabled ? 'Enabled' : 'Disabled'}</span>
+                      </label>
+                    </div>
+                    {promptPayEnabled && (
+                      <div className="px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-[#7A8F79]">$</span>
+                          <input
+                            type="number" min="0" step="0.01"
+                            value={promptPayCredit}
+                            onChange={e => setPromptPayCredit(e.target.value)}
+                            className="w-20 border border-[#D9E1E8] rounded-lg px-2 py-1.5 text-sm text-[#2F3E4E] focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
+                          />
+                          <span className="text-xs text-[#7A8F79]">credit if paid within</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number" min="1" step="1"
+                            value={promptPayDays}
+                            onChange={e => setPromptPayDays(e.target.value)}
+                            className="w-16 border border-[#D9E1E8] rounded-lg px-2 py-1.5 text-sm text-[#2F3E4E] focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
+                          />
+                          <span className="text-xs text-[#7A8F79]">days</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Notes (optional)</label>
                     <textarea value={invoiceNotes} onChange={e => setInvoiceNotes(e.target.value)} rows={3} placeholder="Any additional notes for the nurse…" className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] resize-none" />

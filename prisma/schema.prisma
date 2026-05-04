@@ -133,6 +133,7 @@ model NurseProfile {
   caseAssignments  CaseAssignment[]
   medicaidClaims   MedicaidClaim[]
   campaignEnrollments CampaignEnrollment[]
+  providerCredits     ProviderCredit[]
 }
 
 model GlobalEvent {
@@ -223,9 +224,19 @@ model Invoice {
   campaignEnrollmentId String?
   campaignEnrollment   CampaignEnrollment? @relation(fields: [campaignEnrollmentId], references: [id], onDelete: SetNull)
 
+  // Late fee policy (set per invoice at creation time)
+  lateFeePlan      String?   // 'none' | 'flat' | 'percent'
+  lateFeeAmt       Float?    // flat: dollars per month overdue
+  lateFeePercent   Float?    // percent: % per month overdue (e.g. 1.5 = 1.5%)
+
+  // Prompt-pay bonus: credit applied to next invoice if paid within window
+  promptPayCredit  Float?    // dollar credit (e.g. 5.00)
+  promptPayDays    Int?      // days from invoice date to qualify (e.g. 14)
+
   entries           TimeEntry[]
   payments          Payment[]
   activities        InvoiceActivity[]
+  providerCredits   ProviderCredit[]
   nurse             NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
@@ -276,6 +287,23 @@ model CampaignEnrollment {
   @@unique([nurseId, campaignId])
   @@index([nurseId])
   @@index([campaignId])
+}
+
+model ProviderCredit {
+  id          String   @id @default(uuid())
+  nurseId     String
+  amount      Float    // positive = credit, negative = charge/late fee
+  type        String   // 'prompt_pay' | 'late_fee' | 'manual'
+  description String?
+  invoiceId   String?
+  appliedAt   DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  nurse   NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
+  invoice Invoice?     @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  @@index([nurseId])
+  @@index([invoiceId])
 }
 
 model Payment {

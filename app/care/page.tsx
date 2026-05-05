@@ -204,7 +204,7 @@ export default function MyCarePage() {
 
         {/* ── Footer breath ── */}
         <div className="text-center pb-4">
-          <p className="font-cormorant text-lg italic text-[#7A8F79] opacity-70">
+          <p className="font-cormorant text-lg italic text-[#7A8F79] opacity-90">
             Breathe in. Breathe out. You&apos;re doing better than you think. 🌸
           </p>
         </div>
@@ -213,3 +213,4 @@ export default function MyCarePage() {
     </div>
   )
 }
+  

@@ -7,89 +7,94 @@
 - Email: Resend (domain: cominghomecare.com, verified, TLS enabled, click tracking off)
 
 ## Key Files
-- `lib/sendEmail.ts` — sendWelcomeEmail, sendEnrollmentAlert
+- `lib/sendEmail.ts` — sendWelcomeEmail, sendEnrollmentAlert, sendBillingInquiry, sendInvoiceEmail; uses `await logEmail()` (must be awaited or Vercel drops it)
+- `lib/s3.ts` — uploadToS3, deleteFromS3, objectExists, getPresignedPost, getPresignedDownloadUrl
+- `lib/agreementDocument.ts` — buildAgreementHtml(), buildBillingAgreementHtml(), buildDocumentHeader(), loadLogoBase64()
+- `lib/planPermissions.ts` — getEffectiveTier(), canAccessBasic(), canAccessPro()
 - `app/api/auth/register/route.ts` — calls sendWelcomeEmail on nurse creation
-- `app/api/auth/forgot-password/route.ts` — password reset email (inline template)
+- `app/api/auth/forgot-password/route.ts` — password reset email (uses BASE_URL env var)
 - `app/api/nurse/onboarding/route.ts` — enrollment alert on billing signup
-- `app/api/admin/claims/import/route.ts` — CSV claim import (dual-payer schema)
+- `app/api/nurse/agreement/route.ts` — POST: sign portal user agreement, upload to S3, reissue JWT
+- `app/api/nurse/billing-agreement/route.ts` — POST: sign billing service agreement, upload to S3, create NurseDocument
+- `app/api/nurse/plan/route.ts` — GET: returns effectiveTier, isTrialing, trialExpiresAt
+- `app/api/admin/claims/import/route.ts` — CSV claim import (dual-payer schema, trims header spaces)
 - `app/api/admin/claims/[id]/route.ts` — PATCH to set resubmissionOf on a claim
-- `app/api/admin/time-entry/route.ts` — admin POST/DELETE time entries on behalf of nurses
+- `app/api/admin/time-entry/route.ts` — GET (by nurseId), POST, DELETE time entries
+- `app/api/admin/time-entry/[id]/route.ts` — PATCH to toggle readyToInvoice + fee plan
+- `app/api/admin/invoices/route.ts` — POST create invoice, GET all invoices
+- `app/api/admin/invoices/[id]/route.ts` — PATCH invoice status (Paid, etc.)
 - `app/api/admin/nurses/[id]/route.ts` — PATCH strips id/userId/user/createdAt/updatedAt before Prisma update
+- `app/api/admin/documents/presign/route.ts` — generates presigned POST URL for S3 upload
+- `app/api/admin/documents/confirm/route.ts` — creates NurseDocument DB record; includes objectExists check
+- `app/api/admin/documents/[id]/route.ts` — GET presigned download URL; DELETE from S3 + DB
+- `app/api/admin/email/preview/route.ts` — POST: send template preview emails; GET ?template=user_agreement returns sample HTML
 - `app/components/Banner.tsx` — nav (desktop + mobile hamburger + bottom nav)
+- `app/components/AdminNav.tsx` — admin nav links
 - `app/nurse/profile/page.tsx` — 2-col layout: Personal Info (left) | myBilling (right)
-- `app/nurse/onboarding/page.tsx` — 4-step billing enrollment questionnaire
-- `app/nurse/page.tsx` — dashboard with time entry form + submission history
-- `app/nurse/claims/page.tsx` — nurse claims view (dual-payer cards, grouped resubmissions)
+- `app/nurse/onboarding/page.tsx` — 4-step billing enrollment; step 4 is full-screen agreement modal with initials
+- `app/nurse/agreement/page.tsx` — first-login portal user agreement (11 checkboxes + initials)
+- `app/nurse/page.tsx` — dashboard with time entry form + plan-gated summary cards
+- `app/nurse/claims/page.tsx` — nurse claims: Commercial tab + Medicaid tab; FREE tier lock screen
+- `app/nurse/invoices/page.tsx` — nurse invoice view; FREE tier lock screen
+- `app/care/page.tsx` — myCare: 3 tabs (myEscape/mySupport/myRefresh); BFLO Hydration card in myRefresh
 - `app/admin/page.tsx` — admin dashboard with nurse roster + log hours on behalf of nurse
-- `app/admin/claims/page.tsx` — admin claims table (dual-payer, resubmission linking, import)
-- `app/admin/nurse/[id]/page.tsx` — nurse detail: profile fields + provider aliases + role management
+- `app/admin/claims/page.tsx` — admin claims table; Add Claim modal with Commercial/Medicaid toggle
+- `app/admin/nurse/[id]/page.tsx` — nurse detail: profile + aliases + time entries + plan/trial tier selector
+- `app/billing/page.tsx` — PUBLIC billing services page with inquiry form + PDF fee schedule link
 - `app/layout.tsx` — pb-16 md:pb-0 for mobile bottom nav spacing
 
 ## Environment Variables
 - `RESEND_API_KEY` — set in both .env and Vercel
 - `BASE_URL=https://cominghomecare.com` — set in Vercel (server-only, no NEXT_PUBLIC_ prefix)
-- `NEXT_PUBLIC_BASE_URL=http://localhost:3000` — local only, unused in production
 - `JWT_SECRET`, `ENCRYPTION_KEY`, `DATABASE_URL`, `DIRECT_URL` — set in .env
+- `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_S3_BUCKET` — set in .env and Vercel
 
-## What's Working
-- Welcome email sends when admin creates a nurse account
-- Password reset email sends with correct URL (uses BASE_URL env var)
-- Enrollment alert emails send to enroll@cominghomecare.com
-- Resend domain verified (cominghomecare.com), TLS enabled
-- Admin can log hours on behalf of a nurse
-- Time entry history sorts chronologically, auto-focuses date field after submit
-- Claims import via CSV (dual-payer schema, columns A–S)
-- Provider aliases control which claims each nurse can see
-- Claim resubmission linking (admin links via 🔗 button, grouped display on both views)
+## NurseProfile Key Fields
+- `firstName`, `lastName`, `displayName` (portal greeting nickname — PLANNED: remove/deprecate, use firstName+lastName everywhere)
+- `planTier` String @default("FREE") — FREE | BASIC | PRO
+- `trialExpiresAt DateTime?` — BASIC access until this date, then reverts to FREE
+- `portalAgreementSignedAt DateTime?`, `portalAgreementInitials String?`
+- `billingAgreementSignedAt DateTime?`, `billingAgreementInitials String?`
+- `enrolledInBilling Boolean`, `billingPlan String?`, `billingDurationType String?`
 
-## Mobile Nav (Banner.tsx)
-- Row 1: Logo (left) | ☰ Hamburger + Logout (right)
-- Row 2: Welcome home, [name] (right-aligned)
-- Hamburger dropdown: all nav links stacked
-- Fixed bottom nav bar: Home, Resources, Dashboard, Claims, Profile
+## Portal Tier System
+- FREE: 2-week time entry lookback only; summary cards locked; claims/invoices show lock screen
+- BASIC ($5/mo equivalent): full claims, invoices, EOB access
+- PRO ($10/mo): coming soon
+- `getEffectiveTier()` in lib/planPermissions.ts handles trial expiry transparently
+- Admin sets tier + trial window on nurse detail page (/admin/nurse/[id])
 
-## Claims Schema (Claim model)
-Columns A–S imported from CSV:
-- Claim ID, Provider Name, DOS Start, DOS Stop, Total Billed, Claim Stage
-- Primary Payer, Primary Allowed Amt, Primary Paid Amt, Primary Paid Date, Primary Paid To
-- Secondary Payer, Secondary Allowed Amt, Secondary Paid Amt, Secondary Paid Date, Secondary Paid To
-- Total Reimbursed, Remaining Balance, Date Fully Finalized, Processing Notes
-- resubmissionOf (set via admin UI, not imported) — links resubmitted claim to original
+## Agreement Documents
+- Portal User Agreement: signed on first login → `nurses/{id}/agreements/user-agreement-*.html`
+- Billing Service Agreement: signed at end of billing onboarding → `nurses/{id}/agreements/billing-agreement-*.html`
+- Both: uploaded to S3, NurseDocument created (visibleToNurse: true, category: Agreement), branded HTML via lib/agreementDocument.ts
+- Branded header: dark #1c2433 bg, logo left (base64 embedded), title right-aligned
 
-## Claim Stage Values
-Draft, INS-1 Submitted, Resubmitted, Pending, Info Requested, Info Sent, INS-2 Submitted, Appealed, Paid, Denied, Rejected
+## Invoice System
+- Fee plans: A1=$2 (Medicaid single), A2=$3 (Commercial single), B=$4 (Dual payer), C=$6 (3+ payer)
+- Invoice number format: CHC-YYYY-NNNN
+- Payment methods: Venmo @AlexMcGann | Zelle support@ | CashApp $myInvoiceCHC | Apple Pay support@
 
-## Claim Stage Badge Colors
-- Paid/Finalized → green | Denied/Rejected → red | Pending → yellow
-- INS-1/INS-2 Submitted/Resubmitted → blue | Info Requested → orange
-- Info Sent → light orange | Appealed → purple | Draft → black bg / light gray text
-
-## Provider Aliases
-- Each NurseProfile has `providerAliases String[]`
-- Import matches CSV "Provider Name" against aliases to assign nurseId
-- Admin sets aliases in nurse profile page (Claims Access section)
-- Janine Barone → ["Janine", "JCST"]
-- Alex McGann → ["Alex", "CHCS"]
-
-## CSV Import Notes
-- Column headers must match exactly (case-sensitive) — import trims leading/trailing spaces automatically
-- Excel cell indent formatting causes spaces in CSV exports → fix: Format Cells → Alignment → Indent 0, Horizontal = General
-- Secondary Payer and Secondary Allowed Amt columns were missing from original spreadsheet — need to be added
-- Only columns A–S are imported; additional columns are ignored
+## Email Addresses
+- support@cominghomecare.com — FROM address for all outgoing emails
+- enroll@cominghomecare.com — enrollment alerts + billing inquiry submissions
+- billing@cominghomecare.com — plan change requests (referenced in billing agreement)
 
 ## Known Issues / Watch Out
-- Dates store as UTC midnight — always use `timeZone: 'UTC'` in toLocaleDateString() calls
-- Admin PATCH for nurse profile must strip id/userId/user/createdAt/updatedAt before Prisma update (fixed)
+- Dates store as UTC midnight — always use timeZone: 'UTC' in toLocaleDateString() calls
+- Admin PATCH for nurse profile must strip id/userId/user/createdAt/updatedAt before Prisma update
 - NEXT_PUBLIC_ env vars bake in at build time — use plain env vars for server-only values
-- Duplicate DKIM TXT records will break Resend verification — only one resend._domainkey record allowed
+- `window.open` after `await` is blocked as popup — pre-open: `const win = window.open('', '_blank')` then set `win.location.href`
+- logEmail must be awaited in sendEmail.ts — Vercel drops unawaited promises after response
+- Supabase shadow DB errors with `prisma migrate dev` — always use mcp__claude_ai_Supabase__apply_migration for schema changes
 
 ## Role System
 - nurse, admin, biller, provider, guardian
 - Role managed per-user via admin nurse detail page (Portal Access section)
-- Role update hits /api/admin/users/[userId]/role
 
-## In Progress / Next Steps
-- Mobile nav layout refinements (hamburger + bottom nav both present)
-- Onboarding step 1 "No" copy update (contacting us hyperlink to enrollment email)
-- myBilling column position on profile page
-- Dual-payer claims spreadsheet: Secondary Payer + Secondary Allowed Amt columns still need to be added to user's Excel file
+## Detailed Memory Files
+- [Pending Tasks & Session Checkpoint](project_pending_tasks.md) — ⭐ READ THIS FIRST each session — current state, upcoming tasks, pickup notes
+- [S3 Document System](project_s3_documents.md) — bucket, CORS, IAM policy, upload/download flow
+- [Medicaid Claims System](project_medicaid_claims.md) — models, admin page, nurse tab
+- [Campaigns & Discount System](project_campaigns_discount.md) — Campaign/CampaignEnrollment models, discount calc, invoice integration
+- [Claims Page Rewrite Checkpoint](project_claims_rewrite_checkpoint.md) — IN PROGRESS spec for admin/claims/page.tsx rewrite

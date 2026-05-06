@@ -21,7 +21,7 @@ const QUOTES = [
   { text: "Everything is sketchy. The world does nothing but sketch. The more you sketch, the more the world becomes clear.", author: "Combined" }, 
   { text: "The best way to find yourself is to lose yourself in the service of others.", author: "Mahatma Gandhi" },
   { text: "Life is not easy for any of us. But what of that? We must have perseverance and, above all, confidence in ourselves. We must believe that we are gifted for something and that this something, at whatever cost, must be attained.", author: "Marie Curie" },
-  { text: "Nursing is not for everyeone. It takes a special kind of person to be a nurse, but those who are nurses know they have found their calling.", author: "Unknown" },
+  { text: "Nursing is not for everyone. It takes a special kind of person to be a nurse, but those who are nurses know they have found their calling.", author: "Unknown" },
   { text: "Start by doing what's necessary; then do what's possible; and suddenly you are doing the impossible.", author: "Francis of Assisi" },
   { text: "I didn't want just any career, so I'm not going to be just any nurse.", author: "Unknown" },
   { text: "Show kindness in every interaction, you never know how much it might mean to someone who is struggling.", author: "Unknown" },

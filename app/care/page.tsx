@@ -1,16 +1,18 @@
+'use client'
+
+import { useState } from 'react'
+
+// ─── Update this URL when the BFLO Hydration site is ready ────────────────────
+const BFLO_HYDRATION_URL = 'https://bfloiv.com'
+
 type ResourceLink = {
   label: string
   description: string
   href: string
   badge?: string
-  iconDomain: string   // domain used to pull the app logo automatically
+  iconDomain: string
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SELF-CARE apps & tools
-// To add a new app: copy any object below, fill in the fields, and set
-// iconDomain to the app's website domain (e.g. "newapp.com"). That's it.
-// ─────────────────────────────────────────────────────────────────────────────
 const selfCare: ResourceLink[] = [
   {
     label: 'How We Feel',
@@ -49,10 +51,6 @@ const selfCare: ResourceLink[] = [
   },
 ]
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SEEK ASSISTANCE — professional resources & helplines
-// To add a new resource: copy any object below and fill in the fields.
-// ─────────────────────────────────────────────────────────────────────────────
 const seekAssistance: ResourceLink[] = [
   {
     label: 'SAMHSA National Helpline',
@@ -63,17 +61,36 @@ const seekAssistance: ResourceLink[] = [
   },
 ]
 
-// ── Decorative SVG lotus — used as a watermark ───────────────────────────────
+const musicStations = [
+  {
+    label: 'Lo-Fi Chill',
+    mood: 'Focus & Unwind',
+    videoId: 'jfKfPfyJRdk',
+    emoji: '🎧',
+  },
+  {
+    label: 'Healing Frequencies',
+    mood: 'Calm & Restore',
+    videoId: 'O4FBHwNLdaA',
+    emoji: '🎵',
+  },
+  {
+    label: 'Nature & Rain',
+    mood: 'Ground & Reset',
+    videoId: 'mPZkdNFkNps',
+    emoji: '🌧️',
+  },
+]
+
+// ── Decorative SVG lotus ──────────────────────────────────────────────────────
 function LotusWatermark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 200 200" className={className} fill="currentColor" aria-hidden="true">
-      {/* outer petals */}
       {[0,1,2,3,4,5,6,7].map(i => (
         <g key={i} transform={`rotate(${i * 45} 100 100)`}>
           <path d="M100,100 C91,78 89,54 100,40 C111,54 109,78 100,100" />
         </g>
       ))}
-      {/* inner petals offset 22.5° — slightly smaller */}
       {[0,1,2,3,4,5,6,7].map(i => (
         <g key={`b${i}`} transform={`rotate(${i * 45 + 22.5} 100 100)`}>
           <path d="M100,100 C93,82 91,64 100,54 C109,64 107,82 100,100" opacity="0.55" />
@@ -84,7 +101,6 @@ function LotusWatermark({ className }: { className?: string }) {
   )
 }
 
-// ── App card ─────────────────────────────────────────────────────────────────
 function AppCard({ r }: { r: ResourceLink }) {
   return (
     <a
@@ -117,8 +133,17 @@ function AppCard({ r }: { r: ResourceLink }) {
   )
 }
 
-// ── Page ─────────────────────────────────────────────────────────────────────
+type Tab = 'escape' | 'support' | 'refresh'
+
 export default function MyCarePage() {
+  const [activeTab, setActiveTab] = useState<Tab>('escape')
+
+  const tabs: { id: Tab; label: string; emoji: string }[] = [
+    { id: 'escape',  label: 'myEscape',  emoji: '🎶' },
+    { id: 'support', label: 'mySupport', emoji: '🪷' },
+    { id: 'refresh', label: 'myRefresh', emoji: '✨' },
+  ]
+
   return (
     <div
       className="min-h-screen p-6 md:p-8"
@@ -127,7 +152,8 @@ export default function MyCarePage() {
       <div className="max-w-3xl mx-auto">
 
         {/* ── Header ── */}
-        <div className="relative overflow-hidden rounded-3xl mb-8 px-8 py-9 border border-white/70 shadow-sm"
+        <div
+          className="relative overflow-hidden rounded-3xl mb-6 px-8 py-9 border border-white/70 shadow-sm"
           style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.72) 0%, rgba(237,245,237,0.80) 100%)' }}
         >
           <LotusWatermark className="absolute -right-6 -top-6 w-52 h-52 text-[#7A8F79] opacity-[0.13]" />
@@ -141,76 +167,222 @@ export default function MyCarePage() {
           </div>
         </div>
 
-        {/* ── Callout ── */}
-        <div
-          className="relative overflow-hidden rounded-3xl shadow-sm p-7 mb-8 border-l-4 border-[#7A8F79]"
-          style={{ background: 'linear-gradient(135deg, #f8f4ec 0%, #edf6ed 100%)' }}
-        >
-          <LotusWatermark className="absolute -right-4 -bottom-6 w-32 h-32 text-[#7A8F79] opacity-[0.10]" />
-          <p className="font-cormorant text-2xl text-[#2F3E4E] italic leading-snug mb-3 relative z-10">
-            &ldquo;You can&apos;t pour from an empty cup.&rdquo;
-          </p>
-          <p className="text-sm text-[#6a8870] leading-relaxed relative z-10">
-            Caregiving is demanding work, and compassion fatigue is real. Even 10 minutes of intentional
-            rest can shift your entire day. The tools below are here to help you decompress, reset, and
-            protect your mental health — because taking care of yourself is part of taking care of others.
-          </p>
+        {/* ── Tabs ── */}
+        <div className="flex gap-2 mb-6 bg-white/50 rounded-2xl p-1.5 border border-white/70 shadow-sm">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                activeTab === tab.id
+                  ? 'bg-[#2F3E4E] text-white shadow-sm'
+                  : 'text-[#7A8F79] hover:text-[#2F3E4E] hover:bg-white/60'
+              }`}
+            >
+              <span>{tab.emoji}</span>
+              <span className="hidden sm:inline">{tab.label}</span>
+              <span className="sm:hidden">{tab.label.replace('my', '')}</span>
+            </button>
+          ))}
         </div>
 
-        {/* ── Self-Care ── */}
-        <section
-          className="overflow-hidden rounded-3xl shadow-sm mb-6 border border-white/60"
-          style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.80), rgba(240,247,240,0.90))' }}
-        >
-          <div
-            className="relative px-6 py-6 flex items-start gap-4 overflow-hidden"
-            style={{ background: 'linear-gradient(130deg, #7A8F79 0%, #56775a 100%)' }}
-          >
-            <LotusWatermark className="absolute -right-4 -bottom-6 w-36 h-36 text-white opacity-[0.14]" />
-            <span className="text-3xl relative z-10 mt-0.5">🪷</span>
-            <div className="relative z-10">
-              <h2 className="font-cormorant text-2xl font-bold text-white tracking-wide">Self-Care</h2>
-              <p className="text-sm text-white/80 mt-1 leading-relaxed">
-                Apps and tools to decompress, build mindfulness habits, and gently check in with yourself.
+        {/* ── myEscape ── */}
+        {activeTab === 'escape' && (
+          <div>
+            {/* Tagline callout */}
+            <div
+              className="relative overflow-hidden rounded-3xl shadow-sm p-7 mb-6 border-l-4 border-[#7A8F79]"
+              style={{ background: 'linear-gradient(135deg, #f8f4ec 0%, #edf6ed 100%)' }}
+            >
+              <LotusWatermark className="absolute -right-4 -bottom-6 w-32 h-32 text-[#7A8F79] opacity-[0.10]" />
+              <p className="font-cormorant text-3xl text-[#2F3E4E] italic leading-snug mb-2 relative z-10">
+                let the music set you free
+              </p>
+              <p className="text-sm text-[#6a8870] leading-relaxed relative z-10">
+                Press play, close your eyes for a minute, and just breathe. These stations are here whenever
+                you need a moment to step away from the weight of the day.
+              </p>
+            </div>
+
+            {/* Music stations */}
+            <div className="flex flex-col gap-5">
+              {musicStations.map((station) => (
+                <section
+                  key={station.videoId}
+                  className="overflow-hidden rounded-3xl shadow-sm border border-white/60"
+                  style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.80), rgba(240,247,240,0.90))' }}
+                >
+                  <div
+                    className="relative px-6 py-4 flex items-center gap-3 overflow-hidden"
+                    style={{ background: 'linear-gradient(130deg, #7A8F79 0%, #56775a 100%)' }}
+                  >
+                    <span className="text-2xl">{station.emoji}</span>
+                    <div>
+                      <h2 className="font-cormorant text-xl font-bold text-white">{station.label}</h2>
+                      <p className="text-xs text-white/75">{station.mood}</p>
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <div className="relative rounded-xl overflow-hidden" style={{ paddingBottom: '56.25%' }}>
+                      <iframe
+                        className="absolute inset-0 w-full h-full"
+                        src={`https://www.youtube.com/embed/${station.videoId}?rel=0&modestbranding=1`}
+                        title={station.label}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    </div>
+                  </div>
+                </section>
+              ))}
+            </div>
+
+            <div className="text-center pt-6 pb-2">
+              <p className="font-cormorant text-lg italic text-[#7A8F79] opacity-90">
+                Breathe in. Breathe out. You&apos;re doing better than you think. 🌸
               </p>
             </div>
           </div>
-          <div className="px-6 py-5 grid sm:grid-cols-2 gap-4">
-            {selfCare.map((r, i) => <AppCard key={i} r={r} />)}
-          </div>
-        </section>
+        )}
 
-        {/* ── Seek Assistance ── */}
-        <section
-          className="overflow-hidden rounded-3xl shadow-sm mb-6 border border-white/60"
-          style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.80), rgba(240,246,245,0.90))' }}
-        >
-          <div
-            className="relative px-6 py-6 flex items-start gap-4 overflow-hidden"
-            style={{ background: 'linear-gradient(130deg, #4d7872 0%, #3a5c58 100%)' }}
-          >
-            <span className="text-3xl relative z-10 mt-0.5">🤝</span>
-            <div className="relative z-10">
-              <h2 className="font-cormorant text-2xl font-bold text-white tracking-wide">Seek Assistance</h2>
-              <p className="text-sm text-white/80 mt-1 leading-relaxed">
-                Professional resources and helplines when you need more than an app can offer.
+        {/* ── mySupport ── */}
+        {activeTab === 'support' && (
+          <div>
+            {/* Callout */}
+            <div
+              className="relative overflow-hidden rounded-3xl shadow-sm p-7 mb-6 border-l-4 border-[#7A8F79]"
+              style={{ background: 'linear-gradient(135deg, #f8f4ec 0%, #edf6ed 100%)' }}
+            >
+              <LotusWatermark className="absolute -right-4 -bottom-6 w-32 h-32 text-[#7A8F79] opacity-[0.10]" />
+              <p className="font-cormorant text-2xl text-[#2F3E4E] italic leading-snug mb-3 relative z-10">
+                &ldquo;You can&apos;t pour from an empty cup.&rdquo;
+              </p>
+              <p className="text-sm text-[#6a8870] leading-relaxed relative z-10">
+                Caregiving is demanding work, and compassion fatigue is real. Even 10 minutes of intentional
+                rest can shift your entire day. The tools below are here to help you decompress, reset, and
+                protect your mental health — because taking care of yourself is part of taking care of others.
               </p>
             </div>
-          </div>
-          <div className="px-6 py-5 grid sm:grid-cols-2 gap-4">
-            {seekAssistance.map((r, i) => <AppCard key={i} r={r} />)}
-          </div>
-        </section>
 
-        {/* ── Footer breath ── */}
-        <div className="text-center pb-4">
-          <p className="font-cormorant text-lg italic text-[#7A8F79] opacity-90">
-            Breathe in. Breathe out. You&apos;re doing better than you think. 🌸
-          </p>
-        </div>
+            {/* Self-Care apps */}
+            <section
+              className="overflow-hidden rounded-3xl shadow-sm mb-6 border border-white/60"
+              style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.80), rgba(240,247,240,0.90))' }}
+            >
+              <div
+                className="relative px-6 py-6 flex items-start gap-4 overflow-hidden"
+                style={{ background: 'linear-gradient(130deg, #7A8F79 0%, #56775a 100%)' }}
+              >
+                <LotusWatermark className="absolute -right-4 -bottom-6 w-36 h-36 text-white opacity-[0.14]" />
+                <span className="text-3xl relative z-10 mt-0.5">🪷</span>
+                <div className="relative z-10">
+                  <h2 className="font-cormorant text-2xl font-bold text-white tracking-wide">Self-Care</h2>
+                  <p className="text-sm text-white/80 mt-1 leading-relaxed">
+                    Apps and tools to decompress, build mindfulness habits, and gently check in with yourself.
+                  </p>
+                </div>
+              </div>
+              <div className="px-6 py-5 grid sm:grid-cols-2 gap-4">
+                {selfCare.map((r, i) => <AppCard key={i} r={r} />)}
+              </div>
+            </section>
+
+            {/* Seek Assistance */}
+            <section
+              className="overflow-hidden rounded-3xl shadow-sm mb-6 border border-white/60"
+              style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.80), rgba(240,246,245,0.90))' }}
+            >
+              <div
+                className="relative px-6 py-6 flex items-start gap-4 overflow-hidden"
+                style={{ background: 'linear-gradient(130deg, #4d7872 0%, #3a5c58 100%)' }}
+              >
+                <span className="text-3xl relative z-10 mt-0.5">🤝</span>
+                <div className="relative z-10">
+                  <h2 className="font-cormorant text-2xl font-bold text-white tracking-wide">Seek Assistance</h2>
+                  <p className="text-sm text-white/80 mt-1 leading-relaxed">
+                    Professional resources and helplines when you need more than an app can offer.
+                  </p>
+                </div>
+              </div>
+              <div className="px-6 py-5 grid sm:grid-cols-2 gap-4">
+                {seekAssistance.map((r, i) => <AppCard key={i} r={r} />)}
+              </div>
+            </section>
+          </div>
+        )}
+
+        {/* ── myRefresh ── */}
+        {activeTab === 'refresh' && (
+          <div>
+            {/* Tagline callout */}
+            <div
+              className="relative overflow-hidden rounded-3xl shadow-sm p-7 mb-6 border-l-4 border-[#a07a4a]"
+              style={{ background: 'linear-gradient(135deg, #fdf6ec 0%, #f5f0e8 100%)' }}
+            >
+              <p className="font-cormorant text-2xl text-[#2F3E4E] italic leading-snug mb-3">
+                Combat fatigue at the source — not just the symptoms.
+              </p>
+              <p className="text-sm text-[#7a6a50] leading-relaxed">
+                Oxidative stress is one of the leading contributors to chronic fatigue in caregivers. Years of
+                high-demand work, disrupted sleep, and emotional labor deplete the body&apos;s antioxidant reserves faster
+                than diet alone can replenish them. The resources here are about giving your body what it needs
+                to keep up with the work you already do.
+              </p>
+            </div>
+
+            {/* BFLO Hydration promo card */}
+            <section
+              className="overflow-hidden rounded-3xl shadow-sm mb-6 border border-white/60"
+              style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.85), rgba(253,246,236,0.90))' }}
+            >
+              <div
+                className="relative px-6 py-6 flex items-start gap-4 overflow-hidden"
+                style={{ background: 'linear-gradient(130deg, #a07a4a 0%, #7a5c35 100%)' }}
+              >
+                <span className="text-3xl relative z-10 mt-0.5">💧</span>
+                <div className="relative z-10">
+                  <h2 className="font-cormorant text-2xl font-bold text-white tracking-wide">BFLO Hydration</h2>
+                  <p className="text-sm text-white/80 mt-1 leading-relaxed">
+                    Vitamin-infused IVs & injections to restore what your body is missing.
+                  </p>
+                </div>
+              </div>
+              <div className="px-6 py-6">
+                <p className="text-sm text-[#5a4a35] leading-relaxed mb-5">
+                  BFLO Hydration specializes in IV vitamin therapy and injection services designed to address
+                  the root causes of fatigue — nutrient depletion, immune stress, and cellular oxidation.
+                  Whether you&apos;re recovering from a long stretch of shifts or just looking to feel more like
+                  yourself, targeted IV therapy can deliver results that supplements alone often can&apos;t match.
+                </p>
+                <a
+                  href={BFLO_HYDRATION_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 bg-[#a07a4a] hover:bg-[#7a5c35] text-white font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors"
+                >
+                  Visit BFLO Hydration →
+                </a>
+              </div>
+            </section>
+
+            {/* Coming soon article teaser */}
+            <section
+              className="overflow-hidden rounded-3xl shadow-sm mb-6 border border-dashed border-[#c4b49a]"
+              style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.60), rgba(253,246,236,0.70))' }}
+            >
+              <div className="px-6 py-8 text-center">
+                <p className="text-3xl mb-3">🌿</p>
+                <p className="font-cormorant text-xl text-[#7a6a50] italic mb-2">More coming soon</p>
+                <p className="text-sm text-[#a09070] leading-relaxed max-w-md mx-auto">
+                  An in-depth guide on oxidative stress, antioxidant nutrition, and practical recovery
+                  strategies for healthcare workers is in the works. Check back soon.
+                </p>
+              </div>
+            </section>
+          </div>
+        )}
 
       </div>
     </div>
   )
 }
-  

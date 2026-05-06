@@ -174,23 +174,25 @@ export default function NurseDashboard() {
 
       <PortalMessages priority="General" />
 
-      {/* Year filter */}
-      <div className="flex items-center gap-2 my-4 flex-wrap">
-        <span className="text-xs font-semibold uppercase tracking-widest text-[#7A8F79]">Year</span>
-        {yearOptions.map(y => (
-          <button
-            key={y}
-            onClick={() => setSelectedYear(y)}
-            className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-              selectedYear === y
-                ? 'bg-[#2F3E4E] text-white'
-                : 'bg-white text-[#2F3E4E] border border-[#D9E1E8] hover:bg-[#D9E1E8]'
-            }`}
-          >
-            {y}
-          </button>
-        ))}
-      </div>
+      {/* Year filter — hidden for FREE (only 14-day window, no year switching needed) */}
+      {effectiveTier !== 'FREE' && (
+        <div className="flex items-center gap-2 my-4 flex-wrap">
+          <span className="text-xs font-semibold uppercase tracking-widest text-[#7A8F79]">Year</span>
+          {yearOptions.map(y => (
+            <button
+              key={y}
+              onClick={() => setSelectedYear(y)}
+              className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                selectedYear === y
+                  ? 'bg-[#2F3E4E] text-white'
+                  : 'bg-white text-[#2F3E4E] border border-[#D9E1E8] hover:bg-[#D9E1E8]'
+              }`}
+            >
+              {y}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Trial banner */}
       {isTrialing && trialExpiresAt && (
@@ -311,29 +313,39 @@ export default function NurseDashboard() {
       )}
 
       {/* Logged Hours Summary */}
-      <div className="bg-white rounded-xl shadow-sm p-5 mb-4">
-        <p className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] mb-4">
-          Logged Hours Summary
-        </p>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-[#F4F6F5] rounded-xl p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">{monthName}</p>
-            <p className="text-2xl font-black text-[#2F3E4E]">{hoursThisMonth}</p>
+      {effectiveTier === 'FREE' ? (
+        <div className="bg-white rounded-xl shadow-sm p-5 mb-4 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-[#2F3E4E]">🔒 Hours Summary</p>
+            <p className="text-xs text-[#7A8F79] mt-1">Monthly, prior month, and year-to-date hour totals available on the <strong>Basic plan</strong>.</p>
           </div>
-          <div className="bg-[#F4F6F5] rounded-xl p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">{priorMonthName}</p>
-            <p className="text-2xl font-black text-[#2F3E4E]">{hoursPriorMonth}</p>
-          </div>
-          <div className="bg-[#F4F6F5] rounded-xl p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">{selectedYear} Total</p>
-            <p className="text-2xl font-black text-[#2F3E4E]">{hoursYTD}</p>
-          </div>
-          <div className="bg-[#F4F6F5] rounded-xl p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Waiting to be Billed</p>
-            <p className="text-2xl font-black text-amber-600">{hoursUnbilled}</p>
+          <span className="text-xs font-bold text-[#7A8F79] shrink-0 border border-[#D9E1E8] rounded-full px-3 py-1">Basic · $5/mo</span>
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl shadow-sm p-5 mb-4">
+          <p className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] mb-4">
+            Logged Hours Summary
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-[#F4F6F5] rounded-xl p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">{monthName}</p>
+              <p className="text-2xl font-black text-[#2F3E4E]">{hoursThisMonth}</p>
+            </div>
+            <div className="bg-[#F4F6F5] rounded-xl p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">{priorMonthName}</p>
+              <p className="text-2xl font-black text-[#2F3E4E]">{hoursPriorMonth}</p>
+            </div>
+            <div className="bg-[#F4F6F5] rounded-xl p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">{selectedYear} Total</p>
+              <p className="text-2xl font-black text-[#2F3E4E]">{hoursYTD}</p>
+            </div>
+            <div className="bg-[#F4F6F5] rounded-xl p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Waiting to be Billed</p>
+              <p className="text-2xl font-black text-amber-600">{hoursUnbilled}</p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="grid md:grid-cols-2 gap-4">
 

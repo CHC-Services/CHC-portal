@@ -1,3 +1,167 @@
+import fs from 'fs'
+import path from 'path'
+
+// ─── Shared logo loader ────────────────────────────────────────────────────
+export function loadLogoBase64(): string {
+  try {
+    const buf = fs.readFileSync(path.join(process.cwd(), 'public', 'chc_logo.png'))
+    return buf.toString('base64')
+  } catch {
+    return ''
+  }
+}
+
+// ─── Shared CSS injected into every business document ─────────────────────
+const DOCUMENT_BASE_CSS = `
+  @media print {
+    body { margin: 0; }
+    .no-print { display: none !important; }
+  }
+  body {
+    font-family: Georgia, 'Times New Roman', serif;
+    background: #f4f6f8;
+    margin: 0;
+    padding: 32px 16px;
+    color: #2F3E4E;
+  }
+  .card {
+    background: #fff;
+    max-width: 780px;
+    margin: 0 auto;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.10);
+    overflow: hidden;
+  }
+  /* ── Branded header ── */
+  .doc-header {
+    background: #1c2433;
+    padding: 20px 32px;
+  }
+  .doc-header-inner {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+  .doc-logo-box {
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 10px 14px;
+    flex-shrink: 0;
+    line-height: 0;
+  }
+  .doc-logo {
+    height: 58px;
+    width: auto;
+    display: block;
+  }
+  .doc-logo-fallback {
+    font-family: sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: #7A8F79;
+    line-height: 1.3;
+  }
+  .doc-title-block {
+    flex: 1;
+    text-align: right;
+    padding-right: 4px;
+  }
+  .doc-title-block h1 {
+    margin: 0 0 4px;
+    font-size: 22px;
+    font-weight: 700;
+    color: #9ca3af;
+    letter-spacing: 0.4px;
+    font-family: Georgia, serif;
+  }
+  .doc-title-block p {
+    margin: 0;
+    font-size: 11px;
+    color: #6b7280;
+    font-family: sans-serif;
+    letter-spacing: 0.3px;
+  }
+  /* ── Body ── */
+  .doc-body { padding: 32px 40px; }
+  .doc-intro {
+    font-size: 13px;
+    color: #4a5568;
+    line-height: 1.7;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #e5eaf0;
+  }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 28px; }
+  .sig-block {
+    background: #f4f6f8;
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+  }
+  .sig-block p {
+    margin: 0 0 6px;
+    font-size: 12px;
+    color: #7A8F79;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    font-family: sans-serif;
+  }
+  .sig-value {
+    font-size: 28px;
+    font-family: 'Brush Script MT', cursive;
+    color: #2F3E4E;
+    border-bottom: 2px solid #2F3E4E;
+    display: inline-block;
+    min-width: 120px;
+    padding-bottom: 2px;
+  }
+  .doc-meta {
+    font-size: 11px;
+    color: #718096;
+    margin-top: 16px;
+    line-height: 1.8;
+    font-family: sans-serif;
+  }
+  .doc-footer {
+    background: #f4f6f8;
+    border-top: 1px solid #e5eaf0;
+    padding: 14px 40px;
+    font-size: 11px;
+    color: #a0aec0;
+    text-align: center;
+    font-family: sans-serif;
+  }
+`
+
+// ─── Reusable branded header HTML ─────────────────────────────────────────
+// Call this from any future document builder.
+export function buildDocumentHeader(opts: {
+  title: string
+  subtitle?: string
+  logoBase64?: string
+}): string {
+  const logoHtml = opts.logoBase64
+    ? `<div class="doc-logo-box">
+        <img src="data:image/png;base64,${opts.logoBase64}" alt="Coming Home Care" class="doc-logo">
+       </div>`
+    : `<div class="doc-logo-box">
+        <div class="doc-logo-fallback">Coming Home<br>Care Services</div>
+       </div>`
+
+  return `
+  <div class="doc-header">
+    <div class="doc-header-inner">
+      ${logoHtml}
+      <div class="doc-title-block">
+        <h1>${opts.title}</h1>
+        ${opts.subtitle ? `<p>${opts.subtitle}</p>` : ''}
+      </div>
+    </div>
+  </div>`
+}
+
+// ─── Agreement document ───────────────────────────────────────────────────
 export function buildAgreementHtml(opts: {
   displayName: string
   accountNumber: string
@@ -8,6 +172,8 @@ export function buildAgreementHtml(opts: {
   title: string
   isSample?: boolean
 }) {
+  const logoBase64 = loadLogoBase64()
+
   const dateStr = opts.signedAt.toLocaleDateString('en-US', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   })
@@ -42,7 +208,7 @@ export function buildAgreementHtml(opts: {
     },
     {
       heading: 'Billing Services — No Minimum Commitment',
-      body: 'I understand that if I choose to enroll in billing services through this portal, I may cancel that enrollment at any time with no minimum length of service, no cancellation fees, and no penalty. Cancellation requests should be submitted in writing to support@cominghomecare.com.',
+      body: 'I understand that if I choose to enroll in billing services through this portal, I may cancel that enrollment at any time with no minimum length of service, no cancellation fees, and no penalty. Cancellation requests should be submitted in writing to support@cominghomecare.com. A notice of any increase to the cost of service will be given 30 days prior to the change taking effect. Any decrease to a cost of service will take effect immediately.',
     },
     {
       heading: 'Accuracy of Submitted Information',
@@ -65,12 +231,12 @@ export function buildAgreementHtml(opts: {
   const policyRows = policies.map((p, i) => `
     <tr>
       <td style="padding:12px 16px;border-bottom:1px solid #e5eaf0;vertical-align:top;width:28px;text-align:center;">
-        <span style="display:inline-block;width:16px;height:16px;border:2px solid #2F3E4E;border-radius:3px;background:#2F3E4E;position:relative;">
+        <span style="display:inline-block;width:16px;height:16px;border:2px solid #2F3E4E;border-radius:3px;background:#2F3E4E;">
           <span style="color:white;font-size:11px;line-height:16px;display:block;text-align:center;">✓</span>
         </span>
       </td>
       <td style="padding:12px 16px;border-bottom:1px solid #e5eaf0;vertical-align:top;">
-        <strong style="color:#2F3E4E;font-size:13px;">${i + 1}. ${p.heading}</strong><br>
+        <strong style="color:#2F3E4E;font-size:13px;font-family:sans-serif;">${i + 1}. ${p.heading}</strong><br>
         <span style="color:#4a5568;font-size:12px;line-height:1.6;">${p.body}</span>
       </td>
     </tr>`).join('')
@@ -80,41 +246,26 @@ export function buildAgreementHtml(opts: {
       SAMPLE DOCUMENT — For Admin Preview Only — Not a Signed Agreement
     </div>` : ''
 
+  const header = buildDocumentHeader({
+    title: 'myPortal User Agreement',
+    subtitle: 'Coming Home Care Services, LLC &nbsp;·&nbsp; Provider Portal',
+    logoBase64,
+  })
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${opts.title}</title>
-<style>
-  @media print {
-    body { margin: 0; }
-    .no-print { display: none !important; }
-  }
-  body { font-family: Georgia, 'Times New Roman', serif; background: #f4f6f8; margin: 0; padding: 32px 16px; color: #2F3E4E; }
-  .card { background: #fff; max-width: 780px; margin: 0 auto; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); overflow: hidden; }
-  .header { background: #2F3E4E; color: #fff; padding: 32px 40px 24px; }
-  .header h1 { margin: 0 0 4px; font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
-  .header p { margin: 0; font-size: 13px; color: #a0aec0; }
-  .body { padding: 32px 40px; }
-  .intro { font-size: 13px; color: #4a5568; line-height: 1.7; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid #e5eaf0; }
-  table { width: 100%; border-collapse: collapse; margin-bottom: 28px; }
-  .sig-block { background: #f4f6f8; border-radius: 8px; padding: 20px 24px; margin-bottom: 16px; }
-  .sig-block p { margin: 0 0 6px; font-size: 12px; color: #7A8F79; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; }
-  .sig-value { font-size: 26px; font-family: 'Brush Script MT', cursive; color: #2F3E4E; border-bottom: 2px solid #2F3E4E; display: inline-block; min-width: 120px; padding-bottom: 2px; }
-  .meta { font-size: 11px; color: #718096; margin-top: 16px; line-height: 1.8; }
-  .footer { background: #f4f6f8; border-top: 1px solid #e5eaf0; padding: 16px 40px; font-size: 11px; color: #a0aec0; text-align: center; }
-</style>
+<style>${DOCUMENT_BASE_CSS}</style>
 </head>
 <body>
 ${sampleBanner}
 <div class="card">
-  <div class="header">
-    <h1>myPortal User Agreement</h1>
-    <p>Coming Home Care Services, LLC &nbsp;·&nbsp; Provider Portal</p>
-  </div>
-  <div class="body">
-    <div class="intro">
+  ${header}
+  <div class="doc-body">
+    <div class="doc-intro">
       The following agreement governs your use of the Coming Home Care Services provider portal (<strong>myPortal</strong>).
       Each item below was individually reviewed and acknowledged by the signing party.
       This document serves as a binding record of that acknowledgment.
@@ -127,9 +278,9 @@ ${sampleBanner}
     </table>
 
     <div style="background:#2F3E4E;border-radius:8px;padding:20px 24px;margin-bottom:24px;">
-      <p style="margin:0 0 8px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:#7A8F79;">A Note From Us</p>
+      <p style="margin:0 0 8px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:#7A8F79;font-family:sans-serif;">A Note From Us</p>
       <p style="margin:0 0 8px;font-size:12px;color:rgba(255,255,255,0.9);line-height:1.7;">This portal was built with you in mind — with the genuine goal of streamlining your workflow and reducing the time you spend tracking income, submitting hours, and managing documents. If there's a feature you'd like to see added, something that would make your day easier, or anything we can do better, please don't hesitate to reach out. We're always listening.</p>
-      <p style="margin:0;font-size:11px;color:#7A8F79;">— The Coming Home Care Services Team</p>
+      <p style="margin:0;font-size:11px;color:#7A8F79;font-family:sans-serif;">— The Coming Home Care Services Team</p>
     </div>
 
     <div class="sig-block">
@@ -138,18 +289,18 @@ ${sampleBanner}
     </div>
     <div class="sig-block">
       <p>Full Name on Account</p>
-      <span style="font-size:15px;font-weight:600;color:#2F3E4E;">${opts.displayName}</span>
+      <span style="font-size:15px;font-weight:600;color:#2F3E4E;font-family:sans-serif;">${opts.displayName}</span>
     </div>
 
-    <div class="meta">
+    <div class="doc-meta">
       <strong>Account Number:</strong> ${opts.accountNumber || '—'}<br>
       <strong>Signed:</strong> ${dateStr} at ${timeStr}<br>
       <strong>IP Address:</strong> ${opts.ip}<br>
       <strong>Document ID:</strong> ${opts.title}
     </div>
   </div>
-  <div class="footer">
-    This document is auto-generated and tamper-evident. Coming Home Care Services, LLC &nbsp;·&nbsp; support@cominghomecare.com
+  <div class="doc-footer">
+    This document is auto-generated and tamper-evident. &nbsp;Coming Home Care Services, LLC &nbsp;·&nbsp; support@cominghomecare.com
   </div>
 </div>
 </body>

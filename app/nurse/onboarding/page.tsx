@@ -70,6 +70,7 @@ export default function OnboardingPage() {
   const router = useRouter()
   const [step, setStep] = useState(1)
   const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
   const [optedOutConfirm, setOptedOutConfirm] = useState(false)
   const [answers, setAnswers] = useState<Answers>({
     enrolledInBilling: null,
@@ -81,35 +82,25 @@ export default function OnboardingPage() {
 
   const set = (patch: Partial<Answers>) => setAnswers(a => ({ ...a, ...patch }))
 
-  // Suggested plan label
-  const planLabel =
-    answers.carrierCount === 1 ? 'Plan A1 or A2 — Single Payer ($2–$3/date of service)' :
-    answers.carrierCount === 2 ? 'Plan B — Dual Payer ($4/date of service)' :
-    'Custom Multi-Carrier — we\'ll discuss your rate'
-
-  // Auto-generate agreement text from answers
-  const agreementSummary = `
-I, the undersigned, agree to engage Coming Home Care billing services under the following terms:
-
-Carrier Coverage: I am enrolling for billing across ${answers.carrierCount === 1 ? '1 insurance carrier' : answers.carrierCount === 2 ? '2 insurance carriers (dual payer)' : `${answers.carrierCount} insurance carriers`}.
-
-Suggested Plan: ${planLabel}.
-
-Billing Duration: ${
-    answers.billingDurationType === 'full_year'
-      ? 'I am requesting billing services on a full-year, ongoing basis.'
-      : `I am requesting billing services for the following specific policy duration: ${answers.billingDurationNote || '(see notes)'}.`
-  }
-
-Modifications & Cancellation: I understand that I may cancel this agreement or request changes to the number of carriers billed or the billing duration at any time by contacting Coming Home Care directly. Changes will take effect upon confirmation.
-
-Billing will be invoiced monthly for transparency. All services qualify as tax-deductible business expenses at year end. Accepted payment methods include Venmo, Zelle, Apple Pay, ACH Bank Transfer, Personal Check, and Cash.
-
-By typing my full legal name below, I acknowledge that I have read and agree to these terms. This constitutes a legally binding electronic signature.
-`.trim()
-
   async function submit() {
     setSubmitting(true)
+    setError('')
+
+    // Sign the billing agreement first — generates and saves the document
+    const agreeRes = await fetch('/api/nurse/billing-agreement', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ initials: answers.signature.trim().toUpperCase() }),
+    })
+    if (!agreeRes.ok) {
+      const data = await agreeRes.json()
+      setError(data.error || 'Failed to save agreement. Please try again.')
+      setSubmitting(false)
+      return
+    }
+
+    // Then complete the onboarding enrollment
     const res = await fetch('/api/nurse/onboarding', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -119,6 +110,7 @@ By typing my full legal name below, I acknowledge that I have read and agree to 
     if (res.ok) {
       router.push('/nurse')
     } else {
+      setError('Enrollment failed. Please try again.')
       setSubmitting(false)
     }
   }
@@ -314,50 +306,136 @@ By typing my full legal name below, I acknowledge that I have read and agree to 
         </StepCard>
       )}
 
-      {/* Step 4 — Review & Sign */}
+      {/* Step 4 — Billing Agreement Modal */}
       {!optedOutConfirm && step === 4 && (
-        <StepCard>
-          <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-2">Step 4 of 4 — Review & Sign</p>
-          <div className="flex items-end justify-between mb-4">
-            <h2 className="text-xl font-bold text-[#2F3E4E]">Service Agreement</h2>
-            <p className="text-xs text-[#7A8F79] italic">(scroll to bottom to review before continuing)</p>
-          </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[92vh]">
 
-          <div className="bg-[#F4F6F5] rounded-lg p-4 text-sm text-[#2F3E4E] whitespace-pre-line leading-relaxed max-h-64 overflow-y-auto mb-6 border border-[#D9E1E8]">
-            {agreementSummary}
-          </div>
+            {/* Modal header */}
+            <div className="bg-[#1c2433] rounded-t-2xl px-6 py-5 flex items-center justify-between shrink-0">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-[#7A8F79] mb-0.5">Step 4 of 4</p>
+                <h2 className="text-lg font-bold text-white">Medical Claim Billing Service Agreement</h2>
+                <p className="text-xs text-white/50 mt-0.5">Coming Home Care Services, LLC · Provider Portal</p>
+              </div>
+            </div>
 
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">
-              Type your full legal name to sign
-            </label>
-            <input
-              type="text"
-              value={answers.signature}
-              onChange={e => set({ signature: e.target.value })}
-              placeholder="Your full legal name"
-              className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-            />
-            <p className="text-xs text-[#7A8F79] mt-1">
-              By signing, you confirm you have read and agree to the terms above. 
-              <p><b>Date:</b> {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
-            </p>
-          </div>
+            {/* Scrollable agreement body */}
+            <div className="overflow-y-auto flex-1 px-6 py-6 text-sm text-[#2F3E4E] space-y-5">
 
-          <div className="flex gap-3 mt-6">
-            <button type="button" onClick={() => setStep(3)} className="flex-1 border border-[#D9E1E8] text-[#7A8F79] py-3 rounded-xl hover:border-[#7A8F79] transition font-semibold">
-              Back
-            </button>
-            <button
-              type="button"
-              onClick={submit}
-              disabled={!answers.signature.trim() || submitting}
-              className="flex-1 bg-[#2F3E4E] text-white py-3 rounded-xl hover:bg-[#7A8F79] transition font-semibold disabled:opacity-40"
-            >
-              {submitting ? 'Saving…' : 'Sign & Continue'}
-            </button>
+              <p className="text-xs text-[#7A8F79] leading-relaxed border-b border-[#D9E1E8] pb-4">
+                Billing services are provided by <strong>Coming Home Care Services LLC</strong> based on the selected billing plan and volume of claims submitted.
+              </p>
+
+              {/* Plans */}
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-3">Weekly Billing Memberships by Date of Service (DOS) Volume</p>
+                <p className="text-xs text-[#7A8F79] mb-3 leading-relaxed">
+                  Plans are flexible. If you add/drop a case that changes your billing needs, email <strong className="text-[#2F3E4E]">billing@cominghomecare.com</strong> and we can adjust the plan to fit your needs.<br/>
+                  All plans include a 2-week preview of <span className="italic text-[#7A8F79]">my</span><strong>Portal</strong> Basic access.
+                </p>
+                <div className="rounded-xl overflow-hidden border border-[#D9E1E8] mb-2">
+                  {[
+                    { code: '#M1', name: 'The Side-Gig',    rate: '$5/week',  dos: '1–2 dates of service' },
+                    { code: '#M2', name: 'The Full-Timer',  rate: '$10/week', dos: '3–5 dates of service' },
+                    { code: '#M3', name: 'The Work-a-Holic',rate: '$15/week', dos: 'Up to 7 dates of service' },
+                  ].map((p, i, a) => (
+                    <div key={p.code} className={`flex items-center px-4 py-3 gap-4 ${i < a.length - 1 ? 'border-b border-[#D9E1E8]' : ''}`}>
+                      <span className="text-xs font-bold text-[#2F3E4E] w-8 shrink-0">{p.code}</span>
+                      <span className="text-xs text-[#7A8F79] italic flex-1">{p.name}</span>
+                      <span className="text-xs font-bold text-[#2F3E4E] w-16 text-right shrink-0">{p.rate}</span>
+                      <span className="text-xs text-[#7A8F79] text-right shrink-0">{p.dos}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[11px] text-[#7A8F79] italic">*Each additional DOS submitted above the enrolled plan max will incur a fee of $2.</p>
+                <p className="text-xs text-[#4a5568] mt-2 leading-relaxed">
+                  Claims are grouped according to the New York State Medicaid billing cycle (Thursday–Wednesday). Fees are calculated based on the number of dates of service within each billing cycle, not based on upload timing.
+                </p>
+              </div>
+
+              {/* Invoicing */}
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-2">Invoicing &amp; Payment Terms</p>
+                <p className="text-xs text-[#4a5568] leading-relaxed mb-1">Invoices are issued on a biweekly to monthly basis depending on claim volume, and sent to the email address on file. Payment is due within <strong>30 days</strong> of the invoice date.</p>
+                <ul className="text-xs text-[#4a5568] list-disc list-inside space-y-1 leading-relaxed">
+                  <li>Balances unpaid after 30 days may incur a <strong>15% late fee</strong>.</li>
+                  <li>Balances unpaid after 60 days may incur a <strong>20% late fee</strong>.</li>
+                  <li>Balances unpaid 90 days or more may incur a <strong>22% late fee</strong> per additional month.</li>
+                  <li>Services may be paused at any time for overdue balances.</li>
+                </ul>
+              </div>
+
+              {/* Submission Deadlines */}
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-2">Submission Deadlines</p>
+                <ul className="text-xs text-[#4a5568] list-disc list-inside space-y-1 leading-relaxed">
+                  <li>Dates of service submitted by <strong>Monday at 11:59 PM</strong> will be included in the current billing cycle when possible.</li>
+                  <li>Urgent requests made after the deadline may incur a <strong>$10 same-day service fee</strong>. Expedited requests must be confirmed directly via phone or text.</li>
+                </ul>
+              </div>
+
+              {/* Corrections */}
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-2">Corrections &amp; Adjustments</p>
+                <ul className="text-xs text-[#4a5568] list-disc list-inside space-y-1 leading-relaxed">
+                  <li>Corrections due to billing errors will be completed at <strong>no cost</strong>.</li>
+                  <li>Corrections from inaccurate provider-supplied information will incur a <strong>$3 fee per occurrence</strong> for void &amp; reprocessing.</li>
+                </ul>
+              </div>
+
+              {/* Provider Responsibility */}
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-2">Provider Responsibility</p>
+                <p className="text-xs text-[#4a5568] leading-relaxed">The provider is responsible for ensuring that all submitted information is accurate and complete. Coming Home Care Services, LLC is not responsible for claim delays or denials resulting from incorrect or incomplete information provided.</p>
+              </div>
+
+              {/* Rate Changes */}
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-2">Rate Changes</p>
+                <p className="text-xs text-[#4a5568] leading-relaxed">All rates are subject to change with prior notice. Any increase to service fees will be given a <strong>30-day notice</strong>. Any reductions in service fees will take place immediately. By using billing services, the provider agrees to the terms outlined above.</p>
+              </div>
+
+            </div>
+
+            {/* Signature footer — pinned to bottom */}
+            <div className="border-t border-[#D9E1E8] px-6 py-5 bg-[#f9fafb] rounded-b-2xl shrink-0">
+              <p className="text-xs font-semibold text-[#2F3E4E] mb-1">Your Initials</p>
+              <p className="text-xs text-[#7A8F79] mb-3">By entering your initials and clicking Sign &amp; Enroll, you confirm you have read and agree to all terms above. A signed copy will be saved to your account documents.</p>
+              <div className="flex items-end gap-4 mb-4">
+                <div className="flex-1 max-w-[160px]">
+                  <label className="block text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Initials</label>
+                  <input
+                    type="text"
+                    value={answers.signature}
+                    onChange={e => set({ signature: e.target.value.replace(/[^a-zA-Z.]/g, '').slice(0, 5) })}
+                    placeholder="e.g. J.B."
+                    maxLength={5}
+                    className="w-full border-2 border-[#D9E1E8] px-3 py-2 rounded-lg text-xl font-bold text-[#2F3E4E] tracking-widest focus:outline-none focus:border-[#7A8F79] uppercase"
+                  />
+                </div>
+                {answers.signature && (
+                  <p className="text-xs text-[#7A8F79] pb-2">Signing as <strong className="text-[#2F3E4E]">{answers.signature.toUpperCase()}</strong></p>
+                )}
+              </div>
+              {error && <p className="text-xs text-red-600 font-medium mb-3">{error}</p>}
+              <div className="flex gap-3">
+                <button type="button" onClick={() => setStep(3)} className="flex-1 border border-[#D9E1E8] text-[#7A8F79] py-2.5 rounded-xl hover:border-[#7A8F79] transition font-semibold text-sm">
+                  Back
+                </button>
+                <button
+                  type="button"
+                  onClick={submit}
+                  disabled={!answers.signature.trim() || submitting}
+                  className="flex-1 bg-[#2F3E4E] text-white py-2.5 rounded-xl hover:bg-[#7A8F79] transition font-semibold text-sm disabled:opacity-40"
+                >
+                  {submitting ? 'Saving…' : 'Sign & Enroll'}
+                </button>
+              </div>
+            </div>
+
           </div>
-        </StepCard>
+        </div>
       )}
 
     </div>

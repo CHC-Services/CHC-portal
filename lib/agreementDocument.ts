@@ -306,3 +306,229 @@ ${sampleBanner}
 </body>
 </html>`
 }
+
+// ─── Billing Service Agreement document ───────────────────────────────────────
+export function buildBillingAgreementHtml(opts: {
+  displayName: string
+  accountNumber: string
+  lastName: string
+  initials: string
+  signedAt: Date
+  ip: string
+  title: string
+  isSample?: boolean
+}) {
+  const logoBase64 = loadLogoBase64()
+
+  const dateStr = opts.signedAt.toLocaleDateString('en-US', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+  })
+  const timeStr = opts.signedAt.toLocaleTimeString('en-US', {
+    hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
+  })
+
+  const sampleBanner = opts.isSample ? `
+    <div style="background:#f59e0b;color:#fff;text-align:center;padding:10px 16px;font-family:sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;">
+      SAMPLE DOCUMENT — For Admin Preview Only — Not a Signed Agreement
+    </div>` : ''
+
+  const header = buildDocumentHeader({
+    title: 'Medical Claim Billing Service Agreement',
+    subtitle: 'Coming Home Care Services, LLC &nbsp;·&nbsp; Provider Portal',
+    logoBase64,
+  })
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${opts.title}</title>
+<style>${DOCUMENT_BASE_CSS}
+  .section-heading {
+    font-size: 13px;
+    font-weight: 700;
+    color: #2F3E4E;
+    font-family: sans-serif;
+    margin: 0 0 6px;
+  }
+  .section-body {
+    font-size: 12px;
+    color: #4a5568;
+    line-height: 1.7;
+    margin: 0 0 20px;
+  }
+  .section-body ul {
+    margin: 6px 0 0 18px;
+    padding: 0;
+  }
+  .section-body li {
+    margin-bottom: 4px;
+  }
+  .plan-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 20px;
+    font-size: 12px;
+  }
+  .plan-table th {
+    background: #2F3E4E;
+    color: #fff;
+    padding: 8px 14px;
+    text-align: left;
+    font-family: sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+  }
+  .plan-table td {
+    padding: 8px 14px;
+    border-bottom: 1px solid #e5eaf0;
+    color: #4a5568;
+    vertical-align: top;
+  }
+  .plan-table tr:last-child td { border-bottom: none; }
+  .plan-note {
+    font-size: 11px;
+    color: #718096;
+    font-style: italic;
+    margin: -12px 0 20px;
+    font-family: sans-serif;
+  }
+  .intro-box {
+    background: #f4f6f8;
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-size: 12px;
+    color: #4a5568;
+    line-height: 1.7;
+    margin-bottom: 24px;
+    font-family: sans-serif;
+  }
+</style>
+</head>
+<body>
+${sampleBanner}
+<div class="card">
+  ${header}
+  <div class="doc-body">
+
+    <div class="doc-intro">
+      This agreement governs the medical claim billing services provided by Coming Home Care Services, LLC.
+      Fees are based on the selected billing plan and the volume of claims submitted per billing cycle.
+    </div>
+
+    <!-- Weekly Plans -->
+    <p class="section-heading">Weekly Billing Memberships by Date of Service (DOS) Volume</p>
+    <div class="intro-box">
+      Plans are flexible. If you add or drop a case that changes your billing needs, email
+      <strong>billing@cominghomecare.com</strong> and we can adjust the plan to fit your needs.<br>
+      All plans include a 2-week preview of <em>my</em><strong>Portal</strong> Basic access.
+    </div>
+
+    <table class="plan-table">
+      <thead>
+        <tr>
+          <th>Plan</th>
+          <th>Name</th>
+          <th>Rate</th>
+          <th>Dates of Service</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>#M1</strong></td>
+          <td><em>The Side-Gig</em></td>
+          <td><strong>$5/week</strong></td>
+          <td>1–2 dates of service</td>
+        </tr>
+        <tr>
+          <td><strong>#M2</strong></td>
+          <td><em>The Full-Timer</em></td>
+          <td><strong>$10/week</strong></td>
+          <td>3–5 dates of service</td>
+        </tr>
+        <tr>
+          <td><strong>#M3</strong></td>
+          <td><em>The Work-a-Holic</em></td>
+          <td><strong>$15/week</strong></td>
+          <td>Up to 7 dates of service</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="plan-note">*Each additional DOS submitted above the enrolled plan max will incur a fee of $2.</p>
+    <p class="section-body">
+      Claims are grouped according to the New York State Medicaid billing cycle (Thursday–Wednesday).
+      Fees are calculated based on the number of dates of service within each billing cycle, not based on upload timing.
+    </p>
+
+    <!-- Invoicing -->
+    <p class="section-heading">Invoicing &amp; Payment Terms</p>
+    <p class="section-body">
+      Invoices are issued on a biweekly to monthly basis depending on claim volume and are sent to the email address
+      on file. Payment is due within <strong>30 days</strong> of the invoice date.
+      <ul>
+        <li>Balances unpaid after 30 days may incur a <strong>15% late fee</strong>.</li>
+        <li>Balances unpaid after 60 days may incur a <strong>20% late fee</strong>.</li>
+        <li>Balances unpaid 90 days or more may incur a <strong>22% late fee</strong> per additional month.</li>
+        <li>Services may be paused at any time for overdue balances.</li>
+      </ul>
+    </p>
+
+    <!-- Submission Deadlines -->
+    <p class="section-heading">Submission Deadlines</p>
+    <p class="section-body">
+      <ul>
+        <li>Dates of service submitted by <strong>Monday at 11:59 PM</strong> will be included in the current billing cycle when possible.</li>
+        <li>Urgent requests to include a date of service in the current pay cycle made after the deadline may incur a <strong>$10 same-day service fee</strong>. Expedited requests must be confirmed directly via phone or text.</li>
+      </ul>
+    </p>
+
+    <!-- Corrections -->
+    <p class="section-heading">Corrections &amp; Adjustments</p>
+    <p class="section-body">
+      <ul>
+        <li>Corrections due to billing errors will be completed at <strong>no cost</strong>.</li>
+        <li>Corrections resulting from inaccurate information provided by the provider will incur a <strong>$3 fee per occurrence</strong> for void &amp; reprocessing.</li>
+      </ul>
+    </p>
+
+    <!-- Provider Responsibility -->
+    <p class="section-heading">Provider Responsibility</p>
+    <p class="section-body">
+      The provider is responsible for ensuring that all submitted information is accurate and complete.
+      Coming Home Care Services, LLC is not responsible for claim delays or denials resulting from incorrect
+      or incomplete information provided.
+    </p>
+
+    <!-- Rate Changes -->
+    <p class="section-heading">Rate Changes</p>
+    <p class="section-body">
+      All rates are subject to change with prior notice. Any increase to service fees will be given a
+      <strong>30-day notice</strong>. Any reductions in service fees will take place immediately.
+      By using billing services, the provider agrees to the terms outlined above.
+    </p>
+
+    <!-- Signature -->
+    <div class="sig-block">
+      <p>Initials</p>
+      <span class="sig-value">${opts.initials}</span>
+    </div>
+    <div class="sig-block">
+      <p>Full Name on Account</p>
+      <span style="font-size:15px;font-weight:600;color:#2F3E4E;font-family:sans-serif;">${opts.displayName}</span>
+    </div>
+
+    <div class="doc-meta">
+      <strong>Account Number:</strong> ${opts.accountNumber || '—'}<br>
+      <strong>Signed:</strong> ${dateStr} at ${timeStr}<br>
+      <strong>IP Address:</strong> ${opts.ip}<br>
+      <strong>Document ID:</strong> ${opts.title}
+    </div>
+  </div>
+  <div class="doc-footer">
+    This document is auto-generated and tamper-evident. &nbsp;Coming Home Care Services, LLC &nbsp;·&nbsp; support@cominghomecare.com
+  </div>
+</div>
+</body>
+</html>`
+}

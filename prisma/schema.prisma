@@ -118,6 +118,10 @@ model NurseProfile {
   portalAgreementSignedAt DateTime?
   portalAgreementInitials String?
 
+  // Billing service agreement — signed during onboarding when enrolling in billing
+  billingAgreementSignedAt DateTime?
+  billingAgreementInitials  String?
+
   // Demo/test account — excluded from metrics, all writes blocked
   isDemo       Boolean   @default(false)
 

@@ -480,6 +480,13 @@ export default function NurseClaimsPage() {
   const sentinelRef = useRef<HTMLDivElement>(null)
   // Map from Claim.id (DB UUID) → array of EOB docs (supports multiple per claim)
   const [eobMap, setEobMap] = useState<Record<string, { id: string; fileName: string }[]>>({})
+  const [effectiveTier, setEffectiveTier] = useState<'FREE' | 'BASIC' | 'PRO' | null>(null)
+
+  useEffect(() => {
+    fetch('/api/nurse/plan', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : { effectiveTier: 'FREE' })
+      .then(d => setEffectiveTier(d.effectiveTier || 'FREE'))
+  }, [])
 
   useEffect(() => {
     fetch('/api/nurse/claims', { credentials: 'include' })
@@ -537,6 +544,30 @@ export default function NurseClaimsPage() {
 
   function submitSearch() { setSearchQuery(searchInput) }
   function clearSearch() { setSearchInput(''); setSearchQuery('') }
+
+  if (effectiveTier === 'FREE') {
+    return (
+      <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8 flex items-start justify-center pt-20">
+        <div className="bg-white rounded-2xl shadow-sm p-8 max-w-md w-full text-center">
+          <div className="text-5xl mb-4">🔒</div>
+          <h2 className="text-xl font-bold text-[#2F3E4E] mb-2">myPortal Basic Required</h2>
+          <p className="text-sm text-[#7A8F79] mb-6">
+            Full claim history, EOB access, and reimbursement details are included in the <strong>Basic plan</strong> at $5/month. Contact Coming Home Care to upgrade.
+          </p>
+          <div className="bg-[#F4F6F5] rounded-xl p-4 text-left space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Basic plan includes</p>
+            <p className="text-sm text-[#2F3E4E]">✓ Full claim submission history</p>
+            <p className="text-sm text-[#2F3E4E]">✓ Current-year billed, allowed &amp; paid totals</p>
+            <p className="text-sm text-[#2F3E4E]">✓ EOB document access</p>
+            <p className="text-sm text-[#2F3E4E]">✓ HIPAA-secure claim storage</p>
+          </div>
+          <p className="text-xs text-[#7A8F79] mt-5">
+            Pro plan coming soon — personal document vault, year-end reporting, and tax tools.
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">

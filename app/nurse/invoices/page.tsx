@@ -57,6 +57,13 @@ export default function NurseInvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [effectiveTier, setEffectiveTier] = useState<'FREE' | 'BASIC' | 'PRO' | null>(null)
+
+  useEffect(() => {
+    fetch('/api/nurse/plan', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : { effectiveTier: 'FREE' })
+      .then(d => setEffectiveTier(d.effectiveTier || 'FREE'))
+  }, [])
 
   useEffect(() => {
     fetch('/api/nurse/invoices', { credentials: 'include' })
@@ -69,6 +76,28 @@ export default function NurseInvoicesPage() {
   const fmtMoney = (n: number) => `$${n.toFixed(2)}`
 
   if (loading) return <div className="p-8 text-[#7A8F79]">Loading…</div>
+
+  if (effectiveTier === 'FREE') return (
+    <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8 flex items-start justify-center pt-20">
+      <div className="bg-white rounded-2xl shadow-sm p-8 max-w-md w-full text-center">
+        <div className="text-5xl mb-4">🔒</div>
+        <h2 className="text-xl font-bold text-[#2F3E4E] mb-2">myPortal Basic Required</h2>
+        <p className="text-sm text-[#7A8F79] mb-6">
+          Invoice history and payment details are included in the <strong>Basic plan</strong> at $5/month. Contact Coming Home Care to upgrade.
+        </p>
+        <div className="bg-[#F4F6F5] rounded-xl p-4 text-left space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Basic plan includes</p>
+          <p className="text-sm text-[#2F3E4E]">✓ Full invoice history</p>
+          <p className="text-sm text-[#2F3E4E]">✓ Payment method details</p>
+          <p className="text-sm text-[#2F3E4E]">✓ Balance due &amp; outstanding totals</p>
+          <p className="text-sm text-[#2F3E4E]">✓ EOB document access</p>
+        </div>
+        <p className="text-xs text-[#7A8F79] mt-5">
+          Pro plan coming soon — personal document vault, year-end reporting, and tax tools.
+        </p>
+      </div>
+    </div>
+  )
 
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">

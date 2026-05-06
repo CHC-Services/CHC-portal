@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../lib/prisma'
 import { verifyToken } from '../../../lib/auth'
+import { getEffectiveTier } from '../../../lib/planPermissions'
 
 export async function GET(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -11,8 +12,22 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const profile = await (prisma.nurseProfile.findUnique as any)({
+    where: { id: session.nurseProfileId! },
+    select: { planTier: true, trialExpiresAt: true },
+  })
+
+  const effectiveTier = getEffectiveTier(profile?.planTier, profile?.trialExpiresAt)
+
+  const where: any = { nurseId: session.nurseProfileId! }
+  if (effectiveTier === 'FREE') {
+    const cutoff = new Date()
+    cutoff.setDate(cutoff.getDate() - 14)
+    where.workDate = { gte: cutoff }
+  }
+
   const entries = await (prisma.timeEntry.findMany as any)({
-    where: { nurseId: session.nurseProfileId! },
+    where,
     orderBy: { workDate: 'desc' }
   })
 

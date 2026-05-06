@@ -31,6 +31,9 @@ export default function NurseDashboard() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [deleting, setDeleting] = useState(false)
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+  const [effectiveTier, setEffectiveTier] = useState<'FREE' | 'BASIC' | 'PRO'>('FREE')
+  const [isTrialing, setIsTrialing] = useState(false)
+  const [trialExpiresAt, setTrialExpiresAt] = useState<string | null>(null)
 
   function loadEntries() {
     return fetch('/api/time-entry', { credentials: 'include' })
@@ -73,11 +76,22 @@ export default function NurseDashboard() {
   useEffect(() => {
     fetch('/api/nurse/profile', { credentials: 'include' })
       .then(r => r.json())
-      .then(data => {
+      .then(async data => {
         if (!data.onboardingComplete) {
           router.replace('/nurse/onboarding')
-        } else {
-          loadEntries()
+          return
+        }
+
+        const planRes = await fetch('/api/nurse/plan', { credentials: 'include' })
+        const planData = planRes.ok ? await planRes.json() : {}
+        const tier: 'FREE' | 'BASIC' | 'PRO' = planData.effectiveTier || 'FREE'
+        setEffectiveTier(tier)
+        setIsTrialing(planData.isTrialing ?? false)
+        setTrialExpiresAt(planData.trialExpiresAt ?? null)
+
+        loadEntries()
+
+        if (tier !== 'FREE') {
           fetch('/api/nurse/invoices/summary', { credentials: 'include' })
             .then(r => r.ok ? r.json() : null)
             .then(d => { if (d) setInvoiceSummary(d) })
@@ -178,8 +192,26 @@ export default function NurseDashboard() {
         ))}
       </div>
 
+      {/* Trial banner */}
+      {isTrialing && trialExpiresAt && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4 flex items-center gap-3">
+          <span className="text-amber-500 text-lg">⏳</span>
+          <p className="text-xs text-amber-800 font-medium">
+            You&apos;re on a free trial of <strong>myPortal Basic</strong> — expires {new Date(trialExpiresAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}.
+          </p>
+        </div>
+      )}
+
       {/* Account Summary */}
-      {invoiceSummary && (
+      {effectiveTier === 'FREE' ? (
+        <div className="bg-white rounded-xl shadow-sm p-5 mb-4 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-[#2F3E4E]">🔒 Account Summary</p>
+            <p className="text-xs text-[#7A8F79] mt-1">Invoice balances and outstanding totals are available on the <strong>Basic plan</strong>.</p>
+          </div>
+          <span className="text-xs font-bold text-[#7A8F79] shrink-0 border border-[#D9E1E8] rounded-full px-3 py-1">Basic · $5/mo</span>
+        </div>
+      ) : invoiceSummary && (
         <div className="bg-white rounded-xl shadow-sm p-5 mb-4">
           <p className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] mb-4">
             Account Summary
@@ -205,7 +237,15 @@ export default function NurseDashboard() {
       )}
 
       {/* Reimbursement Summary */}
-      {claimSummary && (
+      {effectiveTier === 'FREE' ? (
+        <div className="bg-white rounded-xl shadow-sm p-5 mb-4 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-[#2F3E4E]">🔒 Reimbursement Summary</p>
+            <p className="text-xs text-[#7A8F79] mt-1">Total billed, allowed, paid, and average rate per hour available on the <strong>Basic plan</strong>.</p>
+          </div>
+          <span className="text-xs font-bold text-[#7A8F79] shrink-0 border border-[#D9E1E8] rounded-full px-3 py-1">Basic · $5/mo</span>
+        </div>
+      ) : claimSummary && (
         <div className="bg-white rounded-xl shadow-sm p-5 mb-4">
           <p className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] mb-4">
             Reimbursement Summary
@@ -236,7 +276,15 @@ export default function NurseDashboard() {
       )}
 
       {/* Claims Summary */}
-      {claimSummary && (
+      {effectiveTier === 'FREE' ? (
+        <div className="bg-white rounded-xl shadow-sm p-5 mb-4 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-[#2F3E4E]">🔒 Claims Summary</p>
+            <p className="text-xs text-[#7A8F79] mt-1">Claim status counts and history available on the <strong>Basic plan</strong>.</p>
+          </div>
+          <span className="text-xs font-bold text-[#7A8F79] shrink-0 border border-[#D9E1E8] rounded-full px-3 py-1">Basic · $5/mo</span>
+        </div>
+      ) : claimSummary && (
         <div className="bg-white rounded-xl shadow-sm p-5 mb-4">
           <p className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] mb-4">
             Claims Summary
@@ -389,6 +437,12 @@ export default function NurseDashboard() {
               </button>
             )}
           </div>
+          {effectiveTier === 'FREE' && (
+            <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
+              <span className="text-amber-500 text-sm">🔒</span>
+              <p className="text-xs text-amber-800">Free plan shows the last <strong>14 days</strong> only. Upgrade to <strong>Basic</strong> for full history.</p>
+            </div>
+          )}
           <p className="text-xs text-[#7A8F79] mb-3 italic">To delete an entry line, check the box for that row.</p>
 
           {loadingHistory ? (

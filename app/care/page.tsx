@@ -336,16 +336,14 @@ export default function MyCarePage() {
               style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.90), rgba(236,246,248,0.95))' }}
             >
               <div
-                className="relative px-6 py-6 flex items-start gap-4 overflow-hidden"
+                className="relative px-6 py-5 flex items-center justify-between gap-4 overflow-hidden"
                 style={{ background: 'linear-gradient(130deg, #3d8c8c 0%, #2a6670 100%)' }}
               >
-                <div className="relative z-10 flex flex-col gap-1.5">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/bflologo.png" alt="BFLO Hydration" className="h-10 w-auto object-contain" />
-                  <p className="text-sm text-white/80 leading-relaxed">
-                    Vitamin-infused IVs & injections to restore what your body is missing.
-                  </p>
-                </div>
+                <p className="relative z-10 text-sm text-white/80 leading-relaxed max-w-[55%]">
+                  Vitamin-infused IVs & injections to restore what your body is missing.
+                </p>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/bflologo.png" alt="BFLO Hydration" className="relative z-10 h-16 w-auto object-contain flex-shrink-0" />
               </div>
 
               {/* Nurse discount highlight */}

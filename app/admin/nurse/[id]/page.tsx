@@ -177,6 +177,13 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   const [pwSaving, setPwSaving] = useState(false)
   const [pwMessage, setPwMessage] = useState('')
 
+  // Plan & trial
+  const [planTier, setPlanTier] = useState('FREE')
+  const [trialPreset, setTrialPreset] = useState('none')
+  const [trialCustomDate, setTrialCustomDate] = useState('')
+  const [planSaving, setPlanSaving] = useState(false)
+  const [planMessage, setPlanMessage] = useState('')
+
   // Documents
   const [documents, setDocuments] = useState<{id:string;title:string;fileName:string;category:string;fileSize:number|null;expiresAt:string|null;createdAt:string;reminderDays:number[];visibleToNurse:boolean}[]>([])
   const [docViewing, setDocViewing] = useState<string | null>(null)
@@ -521,6 +528,11 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
           setUserRole(data.user?.role || 'nurse')
           setIsDemo(data.isDemo ?? false)
           setNotifEnabled(data.receiveNotifications !== false)
+          setPlanTier(data.planTier || 'FREE')
+          if (data.trialExpiresAt) {
+            setTrialPreset('custom')
+            setTrialCustomDate(data.trialExpiresAt.slice(0, 10))
+          }
         }
       })
       .finally(() => setLoading(false))
@@ -717,6 +729,31 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
     })
     setRoleSaving(false)
     setRoleMessage(res.ok ? 'Role updated.' : 'Error updating role.')
+  }
+
+  async function savePlan() {
+    setPlanSaving(true)
+    setPlanMessage('')
+
+    let trialExpiresAt: string | null = null
+    if (trialPreset === '1week') {
+      const d = new Date(); d.setDate(d.getDate() + 7)
+      trialExpiresAt = d.toISOString()
+    } else if (trialPreset === '2weeks') {
+      const d = new Date(); d.setDate(d.getDate() + 14)
+      trialExpiresAt = d.toISOString()
+    } else if (trialPreset === 'custom' && trialCustomDate) {
+      trialExpiresAt = new Date(trialCustomDate + 'T23:59:59Z').toISOString()
+    }
+
+    const res = await fetch(`/api/admin/nurses/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ planTier, trialExpiresAt }),
+    })
+    setPlanSaving(false)
+    setPlanMessage(res.ok ? 'Plan saved.' : 'Error saving plan.')
   }
 
   async function toggleDemo() {
@@ -1226,6 +1263,87 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                 )}
               </div>
             )}
+
+            {/* Plan & Trial */}
+            <div className="mt-4 pt-4 border-t border-[#D9E1E8]">
+              <p className="text-xs font-semibold text-[#2F3E4E] mb-0.5">myPortal Plan</p>
+              <p className="text-xs text-[#7A8F79] mb-3">Controls which features this nurse can access.</p>
+
+              {/* Tier selector */}
+              <div className="mb-3">
+                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Tier</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { value: 'FREE',  label: 'Free',       sub: 'Hours only' },
+                    { value: 'BASIC', label: 'Basic',      sub: '$5/mo' },
+                    { value: 'PRO',   label: 'Pro',        sub: '$10/mo · Soon' },
+                  ].map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setPlanTier(opt.value)}
+                      disabled={opt.value === 'PRO'}
+                      className={`rounded-lg border px-2 py-2 text-left transition disabled:opacity-40 disabled:cursor-not-allowed
+                        ${planTier === opt.value
+                          ? 'border-[#2F3E4E] bg-[#2F3E4E] text-white'
+                          : 'border-[#D9E1E8] bg-white text-[#2F3E4E] hover:border-[#7A8F79]'}`}
+                    >
+                      <p className="text-xs font-bold leading-tight">{opt.label}</p>
+                      <p className={`text-[10px] leading-tight mt-0.5 ${planTier === opt.value ? 'text-[#B0C4B1]' : 'text-[#7A8F79]'}`}>{opt.sub}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Trial window — only relevant when tier is BASIC */}
+              {planTier === 'BASIC' && (
+                <div className="mb-3">
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Trial Window</label>
+                  <select
+                    value={trialPreset}
+                    onChange={e => {
+                      setTrialPreset(e.target.value)
+                      if (e.target.value !== 'custom') setTrialCustomDate('')
+                    }}
+                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                  >
+                    <option value="none">No trial — active subscription</option>
+                    <option value="1week">1-week free trial</option>
+                    <option value="2weeks">2-week free trial</option>
+                    <option value="custom">Custom expiry date…</option>
+                  </select>
+                  {trialPreset === 'custom' && (
+                    <input
+                      type="date"
+                      value={trialCustomDate}
+                      onChange={e => setTrialCustomDate(e.target.value)}
+                      className="mt-2 w-full border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                    />
+                  )}
+                  {trialPreset !== 'none' && (
+                    <p className="text-[11px] text-[#7A8F79] mt-1.5">
+                      After the trial expires the nurse will revert to Free access automatically.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={savePlan}
+                  disabled={planSaving}
+                  className="bg-[#2F3E4E] text-white px-4 py-2 rounded-lg hover:bg-[#7A8F79] transition text-sm font-semibold disabled:opacity-50"
+                >
+                  {planSaving ? 'Saving…' : 'Save Plan'}
+                </button>
+                {planMessage && (
+                  <p className={`text-xs font-medium ${planMessage.includes('Error') ? 'text-red-500' : 'text-[#7A8F79]'}`}>
+                    {planMessage}
+                  </p>
+                )}
+              </div>
+            </div>
 
             <div className="mt-4 pt-4 border-t border-[#D9E1E8]">
               <p className="text-xs font-semibold text-[#2F3E4E] mb-1">Set Password Manually</p>

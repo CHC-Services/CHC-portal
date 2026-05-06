@@ -13,6 +13,7 @@ type TokenPayload = {
   name: string;            // internal/admin name
   displayName?: string;   // nurse-chosen name
   isDemo?: boolean;
+  portalAgreementSigned?: boolean;
 };
 
 export function signToken(payload: TokenPayload) {

@@ -33,6 +33,12 @@ export default function LoginPage() {
         return
       }
 
+      // Nurses who haven't signed the portal agreement go there first
+      if ((data.role === 'nurse' || data.role === 'provider') && !data.portalAgreementSigned) {
+        window.location.href = '/nurse/agreement'
+        return
+      }
+
       window.location.href = '/'
 
     } catch {

@@ -114,6 +114,10 @@ model NurseProfile {
   // Self-reported type from public signup form
   signupRole   String?   // 'Nurse' | 'Patient' | 'Billing Service' | 'Other'
 
+  // Portal user agreement — required on first login
+  portalAgreementSignedAt DateTime?
+  portalAgreementInitials String?
+
   // Demo/test account — excluded from metrics, all writes blocked
   isDemo       Boolean   @default(false)
 

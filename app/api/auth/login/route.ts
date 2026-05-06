@@ -23,16 +23,19 @@ export async function POST(req: Request) {
 
   await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } })
 
- const token = signToken({
-  id: user.id,
-  role: user.role,
-  nurseProfileId: user.nurseProfile?.id,
-  name: (user as any).name,
-  displayName: user.nurseProfile?.displayName,
-  isDemo: (user.nurseProfile as any)?.isDemo ?? false,
-})
+  const portalAgreementSigned = !!(user.nurseProfile as any)?.portalAgreementSignedAt
 
-  const res = NextResponse.json({ ok: true, role: user.role })
+  const token = signToken({
+    id: user.id,
+    role: user.role,
+    nurseProfileId: user.nurseProfile?.id,
+    name: (user as any).name,
+    displayName: user.nurseProfile?.displayName,
+    isDemo: (user.nurseProfile as any)?.isDemo ?? false,
+    portalAgreementSigned,
+  })
+
+  const res = NextResponse.json({ ok: true, role: user.role, portalAgreementSigned })
 
   // use a consistent cookie name that the middleware already expects
   res.cookies.set('auth_token', token, {

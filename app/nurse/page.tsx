@@ -77,6 +77,10 @@ export default function NurseDashboard() {
     fetch('/api/nurse/profile', { credentials: 'include' })
       .then(r => r.json())
       .then(async data => {
+        if (!data.profile?.portalAgreementSignedAt) {
+          router.replace('/nurse/agreement')
+          return
+        }
         if (!data.onboardingComplete) {
           router.replace('/nurse/onboarding')
           return

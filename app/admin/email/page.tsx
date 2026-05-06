@@ -849,9 +849,16 @@ export default function AdminMessagingPage() {
                       <option value="bulk_import">Bulk Import Summary</option>
                       <option value="edi_summary">EDI Upload Summary</option>
                     </optgroup>
+                    <optgroup label="Portal Documents">
+                      <option value="user_agreement">User Agreement (signed copy)</option>
+                    </optgroup>
                   </select>
-                  {previewTemplate && <p className="text-[11px] text-[#7A8F79]">Preview sends to your admin email with sample data.</p>}
-                  <button type="button" onClick={sendPreview} disabled={!previewTemplate || previewSending}
+                  {previewTemplate === 'user_agreement'
+                    ? <p className="text-[11px] text-[#7A8F79]">Opens a sample signed agreement in a new tab — no email sent.</p>
+                    : previewTemplate
+                      ? <p className="text-[11px] text-[#7A8F79]">Preview sends to your admin email with sample data.</p>
+                      : null}
+                  <button type="button" onClick={previewTemplate === 'user_agreement' ? () => window.open('/api/admin/email/preview?template=user_agreement', '_blank') : sendPreview} disabled={!previewTemplate || previewSending}
                     className="w-full px-3 py-2 rounded-lg bg-[#2F3E4E] text-white text-xs font-semibold hover:bg-[#7A8F79] transition disabled:opacity-40">
                     {previewSending ? 'Sending…' : 'Send Preview Email'}
                   </button>

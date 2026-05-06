@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { verifyToken } from '../../../../../lib/auth'
+import { buildAgreementHtml } from '../../../../../lib/agreementDocument'
 import {
   sendWelcomeEmail,
   sendRegistrationConfirmation,
@@ -281,4 +282,37 @@ export async function POST(req: Request) {
   return NextResponse.json({
     error: `Resend delivery failed for "${template}". Verify RESEND_API_KEY is valid and ${to} is reachable via your Resend domain.`,
   }, { status: 500 })
+}
+
+export async function GET(req: Request) {
+  const cookie = req.headers.get('cookie') || ''
+  const token = cookie.split('auth_token=').pop()?.split(';')[0]
+  const session = token ? verifyToken(token) : null
+  if (!session || session.role !== 'admin') {
+    return new Response('Unauthorized', { status: 401 })
+  }
+
+  const { searchParams } = new URL(req.url)
+  if (searchParams.get('template') !== 'user_agreement') {
+    return new Response('Unknown template', { status: 400 })
+  }
+
+  const now = new Date()
+  const yymmdd = now.toISOString().slice(2, 10).replace(/-/g, '')
+  const title = `User Agreement - CHC-2026-0001 Provider - ${yymmdd}`
+
+  const html = buildAgreementHtml({
+    displayName: 'Jane Provider',
+    accountNumber: 'CHC-2026-0001',
+    lastName: 'Provider',
+    initials: 'J.P.',
+    signedAt: now,
+    ip: 'Sample Preview',
+    title,
+    isSample: true,
+  })
+
+  return new Response(html, {
+    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+  })
 }

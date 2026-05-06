@@ -30,7 +30,7 @@ const POLICIES = [
   },
   {
     heading: 'Billing Services — No Minimum Commitment',
-    body: 'I understand that if I choose to enroll in billing services through this portal, I may cancel that enrollment at any time with no minimum length of service, no cancellation fees, and no penalty. Cancellation requests should be submitted in writing to support@cominghomecare.com.',
+    body: 'I understand that if I choose to enroll in billing services through this portal, I may cancel that enrollment at any time with no minimum length of service, no cancellation fees, and no penalty. Cancellation requests should be submitted in writing to support@cominghomecare.com. A notice to any increase to the cost of service will be given 30 days prior to the change taking effeect. Any decrease to a cost of service will take effecr immediatelty without notice.',
   },
   {
     heading: 'Accuracy of Submitted Information',

@@ -316,13 +316,13 @@ export default function MyCarePage() {
           <div>
             {/* Tagline callout */}
             <div
-              className="relative overflow-hidden rounded-3xl shadow-sm p-7 mb-6 border-l-4 border-[#a07a4a]"
-              style={{ background: 'linear-gradient(135deg, #fdf6ec 0%, #f5f0e8 100%)' }}
+              className="relative overflow-hidden rounded-3xl shadow-sm p-7 mb-6 border-l-4 border-[#6aacac]"
+              style={{ background: 'linear-gradient(135deg, #eef7f7 0%, #f0eef8 100%)' }}
             >
               <p className="font-cormorant text-2xl text-[#2F3E4E] italic leading-snug mb-3">
                 Combat fatigue at the source — not just the symptoms.
               </p>
-              <p className="text-sm text-[#7a6a50] leading-relaxed">
+              <p className="text-sm text-[#4e7b87] leading-relaxed">
                 Oxidative stress is one of the leading contributors to chronic fatigue in caregivers. Years of
                 high-demand work, disrupted sleep, and emotional labor deplete the body&apos;s antioxidant reserves faster
                 than diet alone can replenish them. The resources here are about giving your body what it needs
@@ -333,47 +333,90 @@ export default function MyCarePage() {
             {/* BFLO Hydration promo card */}
             <section
               className="overflow-hidden rounded-3xl shadow-sm mb-6 border border-white/60"
-              style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.85), rgba(253,246,236,0.90))' }}
+              style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.90), rgba(236,246,248,0.95))' }}
             >
               <div
                 className="relative px-6 py-6 flex items-start gap-4 overflow-hidden"
-                style={{ background: 'linear-gradient(130deg, #a07a4a 0%, #7a5c35 100%)' }}
+                style={{ background: 'linear-gradient(130deg, #3d8c8c 0%, #2a6670 100%)' }}
               >
-                <span className="text-3xl relative z-10 mt-0.5">💧</span>
-                <div className="relative z-10">
-                  <h2 className="font-cormorant text-2xl font-bold text-white tracking-wide">BFLO Hydration</h2>
-                  <p className="text-sm text-white/80 mt-1 leading-relaxed">
+                <div className="relative z-10 flex flex-col gap-1.5">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/bflologo.png" alt="BFLO Hydration" className="h-10 w-auto object-contain" />
+                  <p className="text-sm text-white/80 leading-relaxed">
                     Vitamin-infused IVs & injections to restore what your body is missing.
                   </p>
                 </div>
               </div>
+
+              {/* Nurse discount highlight */}
+              <div className="relative overflow-hidden px-6 py-4 border-b border-[#c2e4e8]"
+                style={{ background: 'linear-gradient(135deg, #eaf8f8 0%, #e4eff8 100%)' }}
+              >
+                {/* Animated shimmer bar */}
+                <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                  <div
+                    className="absolute top-0 left-0 h-full w-1/3 opacity-25"
+                    style={{
+                      background: 'linear-gradient(90deg, transparent, rgba(180,230,230,0.8), transparent)',
+                      animation: 'shimmer 2.4s ease-in-out infinite',
+                    }}
+                  />
+                </div>
+                <style>{`
+                  @keyframes shimmer {
+                    0%   { transform: translateX(-100%); }
+                    60%  { transform: translateX(350%); }
+                    100% { transform: translateX(350%); }
+                  }
+                `}</style>
+                <div className="relative z-10 flex items-center gap-3">
+                  <span className="text-2xl">🏥</span>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-widest text-[#3d8c8c] mb-0.5">Nurse Perk</p>
+                    <p className="text-sm font-semibold text-[#1e4a55] leading-snug">
+                      As a nurse, you receive <span className="text-[#3d8c8c] font-bold text-base">10% off</span> all IV services — just mention Coming Home Care at booking.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div className="px-6 py-6">
-                <p className="text-sm text-[#5a4a35] leading-relaxed mb-5">
+                <p className="text-sm text-[#3a5a65] leading-relaxed mb-5">
                   BFLO Hydration specializes in IV vitamin therapy and injection services designed to address
                   the root causes of fatigue — nutrient depletion, immune stress, and cellular oxidation.
                   Whether you&apos;re recovering from a long stretch of shifts or just looking to feel more like
                   yourself, targeted IV therapy can deliver results that supplements alone often can&apos;t match.
                 </p>
-                <a
-                  href={BFLO_HYDRATION_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 bg-[#a07a4a] hover:bg-[#7a5c35] text-white font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors"
-                >
-                  Visit BFLO Hydration →
-                </a>
+                <div className="flex flex-wrap gap-3">
+                  <a
+                    href={BFLO_HYDRATION_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 bg-[#3d8c8c] hover:bg-[#2a6670] text-white font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors"
+                  >
+                    Visit BFLO Hydration →
+                  </a>
+                  <a
+                    href="https://bfloiv.com/the-benefits/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 border-2 border-[#3d8c8c] text-[#3d8c8c] hover:bg-[#3d8c8c] hover:text-white font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors"
+                  >
+                    💉 IV Benefits?
+                  </a>
+                </div>
               </div>
             </section>
 
             {/* Coming soon article teaser */}
             <section
-              className="overflow-hidden rounded-3xl shadow-sm mb-6 border border-dashed border-[#c4b49a]"
-              style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.60), rgba(253,246,236,0.70))' }}
+              className="overflow-hidden rounded-3xl shadow-sm mb-6 border border-dashed border-[#a8d4d8]"
+              style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.65), rgba(236,246,248,0.75))' }}
             >
               <div className="px-6 py-8 text-center">
                 <p className="text-3xl mb-3">🌿</p>
-                <p className="font-cormorant text-xl text-[#7a6a50] italic mb-2">More coming soon</p>
-                <p className="text-sm text-[#a09070] leading-relaxed max-w-md mx-auto">
+                <p className="font-cormorant text-xl text-[#4e7b87] italic mb-2">More coming soon</p>
+                <p className="text-sm text-[#7aaab5] leading-relaxed max-w-md mx-auto">
                   An in-depth guide on oxidative stress, antioxidant nutrition, and practical recovery
                   strategies for healthcare workers is in the works. Check back soon.
                 </p>

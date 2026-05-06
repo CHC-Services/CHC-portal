@@ -117,7 +117,7 @@ export default function AgreementPage() {
           {/* Intro */}
           <div className="bg-white rounded-2xl shadow-sm p-6 mb-4">
             <p className="text-sm text-[#4a5568] leading-relaxed">
-              This agreement outlines how to responsibly use the myPortal provider portal. We&apos;ve written it in plain language — no hidden traps, no fine print designed to confuse. Each point below is something we genuinely need you to understand and agree to so we can keep your data secure and our working relationship clear.
+              This agreement outlines how to responsibly use the myPortal provider portal. We&apos;ve written it in plain language — no hidden traps, no fine print designed to confuse. Protecting patient and user data is a team effort. By acknowledging the points below, you affirm your understanding that once PHI is downloaded/saved/printed from the site it becomes the user's responsibility to maintian the confidentiality of its contents and you agree to uphold your side of the parntership by keeping said data securely stored until it can be disposed of properly when no longer needed. 
             </p>
             <p className="text-xs text-[#7A8F79] mt-3 font-medium">Check each box to confirm you have read and understood that item.</p>
           </div>

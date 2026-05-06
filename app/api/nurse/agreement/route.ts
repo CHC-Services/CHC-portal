@@ -29,7 +29,7 @@ export async function POST(req: Request) {
   const profile = await (prisma.nurseProfile.findUnique as any)({
     where: { id: session.nurseProfileId },
     select: {
-      id: true, displayName: true, lastName: true, accountNumber: true,
+      id: true, displayName: true, firstName: true, lastName: true, accountNumber: true,
       portalAgreementSignedAt: true,
     },
   })
@@ -47,8 +47,11 @@ export async function POST(req: Request) {
   const fileName = `user-agreement-${acctNum}-${lastName}-${yymmdd}.html`.toLowerCase()
   const s3Key = `nurses/${profile.id}/agreements/${fileName}`
 
+  const fullName = [profile.firstName, profile.lastName].filter(Boolean).join(' ')
+    || profile.displayName || session.displayName || ''
+
   const html = buildAgreementHtml({
-    displayName: profile.displayName || session.displayName || '',
+    displayName: fullName,
     accountNumber: acctNum,
     lastName,
     initials: initials.trim().toUpperCase(),

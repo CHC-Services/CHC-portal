@@ -333,47 +333,12 @@ export default function AdminDocumentsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
-        {/* ── Column 1: Assign To + Manage Folders ── */}
-        <div className="space-y-6 lg:col-span-1">
-
-          {/* Assign To */}
-          <div className="bg-white rounded-xl shadow-sm p-6 space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-[#D9E1E8]">
-              <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79]">Assign To</h2>
-              <button
-                type="button"
-                onClick={toggleAll}
-                className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] font-semibold transition"
-              >
-                {allSelected ? 'Deselect All' : 'Select All'}
-              </button>
-            </div>
-            <div className="space-y-1 max-h-80 overflow-y-auto">
-              {nurses.map(nurse => (
-                <label key={nurse.id} className="flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-[#F4F6F5] transition">
-                  <input
-                    type="checkbox"
-                    checked={selectedNurses.includes(nurse.id)}
-                    onChange={() => toggleNurse(nurse.id)}
-                    className="accent-[#7A8F79] w-4 h-4 flex-shrink-0"
-                  />
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-[#2F3E4E] truncate">{nurse.displayName}</p>
-                    <p className="text-xs text-[#7A8F79] truncate">{nurse.user?.email || ''}</p>
-                  </div>
-                </label>
-              ))}
-            </div>
-            {selectedNurses.length > 0 && (
-              <p className="text-xs text-[#7A8F79] pt-1 border-t border-[#D9E1E8]">
-                {selectedNurses.length} provider{selectedNurses.length !== 1 ? 's' : ''} selected
-              </p>
-            )}
-          </div>
+        {/* ── Column 1: Manage Folders ── */}
+        <div className="space-y-4 lg:col-span-1">
 
           {/* Manage Folders */}
-          <div className="bg-white rounded-xl shadow-sm p-6 space-y-3">
-            <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8]">
+          <div className="bg-white rounded-xl shadow-sm p-4 space-y-2">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8]">
               Manage Folders
             </h2>
             <div className="space-y-1">
@@ -441,101 +406,120 @@ export default function AdminDocumentsPage() {
         {/* ── Columns 2 & 3: Document Details + Library ── */}
         <div className="space-y-6 lg:col-span-2">
 
-          {/* Document Details upload form */}
-          <form onSubmit={handleUpload} className="bg-white rounded-xl shadow-sm p-6 space-y-4">
-            <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8]">Document Details</h2>
-
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Document Title</label>
-                <input
-                  type="text"
-                  value={docTitle}
-                  onChange={e => setDocTitle(e.target.value)}
-                  placeholder="e.g. RN License 2026"
-                  required
-                  className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Category / Folder</label>
-                <select
-                  value={docCategory}
-                  onChange={e => setDocCategory(e.target.value)}
-                  className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-                >
-                  <option value="General">General</option>
-                  {categories.map(c => (
-                    <option key={c.id} value={c.name}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">
-                  Expiration Date <span className="normal-case font-normal">(optional)</span>
-                </label>
-                <input
-                  type="date"
-                  value={docExpiry}
-                  onChange={e => setDocExpiry(e.target.value)}
-                  className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-                />
-              </div>
+          {/* Document Upload — merged form */}
+          <form onSubmit={handleUpload} className="bg-white rounded-xl shadow-sm p-4">
+            <div className="flex items-center justify-between pb-2 mb-3 border-b border-[#D9E1E8]">
+              <h2 className="text-xs font-bold uppercase tracking-widest text-[#7A8F79]">Document Upload</h2>
             </div>
 
-            {docExpiry && (
-              <div className="space-y-2">
-                <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Email Reminders Before Expiry</label>
-                <div className="flex flex-wrap gap-3">
-                  {[90, 60, 30, 14, 7, 1].map(days => (
-                    <label key={days} className="flex items-center gap-1.5 text-sm text-[#2F3E4E] cursor-pointer">
+            <div className="grid grid-cols-[1fr_1.6fr] gap-4">
+
+              {/* Left: Assign To */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-bold uppercase tracking-wide text-[#2F3E4E]">Assign To</span>
+                  <button type="button" onClick={toggleAll} className="text-[10px] text-[#7A8F79] hover:text-[#2F3E4E] font-semibold transition">
+                    {allSelected ? 'Deselect All' : 'Select All'}
+                  </button>
+                </div>
+                <div className="border border-[#D9E1E8] rounded-lg overflow-hidden max-h-56 overflow-y-auto">
+                  {nurses.map(nurse => (
+                    <label key={nurse.id} className="flex items-center gap-2 px-2.5 py-1.5 cursor-pointer hover:bg-[#F4F6F5] transition border-b border-[#D9E1E8] last:border-0">
                       <input
                         type="checkbox"
-                        checked={docReminderDays.includes(days)}
-                        onChange={e => setDocReminderDays(prev =>
-                          e.target.checked ? [...prev, days] : prev.filter(d => d !== days)
-                        )}
-                        className="accent-[#7A8F79]"
+                        checked={selectedNurses.includes(nurse.id)}
+                        onChange={() => toggleNurse(nurse.id)}
+                        className="accent-[#7A8F79] w-3.5 h-3.5 flex-shrink-0"
                       />
-                      {days === 1 ? '1 day' : `${days} days`}
+                      <span className="text-xs font-semibold text-[#2F3E4E] truncate">{nurse.user?.name || nurse.displayName}</span>
+                      <span className="text-[10px] text-[#7A8F79] tracking-tight truncate ml-auto shrink-0 max-w-[40%]">{nurse.user?.email || ''}</span>
                     </label>
                   ))}
                 </div>
+                {selectedNurses.length > 0 && (
+                  <p className="text-[10px] text-[#7A8F79] mt-1">{selectedNurses.length} selected</p>
+                )}
               </div>
-            )}
 
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={visibleToNurse}
-                onChange={e => setVisibleToNurse(e.target.checked)}
-                className="accent-[#7A8F79]"
-              />
-              <span className="text-sm text-[#2F3E4E]">Share with nurse (visible on their profile)</span>
-            </label>
-
-            <div className="space-y-1">
-              <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">File</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="file"
-                  onChange={e => setDocFile(e.target.files?.[0] || null)}
-                  required
-                  className="flex-1 text-sm text-[#2F3E4E] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#D9E1E8] file:text-[#2F3E4E] hover:file:bg-[#7A8F79] hover:file:text-white transition"
-                />
-                <button
-                  type="submit"
-                  disabled={uploading || !docFile || !docTitle || selectedNurses.length === 0}
-                  className="flex-shrink-0 bg-[#7A8F79] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#2F3E4E] transition disabled:opacity-50"
-                >
-                  {uploading ? 'Uploading…' : `Upload${selectedNurses.length > 1 ? ` (${selectedNurses.length})` : ''}`}
-                </button>
+              {/* Right: Fields */}
+              <div className="space-y-2">
+                <div>
+                  <label className="text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79]">Document Title</label>
+                  <input
+                    type="text"
+                    value={docTitle}
+                    onChange={e => setDocTitle(e.target.value)}
+                    placeholder="e.g. RN License 2026"
+                    required
+                    className="w-full border border-[#D9E1E8] px-2.5 py-1 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] mt-0.5"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79]">Category / Folder</label>
+                  <select
+                    value={docCategory}
+                    onChange={e => setDocCategory(e.target.value)}
+                    className="w-full border border-[#D9E1E8] px-2.5 py-1 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] mt-0.5"
+                  >
+                    <option value="General">General</option>
+                    {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79]">
+                    Exp Date <span className="normal-case font-normal">(optional)</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={docExpiry}
+                    onChange={e => setDocExpiry(e.target.value)}
+                    className="w-full border border-[#D9E1E8] px-2.5 py-1 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] mt-0.5"
+                  />
+                </div>
+                {docExpiry && (
+                  <div>
+                    <label className="text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79]">Reminders Before Expiry</label>
+                    <div className="flex flex-wrap gap-2 mt-0.5">
+                      {[90, 60, 30, 14, 7, 1].map(days => (
+                        <label key={days} className="flex items-center gap-1 text-xs text-[#2F3E4E] cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={docReminderDays.includes(days)}
+                            onChange={e => setDocReminderDays(prev => e.target.checked ? [...prev, days] : prev.filter(d => d !== days))}
+                            className="accent-[#7A8F79]"
+                          />
+                          {days === 1 ? '1d' : `${days}d`}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={visibleToNurse} onChange={e => setVisibleToNurse(e.target.checked)} className="accent-[#7A8F79]" />
+                  <span className="text-xs text-[#2F3E4E]">Share with nurse (visible on their profile)</span>
+                </label>
+                <div>
+                  <label className="text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79]">File</label>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <input
+                      type="file"
+                      onChange={e => setDocFile(e.target.files?.[0] || null)}
+                      required
+                      className="flex-1 text-xs text-[#2F3E4E] file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#D9E1E8] file:text-[#2F3E4E] hover:file:bg-[#7A8F79] hover:file:text-white transition"
+                    />
+                    <button
+                      type="submit"
+                      disabled={uploading || !docFile || !docTitle || selectedNurses.length === 0}
+                      className="flex-shrink-0 bg-[#7A8F79] text-white px-3 py-1 rounded-lg text-xs font-semibold hover:bg-[#2F3E4E] transition disabled:opacity-50"
+                    >
+                      {uploading ? 'Uploading…' : `Upload${selectedNurses.length > 1 ? ` (${selectedNurses.length})` : ''}`}
+                    </button>
+                  </div>
+                </div>
+                {message && <p className={`text-xs ${messageIsError ? 'text-[#9B1C1C]' : 'text-[#7A8F79]'}`}>{message}</p>}
               </div>
+
             </div>
-
-            {message && (
-              <p className={`text-sm ${messageIsError ? 'text-[#9B1C1C]' : 'text-[#7A8F79]'}`}>{message}</p>
-            )}
           </form>
 
       {/* ── Document Library ── */}

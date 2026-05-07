@@ -40,8 +40,8 @@ export default function NurseSideNav() {
     >
       {/* Header label */}
       <div className="px-3 pt-3 pb-2 border-b border-[#2F3E4E]/30 shrink-0">
-        <p className="text-[12px] text-center font-bold uppercase tracking-widest text-[#2F3E4E]/55 select-none">
-          <span style={{ fontWeight: 'bold', textTransform: 'lowercase', color: '#4A5E49', fontStyle: 'italic' }}>my</span>Provider Pages
+        <p className="text-[12px] text-center font-bold uppercase tracking-widest text-[#2F3E4E]/80 select-none">
+         Provider Pages
         </p>
       </div>
 

@@ -9,15 +9,15 @@ function adminAuth(req: Request) {
   return session?.role === 'admin' ? session : null
 }
 
-// POST { nurseId } — link a nurse to this patient
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!adminAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { id } = await params
 
   const { nurseId } = await req.json()
   if (!nurseId) return NextResponse.json({ error: 'nurseId required' }, { status: 400 })
 
   const existing = await (prisma.nursePatient.findUnique as any)({
-    where: { nurseId_patientId: { nurseId, patientId: params.id } },
+    where: { nurseId_patientId: { nurseId, patientId: id } },
   })
 
   if (existing) {
@@ -31,25 +31,21 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
 
   await (prisma.nursePatient.create as any)({
-    data: {
-      id: crypto.randomUUID(),
-      nurseId,
-      patientId: params.id,
-    },
+    data: { id: crypto.randomUUID(), nurseId, patientId: id },
   })
 
   return NextResponse.json({ ok: true, linked: true })
 }
 
-// DELETE { nurseId } — soft-unlink
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!adminAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { id } = await params
 
   const { nurseId } = await req.json()
   if (!nurseId) return NextResponse.json({ error: 'nurseId required' }, { status: 400 })
 
   const link = await (prisma.nursePatient.findUnique as any)({
-    where: { nurseId_patientId: { nurseId, patientId: params.id } },
+    where: { nurseId_patientId: { nurseId, patientId: id } },
   })
 
   if (!link) return NextResponse.json({ error: 'Not found' }, { status: 404 })

@@ -9,15 +9,16 @@ function adminAuth(req: Request) {
   return session?.role === 'admin' ? session : null
 }
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!adminAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { id } = await params
 
   const patient = await (prisma.patient.findUnique as any)({
-    where: { id: params.id },
+    where: { id },
     include: {
       nurseLinks: {
         include: {
-          nurse: { select: { id: true, displayName: true, accountNumber: true, email: true } },
+          nurse: { select: { id: true, displayName: true, accountNumber: true } },
         },
       },
       timeEntries: {
@@ -35,8 +36,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   return NextResponse.json({ patient })
 }
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!adminAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { id } = await params
 
   const updates = await req.json()
   const allowed = [
@@ -54,10 +56,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
   data.updatedAt = new Date()
 
-  const patient = await (prisma.patient.update as any)({
-    where: { id: params.id },
-    data,
-  })
+  const patient = await (prisma.patient.update as any)({ where: { id }, data })
 
   return NextResponse.json({ ok: true, patient })
 }

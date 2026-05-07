@@ -11,12 +11,13 @@ function auth(req: Request) {
 }
 
 // PATCH — update nurse-level overrides for a patient
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = auth(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { id } = await params
 
   const link = await (prisma.nursePatient.findUnique as any)({
-    where: { nurseId_patientId: { nurseId: session.nurseProfileId!, patientId: params.id } },
+    where: { nurseId_patientId: { nurseId: session.nurseProfileId!, patientId: id } },
   })
   if (!link) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
@@ -33,12 +34,13 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 // DELETE — unlink (soft delete) this nurse from a patient
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = auth(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { id } = await params
 
   const link = await (prisma.nursePatient.findUnique as any)({
-    where: { nurseId_patientId: { nurseId: session.nurseProfileId!, patientId: params.id } },
+    where: { nurseId_patientId: { nurseId: session.nurseProfileId!, patientId: id } },
   })
   if (!link) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 

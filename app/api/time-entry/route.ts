@@ -28,7 +28,10 @@ export async function GET(req: Request) {
 
   const entries = await (prisma.timeEntry.findMany as any)({
     where,
-    orderBy: { workDate: 'desc' }
+    orderBy: { workDate: 'desc' },
+    include: {
+      patient: { select: { id: true, accountNumber: true, firstName: true, lastName: true } },
+    },
   })
 
   return NextResponse.json(entries)
@@ -62,15 +65,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { workDate, hours, notes } = await req.json()
+  const { workDate, hours, notes, patientId } = await req.json()
 
-  const entry = await prisma.timeEntry.create({
+  const entry = await (prisma.timeEntry.create as any)({
     data: {
       nurseId: session.nurseProfileId!,
       workDate: new Date(workDate),
       hours: parseInt(hours, 10),
-      notes
-    }
+      notes,
+      ...(patientId ? { patientId } : {}),
+    },
+    include: {
+      patient: { select: { id: true, accountNumber: true, firstName: true, lastName: true } },
+    },
   })
 
   return NextResponse.json(entry)

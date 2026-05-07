@@ -146,6 +146,7 @@ model NurseProfile {
   medicaidClaims   MedicaidClaim[]
   campaignEnrollments CampaignEnrollment[]
   providerCredits     ProviderCredit[]
+  nursePatients       NursePatient[]
 }
 
 model GlobalEvent {
@@ -206,6 +207,8 @@ model TimeEntry {
   invoiceId      String?
   invoice        Invoice? @relation(fields: [invoiceId], references: [id])
   claimRef       String?  // optional claim reference number for billing lookup
+  patientId      String?  // optional patient this entry is billed against
+  patient        Patient? @relation(fields: [patientId], references: [id])
 
   createdAt DateTime @default(now())
 
@@ -627,4 +630,68 @@ model ClaimAuditLog {
   @@index([commercialId])
   @@index([medicaidId])
   @@index([savedAt])
+}
+
+// ── Patient records ────────────────────────────────────────────────────────
+
+model Patient {
+  id            String   @id @default(uuid())
+  accountNumber String   @unique              // e.g. "PT-001"
+  lastName      String
+  firstName     String
+  dob           String                        // plain text, e.g. "1980-01-15"
+  gender        String?                       // 'Male' | 'Female' | 'Other'
+  insuranceType String                        // 'Medicaid' | 'Commercial' | 'Medicare' | 'Other'
+  insuranceId   String                        // primary member / Medicaid ID
+  insuranceName  String?                      // commercial: carrier name
+  insuranceGroup String?                      // commercial: group number
+  insurancePlan  String?                      // commercial: plan name
+  address       String?
+  city          String?
+  state         String?
+  zip           String?
+  phone         String?
+
+  // Clinical / billing
+  highTech      Boolean  @default(false)      // High-Tech designation (yes/no)
+  dxCode1       String?                       // ICD-10 diagnosis code 1
+  dxCode2       String?
+  dxCode3       String?
+  dxCode4       String?
+  paNumber      String?                       // Prior Authorization number
+  paStartDate   String?                       // PA effective start date
+  paEndDate     String?                       // PA effective end date
+
+  // Commercial-only demographics
+  subscriberName      String?                 // name of insurance subscriber
+  subscriberRelation  String?                 // patient's relation to subscriber
+
+  // Commercial-only policy details
+  networkStatus   String?                     // 'IN' | 'OON'
+  hasCaseRate     Boolean  @default(false)    // agreed case rate exists
+  caseRateAmount  String?                     // dollar amount of case rate
+  policyNotes     String?                     // free-text policy rules (e.g. "100-day limit")
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  nurseLinks  NursePatient[]
+  timeEntries TimeEntry[]
+}
+
+model NursePatient {
+  id        String   @id @default(uuid())
+  nurseId   String                            // NurseProfile.id
+  patientId String
+  overrides Json?                             // nurse-level field corrections (merged on read)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  nurse     NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
+  patient   Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@unique([nurseId, patientId])
+  @@index([nurseId])
+  @@index([patientId])
 }

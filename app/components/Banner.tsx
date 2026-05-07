@@ -106,6 +106,9 @@ export default function Banner({ user }: BannerProps) {
             <Link href="/admin/calendar" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/admin/calendar" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>ad</span>Calendar
             </Link>
+            <Link href="/admin/patients" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/admin/patients" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>ad</span>Patients
+            </Link>
             <Link href="/admin/faq" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/admin/faq" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>ad</span>FAQ
             </Link>
@@ -174,6 +177,7 @@ export default function Banner({ user }: BannerProps) {
         ] : []),
         ...(role === 'admin' ? [
             { href: '/admin', label: 'Admin', icon: '⚙️' },
+            { href: '/admin/patients', label: 'Patients', icon: '🏥' },
         ] : []),
     ]
 

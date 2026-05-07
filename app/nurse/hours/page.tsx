@@ -12,6 +12,12 @@ type TimeEntry = {
   billed: boolean
   claimRef: string | null
   createdAt: string
+  patient?: { id: string; accountNumber: string; firstName: string; lastName: string } | null
+}
+
+type LinkedPatient = {
+  patientId: string
+  merged: { firstName: string; lastName: string; accountNumber: string }
 }
 
 export default function MyHours() {
@@ -29,6 +35,8 @@ export default function MyHours() {
   const [effectiveTier, setEffectiveTier] = useState<'FREE' | 'BASIC' | 'PRO'>('FREE')
   const [sortKey, setSortKey] = useState<'date' | 'hours'>('date')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const [linkedPatients, setLinkedPatients] = useState<LinkedPatient[]>([])
+  const [selectedPatient, setSelectedPatient] = useState('')
 
   function loadEntries() {
     return fetch('/api/time-entry', { credentials: 'include' })
@@ -94,6 +102,9 @@ export default function MyHours() {
         const tier: 'FREE' | 'BASIC' | 'PRO' = planData.effectiveTier || 'FREE'
         setEffectiveTier(tier)
         loadEntries()
+        fetch('/api/nurse/patients', { credentials: 'include' })
+          .then(r => r.json())
+          .then(d => { if (Array.isArray(d.patients)) setLinkedPatients(d.patients) })
       })
   }, [router])
 
@@ -103,7 +114,7 @@ export default function MyHours() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ workDate, hours, notes }),
+      body: JSON.stringify({ workDate, hours, notes, patientId: selectedPatient || undefined }),
     })
     const data = await res.json()
     if (res.ok) {
@@ -111,6 +122,7 @@ export default function MyHours() {
       setWorkDate('')
       setHours('')
       setNotes('')
+      setSelectedPatient('')
       loadEntries().finally(() => {
         requestAnimationFrame(() => dateInputRef.current?.focus())
       })
@@ -256,6 +268,28 @@ export default function MyHours() {
               </div>
             </div>
 
+            {linkedPatients.length > 0 && (
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Patient</label>
+                <select
+                  value={selectedPatient}
+                  onChange={e => setSelectedPatient(e.target.value)}
+                  className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] text-sm"
+                >
+                  <option value="">— No patient selected —</option>
+                  {linkedPatients.map(p => {
+                    const initial = p.merged.firstName?.[0] || ''
+                    const shortLast = p.merged.lastName?.slice(0, 5) || ''
+                    return (
+                      <option key={p.patientId} value={p.patientId}>
+                        {initial}. {shortLast}
+                      </option>
+                    )
+                  })}
+                </select>
+              </div>
+            )}
+
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">
                 Notes <span className="normal-case font-normal text-[#aab]">(optional)</span>
@@ -341,6 +375,7 @@ export default function MyHours() {
                     >
                       Hours {sortKey === 'hours' ? (sortDir === 'asc' ? '↑' : '↓') : <span className="opacity-30">↕</span>}
                     </th>
+                    <th className="text-left py-2 pr-4">Patient</th>
                     <th className="text-left py-2 pr-4">Notes</th>
                     <th className="text-left py-2">Claim Ref #</th>
                   </tr>
@@ -374,6 +409,11 @@ export default function MyHours() {
                           {new Date(entry.workDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
                         </td>
                         <td className="py-2 pr-4 text-right font-semibold text-[#2F3E4E]">{entry.hours}</td>
+                        <td className="py-2 pr-4 text-xs text-[#7A8F79]">
+                          {entry.patient
+                            ? `${entry.patient.firstName[0]}. ${entry.patient.lastName.slice(0, 5)}`
+                            : <span className="italic">—</span>}
+                        </td>
                         <td className="py-2 pr-4 text-[#7A8F79] italic text-xs">{entry.notes || '—'}</td>
                         <td className="py-2 text-xs font-mono text-[#2F3E4E]">
                           {entry.claimRef || <span className="text-[#7A8F79] not-italic">—</span>}

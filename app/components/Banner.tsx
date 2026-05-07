@@ -49,7 +49,7 @@ export default function Banner({ user }: BannerProps) {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013 3v1" />
             </svg>
-            <span><span className="italic text-[#D9E1E8]">my</span>Portal</span>
+            <span><span className="italic text-[#D9E1E8]">my</span>Provider</span>
         </Link>
     )
 
@@ -116,7 +116,7 @@ export default function Banner({ user }: BannerProps) {
     ) : role === 'provider' ? (
         <>
             <Link href="/portal" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/portal" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
-                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Portal
+                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Provider
             </Link>
             <Link href="/nurse/profile" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/nurse/profile" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Profile
@@ -240,7 +240,7 @@ export default function Banner({ user }: BannerProps) {
                             {!role && (
                                 <>
                                     <Link href="/login" onClick={() => setMenuOpen(false)} className="transition hover:text-[#7A8F79]">
-                                        <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Portal Login
+                                        <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Provider Login
                                     </Link>
                                     <Link href="/signup" onClick={() => setMenuOpen(false)} className="transition hover:text-[#7A8F79]">
                                         New User? Sign Up
@@ -306,7 +306,7 @@ export default function Banner({ user }: BannerProps) {
                                     href="/login"
                                     className="text-sm font-semibold text-[#7A8F79] border border-[#7A8F79] px-5 py-2 rounded-full hover:bg-[#7A8F79] hover:text-white transition"
                                 >
-                                    <i>my</i><span style={{ color: 'inherit', fontSize: '0.905rem' }}>Portal Login</span>
+                                    <i>my</i><span style={{ color: 'inherit', fontSize: '0.905rem' }}>Provider Login</span>
                                 </Link>
                                 <Link href="/signup" className="text-xs transition">
                                     <span style={{ color: '#7A8F79' }}>New User? </span>

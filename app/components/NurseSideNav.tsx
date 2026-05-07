@@ -21,7 +21,7 @@ export default function NurseSideNav() {
       className="hidden lg:flex fixed z-40 flex-col"
       style={{
         left: '1rem',
-        top: '215px',
+        top: 'calc(100px + 20vh)',
         height: '60vh',
         width: '10vw',
         background: '#C5D4C3',
@@ -37,7 +37,7 @@ export default function NurseSideNav() {
       {/* Header label */}
       <div className="px-3 pt-3 pb-2 border-b border-[#2F3E4E]/20 shrink-0">
         <p className="text-[9px] font-bold uppercase tracking-widest text-[#2F3E4E]/50 select-none">
-          <span style={{ color: '#4A5E49', fontStyle: 'italic' }}>my</span>Portal
+          <span style={{ color: '#4A5E49', fontStyle: 'italic' }}>my</span>Provider
         </p>
       </div>
 

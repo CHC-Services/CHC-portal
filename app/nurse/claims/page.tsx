@@ -550,7 +550,7 @@ export default function NurseClaimsPage() {
       <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8 flex items-start justify-center pt-20">
         <div className="bg-white rounded-2xl shadow-sm p-8 max-w-md w-full text-center">
           <div className="text-5xl mb-4">🔒</div>
-          <h2 className="text-xl font-bold text-[#2F3E4E] mb-2">myPortal Basic Required</h2>
+          <h2 className="text-xl font-bold text-[#2F3E4E] mb-2">myProvider Basic Required</h2>
           <p className="text-sm text-[#7A8F79] mb-6">
             Full claim history, EOB access, and reimbursement details are included in the <strong>Basic plan</strong> at $5/month. Contact Coming Home Care to upgrade.
           </p>

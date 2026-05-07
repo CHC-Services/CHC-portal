@@ -56,7 +56,7 @@ export default function LoginPage() {
           <div className="flex items-baseline gap-2 border-t border-[#3d5166] pt-6 mb-2">
             <p className="text-sm normal tracking-widest text-[#7A8F79] font-semibold">Inside the provider's</p>
             <h3 className="text-xl font-bold leading-tight">
-              <span className="italic text-[#7A8F79]">my</span>Portal
+              <span className="italic text-[#7A8F79]">my</span>Provider
             </h3>
           </div>
           <p className="text-sm normal tracking-widest text-[#7A8F79] font-semibold">You'll find...</p>
@@ -92,7 +92,7 @@ export default function LoginPage() {
         <div className="max-w-sm w-full mx-auto">
           <p className="text-sm uppercase tracking-widest text-[#7A8F79] font-semibold mb-1">Welcome to your</p>
           <h1 className="text-3xl font-bold text-[#2F3E4E] mb-1 whitespace-nowrap">
-            <span className="italic text-[#7A8F79]">my</span>Portal Login
+            <span className="italic text-[#7A8F79]">my</span>Provider Login
           </h1>
           <p className="text-sm text-[#7A8F79]">Sign in to access your provider dashboard.</p>
           <p className="text-sm mt-2 mb-8">

@@ -77,7 +77,7 @@ export default function SignupPage() {
           <div className="flex items-baseline gap-2 border-t border-[#3d5166] pt-6 mb-2">
             <p className="text-sm normal tracking-widest text-[#7A8F79] font-semibold">Inside the provider's</p>
             <h3 className="text-xl font-bold leading-tight">
-              <span className="italic text-[#7A8F79]">my</span>Portal
+              <span className="italic text-[#7A8F79]">my</span>Provider
             </h3>
           </div>
           <p className="text-sm normal tracking-widest text-[#7A8F79] font-semibold">You'll find...</p>

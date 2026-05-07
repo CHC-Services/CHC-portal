@@ -27,6 +27,8 @@ export default function MyHours() {
   const [deleting, setDeleting] = useState(false)
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   const [effectiveTier, setEffectiveTier] = useState<'FREE' | 'BASIC' | 'PRO'>('FREE')
+  const [sortKey, setSortKey] = useState<'date' | 'hours'>('date')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
   function loadEntries() {
     return fetch('/api/time-entry', { credentials: 'include' })
@@ -57,6 +59,15 @@ export default function MyHours() {
       next.has(id) ? next.delete(id) : next.add(id)
       return next
     })
+  }
+
+  function handleSort(key: 'date' | 'hours') {
+    if (sortKey === key) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortKey(key)
+      setSortDir('asc')
+    }
   }
 
   function toggleAll() {
@@ -318,15 +329,29 @@ export default function MyHours() {
                         className="accent-[#7A8F79]"
                       />
                     </th>
-                    <th className="text-left py-2 pr-4">Date</th>
-                    <th className="text-right py-2 pr-4">Hours</th>
+                    <th
+                      className="text-left py-2 pr-4 cursor-pointer select-none hover:text-[#2F3E4E] transition"
+                      onClick={() => handleSort('date')}
+                    >
+                      Date {sortKey === 'date' ? (sortDir === 'asc' ? '↑' : '↓') : <span className="opacity-30">↕</span>}
+                    </th>
+                    <th
+                      className="text-right py-2 pr-4 cursor-pointer select-none hover:text-[#2F3E4E] transition"
+                      onClick={() => handleSort('hours')}
+                    >
+                      Hours {sortKey === 'hours' ? (sortDir === 'asc' ? '↑' : '↓') : <span className="opacity-30">↕</span>}
+                    </th>
                     <th className="text-left py-2 pr-4">Notes</th>
                     <th className="text-left py-2">Claim Ref #</th>
                   </tr>
                 </thead>
                 <tbody>
                   {[...yearEntries]
-                    .sort((a, b) => new Date(a.workDate).getTime() - new Date(b.workDate).getTime())
+                    .sort((a, b) => {
+                      const dir = sortDir === 'asc' ? 1 : -1
+                      if (sortKey === 'hours') return (a.hours - b.hours) * dir
+                      return (a.workDate > b.workDate ? 1 : -1) * dir
+                    })
                     .map((entry, i) => (
                       <tr
                         key={entry.id}

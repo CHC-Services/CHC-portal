@@ -106,7 +106,7 @@ export default function AgreementPage() {
         <div className="mb-8 text-center">
           <p className="text-xs font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Coming Home Care Services, LLC</p>
           <h1 className="text-3xl font-bold text-[#2F3E4E]">
-            <span className="italic text-[#7A8F79]">my</span>Portal User Agreement
+            <span className="italic text-[#7A8F79]">my</span>Provider User Agreement
           </h1>
           {displayName && (
             <p className="text-sm text-[#7A8F79] mt-2">Welcome, <strong className="text-[#2F3E4E]">{displayName}</strong>. Please read and acknowledge each item below before accessing your portal.</p>
@@ -117,7 +117,7 @@ export default function AgreementPage() {
           {/* Intro */}
           <div className="bg-white rounded-2xl shadow-sm p-6 mb-4">
             <p className="text-sm text-[#4a5568] leading-relaxed">
-              This agreement outlines how to responsibly use the <b><span className="italic text-[#7A8F79]">my</span>Portal</b> provider portal. We&apos;ve written it in plain language — no hidden traps, no fine print designed to confuse. Protecting patient and user data is a team effort. By acknowledging the points below, you affirm your understanding that once PHI is downloaded/saved/printed from the site it becomes the user's responsibility to maintian the confidentiality of its contents and you agree to uphold your side of the parntership by keeping said data securely stored until it can be disposed of properly when no longer needed. 
+              This agreement outlines how to responsibly use the <b><span className="italic text-[#7A8F79]">my</span>Provider</b> portal. We&apos;ve written it in plain language — no hidden traps, no fine print designed to confuse. Protecting patient and user data is a team effort. By acknowledging the points below, you affirm your understanding that once PHI is downloaded/saved/printed from the site it becomes the user's responsibility to maintian the confidentiality of its contents and you agree to uphold your side of the parntership by keeping said data securely stored until it can be disposed of properly when no longer needed. 
             </p>
             <p className="text-xs text-[#7A8F79] mt-3 font-medium">Check each box to confirm you have read and understood that item.</p>
           </div>

@@ -332,7 +332,7 @@ export default function OnboardingPage() {
                 <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-3">Weekly Billing Memberships by Date of Service (DOS) Volume</p>
                 <p className="text-xs text-[#7A8F79] mb-3 leading-relaxed">
                   Plans are flexible. If you add/drop a case that changes your billing needs, email <strong className="text-[#2F3E4E]">billing@cominghomecare.com</strong> and we can adjust the plan to fit your needs.<br/>
-                  All plans include a 2-week preview of <span className="italic text-[#7A8F79]">my</span><strong>Portal</strong> Basic access.
+                  All plans include a 2-week preview of <span className="italic text-[#7A8F79]">my</span><strong>Provider</strong> Basic access.
                 </p>
                 <div className="rounded-xl overflow-hidden border border-[#D9E1E8] mb-2">
                   {[

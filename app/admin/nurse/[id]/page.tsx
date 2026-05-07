@@ -1266,7 +1266,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
 
             {/* Plan & Trial */}
             <div className="mt-4 pt-4 border-t border-[#D9E1E8]">
-              <p className="text-xs font-semibold text-[#2F3E4E] mb-0.5">myPortal Plan</p>
+              <p className="text-xs font-semibold text-[#2F3E4E] mb-0.5">myProvider Plan</p>
               <p className="text-xs text-[#7A8F79] mb-3">Controls which features this nurse can access.</p>
 
               {/* Tier selector */}

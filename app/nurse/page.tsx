@@ -140,7 +140,7 @@ export default function NurseDashboard() {
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4 flex items-center gap-3">
           <span className="text-amber-500 text-lg">⏳</span>
           <p className="text-xs text-amber-800 font-medium">
-            You&apos;re on a free trial of <strong>myPortal Basic</strong> — expires {new Date(trialExpiresAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}.
+            You&apos;re on a free trial of <strong>myProvider Basic</strong> — expires {new Date(trialExpiresAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}.
           </p>
         </div>
       )}
@@ -206,12 +206,12 @@ export default function NurseDashboard() {
               <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Total Paid</p>
               <p className="text-2xl font-black text-green-600">${claimSummary.totalPaid.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
             </div>
-            <div className="bg-[#7A8F79] rounded-xl p-4">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-white/70 mb-1">Avg Rate per Hour</p>
+            <div className="bg-[#E8EDE7] rounded-xl p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Avg Rate per Hour</p>
               {claimSummary.avgPerHour !== null ? (
                 <p className="text-2xl font-black text-[#2F3E4E]">${claimSummary.avgPerHour.toFixed(2)}</p>
               ) : (
-                <p className="text-sm text-white/70 italic mt-1">No paid claims yet</p>
+                <p className="text-sm text-[#7A8F79] italic mt-1">No paid claims yet</p>
               )}
             </div>
           </div>

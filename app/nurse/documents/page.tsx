@@ -16,6 +16,18 @@ const DOC_CATEGORIES = ['General', 'License', 'Insurance', 'Contract', 'Tax', 'O
 
 const URGENCY_LEVELS = ['Normal', 'Urgent', 'Low']
 
+type RoutedForm = {
+  id: string
+  title: string
+  category: string
+  routedBy: string
+  urgent: boolean
+  status: string
+  storageKey: string | null
+  fileName: string | null
+  createdAt: string
+}
+
 type NurseDocument = {
   id: string
   title: string
@@ -60,6 +72,14 @@ export default function NurseDocumentsPage() {
   const [documents, setDocuments] = useState<NurseDocument[]>([])
   const [loading, setLoading] = useState(true)
   const [downloading, setDownloading] = useState<string | null>(null)
+
+  // Routed forms state
+  const [routedForms, setRoutedForms] = useState<RoutedForm[]>([])
+  const [viewingForm, setViewingForm] = useState<string | null>(null)
+  const [signModal, setSignModal] = useState<RoutedForm | null>(null)
+  const [signFile, setSignFile] = useState<File | null>(null)
+  const [signing, setSigning] = useState(false)
+  const [signDone, setSignDone] = useState(false)
 
   // Upload state
   const [upFile, setUpFile] = useState<File | null>(null)
@@ -118,7 +138,60 @@ export default function NurseDocumentsPage() {
     fetch('/api/nurse/reminders', { credentials: 'include' })
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setReminders(data) })
+
+    fetch('/api/nurse/routed-forms', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data.forms)) setRoutedForms(data.forms) })
   }, [router])
+
+  async function handleViewForm(form: RoutedForm) {
+    if (!form.storageKey) return
+    setViewingForm(form.id)
+    try {
+      const win = window.open('', '_blank')
+      const res = await fetch(`/api/nurse/routed-forms/${form.id}`, { credentials: 'include' })
+      const data = await res.json()
+      if (data.url && win) win.location.href = data.url
+    } finally {
+      setViewingForm(null)
+    }
+  }
+
+  async function handleSignReturn(e: React.FormEvent) {
+    e.preventDefault()
+    if (!signFile || !signModal) return
+    setSigning(true)
+    try {
+      // Phase 1 — get presigned URL
+      const p1 = await fetch(`/api/nurse/routed-forms/${signModal.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ presign: true, fileName: signFile.name, contentType: signFile.type || 'application/octet-stream' }),
+      })
+      const { url, fields, storageKey } = await p1.json()
+
+      // Phase 2 — upload to S3
+      const fd = new FormData()
+      Object.entries(fields as Record<string, string>).forEach(([k, v]) => fd.append(k, v))
+      fd.append('file', signFile)
+      await fetch(url, { method: 'POST', body: fd, mode: 'no-cors' })
+
+      // Phase 3 — confirm
+      await fetch(`/api/nurse/routed-forms/${signModal.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ storageKey, fileName: signFile.name, fileSize: signFile.size, mimeType: signFile.type || null }),
+      })
+
+      setRoutedForms(prev => prev.map(f => f.id === signModal.id ? { ...f, status: 'signed' } : f))
+      setSignDone(true)
+      setSignFile(null)
+    } finally {
+      setSigning(false)
+    }
+  }
 
   function refreshDocuments() {
     fetch('/api/nurse/documents', { credentials: 'include' })
@@ -264,16 +337,95 @@ export default function NurseDocumentsPage() {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     })
 
+  const pendingForms = routedForms.filter(f => f.status === 'pending')
+  const hasPending = pendingForms.length > 0
+
   return (
-    <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-[#2F3E4E]">
+    <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6">
+      <div className="mb-4">
+        <h1 className="text-2xl font-bold text-[#2F3E4E]">
           <span className="text-[#7A8F79] italic">my</span>Documents
         </h1>
-        <p className="text-sm text-[#7A8F79] mt-1">Documents on file with Coming Home Care.</p>
+        <p className="text-xs text-[#7A8F79] mt-0.5">Documents on file with Coming Home Care.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+      {/* ── Pending Documents — always visible ── */}
+      <div className={`rounded-xl shadow mb-4 overflow-hidden border ${hasPending ? 'border-[#7B1C1C]/30' : 'border-[#C5D4C3]'}`}>
+        {/* Header */}
+        <div className={`px-4 py-2.5 flex items-center justify-between ${hasPending ? 'bg-[#2F3E4E]' : 'bg-[#2F3E4E]'}`}>
+          <h2 className={`text-sm font-bold uppercase tracking-widest ${hasPending ? 'text-[#c0392b]' : 'text-[#C5D4C3]'}`}>
+            Pending Documents
+          </h2>
+          {hasPending && (
+            <span className="text-[10px] font-bold bg-[#7B1C1C] text-white px-2 py-0.5 rounded-full">
+              {pendingForms.length} awaiting signature
+            </span>
+          )}
+        </div>
+
+        {/* Table */}
+        <div className="bg-white">
+          {!hasPending ? (
+            <p className="text-xs text-[#7A8F79] italic px-4 py-3">No documents pending — you're all caught up.</p>
+          ) : (
+            <>
+              {/* Column headers */}
+              <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto_auto_auto] gap-0 border-b border-[#D9E1E8] bg-[#F4F6F5]">
+                {['Document Name', 'Category', 'Date Received', 'Sent By', '!', '', ''].map((h, i) => (
+                  <div key={i} className="px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-[#7A8F79]">{h}</div>
+                ))}
+              </div>
+              {/* Rows */}
+              <div className="divide-y divide-[#D9E1E8]">
+                {pendingForms.map(form => (
+                  <div key={form.id} className="grid grid-cols-[2fr_1fr_1fr_1fr_auto_auto_auto] gap-0 items-center hover:bg-[#FAFBFC]">
+                    <div className="px-3 py-2.5">
+                      <p className="text-xs font-semibold text-[#2F3E4E]">{form.title}</p>
+                    </div>
+                    <div className="px-3 py-2.5">
+                      <span className="text-xs text-[#7A8F79]">{form.category}</span>
+                    </div>
+                    <div className="px-3 py-2.5">
+                      <span className="text-xs text-[#7A8F79] font-mono">
+                        {new Date(form.createdAt).toLocaleDateString('en-US', { timeZone: 'UTC', month: '2-digit', day: '2-digit', year: '2-digit' })}
+                      </span>
+                    </div>
+                    <div className="px-3 py-2.5">
+                      <span className="text-xs text-[#7A8F79]">{form.routedBy}</span>
+                    </div>
+                    <div className="px-3 py-2.5">
+                      {form.urgent && <span className="text-[10px] font-bold text-white bg-[#7B1C1C] px-1.5 py-0.5 rounded uppercase">Urgent</span>}
+                    </div>
+                    <div className="px-2 py-2.5">
+                      {form.storageKey ? (
+                        <button
+                          onClick={() => handleViewForm(form)}
+                          disabled={viewingForm === form.id}
+                          className="text-[11px] font-semibold text-[#7A8F79] hover:text-[#2F3E4E] border border-[#D9E1E8] hover:border-[#7A8F79] px-2.5 py-1 rounded-lg transition disabled:opacity-50 whitespace-nowrap"
+                        >
+                          {viewingForm === form.id ? '…' : 'View'}
+                        </button>
+                      ) : (
+                        <span className="text-[10px] text-[#D9E1E8]">—</span>
+                      )}
+                    </div>
+                    <div className="px-2 py-2.5 pr-3">
+                      <button
+                        onClick={() => { setSignModal(form); setSignDone(false); setSignFile(null) }}
+                        className="text-[11px] font-bold text-white bg-[#2F3E4E] hover:bg-[#7A8F79] px-2.5 py-1 rounded-lg transition whitespace-nowrap"
+                      >
+                        Sign &amp; Return
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
 
         {/* ── Col 1: Upload + myRenewals + Inquiry ── */}
         <div className="space-y-5">
@@ -596,6 +748,62 @@ export default function NurseDocumentsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Sign & Return Modal */}
+      {signModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-5 space-y-4">
+            {signDone ? (
+              <>
+                <div className="text-center py-4 space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-[#C5D4C3] flex items-center justify-center mx-auto">
+                    <svg className="w-6 h-6 text-[#2F3E4E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <h3 className="text-base font-bold text-[#2F3E4E]">Document Submitted</h3>
+                  <p className="text-sm text-[#7A8F79] leading-relaxed">
+                    Your signed copy has been received. You can find it saved in your document library below.
+                  </p>
+                  <button
+                    onClick={() => { setSignModal(null); setSignDone(false) }}
+                    className="w-full bg-[#2F3E4E] text-white py-2 rounded-xl text-sm font-semibold hover:bg-[#7A8F79] transition"
+                  >
+                    Close
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-bold text-[#2F3E4E]">Sign &amp; Return</h3>
+                  <button onClick={() => setSignModal(null)} className="text-[#7A8F79] hover:text-[#2F3E4E] text-xl leading-none">×</button>
+                </div>
+                <p className="text-xs text-[#7A8F79]">
+                  <span className="font-semibold text-[#2F3E4E]">{signModal.title}</span> — Upload your signed copy below. A copy will be saved to your documents and Coming Home Care will be notified.
+                </p>
+                <form onSubmit={handleSignReturn} className="space-y-3">
+                  <div>
+                    <label className="text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79]">Signed Document</label>
+                    <input
+                      type="file"
+                      required
+                      onChange={e => setSignFile(e.target.files?.[0] || null)}
+                      className="w-full mt-1 text-sm text-[#2F3E4E] file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#D9E1E8] file:text-[#2F3E4E] hover:file:bg-[#7A8F79] hover:file:text-white transition"
+                    />
+                  </div>
+                  <div className="flex gap-3 pt-1">
+                    <button type="button" onClick={() => setSignModal(null)} className="flex-1 border border-[#D9E1E8] text-[#7A8F79] py-2 rounded-xl text-sm font-semibold hover:bg-[#F4F6F5] transition">Cancel</button>
+                    <button type="submit" disabled={signing || !signFile} className="flex-1 bg-[#2F3E4E] text-white py-2 rounded-xl text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-50">
+                      {signing ? 'Submitting…' : 'Submit Signed Copy'}
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
           </div>
         </div>
       )}

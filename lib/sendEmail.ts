@@ -1494,3 +1494,79 @@ export async function sendAccessDeniedEmail({
     return false
   }
 }
+
+export async function sendRoutedFormAlert({
+  nurseEmail,
+  nurseName,
+  formTitle,
+  urgent,
+}: {
+  nurseEmail: string
+  nurseName: string
+  formTitle: string
+  urgent: boolean
+}): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) return false
+  const resend = createLoggedResend('alert', nurseName)
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to: nurseEmail,
+      subject: `${urgent ? '🔴 URGENT: ' : ''}Action Required — Document Pending in Your Portal`,
+      html: `
+        <div style="font-family:sans-serif;max-width:520px;padding:32px;color:#2F3E4E">
+          <h2 style="margin:0 0 8px;color:${urgent ? '#7B1C1C' : '#2F3E4E'}">${urgent ? '🔴 Urgent: ' : ''}Document Requires Your Attention</h2>
+          <p style="margin:0 0 20px;color:#7A8F79;font-size:14px">Hi ${nurseName}, a document has been sent to you and is waiting for your review and signature.</p>
+          <div style="background:#f4f6f8;border-radius:10px;padding:16px 20px;margin-bottom:24px">
+            <p style="margin:0;font-size:14px"><strong>Document:</strong> ${formTitle}</p>
+          </div>
+          <a href="${PORTAL_URL}/nurse/documents"
+             style="display:inline-block;background:#2F3E4E;color:white;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600">
+            View &amp; Sign Document →
+          </a>
+          <hr style="border:none;border-top:1px solid #D9E1E8;margin:24px 0"/>
+          <p style="font-size:11px;color:#aab">Coming Home Care Services, LLC · <a href="${PORTAL_URL}" style="color:#7A8F79">cominghomecare.com</a></p>
+        </div>
+      `,
+    })
+    return !error
+  } catch {
+    return false
+  }
+}
+
+export async function sendFormReturnedAlert({
+  nurseName,
+  nurseEmail,
+  formTitle,
+}: {
+  nurseName: string
+  nurseEmail: string
+  formTitle: string
+}): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) return false
+  const resend = createLoggedResend('alert', 'Support')
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to: SUPPORT_TO,
+      subject: `Form Signed & Returned — ${nurseName}`,
+      html: `
+        <div style="font-family:sans-serif;max-width:520px;padding:32px;color:#2F3E4E">
+          <h2 style="margin:0 0 8px;color:#2F3E4E">Form Returned</h2>
+          <p style="margin:0 0 20px;color:#7A8F79;font-size:14px">A provider has signed and returned a document.</p>
+          <div style="background:#f4f6f8;border-radius:10px;padding:16px 20px;margin-bottom:24px">
+            <p style="margin:0 0 6px;font-size:14px"><strong>Provider:</strong> ${nurseName} (${nurseEmail})</p>
+            <p style="margin:0;font-size:14px"><strong>Document:</strong> ${formTitle}</p>
+          </div>
+          <p style="font-size:13px;color:#7A8F79">The signed copy has been saved to the provider's document library and is available in the admin portal.</p>
+          <hr style="border:none;border-top:1px solid #D9E1E8;margin:24px 0"/>
+          <p style="font-size:11px;color:#aab">Coming Home Care Services, LLC</p>
+        </div>
+      `,
+    })
+    return !error
+  } catch {
+    return false
+  }
+}

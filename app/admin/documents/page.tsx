@@ -49,6 +49,26 @@ export default function AdminDocumentsPage() {
   const [message, setMessage] = useState('')
   const [messageIsError, setMessageIsError] = useState(false)
 
+  // Route a Form state
+  const FORM_TYPES = ['W-9', 'Assignment of Benefits', 'Signature on File', 'HIPAA Authorization', 'Direct Deposit', 'Other']
+  const [rfNurseId, setRfNurseId] = useState('')
+  const [rfTitle, setRfTitle] = useState('')
+  const [rfCustomTitle, setRfCustomTitle] = useState('')
+  const [rfCategory, setRfCategory] = useState('Form')
+  const [rfUrgent, setRfUrgent] = useState(false)
+  const [rfNotes, setRfNotes] = useState('')
+  const [rfFile, setRfFile] = useState<File | null>(null)
+  const [rfRouting, setRfRouting] = useState(false)
+  const [rfMessage, setRfMessage] = useState('')
+  const [rfMessageIsError, setRfMessageIsError] = useState(false)
+  const [routedForms, setRoutedForms] = useState<{ id: string; title: string; category: string; urgent: boolean; status: string; routedBy: string; createdAt: string; nurse: { displayName: string } }[]>([])
+
+  function fetchRoutedForms() {
+    fetch('/api/admin/routed-forms', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data.forms)) setRoutedForms(data.forms) })
+  }
+
   function fetchQueue() {
     fetch('/api/admin/documents/queue', { credentials: 'include' })
       .then(r => r.json())
@@ -160,7 +180,51 @@ export default function AdminDocumentsPage() {
     }).finally(() => setLoading(false))
     fetchQueue()
     fetchLibrary()
+    fetchRoutedForms()
   }, [router])
+
+  async function handleRouteForm(e: React.FormEvent) {
+    e.preventDefault()
+    const session = await fetch('/api/nurse/profile', { credentials: 'include' }).then(r => r.json()).catch(() => null)
+    const routedBy = session?.user?.name || 'Admin'
+    const finalTitle = rfTitle === 'Other' ? rfCustomTitle.trim() : rfTitle
+    if (!rfNurseId || !finalTitle) return
+    setRfRouting(true); setRfMessage(''); setRfMessageIsError(false)
+    try {
+      const res = await fetch('/api/admin/routed-forms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          nurseId: rfNurseId,
+          title: finalTitle,
+          category: rfCategory,
+          urgent: rfUrgent,
+          notes: rfNotes || null,
+          routedBy,
+          fileName: rfFile?.name || null,
+          contentType: rfFile?.type || null,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setRfMessage(data.error || 'Failed to route form.'); setRfMessageIsError(true); return }
+
+      if (rfFile && data.presign) {
+        const fd = new FormData()
+        Object.entries(data.presign.fields as Record<string, string>).forEach(([k, v]) => fd.append(k, v))
+        fd.append('file', rfFile)
+        await fetch(data.presign.url, { method: 'POST', body: fd, mode: 'no-cors' })
+      }
+
+      setRfMessage(`Form routed to ${nurses.find(n => n.id === rfNurseId)?.displayName || 'provider'} — email sent.`)
+      setRfNurseId(''); setRfTitle(''); setRfCustomTitle(''); setRfCategory('Form')
+      setRfUrgent(false); setRfNotes(''); setRfFile(null)
+      fetchRoutedForms()
+    } catch (err: any) {
+      setRfMessage(err?.message || 'Network error.'); setRfMessageIsError(true)
+    }
+    setRfRouting(false)
+  }
 
   function toggleNurse(id: string) {
     setSelectedNurses(prev =>
@@ -399,6 +463,74 @@ export default function AdminDocumentsPage() {
                 {folderSaving ? '…' : 'Add'}
               </button>
             </form>
+          </div>
+
+          {/* Route a Form */}
+          <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8]">Route a Form</h2>
+            <form onSubmit={handleRouteForm} className="space-y-2">
+              <div>
+                <label className="text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79]">Provider</label>
+                <select value={rfNurseId} onChange={e => setRfNurseId(e.target.value)} required className="w-full border border-[#D9E1E8] px-2 py-1 rounded-lg text-xs text-[#2F3E4E] mt-0.5 focus:outline-none focus:ring-2 focus:ring-[#7A8F79]">
+                  <option value="">Select provider…</option>
+                  {nurses.map(n => <option key={n.id} value={n.id}>{n.user?.name || n.displayName}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79]">Form Type</label>
+                <select value={rfTitle} onChange={e => setRfTitle(e.target.value)} required className="w-full border border-[#D9E1E8] px-2 py-1 rounded-lg text-xs text-[#2F3E4E] mt-0.5 focus:outline-none focus:ring-2 focus:ring-[#7A8F79]">
+                  <option value="">Select form…</option>
+                  {FORM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              {rfTitle === 'Other' && (
+                <div>
+                  <label className="text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79]">Custom Title</label>
+                  <input type="text" value={rfCustomTitle} onChange={e => setRfCustomTitle(e.target.value)} required placeholder="Form name…" className="w-full border border-[#D9E1E8] px-2 py-1 rounded-lg text-xs text-[#2F3E4E] mt-0.5 focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                </div>
+              )}
+              <div>
+                <label className="text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79]">Category</label>
+                <select value={rfCategory} onChange={e => setRfCategory(e.target.value)} className="w-full border border-[#D9E1E8] px-2 py-1 rounded-lg text-xs text-[#2F3E4E] mt-0.5 focus:outline-none focus:ring-2 focus:ring-[#7A8F79]">
+                  <option value="Form">Form</option>
+                  <option value="Tax">Tax</option>
+                  <option value="Contract">Contract</option>
+                  <option value="Authorization">Authorization</option>
+                  {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79]">Attach Blank Form <span className="normal-case font-normal">(optional)</span></label>
+                <input type="file" onChange={e => setRfFile(e.target.files?.[0] || null)} className="w-full mt-0.5 text-xs text-[#2F3E4E] file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#D9E1E8] file:text-[#2F3E4E] hover:file:bg-[#7A8F79] hover:file:text-white transition" />
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79]">Notes <span className="normal-case font-normal">(optional)</span></label>
+                <input type="text" value={rfNotes} onChange={e => setRfNotes(e.target.value)} placeholder="Instructions for provider…" className="w-full border border-[#D9E1E8] px-2 py-1 rounded-lg text-xs text-[#2F3E4E] mt-0.5 focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer pt-0.5">
+                <input type="checkbox" checked={rfUrgent} onChange={e => setRfUrgent(e.target.checked)} className="accent-[#7B1C1C]" />
+                <span className="text-xs text-[#2F3E4E] font-semibold">Mark Urgent</span>
+              </label>
+              <button type="submit" disabled={rfRouting || !rfNurseId || !rfTitle || (rfTitle === 'Other' && !rfCustomTitle.trim())} className="w-full bg-[#2F3E4E] text-white py-1.5 rounded-lg text-xs font-bold hover:bg-[#7A8F79] transition disabled:opacity-50">
+                {rfRouting ? 'Routing…' : 'Route to Provider →'}
+              </button>
+              {rfMessage && <p className={`text-xs ${rfMessageIsError ? 'text-red-600' : 'text-[#7A8F79]'}`}>{rfMessage}</p>}
+            </form>
+
+            {/* Routed forms log */}
+            {routedForms.length > 0 && (
+              <div className="pt-2 border-t border-[#D9E1E8] space-y-1">
+                <p className="text-[9px] font-bold uppercase tracking-widest text-[#7A8F79] mb-1.5">Recently Routed</p>
+                {routedForms.slice(0, 8).map(f => (
+                  <div key={f.id} className="flex items-center gap-2 text-[10px]">
+                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${f.status === 'signed' ? 'bg-green-500' : f.urgent ? 'bg-[#7B1C1C]' : 'bg-amber-400'}`} />
+                    <span className="font-semibold text-[#2F3E4E] truncate">{f.nurse.displayName}</span>
+                    <span className="text-[#7A8F79] truncate flex-1">{f.title}</span>
+                    <span className={`font-semibold flex-shrink-0 ${f.status === 'signed' ? 'text-green-600' : 'text-amber-600'}`}>{f.status === 'signed' ? '✓ Signed' : 'Pending'}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
         </div>

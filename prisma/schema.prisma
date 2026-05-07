@@ -147,6 +147,29 @@ model NurseProfile {
   campaignEnrollments CampaignEnrollment[]
   providerCredits     ProviderCredit[]
   nursePatients       NursePatient[]
+  routedForms         RoutedForm[]
+}
+
+model RoutedForm {
+  id          String    @id @default(uuid())
+  nurseId     String
+  nurse       NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
+  title       String
+  category    String    @default("Form")
+  storageKey  String?               // S3 key for the blank/pre-filled form
+  fileName    String?
+  urgent      Boolean   @default(false)
+  routedBy    String                // admin display name
+  status      String    @default("pending")  // pending | signed
+  notes       String?
+  signedKey   String?               // S3 key for the returned signed form
+  signedFileName String?
+  signedAt    DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([nurseId])
+  @@index([status])
 }
 
 model GlobalEvent {

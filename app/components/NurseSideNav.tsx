@@ -27,8 +27,8 @@ export default function NurseSideNav() {
         width: '10vw',
         maxWidth: '150px',
         minWidth: '120px',
-        background: '#C5D4C3',
-        border: '2px solid #2F3E4E',
+        background: '#f0fff0',
+        border: '2.5px solid #2F3E4E',
         boxShadow:
           'inset 0 0 0 1px #4A5E49, ' +
           '16px 10px 28px rgba(0,0,0,0.18), ' +

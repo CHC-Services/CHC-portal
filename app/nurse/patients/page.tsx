@@ -291,7 +291,7 @@ export default function MyPatients() {
                   </div>
                   <div>
                     <label className={lbl}>Date of Birth</label>
-                    <input required value={srchDob} onChange={e => setSrchDob(e.target.value)} placeholder="YYYY-MM-DD" className={inp} />
+                    <input type="date" required value={srchDob} onChange={e => setSrchDob(e.target.value)} className={inp} />
                   </div>
                   <div>
                     <label className={lbl}>Medicaid / Insurance Member ID</label>

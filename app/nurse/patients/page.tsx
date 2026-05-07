@@ -62,6 +62,16 @@ function fmtDob(dob: string) {
   return `${m}/${d}/${y}`
 }
 
+function Field({ label, value }: { label: string; value: string | null | undefined }) {
+  if (!value) return null
+  return (
+    <div>
+      <p className="text-[9px] font-bold uppercase tracking-widest text-[#7A8F79]">{label}</p>
+      <p className="text-xs text-[#2F3E4E] font-medium uppercase">{value}</p>
+    </div>
+  )
+}
+
 type Step = 'search' | 'found' | 'notfound' | 'newform'
 
 const US_STATES = [
@@ -96,6 +106,7 @@ export default function MyPatients() {
   const [linking, setLinking] = useState(false)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null)
 
   // Step 1 — search fields
   const [srchLast, setSrchLast] = useState('')
@@ -199,7 +210,7 @@ export default function MyPatients() {
   })
 
   // ── Shared input class ──────────────────────────────────────────────────
-  const inp = 'w-full border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]'
+  const inp = 'w-full border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] uppercase'
   const lbl = 'block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1'
 
   return (
@@ -228,7 +239,7 @@ export default function MyPatients() {
         </button>
       </div>
 
-      {/* Patient cards */}
+      {/* Patient roster */}
       {loading ? (
         <p className="text-sm text-[#7A8F79]">Loading…</p>
       ) : filtered.length === 0 ? (
@@ -238,29 +249,133 @@ export default function MyPatients() {
           </p>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map(p => (
-            <div key={p.patientId} className="bg-white rounded-xl shadow-sm p-5">
-              <div className="flex items-start justify-between mb-1">
-                <p className="text-base font-bold text-[#2F3E4E]">{p.merged.firstName} {p.merged.lastName}</p>
-                <span className="text-[10px] font-mono font-semibold text-[#7A8F79] bg-[#F4F6F5] px-2 py-0.5 rounded-full">{p.merged.accountNumber}</span>
+        <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
+          {/* Header row */}
+          <div className="grid grid-cols-[2fr_1fr_1fr_1fr_2fr_1.5fr] min-w-[640px] border-b border-[#D9E1E8] bg-[#F4F6F5]">
+            {['Patient', 'DOB', 'Acct #', 'Ins Type', 'Member ID', 'Dx Codes'].map(h => (
+              <div key={h} className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-[#7A8F79]">{h}</div>
+            ))}
+          </div>
+          {/* Data rows */}
+          <div className="divide-y divide-[#D9E1E8] min-w-[640px]">
+            {filtered.map(p => (
+              <div
+                key={p.patientId}
+                onClick={() => setSelectedPatient(p)}
+                className="grid grid-cols-[2fr_1fr_1fr_1fr_2fr_1.5fr] hover:bg-[#F4F6F5] cursor-pointer transition-colors"
+              >
+                <div className="px-4 py-3">
+                  <p className="text-xs font-bold text-[#2F3E4E] uppercase tracking-wide">
+                    {p.merged.lastName}, {p.merged.firstName}
+                  </p>
+                  {p.merged.highTech && <span className="text-[9px] font-bold text-amber-600 uppercase tracking-wide">HI-TECH</span>}
+                </div>
+                <div className="px-4 py-3 flex items-center">
+                  <span className="text-xs text-[#2F3E4E] font-mono">{fmtDob(p.merged.dob)}</span>
+                </div>
+                <div className="px-4 py-3 flex items-center">
+                  <span className="text-xs text-[#7A8F79] font-mono">{p.merged.accountNumber}</span>
+                </div>
+                <div className="px-4 py-3 flex items-center">
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${p.merged.insuranceType === 'Medicaid' ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700'}`}>
+                    {p.merged.insuranceType}
+                  </span>
+                </div>
+                <div className="px-4 py-3 flex items-center">
+                  <span className="text-xs text-[#2F3E4E] font-mono truncate">{p.merged.insuranceId}</span>
+                </div>
+                <div className="px-4 py-3 flex items-center">
+                  <span className="text-xs text-[#7A8F79] truncate">
+                    {[p.merged.dxCode1, p.merged.dxCode2, p.merged.dxCode3, p.merged.dxCode4].filter(Boolean).join(' · ') || '—'}
+                  </span>
+                </div>
               </div>
-              <p className="text-xs text-[#7A8F79] mb-3">DOB: {fmtDob(p.merged.dob)} {p.merged.gender ? `· ${p.merged.gender}` : ''}</p>
-              <div className="space-y-1 text-xs text-[#2F3E4E]">
-                <p><span className="text-[#7A8F79]">Insurance:</span> {p.merged.insuranceType} — {p.merged.insuranceId}</p>
-                {p.merged.insuranceName && <p><span className="text-[#7A8F79]">Carrier:</span> {p.merged.insuranceName}</p>}
-                {p.merged.paNumber && <p><span className="text-[#7A8F79]">PA #:</span> {p.merged.paNumber} ({p.merged.paStartDate}–{p.merged.paEndDate})</p>}
-                {(p.merged.dxCode1 || p.merged.dxCode2 || p.merged.dxCode3 || p.merged.dxCode4) && (
-                  <p><span className="text-[#7A8F79]">Dx:</span> {[p.merged.dxCode1, p.merged.dxCode2, p.merged.dxCode3, p.merged.dxCode4].filter(Boolean).join(', ')}</p>
-                )}
-                {p.merged.highTech && <p className="text-amber-600 font-semibold">High-Tech</p>}
-                {p.merged.phone && <p><span className="text-[#7A8F79]">Phone:</span> {p.merged.phone}</p>}
-                {p.merged.address && (
-                  <p><span className="text-[#7A8F79]">Address:</span> {p.merged.address}{p.merged.city ? `, ${p.merged.city}` : ''}{p.merged.state ? `, ${p.merged.state}` : ''} {p.merged.zip || ''}</p>
-                )}
+            ))}
+          </div>
+          <div className="px-4 py-2 bg-[#F4F6F5] border-t border-[#D9E1E8] text-[10px] text-[#7A8F79]">
+            {filtered.length} patient{filtered.length !== 1 ? 's' : ''}
+          </div>
+        </div>
+      )}
+
+      {/* Patient detail drawer */}
+      {selectedPatient && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div className="absolute inset-0 bg-black/30" onClick={() => setSelectedPatient(null)} />
+          <div className="relative w-full max-w-md bg-white shadow-2xl overflow-y-auto flex flex-col">
+            {/* Drawer header */}
+            <div className="flex items-start justify-between px-5 py-4 border-b border-[#D9E1E8] bg-[#2F3E4E] text-white sticky top-0 z-10">
+              <div>
+                <p className="text-lg font-bold uppercase tracking-wide">
+                  {selectedPatient.merged.lastName}, {selectedPatient.merged.firstName}
+                </p>
+                <p className="text-xs text-[#C5D4C3] mt-0.5 font-mono">
+                  #{selectedPatient.merged.accountNumber} · DOB {fmtDob(selectedPatient.merged.dob)}
+                  {selectedPatient.merged.gender ? ` · ${selectedPatient.merged.gender}` : ''}
+                </p>
               </div>
+              <button onClick={() => setSelectedPatient(null)} className="text-white/60 hover:text-white text-2xl leading-none mt-0.5 ml-4">✕</button>
             </div>
-          ))}
+
+            <div className="p-5 space-y-5 text-[#2F3E4E]">
+
+              {/* Demographics */}
+              <section>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] mb-2">Demographics</p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                  <Field label="Phone" value={selectedPatient.merged.phone} />
+                  <Field label="Address" value={[selectedPatient.merged.address, selectedPatient.merged.city, selectedPatient.merged.state, selectedPatient.merged.zip].filter(Boolean).join(', ')} />
+                </div>
+              </section>
+
+              {/* Insurance */}
+              <section>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] mb-2">Insurance</p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                  <Field label="Type" value={selectedPatient.merged.insuranceType} />
+                  <Field label="Member ID" value={selectedPatient.merged.insuranceId} />
+                  <Field label="Carrier" value={selectedPatient.merged.insuranceName} />
+                  <Field label="Group" value={selectedPatient.merged.insuranceGroup} />
+                  <Field label="Plan" value={selectedPatient.merged.insurancePlan} />
+                  <Field label="Network" value={selectedPatient.merged.networkStatus} />
+                  <Field label="Subscriber" value={selectedPatient.merged.subscriberName} />
+                  <Field label="Relation" value={selectedPatient.merged.subscriberRelation} />
+                </div>
+              </section>
+
+              {/* Prior Auth */}
+              {(selectedPatient.merged.paNumber || selectedPatient.merged.paStartDate) && (
+                <section>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] mb-2">Prior Authorization</p>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                    <Field label="PA #" value={selectedPatient.merged.paNumber} />
+                    <Field label="Start" value={fmtDob(selectedPatient.merged.paStartDate || '')} />
+                    <Field label="End" value={fmtDob(selectedPatient.merged.paEndDate || '')} />
+                  </div>
+                </section>
+              )}
+
+              {/* Clinical */}
+              <section>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] mb-2">Clinical</p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                  <Field label="Dx 1" value={selectedPatient.merged.dxCode1} />
+                  <Field label="Dx 2" value={selectedPatient.merged.dxCode2} />
+                  <Field label="Dx 3" value={selectedPatient.merged.dxCode3} />
+                  <Field label="Dx 4" value={selectedPatient.merged.dxCode4} />
+                  <Field label="Hi-Tech" value={selectedPatient.merged.highTech ? 'Yes' : null} />
+                  <Field label="Case Rate" value={selectedPatient.merged.hasCaseRate ? (selectedPatient.merged.caseRateAmount || 'Yes') : null} />
+                </div>
+                {selectedPatient.merged.policyNotes && (
+                  <div className="mt-2">
+                    <p className="text-[10px] font-semibold uppercase text-[#7A8F79]">Notes</p>
+                    <p className="text-xs text-[#2F3E4E] mt-0.5 whitespace-pre-line">{selectedPatient.merged.policyNotes}</p>
+                  </div>
+                )}
+              </section>
+
+            </div>
+          </div>
         </div>
       )}
 
@@ -378,7 +493,7 @@ export default function MyPatients() {
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className={lbl}>Date of Birth</label>
-                          <input required value={newPt.dob} onChange={e => setPt('dob', e.target.value)} placeholder="YYYY-MM-DD" className={inp} />
+                          <input type="date" required value={newPt.dob} onChange={e => setPt('dob', e.target.value)} className={inp} />
                         </div>
                         <div>
                           <label className={lbl}>Sex</label>
@@ -500,11 +615,11 @@ export default function MyPatients() {
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className={lbl}>PA Start Date</label>
-                          <input value={newPt.paStartDate} onChange={e => setPt('paStartDate', e.target.value)} placeholder="YYYY-MM-DD" className={inp} />
+                          <input type="date" value={newPt.paStartDate} onChange={e => setPt('paStartDate', e.target.value)} className={inp} />
                         </div>
                         <div>
                           <label className={lbl}>PA End Date</label>
-                          <input value={newPt.paEndDate} onChange={e => setPt('paEndDate', e.target.value)} placeholder="YYYY-MM-DD" className={inp} />
+                          <input type="date" value={newPt.paEndDate} onChange={e => setPt('paEndDate', e.target.value)} className={inp} />
                         </div>
                       </div>
 

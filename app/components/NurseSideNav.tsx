@@ -26,7 +26,8 @@ export default function NurseSideNav() {
         height: 'clamp(220px, 35vw, 460px)',
         width: '10vw',
         maxWidth: '150px',
-        minWidth: '120px',
+        minWidth: '15
+        0px',
         background: '#f0fff0',
         border: '2.5px solid #2F3E4E',
         boxShadow:

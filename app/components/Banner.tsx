@@ -76,7 +76,7 @@ export default function Banner({ user }: BannerProps) {
             <Link href="/nurse" onClick={() => setMenuOpen(false)} className={`md:hidden transition ${pathname === "/nurse" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Dashboard
             </Link>
-            <Link href="/calendar" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/calendar" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+            <Link href="/calendar" onClick={() => setMenuOpen(false)} className={`md:hidden transition ${pathname === "/calendar" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Calendar
             </Link>
             <Link href="/nurse/patients" onClick={() => setMenuOpen(false)} className={`md:hidden transition ${pathname === "/nurse/patients" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
@@ -144,7 +144,7 @@ export default function Banner({ user }: BannerProps) {
                     <Link href="/resources" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/resources" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                         Resources
                     </Link>
-                    <Link href="/care" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/care" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                    <Link href="/care" onClick={() => setMenuOpen(false)} className={`transition ${role === 'nurse' ? 'md:hidden ' : ''}${pathname === "/care" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                         <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Care
                     </Link>
                 </>

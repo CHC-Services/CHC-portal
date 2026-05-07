@@ -19,11 +19,7 @@ export default function PortalPage() {
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (!data) { router.push('/login'); return }
-        if (data.role === 'nurse' || data.role === 'admin') {
-          router.push(data.role === 'admin' ? '/admin' : '/nurse')
-          return
-        }
-        setUser(data)
+        router.push(data.role === 'admin' ? '/admin' : '/nurse')
       })
   }, [router])
 

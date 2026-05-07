@@ -39,7 +39,11 @@ export default function LoginPage() {
         return
       }
 
-      window.location.href = '/'
+      if (data.role === 'admin') {
+        window.location.href = '/admin'
+      } else {
+        window.location.href = '/nurse'
+      }
 
     } catch {
       setError('Something went wrong. Please try again.')

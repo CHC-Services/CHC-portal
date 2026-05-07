@@ -11,6 +11,7 @@ const links = [
   { href: '/nurse/invoices',  label: 'Invoices'  },
   { href: '/nurse/documents', label: 'Documents' },
   { href: '/nurse/profile',   label: 'Profile'   },
+  { href: '/care',            label: 'Care'      },
 ]
 
 export default function NurseSideNav() {

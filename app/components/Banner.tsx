@@ -70,24 +70,31 @@ export default function Banner({ user }: BannerProps) {
     ) : null
 
     // Row 1: personal "my" portal links
+    // Nurse links marked md:hidden live in the floating side nav on desktop; keep them here for mobile hamburger
     const myRow = role === 'nurse' ? (
         <>
-            <Link href="/nurse" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/nurse" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+            <Link href="/nurse" onClick={() => setMenuOpen(false)} className={`md:hidden transition ${pathname === "/nurse" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Dashboard
             </Link>
             <Link href="/calendar" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/calendar" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Calendar
             </Link>
-            <Link href="/nurse/claims" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/nurse/claims" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+            <Link href="/nurse/patients" onClick={() => setMenuOpen(false)} className={`md:hidden transition ${pathname === "/nurse/patients" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Patients
+            </Link>
+            <Link href="/nurse/hours" onClick={() => setMenuOpen(false)} className={`md:hidden transition ${pathname === "/nurse/hours" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Hours
+            </Link>
+            <Link href="/nurse/claims" onClick={() => setMenuOpen(false)} className={`md:hidden transition ${pathname === "/nurse/claims" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Claims
             </Link>
-            <Link href="/nurse/invoices" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/nurse/invoices" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+            <Link href="/nurse/invoices" onClick={() => setMenuOpen(false)} className={`md:hidden transition ${pathname === "/nurse/invoices" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Invoices
             </Link>
-            <Link href="/nurse/documents" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/nurse/documents" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+            <Link href="/nurse/documents" onClick={() => setMenuOpen(false)} className={`md:hidden transition ${pathname === "/nurse/documents" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Documents
             </Link>
-            <Link href="/nurse/profile" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/nurse/profile" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+            <Link href="/nurse/profile" onClick={() => setMenuOpen(false)} className={`md:hidden transition ${pathname === "/nurse/profile" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Profile
             </Link>
         </>
@@ -154,6 +161,9 @@ export default function Banner({ user }: BannerProps) {
         ] : []),
         ...(role === 'nurse' ? [
             { href: '/nurse', label: 'Dashboard', icon: '📊' },
+            { href: '/nurse/patients', label: 'Patients', icon: '🏥' },
+            { href: '/nurse/hours', label: 'Hours', icon: '⏱' },
+            { href: '/nurse/claims', label: 'Claims', icon: '📋' },
             { href: '/nurse/documents', label: 'Documents', icon: '📁' },
             { href: '/nurse/profile', label: 'Profile', icon: '👤' },
         ] : []),

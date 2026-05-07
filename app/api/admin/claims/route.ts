@@ -105,6 +105,7 @@ export async function GET(req: Request) {
   }
 
   const claims = await (prisma.claim.findMany as any)({
+    where: { nurse: { isDemo: false } },
     include: {
       nurse: { select: { displayName: true, accountNumber: true } }
     },

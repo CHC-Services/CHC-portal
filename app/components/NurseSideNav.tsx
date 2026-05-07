@@ -21,24 +21,26 @@ export default function NurseSideNav() {
     <div
       className="hidden lg:flex fixed z-40 flex-col"
       style={{
-        left: '1rem',
-        top: 'calc(100px + 20vh)',
-        height: '60vh',
+        left: 'max(1rem, calc(50vw - 650px + 1rem))',
+        top: 'calc(80px + 20vh)',
+        height: 'clamp(220px, 35vw, 460px)',
         width: '10vw',
+        maxWidth: '150px',
+        minWidth: '120px',
         background: '#C5D4C3',
         border: '2px solid #2F3E4E',
         boxShadow:
           'inset 0 0 0 1px #4A5E49, ' +
-          '6px 10px 28px rgba(0,0,0,0.18), ' +
-          '3px 4px 0 rgba(47,62,78,0.12)',
+          '16px 10px 28px rgba(0,0,0,0.18), ' +
+          '3px 4px 0 rgba(45, 54, 64, 0.12)',
         borderRadius: '12px',
         overflow: 'hidden',
       }}
     >
       {/* Header label */}
-      <div className="px-3 pt-3 pb-2 border-b border-[#2F3E4E]/20 shrink-0">
-        <p className="text-[9px] font-bold uppercase tracking-widest text-[#2F3E4E]/50 select-none">
-          <span style={{ color: '#4A5E49', fontStyle: 'italic' }}>my</span>Provider
+      <div className="px-3 pt-3 pb-2 border-b border-[#2F3E4E]/30 shrink-0">
+        <p className="text-[12px] text-center font-bold uppercase tracking-widest text-[#2F3E4E]/55 select-none">
+          <span style={{ fontWeight: 'bold', textTransform: 'lowercase', color: '#4A5E49', fontStyle: 'italic' }}>my</span>Provider Pages
         </p>
       </div>
 

@@ -55,6 +55,13 @@ type SearchMatch = {
   state: string | null
 }
 
+function fmtDob(dob: string) {
+  if (!dob) return ''
+  const [y, m, d] = dob.split('-')
+  if (!y || !m || !d) return dob
+  return `${m}/${d}/${y}`
+}
+
 type Step = 'search' | 'found' | 'notfound' | 'newform'
 
 const US_STATES = [
@@ -238,7 +245,7 @@ export default function MyPatients() {
                 <p className="text-base font-bold text-[#2F3E4E]">{p.merged.firstName} {p.merged.lastName}</p>
                 <span className="text-[10px] font-mono font-semibold text-[#7A8F79] bg-[#F4F6F5] px-2 py-0.5 rounded-full">{p.merged.accountNumber}</span>
               </div>
-              <p className="text-xs text-[#7A8F79] mb-3">DOB: {p.merged.dob} {p.merged.gender ? `· ${p.merged.gender}` : ''}</p>
+              <p className="text-xs text-[#7A8F79] mb-3">DOB: {fmtDob(p.merged.dob)} {p.merged.gender ? `· ${p.merged.gender}` : ''}</p>
               <div className="space-y-1 text-xs text-[#2F3E4E]">
                 <p><span className="text-[#7A8F79]">Insurance:</span> {p.merged.insuranceType} — {p.merged.insuranceId}</p>
                 {p.merged.insuranceName && <p><span className="text-[#7A8F79]">Carrier:</span> {p.merged.insuranceName}</p>}
@@ -305,7 +312,7 @@ export default function MyPatients() {
                           <p className="font-bold text-[#2F3E4E]">{m.firstName} {m.lastName}</p>
                           <span className="text-[10px] font-mono text-[#7A8F79] bg-[#F4F6F5] px-2 py-0.5 rounded-full">{m.accountNumber}</span>
                         </div>
-                        <p className="text-xs text-[#7A8F79] mb-1">DOB: {m.dob}</p>
+                        <p className="text-xs text-[#7A8F79] mb-1">DOB: {fmtDob(m.dob)}</p>
                         <p className="text-xs text-[#7A8F79] mb-3">{m.insuranceType} — {m.insuranceId}</p>
                         {m.address && <p className="text-xs text-[#7A8F79] mb-3">{m.address}{m.city ? `, ${m.city}` : ''}{m.state ? `, ${m.state}` : ''}</p>}
                         <button onClick={() => handleLink(m.id)} disabled={linking}

@@ -35,7 +35,7 @@ body {
 
 /* constrain main container width globally */
 .page-wrap {
-  max-width: 1400px;
+  max-width: 1300px;
   margin-left: auto;
   margin-right: auto;
   /* keep the previous light background inside */

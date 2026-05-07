@@ -307,21 +307,22 @@ export default function NurseDocumentsPage() {
                   {DOC_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">File</label>
                 <input
                   type="file"
                   onChange={e => setUpFile(e.target.files?.[0] || null)}
                   required
-                  className="flex-1 text-sm text-[#2F3E4E] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#D9E1E8] file:text-[#2F3E4E] hover:file:bg-[#7A8F79] hover:file:text-white transition"
+                  className="w-full text-sm text-[#2F3E4E] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#D9E1E8] file:text-[#2F3E4E] hover:file:bg-[#7A8F79] hover:file:text-white transition"
                 />
-                <button
-                  type="submit"
-                  disabled={upUploading || !upFile || !upTitle}
-                  className="flex-shrink-0 bg-[#7A8F79] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#2F3E4E] transition disabled:opacity-50"
-                >
-                  {upUploading ? 'Uploading…' : 'Upload'}
-                </button>
               </div>
+              <button
+                type="submit"
+                disabled={upUploading || !upFile || !upTitle}
+                className="w-full bg-[#7A8F79] text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-[#2F3E4E] transition disabled:opacity-50"
+              >
+                {upUploading ? 'Uploading…' : 'Upload Document'}
+              </button>
               {upMessage && <p className={`text-sm ${upMessageIsError ? 'text-[#9B1C1C]' : 'text-[#7A8F79]'}`}>{upMessage}</p>}
             </form>
           </div>

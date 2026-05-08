@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
+import { PDFDocument, PDFTextField, rgb, StandardFonts } from 'pdf-lib'
 import SignaturePad from 'signature_pad'
 
 const REMINDER_CATEGORIES = [
@@ -218,18 +218,65 @@ export default function NurseDocumentsPage() {
         pdfDoc = await PDFDocument.create()
       }
 
-      // 2. Embed signature image from canvas
+      // 2. Embed signature image
       const sigDataUrl = signPadObj.current.toDataURL('image/png')
       const sigBytes = await fetch(sigDataUrl).then(r => r.arrayBuffer())
       const sigImage = await pdfDoc.embedPng(sigBytes)
 
-      // 3. Embed fonts
+      const pages = pdfDoc.getPages()
+      const firstPage = pages[0] ?? pdfDoc.addPage([612, 792])
+      const { height: pageHeight } = firstPage.getSize()
+
+      // 3. Try to fill AcroForm fields (fillable PDFs only)
+      let sigRect: { x: number; y: number; width: number; height: number } | null = null
+      try {
+        const form = pdfDoc.getForm()
+        const formFields = form.getFields()
+
+        for (const field of formFields) {
+          const fieldName = field.getName()
+
+          // Fill SSN into matching text fields
+          if (field instanceof PDFTextField) {
+            if (/ssn|social.?sec|taxpayer/i.test(fieldName)) {
+              field.setText(signSsn)
+            } else if (/f1[_.]?10\b/i.test(fieldName)) {
+              field.setText(ssnDigits.slice(0, 3))
+            } else if (/f1[_.]?11\b/i.test(fieldName)) {
+              field.setText(ssnDigits.slice(3, 5))
+            } else if (/f1[_.]?12\b/i.test(fieldName)) {
+              field.setText(ssnDigits.slice(5))
+            }
+          }
+
+          // Find signature widget rectangle (any field type with "sign" in name)
+          if (/sign/i.test(fieldName) && !sigRect) {
+            try {
+              const widgets = field.acroField.getWidgets()
+              if (widgets.length > 0) sigRect = widgets[0].getRectangle()
+            } catch { /* field may not have a standard widget */ }
+          }
+        }
+
+        form.flatten()
+      } catch { /* PDF has no AcroForm or is XFA-based — skip field filling */ }
+
+      // 4. Stamp signature image on the form
+      // Uses detected AcroForm widget rect, or falls back to approximate W-9 signature area
+      const sigTarget = sigRect ?? { x: 50, y: pageHeight * 0.18, width: 230, height: 50 }
+      const sigOnForm = sigImage.scaleToFit(sigTarget.width - 4, sigTarget.height - 4)
+      firstPage.drawImage(sigImage, {
+        x: sigTarget.x + 2,
+        y: sigTarget.y + (sigTarget.height - sigOnForm.height) / 2,
+        width: sigOnForm.width,
+        height: sigOnForm.height,
+      })
+
+      // 5. Append certification/audit trail page
       const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
       const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
-
-      // 4. Add certification page
-      const page = pdfDoc.addPage([612, 792])
-      const { width, height } = page.getSize()
+      const certPage = pdfDoc.addPage([612, 792])
+      const { width: cw, height: ch } = certPage.getSize()
       const L = 50
       const navy = rgb(0.184, 0.243, 0.306)
       const sage = rgb(0.478, 0.561, 0.475)
@@ -239,58 +286,56 @@ export default function NurseDocumentsPage() {
       const dateStr = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
       const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZoneName: 'short' })
 
-      let y = height - 60
-      page.drawText('Electronic Signature Certification', { x: L, y, size: 18, font: boldFont, color: navy })
+      let y = ch - 60
+      certPage.drawText('Electronic Signature Certification', { x: L, y, size: 18, font: boldFont, color: navy })
       y -= 10
-      page.drawLine({ start: { x: L, y }, end: { x: width - L, y }, thickness: 1, color: sage })
+      certPage.drawLine({ start: { x: L, y }, end: { x: cw - L, y }, thickness: 1, color: sage })
       y -= 28
-      page.drawText('Form:', { x: L, y, size: 10, font: boldFont, color: sage })
-      page.drawText(signModal.title, { x: L + 42, y, size: 10, font, color: navy })
+      certPage.drawText('Form:', { x: L, y, size: 10, font: boldFont, color: sage })
+      certPage.drawText(signModal.title, { x: L + 42, y, size: 10, font, color: navy })
       y -= 18
-      page.drawText('Provider:', { x: L, y, size: 10, font: boldFont, color: sage })
-      page.drawText(nurseName, { x: L + 54, y, size: 10, font, color: navy })
+      certPage.drawText('Provider:', { x: L, y, size: 10, font: boldFont, color: sage })
+      certPage.drawText(nurseName, { x: L + 54, y, size: 10, font, color: navy })
       y -= 18
-      page.drawText('Date:', { x: L, y, size: 10, font: boldFont, color: sage })
-      page.drawText(`${dateStr}  •  ${timeStr}`, { x: L + 36, y, size: 10, font, color: navy })
+      certPage.drawText('Date:', { x: L, y, size: 10, font: boldFont, color: sage })
+      certPage.drawText(`${dateStr}  •  ${timeStr}`, { x: L + 36, y, size: 10, font, color: navy })
       y -= 18
-      page.drawText('SSN:', { x: L, y, size: 10, font: boldFont, color: sage })
-      page.drawText(signSsn, { x: L + 34, y, size: 10, font: boldFont, color: navy })
+      certPage.drawText('SSN:', { x: L, y, size: 10, font: boldFont, color: sage })
+      certPage.drawText(signSsn, { x: L + 34, y, size: 10, font: boldFont, color: navy })
       y -= 30
-      page.drawText(`I, ${nurseName}, certify under penalties of perjury that the information`, { x: L, y, size: 10, font, color: muted })
+      certPage.drawText(`I, ${nurseName}, certify under penalties of perjury that the information`, { x: L, y, size: 10, font, color: muted })
       y -= 15
-      page.drawText('on this document is true, correct, and complete.', { x: L, y, size: 10, font, color: muted })
+      certPage.drawText('on this document is true, correct, and complete.', { x: L, y, size: 10, font, color: muted })
       y -= 50
-
-      const sigDims = sigImage.scaleToFit(220, 80)
-      page.drawImage(sigImage, { x: L, y: y - sigDims.height, width: sigDims.width, height: sigDims.height })
-      y -= sigDims.height + 10
-      page.drawLine({ start: { x: L, y }, end: { x: L + 220, y }, thickness: 0.5, color: muted })
+      const certSigDims = sigImage.scaleToFit(220, 80)
+      certPage.drawImage(sigImage, { x: L, y: y - certSigDims.height, width: certSigDims.width, height: certSigDims.height })
+      y -= certSigDims.height + 10
+      certPage.drawLine({ start: { x: L, y }, end: { x: L + 220, y }, thickness: 0.5, color: muted })
       y -= 15
-      page.drawText(nurseName, { x: L, y, size: 10, font: boldFont, color: navy })
+      certPage.drawText(nurseName, { x: L, y, size: 10, font: boldFont, color: navy })
       y -= 14
-      page.drawText(dateStr, { x: L, y, size: 9, font, color: muted })
+      certPage.drawText(dateStr, { x: L, y, size: 9, font, color: muted })
       y -= 40
-      page.drawLine({ start: { x: L, y }, end: { x: width - L, y }, thickness: 0.5, color: rgb(0.88, 0.88, 0.88) })
+      certPage.drawLine({ start: { x: L, y }, end: { x: cw - L, y }, thickness: 0.5, color: rgb(0.88, 0.88, 0.88) })
       y -= 14
-      page.drawText('Generated by Coming Home Care Provider Portal · cominghomecare.com', { x: L, y, size: 8, font, color: rgb(0.7, 0.7, 0.7) })
+      certPage.drawText('Generated by Coming Home Care Provider Portal · cominghomecare.com', { x: L, y, size: 8, font, color: rgb(0.7, 0.7, 0.7) })
 
-      // 5. Serialize to file
+      // 6. Serialize and upload
       const signedBytes = await pdfDoc.save()
       const signedBlob = new Blob([signedBytes.buffer as ArrayBuffer], { type: 'application/pdf' })
       const safeTitle = signModal.title.replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '-')
       const signedFile = new File([signedBlob], `${safeTitle}-signed.pdf`, { type: 'application/pdf' })
 
-      // 6. Upload via 3-phase flow
       const p1Res = await fetch(`/api/nurse/routed-forms/${signModal.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ presign: true, fileName: signedFile.name, contentType: 'application/pdf' }),
       })
-      const { url: uploadUrl, fields, storageKey } = await p1Res.json()
+      const { url: uploadUrl, fields: s3Fields, storageKey } = await p1Res.json()
 
       const fd = new FormData()
-      Object.entries(fields as Record<string, string>).forEach(([k, v]) => fd.append(k, v))
+      Object.entries(s3Fields as Record<string, string>).forEach(([k, v]) => fd.append(k, v))
       fd.append('file', signedFile)
       await fetch(uploadUrl, { method: 'POST', body: fd, mode: 'no-cors' })
 

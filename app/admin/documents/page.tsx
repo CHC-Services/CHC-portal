@@ -63,6 +63,8 @@ export default function AdminDocumentsPage() {
   const [rfMessage, setRfMessage] = useState('')
   const [rfMessageIsError, setRfMessageIsError] = useState(false)
   const [routedForms, setRoutedForms] = useState<{ id: string; title: string; category: string; urgent: boolean; status: string; routedBy: string; createdAt: string; nurse: { displayName: string } }[]>([])
+  const [rfDeleting, setRfDeleting] = useState<string | null>(null)
+  const [rfResending, setRfResending] = useState<string | null>(null)
 
   // Form Templates state
   const [formTemplates, setFormTemplates] = useState<FormTemplate[]>([])
@@ -673,12 +675,45 @@ export default function AdminDocumentsPage() {
             {routedForms.length > 0 && (
               <div className="pt-2 border-t border-[#D9E1E8] space-y-1">
                 <p className="text-[9px] font-bold uppercase tracking-widest text-[#7A8F79] mb-1.5">Recently Routed</p>
-                {routedForms.slice(0, 8).map(f => (
-                  <div key={f.id} className="flex items-center gap-2 text-[10px]">
+                {routedForms.slice(0, 10).map(f => (
+                  <div key={f.id} className="flex items-center gap-1.5 text-[10px] group">
                     <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${f.status === 'signed' ? 'bg-green-500' : f.urgent ? 'bg-[#7B1C1C]' : 'bg-amber-400'}`} />
                     <span className="font-semibold text-[#2F3E4E] truncate">{f.nurse.displayName}</span>
                     <span className="text-[#7A8F79] truncate flex-1">{f.title}</span>
-                    <span className={`font-semibold flex-shrink-0 ${f.status === 'signed' ? 'text-green-600' : 'text-amber-600'}`}>{f.status === 'signed' ? '✓ Signed' : 'Pending'}</span>
+                    {f.status === 'signed' ? (
+                      <span className="text-green-600 font-semibold flex-shrink-0">✓ Signed</span>
+                    ) : (
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button
+                          type="button"
+                          title="Resend email"
+                          disabled={rfResending === f.id}
+                          onClick={async () => {
+                            setRfResending(f.id)
+                            await fetch(`/api/admin/routed-forms/${f.id}`, { method: 'PATCH', credentials: 'include' })
+                            setRfResending(null)
+                          }}
+                          className="text-[#7A8F79] hover:text-[#2F3E4E] border border-[#D9E1E8] px-1.5 py-0.5 rounded transition disabled:opacity-40"
+                        >
+                          {rfResending === f.id ? '…' : '↻'}
+                        </button>
+                        <button
+                          type="button"
+                          title="Cancel & delete"
+                          disabled={rfDeleting === f.id}
+                          onClick={async () => {
+                            if (!confirm(`Cancel "${f.title}" for ${f.nurse.displayName}?`)) return
+                            setRfDeleting(f.id)
+                            await fetch(`/api/admin/routed-forms/${f.id}`, { method: 'DELETE', credentials: 'include' })
+                            setRoutedForms(prev => prev.filter(r => r.id !== f.id))
+                            setRfDeleting(null)
+                          }}
+                          className="text-red-400 hover:text-red-600 border border-red-100 px-1.5 py-0.5 rounded transition disabled:opacity-40"
+                        >
+                          {rfDeleting === f.id ? '…' : '✕'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

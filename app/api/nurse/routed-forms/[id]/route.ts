@@ -10,7 +10,9 @@ function nurseSession(req: Request) {
   return token ? verifyToken(token) : null
 }
 
-// GET /api/nurse/routed-forms/[id] — presigned view URL for the routed form
+// GET /api/nurse/routed-forms/[id]
+// ?download=1  → proxy raw PDF bytes (used by pdf-lib in-browser, avoids CORS)
+// default      → return presigned view URL
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const session = nurseSession(req)
@@ -22,8 +24,18 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const nurse = await prisma.nurseProfile.findFirst({ where: { userId: session.id } })
   if (!nurse || nurse.id !== form.nurseId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const url = await getPresignedDownloadUrl(form.storageKey)
-  return NextResponse.json({ url })
+  const presignedUrl = await getPresignedDownloadUrl(form.storageKey)
+
+  const reqUrl = new URL(req.url)
+  if (reqUrl.searchParams.get('download') === '1') {
+    const pdfRes = await fetch(presignedUrl)
+    const bytes = await pdfRes.arrayBuffer()
+    return new Response(bytes, {
+      headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': 'inline' },
+    })
+  }
+
+  return NextResponse.json({ url: presignedUrl })
 }
 
 // POST /api/nurse/routed-forms/[id] — sign & return

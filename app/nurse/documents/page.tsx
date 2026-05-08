@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
+import SignaturePad from 'signature_pad'
 
 const REMINDER_CATEGORIES = [
   { value: 'license',   label: '📄 Professional License' },
@@ -77,9 +79,13 @@ export default function NurseDocumentsPage() {
   const [routedForms, setRoutedForms] = useState<RoutedForm[]>([])
   const [viewingForm, setViewingForm] = useState<string | null>(null)
   const [signModal, setSignModal] = useState<RoutedForm | null>(null)
-  const [signFile, setSignFile] = useState<File | null>(null)
   const [signing, setSigning] = useState(false)
   const [signDone, setSignDone] = useState(false)
+  const [signSsn, setSignSsn] = useState('')
+  const [signShowSsn, setSignShowSsn] = useState(false)
+  const [signPadError, setSignPadError] = useState('')
+  const signPadRef = useRef<HTMLCanvasElement>(null)
+  const signPadObj = useRef<SignaturePad | null>(null)
 
   // Upload state
   const [upFile, setUpFile] = useState<File | null>(null)
@@ -157,40 +163,153 @@ export default function NurseDocumentsPage() {
     }
   }
 
+  function formatSsn(raw: string): string {
+    const d = raw.replace(/\D/g, '').slice(0, 9)
+    if (d.length <= 3) return d
+    if (d.length <= 5) return `${d.slice(0, 3)}-${d.slice(3)}`
+    return `${d.slice(0, 3)}-${d.slice(3, 5)}-${d.slice(5)}`
+  }
+
+  // Initialize SignaturePad when the sign modal opens
+  useEffect(() => {
+    if (!signModal || signDone) return
+    const timer = setTimeout(() => {
+      const canvas = signPadRef.current
+      if (!canvas) return
+      const ratio = Math.max(window.devicePixelRatio || 1, 2)
+      canvas.width = canvas.offsetWidth * ratio
+      canvas.height = canvas.offsetHeight * ratio
+      const ctx = canvas.getContext('2d')
+      if (ctx) ctx.scale(ratio, ratio)
+      signPadObj.current = new SignaturePad(canvas, {
+        backgroundColor: 'rgb(248, 250, 252)',
+        penColor: '#2F3E4E',
+        minWidth: 1,
+        maxWidth: 3,
+      })
+    }, 80)
+    return () => clearTimeout(timer)
+  }, [signModal, signDone])
+
   async function handleSignReturn(e: React.FormEvent) {
     e.preventDefault()
-    if (!signFile || !signModal) return
+    if (!signModal) return
+    setSignPadError('')
+
+    const ssnDigits = signSsn.replace(/\D/g, '')
+    if (ssnDigits.length !== 9) {
+      setSignPadError('Please enter your full 9-digit Social Security Number.')
+      return
+    }
+    if (!signPadObj.current || signPadObj.current.isEmpty()) {
+      setSignPadError('Please draw your signature above.')
+      return
+    }
+
     setSigning(true)
     try {
-      // Phase 1 — get presigned URL
-      const p1 = await fetch(`/api/nurse/routed-forms/${signModal.id}`, {
+      // 1. Load original PDF or create blank
+      let pdfDoc: PDFDocument
+      if (signModal.storageKey) {
+        const pdfRes = await fetch(`/api/nurse/routed-forms/${signModal.id}?download=1`, { credentials: 'include' })
+        const pdfBytes = await pdfRes.arrayBuffer()
+        pdfDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true })
+      } else {
+        pdfDoc = await PDFDocument.create()
+      }
+
+      // 2. Embed signature image from canvas
+      const sigDataUrl = signPadObj.current.toDataURL('image/png')
+      const sigBytes = await fetch(sigDataUrl).then(r => r.arrayBuffer())
+      const sigImage = await pdfDoc.embedPng(sigBytes)
+
+      // 3. Embed fonts
+      const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
+      const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
+
+      // 4. Add certification page
+      const page = pdfDoc.addPage([612, 792])
+      const { width, height } = page.getSize()
+      const L = 50
+      const navy = rgb(0.184, 0.243, 0.306)
+      const sage = rgb(0.478, 0.561, 0.475)
+      const muted = rgb(0.55, 0.55, 0.55)
+      const nurseName = profile?.displayName || profile?.user?.name || 'Provider'
+      const now = new Date()
+      const dateStr = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+      const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZoneName: 'short' })
+
+      let y = height - 60
+      page.drawText('Electronic Signature Certification', { x: L, y, size: 18, font: boldFont, color: navy })
+      y -= 10
+      page.drawLine({ start: { x: L, y }, end: { x: width - L, y }, thickness: 1, color: sage })
+      y -= 28
+      page.drawText('Form:', { x: L, y, size: 10, font: boldFont, color: sage })
+      page.drawText(signModal.title, { x: L + 42, y, size: 10, font, color: navy })
+      y -= 18
+      page.drawText('Provider:', { x: L, y, size: 10, font: boldFont, color: sage })
+      page.drawText(nurseName, { x: L + 54, y, size: 10, font, color: navy })
+      y -= 18
+      page.drawText('Date:', { x: L, y, size: 10, font: boldFont, color: sage })
+      page.drawText(`${dateStr}  •  ${timeStr}`, { x: L + 36, y, size: 10, font, color: navy })
+      y -= 18
+      page.drawText('SSN:', { x: L, y, size: 10, font: boldFont, color: sage })
+      page.drawText(signSsn, { x: L + 34, y, size: 10, font: boldFont, color: navy })
+      y -= 30
+      page.drawText(`I, ${nurseName}, certify under penalties of perjury that the information`, { x: L, y, size: 10, font, color: muted })
+      y -= 15
+      page.drawText('on this document is true, correct, and complete.', { x: L, y, size: 10, font, color: muted })
+      y -= 50
+
+      const sigDims = sigImage.scaleToFit(220, 80)
+      page.drawImage(sigImage, { x: L, y: y - sigDims.height, width: sigDims.width, height: sigDims.height })
+      y -= sigDims.height + 10
+      page.drawLine({ start: { x: L, y }, end: { x: L + 220, y }, thickness: 0.5, color: muted })
+      y -= 15
+      page.drawText(nurseName, { x: L, y, size: 10, font: boldFont, color: navy })
+      y -= 14
+      page.drawText(dateStr, { x: L, y, size: 9, font, color: muted })
+      y -= 40
+      page.drawLine({ start: { x: L, y }, end: { x: width - L, y }, thickness: 0.5, color: rgb(0.88, 0.88, 0.88) })
+      y -= 14
+      page.drawText('Generated by Coming Home Care Provider Portal · cominghomecare.com', { x: L, y, size: 8, font, color: rgb(0.7, 0.7, 0.7) })
+
+      // 5. Serialize to file
+      const signedBytes = await pdfDoc.save()
+      const signedBlob = new Blob([signedBytes.buffer as ArrayBuffer], { type: 'application/pdf' })
+      const safeTitle = signModal.title.replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '-')
+      const signedFile = new File([signedBlob], `${safeTitle}-signed.pdf`, { type: 'application/pdf' })
+
+      // 6. Upload via 3-phase flow
+      const p1Res = await fetch(`/api/nurse/routed-forms/${signModal.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ presign: true, fileName: signFile.name, contentType: signFile.type || 'application/octet-stream' }),
+        body: JSON.stringify({ presign: true, fileName: signedFile.name, contentType: 'application/pdf' }),
       })
-      const { url, fields, storageKey } = await p1.json()
+      const { url: uploadUrl, fields, storageKey } = await p1Res.json()
 
-      // Phase 2 — upload to S3
       const fd = new FormData()
       Object.entries(fields as Record<string, string>).forEach(([k, v]) => fd.append(k, v))
-      fd.append('file', signFile)
-      await fetch(url, { method: 'POST', body: fd, mode: 'no-cors' })
+      fd.append('file', signedFile)
+      await fetch(uploadUrl, { method: 'POST', body: fd, mode: 'no-cors' })
 
-      // Phase 3 — confirm
       await fetch(`/api/nurse/routed-forms/${signModal.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ storageKey, fileName: signFile.name, fileSize: signFile.size, mimeType: signFile.type || null }),
+        body: JSON.stringify({ storageKey, fileName: signedFile.name, fileSize: signedFile.size, mimeType: 'application/pdf' }),
       })
 
       setRoutedForms(prev => prev.map(f => f.id === signModal.id ? { ...f, status: 'signed' } : f))
       setSignDone(true)
-      setSignFile(null)
-    } finally {
-      setSigning(false)
+      setSignSsn('')
+      setSignShowSsn(false)
+      signPadObj.current?.clear()
+    } catch {
+      setSignPadError('Something went wrong. Please try again.')
     }
+    setSigning(false)
   }
 
   function refreshDocuments() {
@@ -411,7 +530,7 @@ export default function NurseDocumentsPage() {
                     </div>
                     <div className="px-2 py-2.5 pr-3">
                       <button
-                        onClick={() => { setSignModal(form); setSignDone(false); setSignFile(null) }}
+                        onClick={() => { setSignModal(form); setSignDone(false); setSignSsn(''); setSignPadError('') }}
                         className="text-[11px] font-bold text-white bg-[#2F3E4E] hover:bg-[#7A8F79] px-2.5 py-1 rounded-lg transition whitespace-nowrap"
                       >
                         Sign &amp; Return
@@ -754,51 +873,120 @@ export default function NurseDocumentsPage() {
 
       {/* Sign & Return Modal */}
       {signModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-5 space-y-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[92vh] overflow-y-auto">
             {signDone ? (
-              <>
-                <div className="text-center py-4 space-y-3">
-                  <div className="w-12 h-12 rounded-full bg-[#C5D4C3] flex items-center justify-center mx-auto">
-                    <svg className="w-6 h-6 text-[#2F3E4E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <h3 className="text-base font-bold text-[#2F3E4E]">Document Submitted</h3>
-                  <p className="text-sm text-[#7A8F79] leading-relaxed">
-                    Your signed copy has been received. You can find it saved in your document library below.
-                  </p>
-                  <button
-                    onClick={() => { setSignModal(null); setSignDone(false) }}
-                    className="w-full bg-[#2F3E4E] text-white py-2 rounded-xl text-sm font-semibold hover:bg-[#7A8F79] transition"
-                  >
-                    Close
-                  </button>
+              <div className="text-center p-8 space-y-4">
+                <div className="w-12 h-12 rounded-full bg-[#C5D4C3] flex items-center justify-center mx-auto">
+                  <svg className="w-6 h-6 text-[#2F3E4E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
                 </div>
-              </>
+                <h3 className="text-base font-bold text-[#2F3E4E]">Document Signed &amp; Submitted</h3>
+                <p className="text-sm text-[#7A8F79] leading-relaxed">
+                  Your signed copy has been received and saved to your document library. Coming Home Care has been notified.
+                </p>
+                <button
+                  onClick={() => { setSignModal(null); setSignDone(false) }}
+                  className="w-full bg-[#2F3E4E] text-white py-2 rounded-xl text-sm font-semibold hover:bg-[#7A8F79] transition"
+                >
+                  Close
+                </button>
+              </div>
             ) : (
               <>
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base font-bold text-[#2F3E4E]">Sign &amp; Return</h3>
+                <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-[#D9E1E8]">
+                  <div>
+                    <h3 className="text-base font-bold text-[#2F3E4E]">Sign &amp; Return</h3>
+                    <p className="text-[11px] text-[#7A8F79] mt-0.5">{signModal.title}</p>
+                  </div>
                   <button onClick={() => setSignModal(null)} className="text-[#7A8F79] hover:text-[#2F3E4E] text-xl leading-none">×</button>
                 </div>
-                <p className="text-xs text-[#7A8F79]">
-                  <span className="font-semibold text-[#2F3E4E]">{signModal.title}</span> — Upload your signed copy below. A copy will be saved to your documents and Coming Home Care will be notified.
-                </p>
-                <form onSubmit={handleSignReturn} className="space-y-3">
-                  <div>
-                    <label className="text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79]">Signed Document</label>
-                    <input
-                      type="file"
-                      required
-                      onChange={e => setSignFile(e.target.files?.[0] || null)}
-                      className="w-full mt-1 text-sm text-[#2F3E4E] file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#D9E1E8] file:text-[#2F3E4E] hover:file:bg-[#7A8F79] hover:file:text-white transition"
-                    />
+
+                <form onSubmit={handleSignReturn} className="p-5 space-y-5">
+
+                  {/* View the form */}
+                  {signModal.storageKey && (
+                    <div className="flex items-center gap-3 bg-[#F4F6F5] rounded-lg px-3 py-2.5">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-[#2F3E4E] truncate">📄 {signModal.fileName || signModal.title}</p>
+                        <p className="text-[10px] text-[#7A8F79]">Review before signing</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleViewForm(signModal)}
+                        disabled={viewingForm === signModal.id}
+                        className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] border border-[#D9E1E8] px-2.5 py-1 rounded-lg transition whitespace-nowrap"
+                      >
+                        {viewingForm === signModal.id ? '…' : 'Open PDF'}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* SSN */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Social Security Number</label>
+                    <div className="relative flex items-center">
+                      <input
+                        type={signShowSsn ? 'text' : 'password'}
+                        inputMode="numeric"
+                        value={signSsn}
+                        onChange={e => setSignSsn(formatSsn(e.target.value))}
+                        placeholder="###-##-####"
+                        maxLength={11}
+                        required
+                        className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] pr-14 tracking-widest font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setSignShowSsn(v => !v)}
+                        className="absolute right-3 text-[10px] text-[#7A8F79] hover:text-[#2F3E4E] font-semibold"
+                      >
+                        {signShowSsn ? 'Hide' : 'Show'}
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-[#7A8F79]">Embedded in the signed PDF only — never stored in our system.</p>
                   </div>
+
+                  {/* Signature pad */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Signature</label>
+                      <button
+                        type="button"
+                        onClick={() => signPadObj.current?.clear()}
+                        className="text-[10px] text-[#7A8F79] hover:text-[#2F3E4E] font-semibold"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                    <div className="border-2 border-[#D9E1E8] rounded-xl overflow-hidden bg-[#F8FAFB]">
+                      <canvas
+                        ref={signPadRef}
+                        style={{ width: '100%', height: '140px', touchAction: 'none', display: 'block' }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-[#7A8F79]">Draw with your finger or mouse.</p>
+                  </div>
+
+                  {signPadError && (
+                    <p className="text-xs text-red-600 font-semibold bg-red-50 rounded-lg px-3 py-2">{signPadError}</p>
+                  )}
+
                   <div className="flex gap-3 pt-1">
-                    <button type="button" onClick={() => setSignModal(null)} className="flex-1 border border-[#D9E1E8] text-[#7A8F79] py-2 rounded-xl text-sm font-semibold hover:bg-[#F4F6F5] transition">Cancel</button>
-                    <button type="submit" disabled={signing || !signFile} className="flex-1 bg-[#2F3E4E] text-white py-2 rounded-xl text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-50">
-                      {signing ? 'Submitting…' : 'Submit Signed Copy'}
+                    <button
+                      type="button"
+                      onClick={() => { setSignModal(null); setSignSsn(''); setSignPadError('') }}
+                      className="flex-1 border border-[#D9E1E8] text-[#7A8F79] py-2 rounded-xl text-sm font-semibold hover:bg-[#F4F6F5] transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={signing}
+                      className="flex-1 bg-[#2F3E4E] text-white py-2 rounded-xl text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-50"
+                    >
+                      {signing ? 'Signing…' : 'Sign & Submit'}
                     </button>
                   </div>
                 </form>

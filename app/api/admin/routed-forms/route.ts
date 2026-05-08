@@ -30,19 +30,23 @@ export async function POST(req: Request) {
   const session = adminOnly(req)
   if (!session || session.role !== 'admin') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { nurseId, title, category, urgent, notes, routedBy, fileName, contentType } = await req.json()
+  const { nurseId, title, category, urgent, notes, routedBy, fileName, contentType, templateStorageKey, templateFileName } = await req.json()
   if (!nurseId || !title || !routedBy) return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
 
   let presignPayload: { url: string; fields: Record<string, string>; storageKey: string } | null = null
 
-  if (fileName) {
+  // If attaching a new file (not a template), generate presigned upload URL
+  if (fileName && !templateStorageKey) {
     const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_')
     const storageKey = `routed-forms/${nurseId}/${Date.now()}-${safeName}`
     const { url, fields } = await getPresignedPost(storageKey, contentType || 'application/octet-stream')
     presignPayload = { url, fields, storageKey }
   }
 
-  // Create the record — storageKey set later via PATCH if file is attached
+  // Resolve which storageKey/fileName to use (template takes priority over presign)
+  const resolvedStorageKey = templateStorageKey ?? presignPayload?.storageKey ?? null
+  const resolvedFileName = templateFileName ?? fileName ?? null
+
   const form = await prisma.routedForm.create({
     data: {
       nurseId,
@@ -51,8 +55,8 @@ export async function POST(req: Request) {
       urgent: urgent === true,
       routedBy,
       notes: notes || null,
-      storageKey: presignPayload?.storageKey ?? null,
-      fileName: fileName ?? null,
+      storageKey: resolvedStorageKey,
+      fileName: resolvedFileName,
     },
   })
 

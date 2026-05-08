@@ -7,6 +7,7 @@ import AdminNav from '../../components/AdminNav'
 type Nurse = { id: string; displayName: string; user: { email: string; name: string } | null }
 type QueueDoc = { id: string; title: string; fileName: string; category: string; fileSize: number | null; createdAt: string; nurseId: string; nurse: { displayName: string } }
 type LibDoc = { id: string; title: string; fileName: string; category: string; fileSize: number | null; mimeType: string | null; expiresAt: string | null; createdAt: string; nurseId: string; nurseUploaded: boolean; sharedWithAdmin: boolean; nurse: { displayName: string } }
+type FormTemplate = { id: string; title: string; fileName: string; storageKey: string; fileSize: number | null; mimeType: string | null; createdAt: string }
 
 export default function AdminDocumentsPage() {
   const router = useRouter()
@@ -62,6 +63,63 @@ export default function AdminDocumentsPage() {
   const [rfMessage, setRfMessage] = useState('')
   const [rfMessageIsError, setRfMessageIsError] = useState(false)
   const [routedForms, setRoutedForms] = useState<{ id: string; title: string; category: string; urgent: boolean; status: string; routedBy: string; createdAt: string; nurse: { displayName: string } }[]>([])
+
+  // Form Templates state
+  const [formTemplates, setFormTemplates] = useState<FormTemplate[]>([])
+  const [ftFile, setFtFile] = useState<File | null>(null)
+  const [ftTitle, setFtTitle] = useState('')
+  const [ftUploading, setFtUploading] = useState(false)
+  const [ftMessage, setFtMessage] = useState('')
+  const [ftMessageIsError, setFtMessageIsError] = useState(false)
+  const [ftViewing, setFtViewing] = useState<string | null>(null)
+  const [ftDeleting, setFtDeleting] = useState<string | null>(null)
+  const [rfUseTemplate, setRfUseTemplate] = useState(true)
+
+  function fetchFormTemplates() {
+    fetch('/api/admin/form-templates', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data.templates)) setFormTemplates(data.templates) })
+  }
+
+  async function handleUploadTemplate(e: React.FormEvent) {
+    e.preventDefault()
+    const finalTitle = ftTitle.trim() || ftFile?.name || ''
+    if (!ftFile || !finalTitle) return
+    setFtUploading(true); setFtMessage(''); setFtMessageIsError(false)
+    try {
+      const presignRes = await fetch('/api/admin/form-templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ presign: true, title: finalTitle, fileName: ftFile.name, contentType: ftFile.type || 'application/octet-stream' }),
+      })
+      const presignData = await presignRes.json()
+      if (!presignRes.ok) { setFtMessage(presignData.error || 'Presign failed.'); setFtMessageIsError(true); return }
+
+      const fd = new FormData()
+      Object.entries(presignData.fields as Record<string, string>).forEach(([k, v]) => fd.append(k, v))
+      fd.append('file', ftFile)
+      await fetch(presignData.url, { method: 'POST', body: fd, mode: 'no-cors' })
+
+      const confirmRes = await fetch('/api/admin/form-templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ title: finalTitle, storageKey: presignData.storageKey, fileName: ftFile.name, fileSize: ftFile.size, mimeType: ftFile.type || null }),
+      })
+      const confirmData = await confirmRes.json()
+      if (confirmData.ok) {
+        setFtMessage(`"${finalTitle}" saved to templates.`)
+        setFtFile(null); setFtTitle('')
+        fetchFormTemplates()
+      } else {
+        setFtMessage(confirmData.error || 'Failed to save template.'); setFtMessageIsError(true)
+      }
+    } catch (err: unknown) {
+      setFtMessage((err as Error)?.message || 'Network error.'); setFtMessageIsError(true)
+    }
+    setFtUploading(false)
+  }
 
   function fetchRoutedForms() {
     fetch('/api/admin/routed-forms', { credentials: 'include' })
@@ -181,6 +239,7 @@ export default function AdminDocumentsPage() {
     fetchQueue()
     fetchLibrary()
     fetchRoutedForms()
+    fetchFormTemplates()
   }, [router])
 
   async function handleRouteForm(e: React.FormEvent) {
@@ -191,6 +250,10 @@ export default function AdminDocumentsPage() {
     if (!rfNurseId || !finalTitle) return
     setRfRouting(true); setRfMessage(''); setRfMessageIsError(false)
     try {
+      // Check if we should auto-attach a template
+      const matchingTemplate = formTemplates.find(t => t.title === finalTitle)
+      const useTemplate = rfUseTemplate && !!matchingTemplate && !rfFile
+
       const res = await fetch('/api/admin/routed-forms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -202,8 +265,10 @@ export default function AdminDocumentsPage() {
           urgent: rfUrgent,
           notes: rfNotes || null,
           routedBy,
-          fileName: rfFile?.name || null,
-          contentType: rfFile?.type || null,
+          fileName: useTemplate ? null : (rfFile?.name || null),
+          contentType: useTemplate ? null : (rfFile?.type || null),
+          templateStorageKey: useTemplate ? matchingTemplate!.storageKey : null,
+          templateFileName: useTemplate ? matchingTemplate!.fileName : null,
         }),
       })
       const data = await res.json()
@@ -218,10 +283,10 @@ export default function AdminDocumentsPage() {
 
       setRfMessage(`Form routed to ${nurses.find(n => n.id === rfNurseId)?.displayName || 'provider'} — email sent.`)
       setRfNurseId(''); setRfTitle(''); setRfCustomTitle(''); setRfCategory('Form')
-      setRfUrgent(false); setRfNotes(''); setRfFile(null)
+      setRfUrgent(false); setRfNotes(''); setRfFile(null); setRfUseTemplate(true)
       fetchRoutedForms()
-    } catch (err: any) {
-      setRfMessage(err?.message || 'Network error.'); setRfMessageIsError(true)
+    } catch (err: unknown) {
+      setRfMessage((err as Error)?.message || 'Network error.'); setRfMessageIsError(true)
     }
     setRfRouting(false)
   }
@@ -465,6 +530,82 @@ export default function AdminDocumentsPage() {
             </form>
           </div>
 
+          {/* Form Templates */}
+          <div className="bg-white rounded-xl shadow-sm p-4 space-y-2">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8]">Form Templates</h2>
+            <p className="text-[10px] text-[#7A8F79]">Store one blank copy per form type. Templates auto-attach when routing.</p>
+
+            {/* Existing templates */}
+            {formTemplates.length > 0 && (
+              <div className="divide-y divide-[#D9E1E8] border border-[#D9E1E8] rounded-lg overflow-hidden">
+                {formTemplates.map(t => (
+                  <div key={t.id} className="flex items-center gap-2 px-2.5 py-1.5">
+                    <span className="flex-1 text-xs font-semibold text-[#2F3E4E] truncate">📄 {t.title}</span>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setFtViewing(t.id)
+                        const win = window.open('', '_blank')
+                        const res = await fetch(`/api/admin/form-templates/${t.id}`, { credentials: 'include' })
+                        const data = await res.json()
+                        if (data.url && win) win.location.href = data.url
+                        setFtViewing(null)
+                      }}
+                      disabled={ftViewing === t.id}
+                      className="text-[10px] text-[#7A8F79] hover:text-[#2F3E4E] border border-[#D9E1E8] px-1.5 py-0.5 rounded transition disabled:opacity-50"
+                    >
+                      {ftViewing === t.id ? '…' : 'View'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!confirm(`Delete template "${t.title}"?`)) return
+                        setFtDeleting(t.id)
+                        await fetch(`/api/admin/form-templates/${t.id}`, { method: 'DELETE', credentials: 'include' })
+                        fetchFormTemplates()
+                        setFtDeleting(null)
+                      }}
+                      disabled={ftDeleting === t.id}
+                      className="text-[10px] text-red-400 hover:text-red-600 border border-red-100 px-1.5 py-0.5 rounded transition disabled:opacity-50"
+                    >
+                      {ftDeleting === t.id ? '…' : '✕'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Upload new template */}
+            <form onSubmit={handleUploadTemplate} className="space-y-1.5 pt-1 border-t border-[#D9E1E8]">
+              <div>
+                <label className="text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79]">Template Name</label>
+                <select
+                  value={ftTitle}
+                  onChange={e => setFtTitle(e.target.value)}
+                  className="w-full border border-[#D9E1E8] px-2 py-1 rounded-lg text-xs text-[#2F3E4E] mt-0.5 focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                >
+                  <option value="">Select form type…</option>
+                  {FORM_TYPES.filter(t => t !== 'Other').map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  onChange={e => setFtFile(e.target.files?.[0] || null)}
+                  className="flex-1 text-[10px] text-[#2F3E4E] file:mr-1.5 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-[#D9E1E8] file:text-[#2F3E4E] hover:file:bg-[#7A8F79] hover:file:text-white transition"
+                />
+                <button
+                  type="submit"
+                  disabled={ftUploading || !ftFile || !ftTitle}
+                  className="flex-shrink-0 bg-[#7A8F79] text-white px-2.5 py-1 rounded-lg text-[10px] font-bold hover:bg-[#2F3E4E] transition disabled:opacity-50"
+                >
+                  {ftUploading ? '…' : 'Save'}
+                </button>
+              </div>
+              {ftMessage && <p className={`text-[10px] ${ftMessageIsError ? 'text-red-600' : 'text-[#7A8F79]'}`}>{ftMessage}</p>}
+            </form>
+          </div>
+
           {/* Route a Form */}
           <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
             <h2 className="text-xs font-bold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8]">Route a Form</h2>
@@ -499,8 +640,19 @@ export default function AdminDocumentsPage() {
                   {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                 </select>
               </div>
+              {/* Auto-attach banner when a template exists for selected form type */}
+              {(() => {
+                const matchingTemplate = formTemplates.find(t => t.title === (rfTitle === 'Other' ? rfCustomTitle.trim() : rfTitle))
+                if (!matchingTemplate || rfFile) return null
+                return (
+                  <label className="flex items-center gap-2 cursor-pointer bg-[#f0fff0] border border-[#7A8F79]/30 rounded-lg px-2.5 py-1.5">
+                    <input type="checkbox" checked={rfUseTemplate} onChange={e => setRfUseTemplate(e.target.checked)} className="accent-[#7A8F79]" />
+                    <span className="text-[10px] text-[#2F3E4E] font-semibold">📎 Auto-attach saved template: <span className="font-normal italic">{matchingTemplate.fileName}</span></span>
+                  </label>
+                )
+              })()}
               <div>
-                <label className="text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79]">Attach Blank Form <span className="normal-case font-normal">(optional)</span></label>
+                <label className="text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79]">Attach Different File <span className="normal-case font-normal">(overrides template)</span></label>
                 <input type="file" onChange={e => setRfFile(e.target.files?.[0] || null)} className="w-full mt-0.5 text-xs text-[#2F3E4E] file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#D9E1E8] file:text-[#2F3E4E] hover:file:bg-[#7A8F79] hover:file:text-white transition" />
               </div>
               <div>

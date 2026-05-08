@@ -11,11 +11,12 @@ function nurseSession(req: Request) {
 }
 
 // GET /api/nurse/routed-forms/[id] — presigned view URL for the routed form
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const session = nurseSession(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const form = await prisma.routedForm.findUnique({ where: { id: params.id } })
+  const form = await prisma.routedForm.findUnique({ where: { id } })
   if (!form || !form.storageKey) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const nurse = await prisma.nurseProfile.findFirst({ where: { userId: session.id } })
@@ -28,14 +29,15 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 // POST /api/nurse/routed-forms/[id] — sign & return
 // Phase 1 (presign=true): return S3 presigned POST for signed file upload
 // Phase 2 (storageKey provided): finalize — update record, save doc, send email
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const session = nurseSession(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const nurse = await prisma.nurseProfile.findFirst({ where: { userId: session.id } })
   if (!nurse) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const form = await prisma.routedForm.findUnique({ where: { id: params.id } })
+  const form = await prisma.routedForm.findUnique({ where: { id } })
   if (!form || form.nurseId !== nurse.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()

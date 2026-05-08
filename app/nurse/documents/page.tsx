@@ -182,7 +182,7 @@ export default function NurseDocumentsPage() {
       const ctx = canvas.getContext('2d')
       if (ctx) ctx.scale(ratio, ratio)
       signPadObj.current = new SignaturePad(canvas, {
-        backgroundColor: 'rgb(248, 250, 252)',
+        backgroundColor: 'rgba(0,0,0,0)',
         penColor: '#2F3E4E',
         minWidth: 1,
         maxWidth: 3,
@@ -249,7 +249,7 @@ export default function NurseDocumentsPage() {
             }
           }
 
-          // Find signature widget rectangle (any field type with "sign" in name)
+          // Strategy 1: signature field named with "sign"
           if (/sign/i.test(fieldName) && !sigRect) {
             try {
               const widgets = field.acroField.getWidgets()
@@ -258,12 +258,32 @@ export default function NurseDocumentsPage() {
           }
         }
 
+        // Strategy 2: if no named signature field found, look for a wide field
+        // in the signature zone (roughly 30–50% from bottom of page)
+        if (!sigRect) {
+          for (const field of formFields) {
+            try {
+              const widgets = field.acroField.getWidgets()
+              for (const widget of widgets) {
+                const rect = widget.getRectangle()
+                if (
+                  rect.width > 150 &&
+                  rect.y > pageHeight * 0.30 &&
+                  rect.y < pageHeight * 0.50
+                ) {
+                  if (!sigRect || rect.y < sigRect.y) sigRect = rect
+                }
+              }
+            } catch { /* skip */ }
+          }
+        }
+
         form.flatten()
       } catch { /* PDF has no AcroForm or is XFA-based — skip field filling */ }
 
       // 4. Stamp signature image on the form
-      // Uses detected AcroForm widget rect, or falls back to approximate W-9 signature area
-      const sigTarget = sigRect ?? { x: 50, y: pageHeight * 0.18, width: 230, height: 50 }
+      // W-9 signature line sits at roughly 37–40% from page bottom on a letter-size sheet
+      const sigTarget = sigRect ?? { x: 75, y: pageHeight * 0.38, width: 260, height: 24 }
       const sigOnForm = sigImage.scaleToFit(sigTarget.width - 4, sigTarget.height - 4)
       firstPage.drawImage(sigImage, {
         x: sigTarget.x + 2,

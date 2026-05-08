@@ -141,9 +141,6 @@ export default function AdminDocumentsPage() {
       .then(data => {
         if (Array.isArray(data.documents)) {
           setLibrary(data.documents)
-          // Default all folders open
-          const folders = new Set(data.documents.map((d: LibDoc) => d.category) as string[])
-          setExpandedFolders(folders)
         }
       })
   }
@@ -964,6 +961,16 @@ export default function AdminDocumentsPage() {
                                   className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] border border-[#D9E1E8] px-2 py-1 rounded transition whitespace-nowrap"
                                 >
                                   Edit
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    if (!confirm(`Delete "${doc.title}"? This cannot be undone.`)) return
+                                    await fetch(`/api/admin/documents/${doc.id}`, { method: 'DELETE', credentials: 'include' })
+                                    fetchLibrary()
+                                  }}
+                                  className="text-xs text-red-400 hover:text-red-600 border border-red-200 hover:border-red-400 px-2 py-1 rounded transition whitespace-nowrap"
+                                >
+                                  Delete
                                 </button>
                               </div>
                             )

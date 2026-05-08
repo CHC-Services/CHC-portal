@@ -31,8 +31,8 @@ export default function NurseSideNav() {
         border: '2.5px solid #2F3E4E',
         boxShadow:
           'inset 0 0 0 1px #4A5E49, ' +
-          '30px 10px 60px rgba(0,0,0,0.18), ' +
-          '3px 4px 0 rgba(45, 54, 64, 0.12)',
+          '30px 10px 60px rgba(0,0,0,0.10), ' +
+          '7px 8px 0 rgba(45, 54, 64, 0.25)',
         borderRadius: '12px',
         overflow: 'hidden',
       }}

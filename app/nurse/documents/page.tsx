@@ -513,7 +513,7 @@ export default function NurseDocumentsPage() {
       <div className={`rounded-xl shadow mb-4 overflow-hidden border ${hasPending ? 'border-[#7B1C1C]/30' : 'border-[#C5D4C3]'}`}>
         {/* Header */}
         <div className={`px-4 py-2.5 flex items-center justify-between ${hasPending ? 'bg-[#2F3E4E]' : 'bg-[#2F3E4E]'}`}>
-          <h2 className={`text-sm font-bold uppercase tracking-widest ${hasPending ? 'text-[#c0392b]' : 'text-[#C5D4C3]'}`}>
+          <h2 className={`text-sm font-bold uppercase tracking-widest ${hasPending ? 'text-[#c0392b]' : 'text-[#ffffff]'}`}>
             Pending Documents
           </h2>
           {hasPending && (

@@ -183,9 +183,9 @@ export default function NurseDocumentsPage() {
       if (ctx) ctx.scale(ratio, ratio)
       signPadObj.current = new SignaturePad(canvas, {
         backgroundColor: 'rgba(0,0,0,0)',
-        penColor: '#2F3E4E',
-        minWidth: 1,
-        maxWidth: 3,
+        penColor: '#000000',
+        minWidth: 1.5,
+        maxWidth: 4,
       })
     }, 80)
     return () => clearTimeout(timer)
@@ -232,12 +232,13 @@ export default function NurseDocumentsPage() {
       try {
         const form = pdfDoc.getForm()
         const formFields = form.getFields()
+        let dateRect: { x: number; y: number; width: number; height: number } | null = null
 
         for (const field of formFields) {
           const fieldName = field.getName()
 
-          // Fill SSN into matching text fields
           if (field instanceof PDFTextField) {
+            // Fill SSN
             if (/ssn|social.?sec|taxpayer/i.test(fieldName)) {
               field.setText(signSsn)
             } else if (/f1[_.]?10\b/i.test(fieldName)) {
@@ -249,29 +250,38 @@ export default function NurseDocumentsPage() {
             }
           }
 
-          // Strategy 1: signature field named with "sign"
-          if (/sign/i.test(fieldName) && !sigRect) {
-            try {
-              const widgets = field.acroField.getWidgets()
-              if (widgets.length > 0) sigRect = widgets[0].getRectangle()
-            } catch { /* field may not have a standard widget */ }
+          try {
+            const widgets = field.acroField.getWidgets()
+            if (widgets.length > 0) {
+              const rect = widgets[0].getRectangle()
+              // Strategy 1: explicit signature field name
+              if (/sign|f1[_.]?13\b/i.test(fieldName) && !sigRect) sigRect = rect
+              // Strategy 2: date field on the same row — derive sig position from it
+              if (/date|f1[_.]?14\b/i.test(fieldName) && !dateRect) dateRect = rect
+            }
+          } catch { /* skip fields without widgets */ }
+        }
+
+        // Strategy 3: no named sig field — use date field position to anchor signature
+        // Signature box sits to the left of the date on the same row
+        if (!sigRect && dateRect) {
+          sigRect = {
+            x: 75,
+            y: dateRect.y - 2,
+            width: Math.max(dateRect.x - 90, 160),
+            height: dateRect.height + 4,
           }
         }
 
-        // Strategy 2: if no named signature field found, look for a wide field
-        // in the signature zone (roughly 30–50% from bottom of page)
+        // Strategy 4: find the widest field in the lower 30–50% of the page
         if (!sigRect) {
           for (const field of formFields) {
             try {
               const widgets = field.acroField.getWidgets()
               for (const widget of widgets) {
                 const rect = widget.getRectangle()
-                if (
-                  rect.width > 150 &&
-                  rect.y > pageHeight * 0.30 &&
-                  rect.y < pageHeight * 0.50
-                ) {
-                  if (!sigRect || rect.y < sigRect.y) sigRect = rect
+                if (rect.width > 180 && rect.y > pageHeight * 0.30 && rect.y < pageHeight * 0.50) {
+                  if (!sigRect || rect.width > sigRect.width) sigRect = rect
                 }
               }
             } catch { /* skip */ }
@@ -282,7 +292,6 @@ export default function NurseDocumentsPage() {
       } catch { /* PDF has no AcroForm or is XFA-based — skip field filling */ }
 
       // 4. Stamp signature image on the form
-      // W-9 signature line sits at roughly 37–40% from page bottom on a letter-size sheet
       const sigTarget = sigRect ?? { x: 75, y: pageHeight * 0.38, width: 260, height: 24 }
       const sigOnForm = sigImage.scaleToFit(sigTarget.width - 4, sigTarget.height - 4)
       firstPage.drawImage(sigImage, {

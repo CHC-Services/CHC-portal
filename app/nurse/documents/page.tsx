@@ -227,18 +227,12 @@ export default function NurseDocumentsPage() {
       const firstPage = pages[0] ?? pdfDoc.addPage([612, 792])
       const { height: pageHeight } = firstPage.getSize()
 
-      // 3. Try to fill AcroForm fields (fillable PDFs only)
-      let sigRect: { x: number; y: number; width: number; height: number } | null = null
+      // 3. Fill AcroForm SSN fields if present, then flatten
       try {
         const form = pdfDoc.getForm()
-        const formFields = form.getFields()
-        let dateRect: { x: number; y: number; width: number; height: number } | null = null
-
-        for (const field of formFields) {
+        for (const field of form.getFields()) {
           const fieldName = field.getName()
-
           if (field instanceof PDFTextField) {
-            // Fill SSN
             if (/ssn|social.?sec|taxpayer/i.test(fieldName)) {
               field.setText(signSsn)
             } else if (/f1[_.]?10\b/i.test(fieldName)) {
@@ -249,50 +243,16 @@ export default function NurseDocumentsPage() {
               field.setText(ssnDigits.slice(5))
             }
           }
-
-          try {
-            const widgets = field.acroField.getWidgets()
-            if (widgets.length > 0) {
-              const rect = widgets[0].getRectangle()
-              // Strategy 1: explicit signature field name
-              if (/sign|f1[_.]?13\b/i.test(fieldName) && !sigRect) sigRect = rect
-              // Strategy 2: date field on the same row — derive sig position from it
-              if (/date|f1[_.]?14\b/i.test(fieldName) && !dateRect) dateRect = rect
-            }
-          } catch { /* skip fields without widgets */ }
         }
-
-        // Strategy 3: no named sig field — use date field position to anchor signature
-        // Signature box sits to the left of the date on the same row
-        if (!sigRect && dateRect) {
-          sigRect = {
-            x: 75,
-            y: dateRect.y - 2,
-            width: Math.max(dateRect.x - 90, 160),
-            height: dateRect.height + 4,
-          }
-        }
-
-        // Strategy 4: find the widest field in the lower 30–50% of the page
-        if (!sigRect) {
-          for (const field of formFields) {
-            try {
-              const widgets = field.acroField.getWidgets()
-              for (const widget of widgets) {
-                const rect = widget.getRectangle()
-                if (rect.width > 180 && rect.y > pageHeight * 0.30 && rect.y < pageHeight * 0.50) {
-                  if (!sigRect || rect.width > sigRect.width) sigRect = rect
-                }
-              }
-            } catch { /* skip */ }
-          }
-        }
-
         form.flatten()
-      } catch { /* PDF has no AcroForm or is XFA-based — skip field filling */ }
+      } catch { /* no AcroForm */ }
 
-      // 4. Stamp signature image on the form
-      const sigTarget = sigRect ?? { x: 75, y: pageHeight * 0.38, width: 260, height: 24 }
+      // 4. Stamp signature at hardcoded W-9 coordinates (or generic fallback)
+      // W-9 "Signature of U.S. person" box: x=72, y=108 from bottom, 295w × 28h (letter 612×792pt)
+      const isW9 = /w-?9/i.test(signModal.title)
+      const sigTarget = isW9
+        ? { x: 72, y: 108, width: 295, height: 28 }
+        : { x: 72, y: pageHeight * 0.14, width: 295, height: 28 }
       const sigOnForm = sigImage.scaleToFit(sigTarget.width - 4, sigTarget.height - 4)
       firstPage.drawImage(sigImage, {
         x: sigTarget.x + 2,
@@ -304,6 +264,13 @@ export default function NurseDocumentsPage() {
       // 5. Append certification/audit trail page
       const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
       const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
+
+      // Also stamp SSN as text directly on W-9 Part I boxes (y≈592 from bottom)
+      if (isW9) {
+        firstPage.drawText(ssnDigits.slice(0, 3), { x: 434, y: 592, size: 11, font, color: rgb(0, 0, 0) })
+        firstPage.drawText(ssnDigits.slice(3, 5), { x: 494, y: 592, size: 11, font, color: rgb(0, 0, 0) })
+        firstPage.drawText(ssnDigits.slice(5),    { x: 530, y: 592, size: 11, font, color: rgb(0, 0, 0) })
+      }
       const certPage = pdfDoc.addPage([612, 792])
       const { width: cw, height: ch } = certPage.getSize()
       const L = 50

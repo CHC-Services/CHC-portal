@@ -115,7 +115,7 @@ export default function FaqPage() {
             How Can We Help?
           </h1>
           <p className="mt-3 text-[#D9E1E8] text-sm max-w-xl leading-relaxed">
-            Find answers to common questions about billing, enrollment, claims, and working with Coming Home Care.
+            Find answers to common questions about billing, enrollment, claims, and other general nursing topics.
           </p>
 
           {/* Search bar */}

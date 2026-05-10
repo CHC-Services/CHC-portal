@@ -22,7 +22,7 @@ export default function NurseSideNav() {
       className="hidden lg:flex flex-col shrink-0 self-start sticky"
       style={{
         top: '200px',
-        marginTop: '110px',
+        marginTop: '170px',
         width: '170px',
         background: '#f0fff0',
         border: '2.5px solid #2F3E4E',

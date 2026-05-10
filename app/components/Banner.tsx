@@ -165,7 +165,6 @@ export default function Banner({ user }: BannerProps) {
             { href: '/care', label: 'myCare', icon: '🌿' },
         ] : []),
         ...(role === 'nurse' ? [
-            { href: '/nurse', label: 'Dashboard', icon: '📊' },
             { href: '/nurse/patients', label: 'Patients', icon: '🏥' },
             { href: '/nurse/hours', label: 'Hours', icon: '⏱' },
             { href: '/nurse/claims', label: 'Claims', icon: '📋' },

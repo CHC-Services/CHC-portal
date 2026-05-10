@@ -90,6 +90,13 @@ export default function EnrollmentPage() {
   const [tab, setTab] = useState<Tab>('Active')
   const [search, setSearch] = useState('')
   const [updating, setUpdating] = useState<string | null>(null)
+  const [sortField, setSortField] = useState<'status' | 'name' | 'plan' | 'since' | null>(null)
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  function toggleSort(field: 'status' | 'name' | 'plan' | 'since') {
+    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortField(field); setSortDir('asc') }
+  }
 
   useEffect(() => {
     fetch('/api/admin/enrollment', { credentials: 'include' })
@@ -111,16 +118,28 @@ export default function EnrollmentPage() {
   }, [nurses])
 
   const visible = useMemo(() => {
-    const filtered = filterByTab(nurses, tab)
-    if (!search.trim()) return filtered
-    const q = search.toLowerCase()
-    return filtered.filter(n =>
-      n.displayName.toLowerCase().includes(q) ||
-      n.user.email.toLowerCase().includes(q) ||
-      n.accountNumber?.toLowerCase().includes(q) ||
-      n.npiNumber?.includes(q)
-    )
-  }, [nurses, tab, search])
+    let filtered = filterByTab(nurses, tab)
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      filtered = filtered.filter(n =>
+        n.displayName.toLowerCase().includes(q) ||
+        n.user.email.toLowerCase().includes(q) ||
+        n.accountNumber?.toLowerCase().includes(q) ||
+        n.npiNumber?.includes(q)
+      )
+    }
+    if (sortField) {
+      filtered = [...filtered].sort((a, b) => {
+        let av = '', bv = ''
+        if (sortField === 'status') { av = effectiveStatus(a); bv = effectiveStatus(b) }
+        else if (sortField === 'name') { av = a.displayName; bv = b.displayName }
+        else if (sortField === 'plan') { av = a.billingPlan ?? ''; bv = b.billingPlan ?? '' }
+        else if (sortField === 'since') { av = a.agreementSignedAt ?? a.planStartDate ?? ''; bv = b.agreementSignedAt ?? b.planStartDate ?? '' }
+        return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av)
+      })
+    }
+    return filtered
+  }, [nurses, tab, search, sortField, sortDir])
 
   async function setStatus(nurseId: string, status: string | null) {
     setUpdating(nurseId)
@@ -189,14 +208,27 @@ export default function EnrollmentPage() {
             <table className="w-full text-xs text-[#2F3E4E]">
               <thead>
                 <tr className="bg-[#2F3E4E] text-white text-left">
-                  <th className="px-3 py-2 font-semibold">Provider</th>
-                  <th className="px-3 py-2 font-semibold">Account</th>
-                  <th className="px-3 py-2 font-semibold hidden sm:table-cell">Plan</th>
-                  <th className="px-3 py-2 font-semibold hidden md:table-cell">Duration</th>
-                  <th className="px-3 py-2 font-semibold hidden md:table-cell">Since</th>
-                  <th className="px-3 py-2 font-semibold hidden lg:table-cell">Last Login</th>
-                  <th className="px-3 py-2 font-semibold">Status</th>
-                  <th className="px-3 py-2 font-semibold text-right">Actions</th>
+                  {([
+                    { key: 'name',   label: 'Provider',   cls: '' },
+                    { key: null,     label: 'Account',    cls: '' },
+                    { key: 'plan',   label: 'Plan',       cls: 'hidden sm:table-cell' },
+                    { key: null,     label: 'Duration',   cls: 'hidden md:table-cell' },
+                    { key: 'since',  label: 'Since',      cls: 'hidden md:table-cell' },
+                    { key: null,     label: 'Last Login', cls: 'hidden lg:table-cell' },
+                    { key: 'status', label: 'Status',     cls: '' },
+                    { key: null,     label: 'Actions',    cls: 'text-right' },
+                  ] as { key: 'name'|'plan'|'since'|'status'|null; label: string; cls: string }[]).map(col => (
+                    <th key={col.label} className={`px-3 py-2 font-semibold ${col.cls}`}>
+                      {col.key ? (
+                        <button onClick={() => toggleSort(col.key!)} className="flex items-center gap-1 hover:text-[#7A8F79] transition">
+                          {col.label}
+                          <span className="text-[10px]">
+                            {sortField === col.key ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
+                          </span>
+                        </button>
+                      ) : col.label}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#D9E1E8]">

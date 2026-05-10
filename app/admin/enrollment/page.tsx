@@ -17,6 +17,8 @@ type Nurse = {
   onboardingComplete: boolean
   enrolledInBilling?: boolean | null
   billingStatus?: string | null
+  serviceStartDate?: string | null
+  serviceEndDate?: string | null
   npiNumber?: string
   user: {
     id: string
@@ -41,10 +43,10 @@ const TAB_COLORS: Record<Tab, string> = {
 }
 
 const BADGE_COLORS: Record<string, string> = {
-  Active:   'bg-green-100 text-green-800',
-  Termed:   'bg-red-100 text-red-800',
-  Seasonal: 'bg-blue-100 text-blue-800',
-  Pending:  'bg-yellow-100 text-yellow-800',
+  Active:           'bg-green-100 text-green-800',
+  Termed:           'bg-red-100 text-red-800',
+  Seasonal:         'bg-blue-100 text-blue-800',
+  Pending:          'bg-yellow-100 text-yellow-800',
   'Never Enrolled': 'bg-gray-100 text-gray-500',
 }
 
@@ -55,7 +57,19 @@ const PLAN_LABELS: Record<string, string> = {
   custom: 'Custom',
 }
 
+function isExpired(dateStr?: string | null): boolean {
+  if (!dateStr) return false
+  const end = new Date(dateStr)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return end < today
+}
+
 function effectiveStatus(n: Nurse): string {
+  // Seasonal stays Seasonal even if end date passed
+  if (n.billingStatus === 'Seasonal') return 'Seasonal'
+  // Expired end date → auto-termed
+  if (isExpired(n.serviceEndDate)) return 'Termed'
   if (n.billingStatus) return n.billingStatus
   if (n.enrolledInBilling === true) return 'Active'
   if (n.onboardingComplete && n.enrolledInBilling == null) return 'Pending'
@@ -79,10 +93,18 @@ const STATUS_ACTIONS: Record<string, string[]> = {
   'Never Enrolled': ['Active', 'Pending'],
 }
 
-function fmt(d?: string | null) {
+function fmtDate(d?: string | null) {
   if (!d) return '—'
   return new Date(d).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: '2-digit' })
 }
+
+// ISO date string for <input type="date"> value
+function toInputDate(d?: string | null): string {
+  if (!d) return ''
+  return d.slice(0, 10)
+}
+
+type EditingCell = { nurseId: string; field: 'serviceStartDate' | 'serviceEndDate' }
 
 export default function EnrollmentPage() {
   const [nurses, setNurses] = useState<Nurse[]>([])
@@ -90,10 +112,12 @@ export default function EnrollmentPage() {
   const [tab, setTab] = useState<Tab>('Active')
   const [search, setSearch] = useState('')
   const [updating, setUpdating] = useState<string | null>(null)
-  const [sortField, setSortField] = useState<'status' | 'name' | 'plan' | 'since' | null>(null)
+  const [sortField, setSortField] = useState<'status' | 'name' | 'plan' | 'since' | 'range' | null>(null)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const [editing, setEditing] = useState<EditingCell | null>(null)
+  const [editVal, setEditVal] = useState('')
 
-  function toggleSort(field: 'status' | 'name' | 'plan' | 'since') {
+  function toggleSort(field: 'status' | 'name' | 'plan' | 'since' | 'range') {
     if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
     else { setSortField(field); setSortDir('asc') }
   }
@@ -135,6 +159,7 @@ export default function EnrollmentPage() {
         else if (sortField === 'name') { av = a.displayName; bv = b.displayName }
         else if (sortField === 'plan') { av = a.billingPlan ?? ''; bv = b.billingPlan ?? '' }
         else if (sortField === 'since') { av = a.agreementSignedAt ?? a.planStartDate ?? ''; bv = b.agreementSignedAt ?? b.planStartDate ?? '' }
+        else if (sortField === 'range') { av = a.serviceStartDate ?? ''; bv = b.serviceStartDate ?? '' }
         return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av)
       })
     }
@@ -156,12 +181,91 @@ export default function EnrollmentPage() {
     setUpdating(null)
   }
 
+  function startEdit(nurseId: string, field: EditingCell['field'], current?: string | null) {
+    setEditing({ nurseId, field })
+    setEditVal(toInputDate(current))
+  }
+
+  async function commitEdit() {
+    if (!editing) return
+    const { nurseId, field } = editing
+    const nurse = nurses.find(n => n.id === nurseId)
+    if (!nurse) { setEditing(null); return }
+
+    // Require start date if saving end date
+    if (field === 'serviceEndDate' && editVal && !nurse.serviceStartDate && !editVal) {
+      setEditing(null); return
+    }
+    if (field === 'serviceStartDate' && !editVal) {
+      setEditing(null); return // blank start not allowed — just cancel
+    }
+
+    setUpdating(nurseId)
+    const res = await fetch(`/api/admin/enrollment/${nurseId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ [field]: editVal || null }),
+    })
+    if (res.ok) {
+      const updated = await res.json()
+      setNurses(prev => prev.map(n => n.id === nurseId ? {
+        ...n,
+        serviceStartDate: updated.serviceStartDate,
+        serviceEndDate: updated.serviceEndDate,
+      } : n))
+    }
+    setUpdating(null)
+    setEditing(null)
+  }
+
+  function DateCell({ nurse, field }: { nurse: Nurse; field: EditingCell['field'] }) {
+    const isEditingThis = editing?.nurseId === nurse.id && editing?.field === field
+    const value = field === 'serviceStartDate' ? nurse.serviceStartDate : nurse.serviceEndDate
+    const expired = field === 'serviceEndDate' && isExpired(nurse.serviceEndDate)
+
+    if (isEditingThis) {
+      return (
+        <input
+          type="date"
+          autoFocus
+          value={editVal}
+          onChange={e => setEditVal(e.target.value)}
+          onBlur={commitEdit}
+          onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') setEditing(null) }}
+          className="w-[110px] border border-[#7A8F79] rounded px-1 py-0.5 text-[11px] text-[#2F3E4E] focus:outline-none"
+        />
+      )
+    }
+
+    return (
+      <button
+        onClick={() => startEdit(nurse.id, field, value)}
+        className={`text-left hover:underline transition ${expired ? 'text-red-500' : 'text-[#7A8F79]'} ${!value ? 'italic opacity-50' : ''}`}
+      >
+        {value ? fmtDate(value) : (field === 'serviceStartDate' ? 'set start' : 'ongoing')}
+      </button>
+    )
+  }
+
+  const cols = [
+    { key: 'name',   label: 'Provider',       cls: '' },
+    { key: null,     label: 'Account',         cls: '' },
+    { key: 'plan',   label: 'Plan',            cls: 'hidden sm:table-cell' },
+    { key: null,     label: 'Duration',        cls: 'hidden md:table-cell' },
+    { key: 'since',  label: 'Since',           cls: 'hidden md:table-cell' },
+    { key: 'range',  label: 'Service Range',   cls: 'hidden lg:table-cell' },
+    { key: null,     label: 'Last Login',      cls: 'hidden lg:table-cell' },
+    { key: 'status', label: 'Status',          cls: '' },
+    { key: null,     label: 'Actions',         cls: 'text-right' },
+  ] as { key: 'name'|'plan'|'since'|'range'|'status'|null; label: string; cls: string }[]
+
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <AdminNav />
 
-        {/* Header row */}
+        {/* Header */}
         <div className="flex items-center justify-between mb-3">
           <div>
             <h1 className="text-2xl font-bold text-[#2F3E4E]">
@@ -185,9 +289,7 @@ export default function EnrollmentPage() {
               key={t}
               onClick={() => setTab(t)}
               className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border transition ${
-                tab === t
-                  ? TAB_COLORS[t]
-                  : 'bg-white text-[#7A8F79] border-[#D9E1E8] hover:border-[#7A8F79]'
+                tab === t ? TAB_COLORS[t] : 'bg-white text-[#7A8F79] border-[#D9E1E8] hover:border-[#7A8F79]'
               }`}
             >
               {t}
@@ -199,7 +301,7 @@ export default function EnrollmentPage() {
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
           {loading ? (
             <p className="text-sm text-[#7A8F79] p-6 text-center">Loading...</p>
           ) : visible.length === 0 ? (
@@ -208,17 +310,8 @@ export default function EnrollmentPage() {
             <table className="w-full text-xs text-[#2F3E4E]">
               <thead>
                 <tr className="bg-[#2F3E4E] text-white text-left">
-                  {([
-                    { key: 'name',   label: 'Provider',   cls: '' },
-                    { key: null,     label: 'Account',    cls: '' },
-                    { key: 'plan',   label: 'Plan',       cls: 'hidden sm:table-cell' },
-                    { key: null,     label: 'Duration',   cls: 'hidden md:table-cell' },
-                    { key: 'since',  label: 'Since',      cls: 'hidden md:table-cell' },
-                    { key: null,     label: 'Last Login', cls: 'hidden lg:table-cell' },
-                    { key: 'status', label: 'Status',     cls: '' },
-                    { key: null,     label: 'Actions',    cls: 'text-right' },
-                  ] as { key: 'name'|'plan'|'since'|'status'|null; label: string; cls: string }[]).map(col => (
-                    <th key={col.label} className={`px-3 py-2 font-semibold ${col.cls}`}>
+                  {cols.map(col => (
+                    <th key={col.label} className={`px-3 py-2 font-semibold whitespace-nowrap ${col.cls}`}>
                       {col.key ? (
                         <button onClick={() => toggleSort(col.key!)} className="flex items-center gap-1 hover:text-[#7A8F79] transition">
                           {col.label}
@@ -235,8 +328,10 @@ export default function EnrollmentPage() {
                 {visible.map(n => {
                   const status = effectiveStatus(n)
                   const actions = STATUS_ACTIONS[status] ?? []
+                  const autoTermed = isExpired(n.serviceEndDate) && n.billingStatus !== 'Seasonal'
                   return (
                     <tr key={n.id} className="hover:bg-[#F4F6F5] transition">
+
                       {/* Provider */}
                       <td className="px-3 py-2">
                         <Link href={`/admin/nurse/${n.user.id}`} className="font-semibold hover:text-[#7A8F79] transition">
@@ -268,12 +363,29 @@ export default function EnrollmentPage() {
 
                       {/* Since */}
                       <td className="px-3 py-2 hidden md:table-cell text-[#7A8F79]">
-                        {fmt(n.agreementSignedAt ?? n.planStartDate)}
+                        {fmtDate(n.agreementSignedAt ?? n.planStartDate)}
+                      </td>
+
+                      {/* Service Range */}
+                      <td className="px-3 py-2 hidden lg:table-cell">
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-1">
+                            <span className="text-[9px] font-bold uppercase tracking-wide text-[#7A8F79] w-7">Start</span>
+                            <DateCell nurse={n} field="serviceStartDate" />
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[9px] font-bold uppercase tracking-wide text-[#7A8F79] w-7">End</span>
+                            <DateCell nurse={n} field="serviceEndDate" />
+                          </div>
+                          {autoTermed && (
+                            <span className="text-[9px] text-red-400 font-semibold">auto-termed</span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Last login */}
                       <td className="px-3 py-2 hidden lg:table-cell text-[#7A8F79]">
-                        {fmt(n.user.lastLoginAt)}
+                        {fmtDate(n.user.lastLoginAt)}
                       </td>
 
                       {/* Status badge */}
@@ -311,7 +423,6 @@ export default function EnrollmentPage() {
             </table>
           )}
 
-          {/* Footer count */}
           {!loading && visible.length > 0 && (
             <div className="px-4 py-2 border-t border-[#D9E1E8] text-[10px] text-[#7A8F79]">
               {visible.length} provider{visible.length !== 1 ? 's' : ''} {search ? 'matched' : 'in this view'}

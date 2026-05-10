@@ -127,7 +127,9 @@ model NurseProfile {
 
   // Billing enrollment status — admin-managed
   // 'Active' | 'Termed' | 'Seasonal' | 'Pending' | null (never enrolled)
-  billingStatus String?
+  billingStatus    String?
+  serviceStartDate String?
+  serviceEndDate   String?
 
   // Portal subscription tier
   planTier       String    @default("FREE")  // FREE | BASIC | PRO

@@ -12,16 +12,24 @@ function auth(req: Request) {
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await params
-  const { billingStatus } = await req.json()
+  const body = await req.json()
+  const { billingStatus, serviceStartDate, serviceEndDate } = body
 
-  const allowed = ['Active', 'Termed', 'Seasonal', 'Pending', null]
-  if (!allowed.includes(billingStatus)) {
-    return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+  if (billingStatus !== undefined) {
+    const allowed = ['Active', 'Termed', 'Seasonal', 'Pending', null]
+    if (!allowed.includes(billingStatus)) {
+      return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+    }
   }
+
+  const data: Record<string, unknown> = {}
+  if (billingStatus !== undefined) data.billingStatus = billingStatus
+  if (serviceStartDate !== undefined) data.serviceStartDate = serviceStartDate || null
+  if (serviceEndDate !== undefined) data.serviceEndDate = serviceEndDate || null
 
   const updated = await (prisma.nurseProfile as any).update({
     where: { id },
-    data: { billingStatus },
+    data,
   })
 
   return NextResponse.json(updated)

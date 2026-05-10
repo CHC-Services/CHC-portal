@@ -13,7 +13,8 @@ const links = [
   { prefix: 'ad', label: 'Messaging', href: '/admin/email' },
   { prefix: 'ad', label: 'FAQ',       href: '/admin/faq' },
   { prefix: 'ad', label: 'Backups',   href: '/admin/backups' },
-  { prefix: 'ad', label: 'Campaigns', href: '/admin/campaigns' },
+  { prefix: 'ad', label: 'Campaigns',  href: '/admin/campaigns' },
+  { prefix: 'ad', label: 'Enrollment', href: '/admin/enrollment' },
   { prefix: '',   label: 'Add Provider', href: '/admin#add-provider' },
 ]
 

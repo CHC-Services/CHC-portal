@@ -125,6 +125,10 @@ model NurseProfile {
   // Demo/test account — excluded from metrics, all writes blocked
   isDemo       Boolean   @default(false)
 
+  // Billing enrollment status — admin-managed
+  // 'Active' | 'Termed' | 'Seasonal' | 'Pending' | null (never enrolled)
+  billingStatus String?
+
   // Portal subscription tier
   planTier       String    @default("FREE")  // FREE | BASIC | PRO
   trialExpiresAt DateTime?                   // if set, nurse gets BASIC access until this date

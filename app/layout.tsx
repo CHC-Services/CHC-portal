@@ -33,7 +33,7 @@ export default async function RootLayout({
         <Banner user={user} />
         {user?.role === 'nurse' && <NurseSideNav />}
         <PullToRefresh />
-        <div className={`page-wrap px-4 sm:px-6${user?.role === 'nurse' ? ' lg:pl-[calc(10vw+1.5rem)]' : ''}`}>
+        <div className={`page-wrap px-4 sm:px-6${user?.role === 'nurse' ? ' lg:pl-[10vw]' : ''}`}>
           {children}
         </div>
         <Footer />

@@ -221,7 +221,7 @@ export default function NurseDashboard() {
       ) : claimSummary && (
         <div className="bg-white rounded-xl shadow-sm p-5 mb-4">
           <p className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] mb-4">
-            Reimbursement Summary
+            Claim Reimbursement Summary
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-[#F4F6F5] rounded-xl p-4">
@@ -260,7 +260,7 @@ export default function NurseDashboard() {
       ) : claimSummary && (
         <div className="bg-white rounded-xl shadow-sm p-5 mb-4">
           <p className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] mb-4">
-            Claims Summary
+            Claim Count Summary
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-[#F4F6F5] rounded-xl p-4">

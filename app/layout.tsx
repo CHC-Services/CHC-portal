@@ -5,7 +5,6 @@ import { getUserFromCookie } from "@/lib/getUserFromCookie";
 import Banner from "./components/Banner";
 import Footer from "./components/Footer";
 import PullToRefresh from "./components/PullToRefresh";
-import NurseSideNav from "./components/NurseSideNav";
 
 const cormorantUpright = Cormorant_Upright({
   subsets: ["latin"],
@@ -31,9 +30,8 @@ export default async function RootLayout({
       </head>
       <body className="pt-[220px] md:pt-[200px]">
         <Banner user={user} />
-        {user?.role === 'nurse' && <NurseSideNav />}
         <PullToRefresh />
-        <div className={`page-wrap px-4 sm:px-6${user?.role === 'nurse' ? ' lg:pl-[10vw]' : ''}`}>
+        <div className="page-wrap px-4 sm:px-6">
           {children}
         </div>
         <Footer />

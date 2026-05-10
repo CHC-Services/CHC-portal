@@ -5,10 +5,16 @@ import PortalMessages from '../../components/PortalMessages'
 import { shortInvoiceNumber } from '../../../lib/formatInvoice'
 
 const STATUS_COLORS: Record<string, string> = {
-  Pending:   'bg-yellow-100 text-yellow-800',
-  Paid:      'bg-green-100 text-green-800',
-  Overdue:   'bg-red-100 text-red-800',
-  Cancelled: 'bg-gray-100 text-gray-500',
+  Pending:       'bg-yellow-100 text-yellow-800',
+  Sent:          'bg-yellow-100 text-yellow-800',
+  Paid:          'bg-green-100 text-green-800',
+  Overdue:       'bg-red-100 text-red-800',
+  Cancelled:     'bg-gray-100 text-gray-500',
+  'Balance Owed': 'bg-yellow-100 text-yellow-800',
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  Sent: 'Balance Owed',
 }
 
 const FEE_PLAN_LABELS: Record<string, string> = {
@@ -32,6 +38,7 @@ type Invoice = {
   discountAmt: number
   discountNote?: string
   totalAmount: number
+  paidAmount?: number
   dueTerm: string
   dueDate: string
   status: string
@@ -100,7 +107,7 @@ export default function NurseInvoicesPage() {
   )
 
   return (
-    <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">
+    <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8 pl-0 md:pl-0">
 
       <div className="max-w-3xl mx-auto">
 
@@ -112,6 +119,46 @@ export default function NurseInvoicesPage() {
         </div>
 
         <PortalMessages priority="Invoices" />
+
+        {invoices.length > 0 && (() => {
+          const outstanding = invoices.filter(i => i.status !== 'Paid' && i.status !== 'Cancelled' && i.status !== 'WrittenOff')
+          const accountTotal = invoices.reduce((s, i) => s + i.totalAmount, 0)
+          const paidToDate   = invoices.reduce((s, i) => s + (i.paidAmount ?? 0), 0)
+          const totalInvoices = invoices.length
+          const outstandingCount = outstanding.length
+          const balanceDue = outstanding.reduce((s, i) => s + Math.max(0, i.totalAmount - (i.paidAmount ?? 0)), 0)
+          const fmt2 = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+          return (
+            <div className="bg-white rounded-xl shadow-sm p-5 mb-6">
+              <p className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] mb-4">Account Summary</p>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="bg-[#F4F6F5] rounded-xl p-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Account Total</p>
+                  <p className="text-2xl font-black text-[#2F3E4E]">{fmt2(accountTotal)}</p>
+                </div>
+                <div className="bg-[#F4F6F5] rounded-xl p-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Paid to Date</p>
+                  <p className="text-2xl font-black text-green-600">{fmt2(paidToDate)}</p>
+                </div>
+                <div className="bg-[#F4F6F5] rounded-xl p-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Total Invoices</p>
+                  <p className="text-2xl font-black text-[#2F3E4E]">{totalInvoices}</p>
+                </div>
+                <div className="bg-[#F4F6F5] rounded-xl p-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Outstanding Invoices</p>
+                  <p className={`text-2xl font-black ${outstandingCount > 0 ? 'text-amber-600' : 'text-green-600'}`}>{outstandingCount}</p>
+                </div>
+                <div className="bg-[#F4F6F5] rounded-xl p-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Balance Due</p>
+                  <p className={`text-2xl font-black ${balanceDue > 0 ? 'text-red-500' : 'text-green-600'}`}>{fmt2(balanceDue)}</p>
+                </div>
+              </div>
+              {outstandingCount === 0 && (
+                <p className="text-xs text-[#7A8F79] italic mt-3">Your account is fully paid up. Thank you!</p>
+              )}
+            </div>
+          )
+        })()}
 
       <div className="space-y-4">
         {invoices.length === 0 ? (
@@ -132,7 +179,7 @@ export default function NurseInvoicesPage() {
                   <p className="text-lg font-bold text-[#2F3E4E]">{shortInvoiceNumber(inv.invoiceNumber)}</p>
                 </div>
                 <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_COLORS[inv.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                  {inv.status}
+                  {STATUS_LABELS[inv.status] ?? inv.status}
                 </span>
               </div>
               <div className="text-right">

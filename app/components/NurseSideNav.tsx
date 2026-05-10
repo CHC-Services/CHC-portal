@@ -43,12 +43,12 @@ export default function NurseSideNav() {
 
       {/* Nav links */}
       <nav className="flex flex-col gap-0.5 p-2">
-        {links.map((link, i) => {
+        {links.map((link) => {
           const active = pathname === link.href
           return (
             <div key={link.href}>
-              {i === links.findIndex(l => l.label === 'Profile') && (
-                <div className="my-1.5 px-2">
+              {['Patients', 'Invoices', 'Profile'].includes(link.label) && (
+                <div className="my-2.5 px-2">
                   <div style={{
                     height: '1px',
                     background: 'linear-gradient(to right, transparent, #2F3E4E55, transparent)',

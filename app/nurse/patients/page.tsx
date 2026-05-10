@@ -214,7 +214,7 @@ export default function MyPatients() {
   const lbl = 'block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1'
 
   return (
-    <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6">
+    <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6 pl-0 md:pl-0">
       <div className="mb-5">
         <h1 className="text-3xl font-bold text-[#2F3E4E]">
           <span className="text-[#7A8F79] italic">my</span>Patient Details

@@ -101,7 +101,7 @@ export default function NurseDashboard() {
   const priorMonthName = new Date(priorMonthYear, priorMonth).toLocaleString('default', { month: 'long' })
 
   return (
-    <div className="min-h-screen bg-[#D9E1E8] px-4 md:px-6 lg:px-6 py-4 md:py-6">
+    <div className="min-h-screen bg-[#D9E1E8] pr-4 md:pr-6 lg:pr-6 py-4 md:py-6">
       <div className="max-w-5xl mr-auto">
 
       {/* Page header */}

@@ -95,7 +95,7 @@ export default function ProfilePage() {
   if (loading) return <div className="p-8">Loading…</div>
 
   return (
-    <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">
+    <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8 pl-0 md:pl-0">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-[#2F3E4E]">
           <span className="text-[#7A8F79] italic">my</span>Profile

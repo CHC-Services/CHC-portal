@@ -501,7 +501,7 @@ export default function NurseDocumentsPage() {
   const hasPending = pendingForms.length > 0
 
   return (
-    <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6">
+    <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6 pl-0 md:pl-0">
       <div className="mb-4">
         <h1 className="text-2xl font-bold text-[#2F3E4E]">
           <span className="text-[#7A8F79] italic">my</span>Documents

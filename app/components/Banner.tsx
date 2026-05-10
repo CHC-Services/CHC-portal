@@ -27,6 +27,8 @@ export default function Banner({ user }: BannerProps) {
     const displayName = user?.displayName || null
     const pathname = usePathname()
 
+    const homeHref = role === 'nurse' ? '/nurse' : role === 'admin' ? '/admin' : role === 'provider' ? '/portal' : '/'
+
     // Mobile auth button — pill style
     const authButtonMobile = role ? (
         <button
@@ -133,7 +135,7 @@ export default function Banner({ user }: BannerProps) {
     // Row 2: general site links (always visible)
     const generalRow = (
         <>
-            <Link href="/" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+            <Link href={homeHref} onClick={() => setMenuOpen(false)} className={`transition ${pathname === homeHref ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 Home
             </Link>
             <Link href="/services" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/services" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
@@ -156,7 +158,7 @@ export default function Banner({ user }: BannerProps) {
     )
 
     const bottomNavItems = [
-        { href: '/', label: 'Home', icon: '🏠' },
+        { href: homeHref, label: 'Home', icon: '🏠' },
         { href: '/faq', label: 'FAQ', icon: '❓' },
         ...(role ? [
             { href: '/resources', label: 'Resources', icon: '📋' },

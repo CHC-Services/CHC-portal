@@ -3,7 +3,7 @@ import { sendBillingInquiry } from '@/lib/sendEmail'
 
 export async function POST(req: NextRequest) {
   try {
-    const { firstName, lastName, email, phone, insuranceCount, insuranceNames } = await req.json()
+    const { firstName, lastName, email, phone, patientCount, insuranceCount, insuranceNames } = await req.json()
 
     if (!firstName || !lastName || !email || !insuranceNames?.length) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -14,6 +14,7 @@ export async function POST(req: NextRequest) {
       lastName,
       email,
       phone,
+      patientCount: patientCount || '1',
       insuranceCount: parseInt(insuranceCount) || insuranceNames.length,
       insuranceNames,
     })

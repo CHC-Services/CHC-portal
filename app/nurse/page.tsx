@@ -20,7 +20,8 @@ type TimeEntry = {
 export default function NurseDashboard() {
   const router = useRouter()
   const [entries, setEntries] = useState<TimeEntry[]>([])
-  const [invoiceSummary, setInvoiceSummary] = useState<{ totalDue: number; count: number } | null>(null)
+  const [invoiceSummary, setInvoiceSummary] = useState<{ totalDue: number; count: number; totalInvoices: number; totalPaid: number; accountTotal: number } | null>(null)
+  const [lastLoginAt, setLastLoginAt] = useState<string | null>(null)
   const [claimSummary, setClaimSummary] = useState<{ totalBilled: number; totalAllowed: number; totalPaid: number; avgPerHour: number | null; statusCounts: { submitted: number; pending: number; paid: number; denied: number } } | null>(null)
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   const [effectiveTier, setEffectiveTier] = useState<'FREE' | 'BASIC' | 'PRO'>('FREE')
@@ -39,6 +40,8 @@ export default function NurseDashboard() {
     fetch('/api/nurse/profile', { credentials: 'include' })
       .then(r => r.json())
       .then(async data => {
+        if (data.user?.lastLoginAt) setLastLoginAt(data.user.lastLoginAt)
+
         if (!data.profile?.portalAgreementSignedAt) {
           router.replace('/nurse/agreement')
           return
@@ -98,7 +101,8 @@ export default function NurseDashboard() {
   const priorMonthName = new Date(priorMonthYear, priorMonth).toLocaleString('default', { month: 'long' })
 
   return (
-    <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6">
+    <div className="min-h-screen bg-[#D9E1E8] px-4 md:px-8 lg:px-16 py-4 md:py-6">
+      <div className="max-w-5xl mr-auto">
 
       {/* Page header */}
       <div className="flex items-stretch gap-6 mb-5">
@@ -156,20 +160,46 @@ export default function NurseDashboard() {
         </div>
       ) : invoiceSummary && (
         <div className="bg-white rounded-xl shadow-sm p-5 mb-4">
-          <p className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] mb-4">
-            Account Summary
-          </p>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="flex items-start justify-between mb-4">
+            <p className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79]">
+              Account Summary
+            </p>
+            {lastLoginAt && (
+              <p className="text-[10px] text-[#7A8F79]">
+                Last login:{' '}
+                <span className="font-semibold text-[#2F3E4E]">
+                  {new Date(lastLoginAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
+                </span>
+              </p>
+            )}
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="bg-[#F4F6F5] rounded-xl p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Account Total</p>
+              <p className="text-2xl font-black text-[#2F3E4E]">
+                ${invoiceSummary.accountTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+            </div>
+            <div className="bg-[#F4F6F5] rounded-xl p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Paid to Date</p>
+              <p className="text-2xl font-black text-green-600">
+                ${invoiceSummary.totalPaid.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+            </div>
+            <div className="bg-[#F4F6F5] rounded-xl p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Total Invoices</p>
+              <p className="text-2xl font-black text-[#2F3E4E]">{invoiceSummary.totalInvoices}</p>
+            </div>
+            <div className="bg-[#F4F6F5] rounded-xl p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Invoices Due</p>
+              <p className={`text-2xl font-black ${invoiceSummary.count > 0 ? 'text-amber-600' : 'text-green-600'}`}>
+                {invoiceSummary.count}
+              </p>
+            </div>
             <div className="bg-[#F4F6F5] rounded-xl p-4">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Balance Due</p>
               <p className={`text-2xl font-black ${invoiceSummary.totalDue > 0 ? 'text-red-500' : 'text-green-600'}`}>
                 ${invoiceSummary.totalDue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </p>
-            </div>
-            <div className="bg-[#F4F6F5] rounded-xl p-4">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Outstanding Invoices</p>
-              <p className={`text-2xl font-black ${invoiceSummary.count > 0 ? 'text-amber-600' : 'text-green-600'}`}>
-                {invoiceSummary.count}
               </p>
             </div>
           </div>
@@ -293,6 +323,7 @@ export default function NurseDashboard() {
         </div>
       )}
 
+      </div>
     </div>
   )
 }

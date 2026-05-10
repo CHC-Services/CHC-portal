@@ -557,6 +557,7 @@ export async function sendBillingInquiry({
   lastName,
   email,
   phone,
+  patientCount,
   insuranceCount,
   insuranceNames,
 }: {
@@ -564,6 +565,7 @@ export async function sendBillingInquiry({
   lastName: string
   email: string
   phone?: string
+  patientCount?: string
   insuranceCount: number
   insuranceNames: string[]
 }): Promise<boolean> {
@@ -588,6 +590,7 @@ export async function sendBillingInquiry({
             <p style="margin:0 0 8px;font-size:14px"><strong>Name:</strong> ${firstName} ${lastName}</p>
             <p style="margin:0 0 8px;font-size:14px"><strong>Email:</strong> ${email}</p>
             ${phone ? `<p style="margin:0 0 8px;font-size:14px"><strong>Phone:</strong> ${phone}</p>` : ''}
+            ${patientCount ? `<p style="margin:0 0 8px;font-size:14px"><strong>Patients Billed:</strong> ${patientCount}</p>` : ''}
             <p style="margin:0 0 8px;font-size:14px"><strong>Total Insurances:</strong> ${insuranceCount}</p>
             <p style="margin:0 4px 4px;font-size:14px"><strong>Insurance Names:</strong></p>
             <ul style="margin:0;padding-left:20px;font-size:14px">${insuranceList}</ul>

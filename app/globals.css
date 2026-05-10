@@ -5,6 +5,10 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --navy: #2F3E4E;
+  --sage-light: #7A8F79;
+  --sage-dark: #4A5B47;
+  --red-urgent: #89141e;
 }
 
 @theme inline {

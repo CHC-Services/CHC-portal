@@ -22,6 +22,7 @@ export default function NurseSideNav() {
       className="hidden lg:flex fixed z-40 flex-col"
       style={{
         left: 'max(1rem, calc(50vw - 650px + 1rem))',
+        transform: 'translateX(-25%)',
         top: 'calc(80px + 20vh)',
         height: 'clamp(320px, 35vw, 560px)',
         width: '10vw',

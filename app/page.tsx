@@ -151,7 +151,7 @@ export default async function Home() {
                 <span className="italic text-[#7A8F79]">streamlined.</span>
               </h1>
               <p className="mt-4 text-[#D9E1E8] text-sm max-w-xl">
-                Coming Home Care's secure portal puts time tracking, claims management, billing enrollment, and yearly renewal reminders all in one place — so you can focus on your patients.
+                Coming Home Care's secure provider portal puts time tracking, claims management, billing services, and yearly renewal reminders all in one place — so your focus can stay on you and your patients.
               </p>
             </>
           )}
@@ -233,13 +233,13 @@ export default async function Home() {
             <div>
               <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-3">Everything in One Place</p>
               <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
-                <FeatureCard href="/login" icon="⏱"  title="Time Tracking"       description="Log hours by date in seconds. Your full history is always accessible." />
-                <FeatureCard href="/login" icon="📋"  title="Claims Management"   description="Real-time BCBS claim status, payment breakdowns, and EOB tracking." />
-                <FeatureCard href="/login" icon="💳"  title="Billing Enrollment"  description="Enroll in billing services and manage your provider payment plan." />
-                <FeatureCard href="/login" icon="📅"  title="Renewal Reminders"   description="Never miss a license, Medicaid, or BCBS renewal with built-in calendar reminders." />
-                <FeatureCard href="/resources" icon="📚"  title="Provider Resources" description="Deconstructed step-by-step guides for NPI, Medicaid, and BCBS enrollment." />
+                <FeatureCard href="/login" icon="⏱"  title="Time Tracking"       description="Log billable hours in seconds from any device." />
+                <FeatureCard href="/login" icon="📋"  title="Claims Management"   description="Regular claim status updates, payment breakdowns, and EOB storage." />
+                <FeatureCard href="/login" icon="💳"  title="Online Enrollment"  description="Enroll in billing services and manage your plan online." />
+                <FeatureCard href="/login" icon="📅"  title="Renewal Reminders"   description="Never miss a license or insurance recertification with built-in reminders." />
+                <FeatureCard href="/resources" icon="📚"  title="Provider Resources" description="Step-by-step guides for NPI registration, Medicaid enrollment and more." />
                 <FeatureCard href="/care" icon="🧘" title="myCare" description="Tips for preventing burnout & links to help keep you running at your best." /> 
-                <FeatureCard href="/login" icon="🔒"  title="Secure &amp; Private"    description="Privacy-conscious from the start. Both your & your patient's data are protected with HIPAA level privacy encryptions." />
+                <FeatureCard href="/login" icon="🔒"  title="Secure &amp; Private"    description="Privacy-conscious from the start. Your & your patient's data are protected with HIPAA level privacy encryptions." />
               </div>
             </div>
 

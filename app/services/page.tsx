@@ -9,6 +9,7 @@ export default function BillingPage() {
     lastName: '',
     email: '',
     phone: '',
+    patientCount: '1',
     insuranceCount: '1',
     insuranceNames: [''],
   })
@@ -57,9 +58,9 @@ export default function BillingPage() {
             Let Us Handle Your Billing
           </h1>
           <p className="mt-3 text-[#D9E1E8] text-sm max-w-xl leading-relaxed">
-            Coming Home Care offers end-to-end medical billing services for home care providers.
-            We manage claim submission, follow-up, and reimbursement tracking — so you can focus
-            on what matters most: patient care.
+            Coming Home Care offers medical billing services for home care providers.
+            Once enrolled, we manage claim submission, monitor for follow-up responses, and track reimbursements — so you can focus
+            on what matters most: <span className="font-bold italic text-lg text-[#7A8F79]">care</span>.
           </p>
         </div>
       </div>
@@ -150,6 +151,22 @@ export default function BillingPage() {
                   />
                 </div>
 
+                {/* Patient count */}
+                <div>
+                  <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">
+                    How many patients do you submit claims for currently? *
+                  </label>
+                  <select
+                    value={form.patientCount}
+                    onChange={e => setForm({ ...form, patientCount: e.target.value })}
+                    className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#7A8F79]"
+                  >
+                    {['1', '2', '3', '4', '5+'].map(n => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                </div>
+
                 {/* Insurance count */}
                 <div>
                   <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">
@@ -197,6 +214,7 @@ export default function BillingPage() {
 
                 <p className="text-xs text-center text-[#7A8F79]">
                   Please allow 24–48 hours for our team to review and reply.
+                  <br/><br/>* indicates a required field
                 </p>
 
               </form>

@@ -26,6 +26,9 @@ export async function GET(req: Request) {
 
   const totalDue = outstanding.reduce((sum, inv) => sum + Math.max(0, inv.totalAmount - (inv.paidAmount ?? 0)), 0)
   const count = outstanding.length
+  const totalInvoices = invoices.length
+  const totalPaid = invoices.reduce((sum, inv) => sum + (inv.paidAmount ?? 0), 0)
+  const accountTotal = invoices.reduce((sum, inv) => sum + inv.totalAmount, 0)
 
-  return NextResponse.json({ totalDue, count })
+  return NextResponse.json({ totalDue, count, totalInvoices, totalPaid, accountTotal })
 }

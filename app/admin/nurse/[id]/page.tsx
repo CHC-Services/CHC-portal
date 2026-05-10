@@ -1110,7 +1110,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                           }}
                           className="shrink-0 px-3 py-2 rounded-lg bg-[#F4F6F5] border border-[#D9E1E8] text-[#7A8F79] text-xs font-semibold hover:border-[#7A8F79] hover:text-[#2F3E4E] transition"
                         >
-                          🔍 Lookup
+                          🔍 
                         </button>
                       </div>
                       {/* NPI Type checkboxes */}

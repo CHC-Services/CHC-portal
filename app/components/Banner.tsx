@@ -44,7 +44,7 @@ export default function Banner({ user }: BannerProps) {
     ) : (
         <Link
             href="/login"
-            className="flex items-center gap-2 bg-[#7A8F79] text-white px-5 py-2 rounded-full hover:bg-[#657a64] transition text-sm font-semibold shrink-0"
+            className="flex items-center gap-2 bg-[#7A8F79] text-var(--navy) px-5 py-2 rounded-full hover:bg-[#657a64] transition text-sm font-semibold shrink-0"
         >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013 3v1" />

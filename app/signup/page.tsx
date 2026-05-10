@@ -75,10 +75,7 @@ export default function SignupPage() {
       <div className="hidden md:flex flex-col justify-top pt-24 gap-8 bg-[#2F3E4E] text-white w-1/3 px-12 py-16 ">
         <div>
           <div className="flex items-baseline gap-2 border-t border-[#3d5166] pt-6 mb-2">
-            <p className="text-sm normal tracking-widest text-[#7A8F79] font-semibold">Inside the provider's</p>
-            <h3 className="text-xl font-bold leading-tight">
-              <span className="italic text-[#7A8F79]">my</span>Provider
-            </h3>
+            <p className="text-sm normal tracking-widest text-[#7A8F79] font-semibold">Inside the <span className="italic text-lg text-[#7A8F79]">my</span><span className="font-bold text-lg text-[#ffffff]">Provider</span> portal</p>
           </div>
           <p className="text-sm normal tracking-widest text-[#7A8F79] font-semibold">You'll find...</p>
         </div>

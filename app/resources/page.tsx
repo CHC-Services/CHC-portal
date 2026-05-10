@@ -643,6 +643,16 @@ export default function ResourcesPage() {
             </div>
 
           </div>
+
+          {/* Stay Protected */}
+          <div className="mt-4 pt-4 border-t border-[#D9E1E8]">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-white bg-[#4A5E6E] px-2.5 py-1 rounded-full">
+              Stay Protected
+            </span>
+            <div className="mt-3">
+              <a href="#stay-protected" className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition">🔐 Online Privacy & VPN</a>
+            </div>
+          </div>
         </div>
 
         {/* ── Getting Started ── */}
@@ -670,6 +680,53 @@ export default function ResourcesPage() {
             {resourceDirectories.filter(d => ['etin-renewal', 'license-renewal', 'emedny-listserv', 'cpr-firstaid', 'malpractice-insurance'].includes(d.id)).map(dir => (
               <ResourceDirectoryCard key={dir.id} dir={dir} />
             ))}
+          </div>
+        </div>
+
+        {/* ── Stay Protected ── */}
+        <div id="stay-protected" className="max-w-3xl mb-12 scroll-mt-28 md:scroll-mt-56">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="h-px flex-1 bg-[#D9E1E8]" />
+            <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full bg-[#4A5E6E] text-white">Stay Protected</span>
+            <div className="h-px flex-1 bg-[#D9E1E8]" />
+          </div>
+
+          {/* Description card */}
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-6">
+            <div className="bg-[#2F3E4E] px-6 py-5 flex items-start gap-3">
+              <span className="text-3xl">🔐</span>
+              <div>
+                <h2 className="text-xl font-bold text-white">Online Privacy & VPN</h2>
+                <p className="text-sm text-[#D9E1E8] mt-1">Protect your digital self the same way you protect your patients.</p>
+              </div>
+            </div>
+            <div className="px-6 py-6">
+              <p className="text-sm text-[#4a5a6a] leading-relaxed mb-4">
+                The importance of PPE isn&apos;t limited to gloves and gowns. When you&apos;re reviewing patient data, submitting claims, checking your banking, or filling out any form that touches personal information — your digital activity deserves the same level of protection as your physical one. Public Wi-Fi at a coffee shop or hospital waiting area is an open door for anyone watching.
+              </p>
+              <p className="text-sm text-[#4a5a6a] leading-relaxed mb-6">
+                A VPN (Virtual Private Network) encrypts everything you send and receive online so that no one — not your internet provider, not the network owner, not a bad actor on the same Wi-Fi — can see what you&apos;re doing. Most VPN providers, however, keep logs of your activity. <strong className="text-[#2F3E4E]">VP.net is the only VPN built on Intel SGX secure enclave technology, meaning it is technically incapable of spying on its customers&apos; online activity.</strong> Not just a policy — an architectural guarantee.
+              </p>
+
+              {/* Affiliate banner */}
+              <a
+                href="https://vp.net/?_a=Vfa7kO"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full rounded-xl overflow-hidden hover:opacity-90 transition"
+              >
+                <img
+                  src="https://vp.net/banners/dark/dark_affiliate_1940x500px.webp"
+                  alt="vp.net™ - Revolutionary Privacy with Intel SGX"
+                  width={1940}
+                  height={500}
+                  className="w-full h-auto"
+                />
+              </a>
+              <p className="text-[11px] text-[#7A8F79] mt-2 text-center">
+                Coming Home Care may earn a commission if you sign up through this link — at no extra cost to you.
+              </p>
+            </div>
           </div>
         </div>
 

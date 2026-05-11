@@ -27,8 +27,13 @@ export async function GET(req: Request) {
       if (inv.status === 'WrittenOff' || inv.status === 'Cancelled') return sum
       return sum + (inv.totalAmount - (inv.paidAmount || 0))
     }, 0)
+    const totalInvoiced = n.invoices.reduce((sum: number, inv: any) => {
+      if (inv.status === 'WrittenOff' || inv.status === 'Cancelled') return sum
+      return sum + inv.totalAmount
+    }, 0)
+    const totalPaid = n.invoices.reduce((sum: number, inv: any) => sum + (inv.paidAmount || 0), 0)
     const { invoices, ...rest } = n
-    return { ...rest, invoiceBalance }
+    return { ...rest, invoiceBalance, totalInvoiced, totalPaid }
   })
 
   return NextResponse.json(result)

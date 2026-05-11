@@ -11,14 +11,20 @@ type TimeEntry = {
   hours: number
   notes: string | null
   invoiceId: string | null
+  readyToInvoice: boolean
 }
 
 type Nurse = {
   id: string
   displayName: string
+  firstName: string | null
+  lastName: string | null
   accountNumber: string | null
   npiNumber: string | null
   invoiceBalance: number
+  totalInvoiced: number
+  totalPaid: number
+  isDemo: boolean
   signupRole: string | null
   user: { id: string; email: string; name: string; role: string; createdAt: string }
   timeEntries: TimeEntry[]
@@ -188,57 +194,73 @@ function NurseRow({ nurse, onDeleted, onRefresh }: { nurse: Nurse; onDeleted: ()
   }).reduce((sum, e) => sum + e.hours, 0)
 
   const unbilledHours = nurse.timeEntries
-    .filter(e => !e.invoiceId)
+    .filter(e => !e.readyToInvoice)
     .reduce((sum, e) => sum + e.hours, 0)
+
+  const displayName = nurse.lastName && nurse.firstName
+    ? `${nurse.lastName}, ${nurse.firstName}`
+    : nurse.displayName
 
   return (
     <div className="bg-white rounded-xl shadow-sm overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full text-left px-6 py-4 flex items-center justify-between hover:bg-[#F4F6F5] transition"
+        className="w-full text-left px-5 py-2.5 flex items-center justify-between hover:bg-[#F4F6F5] transition"
       >
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-full bg-[#D9E1E8] flex items-center justify-center text-[#2F3E4E] font-bold text-sm">
-            {nurse.displayName.charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <p className="font-semibold text-[#2F3E4E]">{nurse.displayName}</p>
-              {(nurse as any).isDemo && (
-                <span className="text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-700 border border-amber-300 px-1.5 py-0.5 rounded-full">Demo</span>
-              )}
+        <div className="flex items-center gap-3">
+          <div className="flex flex-col items-center gap-0.5 shrink-0">
+            <div className="w-9 h-9 rounded-full bg-[#D9E1E8] flex items-center justify-center text-[#2F3E4E] font-bold text-sm">
+              {nurse.displayName.charAt(0).toUpperCase()}
             </div>
-            <p className="text-xs text-[#7A8F79]">{nurse.user.email}</p>
-            {nurse.accountNumber && (
-              <p className="text-xs font-mono text-[#2F3E4E] mt-0.5">{nurse.accountNumber}</p>
-            )}
             <Link
               href={`/admin/nurse/${nurse.id}`}
               onClick={e => e.stopPropagation()}
-              className="text-xs text-[#7A8F79] underline underline-offset-2 hover:text-[#2F3E4E] mt-0.5 inline-block"
+              className="text-[10px] text-[#7A8F79] underline underline-offset-1 hover:text-[#2F3E4E] leading-tight"
             >
-              View Full Profile
+              View Profile
             </Link>
           </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <p className="font-semibold text-[#2F3E4E] text-sm leading-tight">{displayName}</p>
+              <span className="text-xs text-[#7A8F79]">{nurse.user.email}</span>
+              {nurse.isDemo && (
+                <span className="text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-700 border border-amber-300 px-1.5 py-0.5 rounded-full">Demo</span>
+              )}
+            </div>
+            {nurse.accountNumber && (
+              <p className="text-[11px] font-mono text-[#7A8F79] leading-tight">{nurse.accountNumber}</p>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-6 text-sm">
+        <div className="flex items-center gap-4 text-sm">
           <div className="text-right hidden sm:block">
-            <p className="text-xs text-[#7A8F79] uppercase tracking-wide">Balance</p>
-            <p className={`font-bold ${nurse.invoiceBalance > 0 ? 'text-red-500' : 'text-[#7A8F79]'}`}>
+            <p className="text-[10px] text-[#7A8F79] uppercase tracking-wide">Invoiced</p>
+            <p className="font-bold text-[#2F3E4E] text-sm">${(nurse.totalInvoiced || 0).toFixed(2)}</p>
+          </div>
+          <div className="text-right hidden sm:block">
+            <p className="text-[10px] text-[#7A8F79] uppercase tracking-wide">Paid</p>
+            <p className="font-bold text-green-600 text-sm">${(nurse.totalPaid || 0).toFixed(2)}</p>
+          </div>
+          <div className="text-right hidden sm:block">
+            <p className="text-[10px] text-[#7A8F79] uppercase tracking-wide">Balance</p>
+            <p className={`font-bold text-sm ${nurse.invoiceBalance > 0 ? 'text-red-500' : 'text-[#7A8F79]'}`}>
               ${(nurse.invoiceBalance || 0).toFixed(2)}
             </p>
           </div>
+          {/* Fading vertical divider */}
+          <div className="hidden sm:block w-px h-8 shrink-0" style={{ background: 'linear-gradient(to bottom, transparent, #D9E1E8 30%, #D9E1E8 70%, transparent)' }} />
           <div className="text-right hidden sm:block">
-            <p className="text-xs text-[#7A8F79] uppercase tracking-wide">Unbilled</p>
-            <p className={`font-bold ${unbilledHours > 0 ? 'text-orange-500' : 'text-[#7A8F79]'}`}>{unbilledHours} hrs</p>
+            <p className="text-[10px] text-[#7A8F79] uppercase tracking-wide">Unbilled</p>
+            <p className={`font-bold text-sm ${unbilledHours > 0 ? 'text-orange-500' : 'text-[#7A8F79]'}`}>{unbilledHours} hrs</p>
           </div>
           <div className="text-right hidden sm:block">
-            <p className="text-xs text-[#7A8F79] uppercase tracking-wide">This Month</p>
-            <p className="font-bold text-[#2F3E4E]">{hoursThisMonth} hrs</p>
+            <p className="text-[10px] text-[#7A8F79] uppercase tracking-wide">This Month</p>
+            <p className="font-bold text-sm text-[#2F3E4E]">{hoursThisMonth} hrs</p>
           </div>
           <div className="text-right hidden sm:block">
-            <p className="text-xs text-[#7A8F79] uppercase tracking-wide">All Time</p>
-            <p className="font-bold text-[#2F3E4E]">{totalHours} hrs</p>
+            <p className="text-[10px] text-[#7A8F79] uppercase tracking-wide">All Time</p>
+            <p className="font-bold text-sm text-[#2F3E4E]">{totalHours} hrs</p>
           </div>
           <span className="text-[#7A8F79] text-lg">{open ? '▲' : '▼'}</span>
         </div>
@@ -475,7 +497,9 @@ export default function AdminDashboard() {
 
   const pendingNurses = nurses.filter(n => n.user.role === 'provider')
   const activeNurses = nurses.filter(n => n.user.role !== 'provider')
-  const billableNurses = activeNurses.filter((n: any) => !n.isDemo)
+  const liveNurses = activeNurses.filter(n => !n.isDemo)
+  const demoNurses = activeNurses.filter(n => n.isDemo)
+  const billableNurses = liveNurses
 
   async function approveRequest(userId: string, nurseId: string) {
     await fetch(`/api/admin/users/${userId}/role`, {
@@ -674,14 +698,27 @@ export default function AdminDashboard() {
 
         {loadingNurses ? (
           <p className="text-sm text-[#7A8F79]">Loading nurses…</p>
-        ) : activeNurses.length === 0 ? (
+        ) : liveNurses.length === 0 ? (
           <p className="text-sm text-[#7A8F79] italic">No nurses on record yet.</p>
         ) : (
           <div className="space-y-3">
-            {activeNurses.map(nurse => (
+            {liveNurses.map(nurse => (
               <NurseRow key={nurse.id} nurse={nurse} onDeleted={loadNurses} onRefresh={loadNurses} />
             ))}
           </div>
+        )}
+
+        {demoNurses.length > 0 && (
+          <details className="mt-6">
+            <summary className="cursor-pointer text-xs font-semibold text-[#7A8F79] uppercase tracking-widest hover:text-[#2F3E4E] transition select-none">
+              Demo Accounts ({demoNurses.length})
+            </summary>
+            <div className="space-y-3 mt-3">
+              {demoNurses.map(nurse => (
+                <NurseRow key={nurse.id} nurse={nurse} onDeleted={loadNurses} onRefresh={loadNurses} />
+              ))}
+            </div>
+          </details>
         )}
       </div>
 

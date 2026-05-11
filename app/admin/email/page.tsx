@@ -583,6 +583,12 @@ export default function AdminMessagingPage() {
   const [latestLog, setLatestLog] = useState<LatestLog>(undefined as unknown as LatestLog)
   const [logLoaded, setLogLoaded] = useState(false)
 
+  // ── Weekly Reminder settings state ──────────────────────────────────────
+  const [wr, setWr] = useState({ dayOfWeek: '5', subject: '', body: '' })
+  const [wrSaving, setWrSaving] = useState(false)
+  const [wrSaved, setWrSaved] = useState(false)
+  const [wrError, setWrError] = useState('')
+
   // ── Prompt Pay settings state ────────────────────────────────────────────
   const [pp, setPp] = useState<PPSettings>(PP_DEFAULTS)
   const [ppSaving, setPpSaving] = useState(false)
@@ -617,6 +623,16 @@ export default function AdminMessagingPage() {
     fetch('/api/admin/nurses', { credentials: 'include' })
       .then(r => { if (r.status === 401) { router.push('/login'); return } return r.json() })
       .then(data => { if (Array.isArray(data)) setNurses(data) })
+
+    fetch('/api/admin/weekly-reminder-settings', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : {})
+      .then((data: Record<string, string>) => {
+        setWr(prev => ({
+          dayOfWeek: data['weeklyReminder.dayOfWeek'] ?? prev.dayOfWeek,
+          subject:   data['weeklyReminder.subject']   ?? prev.subject,
+          body:      data['weeklyReminder.body']      ?? prev.body,
+        }))
+      })
 
     fetch('/api/admin/prompt-pay-settings', { credentials: 'include' })
       .then(r => r.ok ? r.json() : {})
@@ -686,6 +702,21 @@ export default function AdminMessagingPage() {
   // ── Prompt Pay helpers ───────────────────────────────────────────────────
   function ppSet(key: keyof PPSettings, value: string) {
     setPp(prev => ({ ...prev, [key]: value })); setPpSaved(false)
+  }
+
+  async function saveWrSettings(e: React.FormEvent) {
+    e.preventDefault(); setWrSaving(true); setWrError(''); setWrSaved(false)
+    const res = await fetch('/api/admin/weekly-reminder-settings', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ settings: {
+        'weeklyReminder.dayOfWeek': wr.dayOfWeek,
+        'weeklyReminder.subject':   wr.subject,
+        'weeklyReminder.body':      wr.body,
+      }}),
+    })
+    setWrSaving(false)
+    if (res.ok) setWrSaved(true)
+    else setWrError('Failed to save settings.')
   }
 
   async function savePpSettings(e: React.FormEvent) {
@@ -1102,6 +1133,70 @@ export default function AdminMessagingPage() {
                   )}
                 </div>
               </div>
+
+              {/* ── Weekly Hours Reminder Settings ─────────────────────────── */}
+              <form onSubmit={saveWrSettings}>
+                <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                  <div className="bg-[#2F3E4E] px-6 py-4">
+                    <h2 className="text-base font-bold text-white">Weekly Hours Reminder</h2>
+                    <p className="text-xs text-[#D9E1E8] mt-0.5">Automated email sent to active providers on a chosen day each week</p>
+                  </div>
+                  <div className="p-6 space-y-5">
+                    <div>
+                      <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Send Reminder On</label>
+                      <select
+                        value={wr.dayOfWeek}
+                        onChange={e => { setWr(prev => ({ ...prev, dayOfWeek: e.target.value })); setWrSaved(false) }}
+                        className="border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] bg-white focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                      >
+                        <option value="0">Sunday</option>
+                        <option value="1">Monday</option>
+                        <option value="2">Tuesday</option>
+                        <option value="3">Wednesday</option>
+                        <option value="4">Thursday</option>
+                        <option value="5">Friday</option>
+                        <option value="6">Saturday</option>
+                      </select>
+                      <p className="text-[11px] text-[#7A8F79] mt-1">The cron fires daily at 3 pm UTC — emails only go out on this day.</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">
+                        Subject Line <span className="font-normal text-[#7A8F79]">(leave blank to use default)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={wr.subject}
+                        onChange={e => { setWr(prev => ({ ...prev, subject: e.target.value })); setWrSaved(false) }}
+                        placeholder="Reminder: Submit Your Hours for Billing This Week"
+                        className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">
+                        Email Body <span className="font-normal text-[#7A8F79]">(leave blank to use default — plain text, no HTML)</span>
+                      </label>
+                      <textarea
+                        value={wr.body}
+                        onChange={e => { setWr(prev => ({ ...prev, body: e.target.value })); setWrSaved(false) }}
+                        rows={5}
+                        placeholder={'Hi {name},\n\nThis is your weekly reminder to log any hours worked this week in the CHC Provider Portal.\n\nSign in at https://cominghomecare.com/nurse and submit your hours under myDashboard.'}
+                        className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] resize-y font-mono"
+                      />
+                      <p className="text-[11px] text-[#7A8F79] mt-1">Use <code className="bg-gray-100 px-1 rounded">{'{name}'}</code> to insert the provider&apos;s display name.</p>
+                    </div>
+                    <div className="flex items-center justify-between pt-1">
+                      <div>
+                        {wrSaved && <span className="text-xs font-semibold text-green-600">✓ Settings saved</span>}
+                        {wrError && <span className="text-xs font-semibold text-red-500">{wrError}</span>}
+                      </div>
+                      <button type="submit" disabled={wrSaving}
+                        className="px-5 py-2 rounded-lg bg-[#2F3E4E] text-white text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-60">
+                        {wrSaving ? 'Saving…' : 'Save Settings'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </form>
 
               {/* ── Prompt Pay Reminder Settings ───────────────────────────── */}
               <form onSubmit={savePpSettings}>

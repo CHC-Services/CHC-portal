@@ -224,14 +224,14 @@ function NurseRow({ nurse, onDeleted, onRefresh }: { nurse: Nurse; onDeleted: ()
           <div>
             <div className="flex items-center gap-2">
               <p className="font-semibold text-[#2F3E4E] text-sm leading-tight">{displayName}</p>
-              <span className="text-xs text-[#7A8F79]">{nurse.user.email}</span>
+              {nurse.accountNumber && (
+                <span className="text-[11px] font-mono text-[#7A8F79]">{nurse.accountNumber}</span>
+              )}
               {nurse.isDemo && (
                 <span className="text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-700 border border-amber-300 px-1.5 py-0.5 rounded-full">Demo</span>
               )}
             </div>
-            {nurse.accountNumber && (
-              <p className="text-[11px] font-mono text-[#7A8F79] leading-tight">{nurse.accountNumber}</p>
-            )}
+            <p className="text-xs text-[#7A8F79] leading-tight">{nurse.user.email}</p>
           </div>
         </div>
         <div className="flex items-center gap-4 text-sm">

@@ -12,6 +12,7 @@ type TimeEntry = {
   notes: string | null
   invoiceId: string | null
   readyToInvoice: boolean
+  billed: boolean
 }
 
 type Nurse = {
@@ -194,7 +195,7 @@ function NurseRow({ nurse, onDeleted, onRefresh }: { nurse: Nurse; onDeleted: ()
   }).reduce((sum, e) => sum + e.hours, 0)
 
   const unbilledHours = nurse.timeEntries
-    .filter(e => !e.readyToInvoice)
+    .filter(e => !e.billed)
     .reduce((sum, e) => sum + e.hours, 0)
 
   const displayName = nurse.lastName && nurse.firstName

@@ -9,12 +9,8 @@ const POLICIES = [
     body: 'My login credentials are personal and confidential. I will not share my username or password with anyone. I will notify Coming Home Care Services immediately if I believe my account has been accessed without my authorization.',
   },
   {
-    heading: 'Data Encryption & PHI Responsibility',
-    body: 'I understand that all data stored on this portal is protected under AWS S3 HIPAA-compliant encryption standards while at rest and in transit. If I choose to print, download, or save any Protected Health Information (PHI) outside of this portal, I accept full responsibility for continuing to manage and protect that information in accordance with applicable privacy laws.',
-  },
-  {
-    heading: 'Confidentiality of Portal Data',
-    body: 'Claim submissions, payment records, invoices, and any documents visible in this portal are confidential. I will not screenshot, copy, forward, or distribute this information to any unauthorized party.',
+    heading: 'Data Protection & Confidentiality',
+    body: 'All data stored on this portal is protected under AWS S3 HIPAA-compliant encryption standards while at rest and in transit. Claim submissions, payment records, invoices, and any documents visible in this portal are confidential — I will not screenshot, copy, forward, or distribute this information to any unauthorized party. If I choose to print, download, or save any Protected Health Information (PHI) outside of this portal, I accept full responsibility for continuing to manage and protect that information in accordance with applicable privacy laws.',
   },
   {
     heading: 'Electronic Communications',
@@ -114,10 +110,17 @@ export default function AgreementPage() {
         </div>
 
         <form onSubmit={handleSubmit}>
+          {/* A Note From Us */}
+          <div className="bg-[#2F3E4E] rounded-2xl p-6 mb-4">
+            <p className="text-xs font-semibold uppercase tracking-widest text-[#7A8F79] mb-2">A Note From Us</p>
+            <p className="text-sm text-white/90 leading-relaxed">{CLOSING_REMARK}</p>
+            <p className="text-xs text-[#7A8F79] mt-3">— The Coming Home Care Services Team</p>
+          </div>
+
           {/* Intro */}
           <div className="bg-white rounded-2xl shadow-sm p-6 mb-4">
             <p className="text-sm text-[#4a5568] leading-relaxed">
-              This agreement outlines how to responsibly use the <b><span className="italic text-[#7A8F79]">my</span>Provider</b> portal. We&apos;ve written it in plain language — no hidden traps, no fine print designed to confuse. Protecting patient and user data is a team effort. By acknowledging the points below, you affirm your understanding that once PHI is downloaded/saved/printed from the site it becomes the user's responsibility to maintian the confidentiality of its contents and you agree to uphold your side of the parntership by keeping said data securely stored until it can be disposed of properly when no longer needed. 
+              This agreement outlines how to responsibly use the <b><span className="italic text-[#7A8F79]">my</span>Provider</b> portal. We&apos;ve written it in plain language — no hidden traps, no fine print designed to confuse. Protecting patient and user data is a team effort. By acknowledging the points below, you affirm your understanding that once PHI is downloaded/saved/printed from the site it becomes the user's responsibility to maintian the confidentiality of its contents and you agree to uphold your side of the parntership by keeping said data securely stored until it can be disposed of properly when no longer needed.
             </p>
             <p className="text-xs text-[#7A8F79] mt-3 font-medium">Check each box to confirm you have read and understood that item.</p>
           </div>
@@ -166,7 +169,7 @@ export default function AgreementPage() {
           <div className="bg-[#2F3E4E] rounded-2xl p-6 mb-4">
             <p className="text-xs font-semibold uppercase tracking-widest text-[#7A8F79] mb-2">A Note From Us</p>
             <p className="text-sm text-white/90 leading-relaxed">{CLOSING_REMARK}</p>
-            <p className="text-xs text-[#7A8F79] mt-3">— The Coming Home Care Services Team</p>
+            <p className="text-xs text-[#7A8F79] mt-3">— The Coming Home Care Team</p>
           </div>
 
           {/* Signature block */}

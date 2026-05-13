@@ -279,10 +279,10 @@ export default function MyHours() {
                   <option value="">— No patient selected —</option>
                   {linkedPatients.map(p => {
                     const initial = p.merged.firstName?.[0] || ''
-                    const shortLast = p.merged.lastName?.slice(0, 5) || ''
+                    const shortLast = p.merged.lastName?.slice(0, 8) || ''
                     return (
                       <option key={p.patientId} value={p.patientId}>
-                        {initial}. {shortLast}
+                        {shortLast}, {initial}.
                       </option>
                     )
                   })}
@@ -411,7 +411,7 @@ export default function MyHours() {
                         <td className="py-2 pr-4 text-right font-semibold text-[#2F3E4E]">{entry.hours}</td>
                         <td className="py-2 pr-4 text-xs text-[#7A8F79]">
                           {entry.patient
-                            ? `${entry.patient.firstName[0]}. ${entry.patient.lastName.slice(0, 5)}`
+                            ? `${entry.patient.lastName}, ${entry.patient.firstName[0]}.`
                             : <span className="italic">—</span>}
                         </td>
                         <td className="py-2 pr-4 text-[#7A8F79] italic text-xs">{entry.notes || '—'}</td>

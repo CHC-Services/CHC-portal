@@ -3,11 +3,21 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
+type PatientPA = {
+  id: string
+  paNumber: string
+  paStartDate: string | null
+  paEndDate: string | null
+  highTech: boolean
+  createdAt: string
+}
+
 type Patient = {
   linkId: string
   patientId: string
   overrides: Record<string, any> | null
   merged: PatientFields
+  priorAuths: PatientPA[]
 }
 
 type PatientFields = {
@@ -40,6 +50,9 @@ type PatientFields = {
   hasCaseRate: boolean
   caseRateAmount: string | null
   policyNotes: string | null
+  isLocked: boolean
+  lockedAt: string | null
+  lockedBy: string | null
 }
 
 type SearchMatch = {
@@ -107,6 +120,12 @@ export default function MyPatients() {
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null)
+
+  // PA history state
+  const [showAddPA, setShowAddPA] = useState(false)
+  const [newPA, setNewPA] = useState({ paNumber: '', paStartDate: '', paEndDate: '', highTech: false })
+  const [savingPA, setSavingPA] = useState(false)
+  const [paError, setPaError] = useState('')
 
   // Step 1 — search fields
   const [srchLast, setSrchLast] = useState('')
@@ -199,6 +218,46 @@ export default function MyPatients() {
     else setError(data.error || 'Failed to create patient.')
   }
 
+  async function refreshPAs(patientId: string) {
+    const res = await fetch(`/api/nurse/patients/${patientId}/pa`, { credentials: 'include' })
+    const data = await res.json()
+    const pas: PatientPA[] = data.priorAuths || []
+    setSelectedPatient(prev => prev ? { ...prev, priorAuths: pas } : prev)
+    setPatients(prev => prev.map(p => p.patientId === patientId ? { ...p, priorAuths: pas } : p))
+  }
+
+  async function handleAddPA(e: React.FormEvent) {
+    e.preventDefault()
+    if (!selectedPatient || !newPA.paNumber.trim()) return
+    setSavingPA(true); setPaError('')
+    const res = await fetch(`/api/nurse/patients/${selectedPatient.patientId}/pa`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(newPA),
+    })
+    setSavingPA(false)
+    if (res.ok) {
+      await refreshPAs(selectedPatient.patientId)
+      setNewPA({ paNumber: '', paStartDate: '', paEndDate: '', highTech: false })
+      setShowAddPA(false)
+    } else {
+      const d = await res.json()
+      setPaError(d.error || 'Failed to save.')
+    }
+  }
+
+  async function handleDeletePA(paId: string) {
+    if (!selectedPatient) return
+    await fetch(`/api/nurse/patients/${selectedPatient.patientId}/pa`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ paId }),
+    })
+    await refreshPAs(selectedPatient.patientId)
+  }
+
   const filtered = patients.filter(p => {
     const q = search.toLowerCase()
     return (
@@ -261,7 +320,7 @@ export default function MyPatients() {
             {filtered.map(p => (
               <div
                 key={p.patientId}
-                onClick={() => setSelectedPatient(p)}
+                onClick={() => { setSelectedPatient(p); setShowAddPA(false); setNewPA({ paNumber: '', paStartDate: '', paEndDate: '', highTech: false }); setPaError('') }}
                 className="grid grid-cols-[2fr_1fr_1fr_1fr_2fr_1.5fr] hover:bg-[#F4F6F5] cursor-pointer transition-colors"
               >
                 <div className="px-4 py-3">
@@ -317,6 +376,15 @@ export default function MyPatients() {
               <button onClick={() => setSelectedPatient(null)} className="text-white/60 hover:text-white text-2xl leading-none mt-0.5 ml-4">✕</button>
             </div>
 
+            {selectedPatient.merged.isLocked && (
+              <div className="mx-5 mt-3 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+                <p className="text-xs font-bold text-amber-800">Record Locked — View Only</p>
+                <p className="text-[10px] text-amber-600 mt-0.5">
+                  Locked by {selectedPatient.merged.lockedBy || 'admin'}. Contact your administrator to make changes.
+                </p>
+              </div>
+            )}
+
             <div className="p-5 space-y-5 text-[#2F3E4E]">
 
               {/* Demographics */}
@@ -343,33 +411,108 @@ export default function MyPatients() {
                 </div>
               </section>
 
-              {/* Prior Auth */}
-              {(selectedPatient.merged.paNumber || selectedPatient.merged.paStartDate) && (
-                <section>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] mb-2">Prior Authorization</p>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-                    <Field label="PA #" value={selectedPatient.merged.paNumber} />
-                    <Field label="Start" value={fmtDob(selectedPatient.merged.paStartDate || '')} />
-                    <Field label="End" value={fmtDob(selectedPatient.merged.paEndDate || '')} />
-                  </div>
-                </section>
-              )}
-
               {/* Clinical */}
               <section>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] mb-2">Clinical</p>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs mb-2">
                   <Field label="Dx 1" value={selectedPatient.merged.dxCode1} />
                   <Field label="Dx 2" value={selectedPatient.merged.dxCode2} />
                   <Field label="Dx 3" value={selectedPatient.merged.dxCode3} />
                   <Field label="Dx 4" value={selectedPatient.merged.dxCode4} />
-                  <Field label="Hi-Tech" value={selectedPatient.merged.highTech ? 'Yes' : null} />
                   <Field label="Case Rate" value={selectedPatient.merged.hasCaseRate ? (selectedPatient.merged.caseRateAmount || 'Yes') : null} />
                 </div>
                 {selectedPatient.merged.policyNotes && (
-                  <div className="mt-2">
-                    <p className="text-[10px] font-semibold uppercase text-[#7A8F79]">Notes</p>
+                  <div className="mb-2">
+                    <p className="text-[10px] font-semibold uppercase text-[#7A8F79]">Policy Notes</p>
                     <p className="text-xs text-[#2F3E4E] mt-0.5 whitespace-pre-line">{selectedPatient.merged.policyNotes}</p>
+                  </div>
+                )}
+              </section>
+
+              {/* Prior Authorization History */}
+              <section>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8F79]">Prior Authorization History</p>
+                  {!selectedPatient.merged.isLocked && (
+                    <button
+                      onClick={() => { setShowAddPA(v => !v); setPaError('') }}
+                      className="text-[10px] font-semibold text-[#7A8F79] border border-[#D9E1E8] px-2 py-0.5 rounded hover:bg-[#F4F6F5] transition"
+                    >
+                      {showAddPA ? 'Cancel' : '+ Add PA'}
+                    </button>
+                  )}
+                </div>
+
+                {/* Add PA form */}
+                {showAddPA && (
+                  <form onSubmit={handleAddPA} className="bg-[#F4F6F5] rounded-xl p-3 mb-3 space-y-2">
+                    <div>
+                      <label className="block text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">PA Number</label>
+                      <input
+                        required
+                        value={newPA.paNumber}
+                        onChange={e => setNewPA(p => ({ ...p, paNumber: e.target.value }))}
+                        placeholder="Authorization number"
+                        className="w-full border border-[#D9E1E8] px-2 py-1.5 rounded-lg text-xs text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] uppercase"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Start Date</label>
+                        <input type="date" value={newPA.paStartDate} onChange={e => setNewPA(p => ({ ...p, paStartDate: e.target.value }))}
+                          className="w-full border border-[#D9E1E8] px-2 py-1.5 rounded-lg text-xs text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">End Date</label>
+                        <input type="date" value={newPA.paEndDate} onChange={e => setNewPA(p => ({ ...p, paEndDate: e.target.value }))}
+                          className="w-full border border-[#D9E1E8] px-2 py-1.5 rounded-lg text-xs text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+                      </div>
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={newPA.highTech} onChange={e => setNewPA(p => ({ ...p, highTech: e.target.checked }))} className="accent-[#7A8F79] w-3.5 h-3.5" />
+                      <span className="text-xs text-[#2F3E4E] font-semibold">High-Tech designation</span>
+                    </label>
+                    {paError && <p className="text-[10px] text-red-500">{paError}</p>}
+                    <button type="submit" disabled={savingPA}
+                      className="w-full bg-[#2F3E4E] text-white text-xs font-semibold py-1.5 rounded-lg hover:bg-[#7A8F79] transition disabled:opacity-50">
+                      {savingPA ? 'Saving…' : 'Save PA'}
+                    </button>
+                  </form>
+                )}
+
+                {/* PA list */}
+                {selectedPatient.priorAuths.length === 0 ? (
+                  <p className="text-xs text-[#7A8F79] italic">No prior authorizations on file.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {selectedPatient.priorAuths.map((pa, i) => {
+                      const isActive = !pa.paEndDate || pa.paEndDate >= new Date().toISOString().slice(0, 10)
+                      return (
+                        <div key={pa.id} className={`rounded-xl border px-3 py-2.5 ${i === 0 ? 'border-[#7A8F79] bg-[#f4f9f4]' : 'border-[#D9E1E8] bg-white'}`}>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-xs font-bold text-[#2F3E4E] uppercase font-mono">{pa.paNumber}</span>
+                                {i === 0 && <span className="text-[9px] font-bold uppercase tracking-wide bg-[#7A8F79] text-white px-1.5 py-0.5 rounded-full">Current</span>}
+                                {pa.highTech && <span className="text-[9px] font-bold uppercase tracking-wide bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">Hi-Tech</span>}
+                                {!isActive && i !== 0 && <span className="text-[9px] font-bold uppercase tracking-wide bg-[#F4F6F5] text-[#7A8F79] px-1.5 py-0.5 rounded-full">Expired</span>}
+                              </div>
+                              <p className="text-[10px] text-[#7A8F79] mt-0.5">
+                                {pa.paStartDate ? fmtDob(pa.paStartDate) : '?'} — {pa.paEndDate ? fmtDob(pa.paEndDate) : 'Present'}
+                              </p>
+                            </div>
+                            {!selectedPatient.merged.isLocked && (
+                              <button
+                                onClick={() => handleDeletePA(pa.id)}
+                                className="shrink-0 text-[10px] text-red-400 hover:text-red-600 font-semibold transition"
+                              >
+                                Remove
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
               </section>

@@ -713,11 +713,30 @@ model Patient {
   caseRateAmount  String?                     // dollar amount of case rate
   policyNotes     String?                     // free-text policy rules (e.g. "100-day limit")
 
+  // Admin record lock — prevents nurses from editing overrides
+  isLocked   Boolean   @default(false)
+  lockedAt   DateTime?
+  lockedBy   String?                       // admin display name
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   nurseLinks  NursePatient[]
   timeEntries TimeEntry[]
+  priorAuths  PatientPA[]
+}
+
+model PatientPA {
+  id          String   @id @default(cuid())
+  patientId   String
+  patient     Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  paNumber    String
+  paStartDate String?
+  paEndDate   String?
+  highTech    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([patientId])
 }
 
 model NursePatient {

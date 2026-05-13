@@ -21,16 +21,24 @@ export async function GET(req: Request) {
 
   const links = await (prisma.nursePatient.findMany as any)({
     where: { nurseId: session.nurseProfileId, isActive: true },
-    include: { patient: true },
+    include: {
+      patient: {
+        include: { priorAuths: { orderBy: [{ paStartDate: 'desc' }, { createdAt: 'desc' }] } },
+      },
+    },
     orderBy: { createdAt: 'asc' },
   })
 
-  const patients = links.map((link: any) => ({
-    linkId: link.id,
-    patientId: link.patientId,
-    overrides: link.overrides,
-    merged: { ...link.patient, ...(link.overrides || {}) },
-  }))
+  const patients = links.map((link: any) => {
+    const { priorAuths, ...patientFields } = link.patient
+    return {
+      linkId: link.id,
+      patientId: link.patientId,
+      overrides: link.overrides,
+      merged: { ...patientFields, ...(link.overrides || {}) },
+      priorAuths: priorAuths || [],
+    }
+  })
 
   return NextResponse.json({ patients })
 }
@@ -115,6 +123,20 @@ export async function POST(req: Request) {
       patientId: patient.id,
     },
   })
+
+  // Seed first PA record from the new patient form if PA number was provided
+  if (p.paNumber?.trim()) {
+    await (prisma.patientPA.create as any)({
+      data: {
+        id: crypto.randomUUID(),
+        patientId: patient.id,
+        paNumber: p.paNumber.trim(),
+        paStartDate: p.paStartDate || null,
+        paEndDate: p.paEndDate || null,
+        highTech: p.highTech ?? false,
+      },
+    })
+  }
 
   return NextResponse.json({ ok: true, patient })
 }

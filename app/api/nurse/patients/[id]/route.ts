@@ -18,8 +18,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const link = await (prisma.nursePatient.findUnique as any)({
     where: { nurseId_patientId: { nurseId: session.nurseProfileId!, patientId: id } },
+    include: { patient: { select: { isLocked: true } } },
   })
   if (!link) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (link.patient?.isLocked) return NextResponse.json({ error: 'Record locked by admin' }, { status: 403 })
 
   const updates = await req.json()
   const existing = (link.overrides as Record<string, any>) || {}

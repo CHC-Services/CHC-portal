@@ -21,6 +21,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           nurse: { select: { id: true, displayName: true, accountNumber: true } },
         },
       },
+      priorAuths: { orderBy: [{ paStartDate: 'desc' }, { createdAt: 'desc' }] },
       timeEntries: {
         orderBy: { workDate: 'desc' },
         take: 50,

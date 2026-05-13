@@ -1378,6 +1378,64 @@ export default function AdminClaimsPage() {
       .catch(() => {})
   }, [])
 
+  // Auto-calculate primary writeoff (billed - primary allowed)
+  useEffect(() => {
+    if (!showAddModal) return
+    const billed = parseFloat(addForm.totalBilled || '')
+    const allowed = parseFloat(addForm.primaryAllowedAmt || '')
+    if (!isNaN(billed) && !isNaN(allowed)) {
+      setAddForm(f => ({ ...f, primaryCO: Math.max(0, billed - allowed).toFixed(2) }))
+    }
+  }, [addForm.totalBilled, addForm.primaryAllowedAmt, showAddModal])
+
+  // Auto-calculate secondary writeoff (billed - secondary allowed)
+  useEffect(() => {
+    if (!showAddModal) return
+    const billed = parseFloat(addForm.totalBilled || '')
+    const allowed = parseFloat(addForm.secondaryAllowedAmt || '')
+    if (!isNaN(billed) && !isNaN(allowed)) {
+      setAddForm(f => ({ ...f, secondaryCO: Math.max(0, billed - allowed).toFixed(2) }))
+    }
+  }, [addForm.totalBilled, addForm.secondaryAllowedAmt, showAddModal])
+
+  // Auto-calculate hours billed (totalBilled / 150)
+  useEffect(() => {
+    if (!showAddModal) return
+    const billed = parseFloat(addForm.totalBilled || '')
+    if (!isNaN(billed) && billed > 0) {
+      setAddForm(f => ({ ...f, hours: Math.round(billed / 150).toString() }))
+    }
+  }, [addForm.totalBilled, showAddModal])
+
+  // Auto-calculate total reimbursed (sum of paid amounts)
+  useEffect(() => {
+    if (!showAddModal) return
+    const primary = parseFloat(addForm.primaryPaidAmt || '')
+    const secondary = parseFloat(addForm.secondaryPaidAmt || '')
+    if (!isNaN(primary) || !isNaN(secondary)) {
+      const total = (!isNaN(primary) ? primary : 0) + (!isNaN(secondary) ? secondary : 0)
+      setAddForm(f => ({ ...f, totalReimbursed: total.toFixed(2) }))
+    }
+  }, [addForm.primaryPaidAmt, addForm.secondaryPaidAmt, showAddModal])
+
+  // Medicaid: default Paid To = "Provider"
+  useEffect(() => {
+    if (!showAddModal) return
+    if (addForm.primaryPayer === 'Medicaid') {
+      setAddForm(f => ({ ...f, primaryPaidTo: f.primaryPaidTo || 'Provider' }))
+    }
+  }, [addForm.primaryPayer, showAddModal])
+
+  // Medicaid: default Date Fully Finalized = deposit date from proc date
+  useEffect(() => {
+    if (!showAddModal || addForm.primaryPayer !== 'Medicaid') return
+    if (!addForm.primaryPaidDate) return
+    const info = calcMedicaidCycleInfo(addForm.primaryPaidDate)
+    if (info?.depositDateStr) {
+      setAddForm(f => ({ ...f, dateFullyFinalized: info.depositDateStr }))
+    }
+  }, [addForm.primaryPaidDate, addForm.primaryPayer, showAddModal])
+
   async function toggleBulkMode() {
     const next = !bulkMode
     setBulkModeLoading(true)
@@ -2283,8 +2341,8 @@ export default function AdminClaimsPage() {
                       </div>
                     </div>
                     <div>
-                      <label className={lbl}>Date Fully Finalized</label>
-                      <SmartDateInput key={`${modalResetKey}-finalDate`} ref={finalDateRef} value={addForm.dateFullyFinalized || ''} onChange={v => setAddForm(f => ({ ...f, dateFullyFinalized: v }))} />
+                      <label className={lbl}>Date Fully Finalized{primaryIsMedicaid && <span className="text-[#7A8F79] font-normal normal-case text-[10px] ml-1">(auto from deposit)</span>}</label>
+                      <input ref={finalDateRef} type="date" value={addForm.dateFullyFinalized || ''} onChange={e => setAddForm(f => ({ ...f, dateFullyFinalized: e.target.value }))} className={fi} />
                     </div>
                     <div>
                       <label className={lbl}>Avg Hourly Rate</label>

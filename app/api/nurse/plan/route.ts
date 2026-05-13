@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../../lib/prisma'
 import { verifyToken } from '../../../../lib/auth'
-import { getEffectiveTier } from '../../../../lib/planPermissions'
+import { getEffectiveTier, isPaidSubscriber } from '../../../../lib/planPermissions'
 
 export async function GET(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -21,6 +21,7 @@ export async function GET(req: Request) {
 
   const effectiveTier = getEffectiveTier(profile.planTier, profile.trialExpiresAt)
   const isTrialing = profile.planTier === 'BASIC' && !!profile.trialExpiresAt && new Date() <= new Date(profile.trialExpiresAt)
+  const paidSubscriber = isPaidSubscriber(profile.planTier, profile.trialExpiresAt)
 
-  return NextResponse.json({ effectiveTier, isTrialing, trialExpiresAt: profile.trialExpiresAt })
+  return NextResponse.json({ effectiveTier, isTrialing, isPaidSubscriber: paidSubscriber, trialExpiresAt: profile.trialExpiresAt })
 }

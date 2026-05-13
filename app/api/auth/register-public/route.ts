@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt'
 import { prisma } from '../../../../lib/prisma'
 import { signToken } from '../../../../lib/auth'
 import { sendRegistrationConfirmation } from '../../../../lib/sendEmail'
+import { trialEndDate } from '../../../../lib/planPermissions'
 
 async function generateAccountNumber(): Promise<string> {
   const yy = String(new Date().getFullYear()).slice(-2)
@@ -50,6 +51,8 @@ export async function POST(req: Request) {
             phone: phone.trim(),
             accountNumber: await generateAccountNumber(),
             signupRole: signupRole?.trim() || null,
+            planTier: 'BASIC',
+            trialExpiresAt: trialEndDate(),
           },
         },
       },

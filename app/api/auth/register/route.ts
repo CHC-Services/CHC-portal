@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt'
 import { prisma } from '../../../../lib/prisma'
 import { verifyToken } from '../../../../lib/auth'
 import { sendWelcomeEmail } from '../../../../lib/sendEmail'
+import { trialEndDate } from '../../../../lib/planPermissions'
 
 async function generateAccountNumber(): Promise<string> {
   const yy = String(new Date().getFullYear()).slice(-2) // e.g. "26"
@@ -47,7 +48,7 @@ export async function POST(req: Request) {
         role: role === 'admin' ? 'admin' : 'nurse',
         nurseProfile:
           role === 'nurse'
-            ? { create: { displayName: displayName || email, accountNumber: await generateAccountNumber() } }
+            ? { create: { displayName: displayName || email, accountNumber: await generateAccountNumber(), planTier: 'BASIC', trialExpiresAt: trialEndDate() } }
             : undefined
       },
       select: { id: true, email: true, role: true, nurseProfile: { select: { id: true } } }

@@ -1,3 +1,4 @@
+import FormsSection from '../components/FormsSection'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -274,10 +275,10 @@ const resourceDirectories: ResourceDirectory[] = [
         badge: 'Download PDF',
       },
       {
-        label: 'CMS-1500 Field Descriptions',
-        description: 'Line-by-line guide explaining every field on the CMS-1500 form — what each box means, what data goes in it, and common examples.',
-        href: '/CMS-1500-Field-Descriptions.docx',
-        badge: 'Download DOCX',
+        label: 'Progress Note — Blank Template',
+        description: 'Blank visit progress note template for documenting patient encounters. Print and complete for each visit as required by your employer or payer.',
+        href: '/Progress-Note-BLANK.pdf',
+        badge: 'Download PDF',
       },
     ],
   },
@@ -644,6 +645,16 @@ export default function ResourcesPage() {
 
           </div>
 
+          {/* Forms */}
+          <div className="mt-4 pt-4 border-t border-[#D9E1E8]">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-white bg-[#5C7A6E] px-2.5 py-1 rounded-full">
+              Forms
+            </span>
+            <div className="mt-3">
+              <a href="#claim-forms" className="flex items-center gap-2 bg-[#F4F6F5] border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2.5 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition">📝 Claim Forms & Blank Templates</a>
+            </div>
+          </div>
+
           {/* Stay Protected */}
           <div className="mt-4 pt-4 border-t border-[#D9E1E8]">
             <span className="text-[10px] font-bold uppercase tracking-widest text-white bg-[#4A5E6E] px-2.5 py-1 rounded-full">
@@ -680,6 +691,18 @@ export default function ResourcesPage() {
             {resourceDirectories.filter(d => ['etin-renewal', 'license-renewal', 'emedny-listserv', 'cpr-firstaid', 'malpractice-insurance'].includes(d.id)).map(dir => (
               <ResourceDirectoryCard key={dir.id} dir={dir} />
             ))}
+          </div>
+        </div>
+
+        {/* ── Forms ── */}
+        <div className="max-w-3xl mb-12">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="h-px flex-1 bg-[#D9E1E8]" />
+            <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full bg-[#5C7A6E] text-white">Forms</span>
+            <div className="h-px flex-1 bg-[#D9E1E8]" />
+          </div>
+          <div className="space-y-8">
+            <FormsSection />
           </div>
         </div>
 

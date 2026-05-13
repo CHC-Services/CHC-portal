@@ -32,7 +32,7 @@ export async function GET(req: Request) {
   const arrivalFindings = url.searchParams.get('arrivalFindings') || ''
   const nurseName      = profile.displayName || ''
 
-  const pdfPath = path.join(process.cwd(), 'public', 'Progress-Note-BLANK.pdf')
+  const pdfPath = path.join(process.cwd(), 'private', 'forms', 'Progress-Note-BLANK.pdf')
   const pdfBytes = await fs.readFile(pdfPath)
   const pdfDoc = await PDFDocument.load(pdfBytes)
   const form = pdfDoc.getForm()
@@ -41,9 +41,9 @@ export async function GET(req: Request) {
     try { form.getTextField(fieldName).setText(value) } catch { /* field absent — skip */ }
   }
 
-  setText('Patient Name1', patientName)
-  setText('Patient Name2', patientName)
-  setText('Patient Name3', patientName)
+  setText('Patient Name1', patientName.toUpperCase())
+  setText('Patient Name2', patientName.toUpperCase())
+  setText('Patient Name3', patientName.toUpperCase())
   setText('Patient ID', patientId)
   setText('DOS1', dos)
   setText('DOS2', dos)

@@ -120,7 +120,7 @@ export default function AgreementPage() {
           {/* Intro */}
           <div className="bg-white rounded-2xl shadow-sm p-6 mb-4">
             <p className="text-sm text-[#4a5568] leading-relaxed">
-              This agreement outlines the basics ofresponsible use of the <b><span className="italic text-[#7A8F79]">my</span>Provider</b> portal.  Protecting patient and user data is high priority, but alsoa team effort. By agreeing to the points below, you understand that once PHI is downloaded, saved, or printed from the site, it’s your responsibility to maintain its confidentiality by keeping PHI data securely stored until it can be disposed of properly.
+              This agreement outlines the basics of responsible use of the <b><span className="italic text-[#7A8F79]">my</span>Provider</b> portal.  Protecting patient and user data is high priority, but alsoa team effort. By agreeing to the points below, you understand that once PHI is downloaded, saved, or printed from the site, it’s your responsibility to maintain its confidentiality by keeping PHI data securely stored until it can be disposed of properly.
             </p>
             <p className="text-xs text-[#7A8F79] mt-3 font-medium">Check each box to confirm you have read and understood that item.</p>
           </div>

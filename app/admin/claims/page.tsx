@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, Fragment, useMemo } from 'react'
 import AdminNav from '../../components/AdminNav'
 import { payCycleDateLabel, calcMedicaidCycleInfo } from '../../../lib/medicaidPayCycle'
-import { formalName } from '../../../lib/auth'
+import { formalName } from '../../../lib/formatName'
 
 // 3-segment MM / DD / YYYY date input.
 // Auto-advances: MM→DD on 2 digits, DD→YYYY on 2 digits, YYYY→nextRef on 4 digits.

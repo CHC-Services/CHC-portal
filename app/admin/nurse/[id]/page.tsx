@@ -7,7 +7,7 @@ import AdminNav from '../../../components/AdminNav'
 import { DateInput, DateInputHandle } from '../../../components/DateInput'
 import { fmtPhoneInput } from '../../../../lib/formatPhone'
 import { shortInvoiceNumber } from '../../../../lib/formatInvoice'
-import { formalName } from '../../../../lib/auth'
+import { formalName } from '../../../../lib/formatName'
 
 type Profile = Record<string, any>
 

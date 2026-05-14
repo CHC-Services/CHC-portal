@@ -8,7 +8,7 @@ import { usePathname } from "next/navigation";
 import Image from 'next/image'
 import Link from "next/link";
 import { useEffect, useState } from 'react'
-import { formalName } from '../../lib/auth'
+import { formalName } from '../../lib/formatName'
 
 export default function Banner({ user }: BannerProps) {
     const [time, setTime] = useState('')

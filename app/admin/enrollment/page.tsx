@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import AdminNav from '../../components/AdminNav'
 import Link from 'next/link'
-import { formalName } from '../../../lib/auth'
+import { formalName } from '../../../lib/formatName'
 
 type Nurse = {
   id: string

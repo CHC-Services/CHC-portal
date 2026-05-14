@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import AdminNav from '../../components/AdminNav'
-import { formalName } from '../../../lib/auth'
+import { formalName } from '../../../lib/formatName'
 
 type PatientPA = {
   id: string

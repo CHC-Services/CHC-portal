@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+export { formalName } from "./formatName";
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
@@ -18,15 +19,6 @@ type TokenPayload = {
   portalAgreementSigned?: boolean;
 };
 
-/** Returns "Last, First" when both parts exist, "Last" when only last, or displayName fallback. */
-export function formalName(
-  nurse: { firstName?: string | null; lastName?: string | null; displayName?: string | null },
-  tight = false
-): string {
-  if (nurse.lastName && nurse.firstName) return tight ? nurse.lastName : `${nurse.lastName}, ${nurse.firstName}`
-  if (nurse.lastName) return nurse.lastName
-  return nurse.displayName || ''
-}
 
 export function signToken(payload: TokenPayload) {
   // JWT.sign complains if payload already contains exp/iat, so strip them

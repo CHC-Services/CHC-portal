@@ -8,7 +8,6 @@ import { usePathname } from "next/navigation";
 import Image from 'next/image'
 import Link from "next/link";
 import { useEffect, useState } from 'react'
-import { formalName } from '../../lib/formatName'
 
 export default function Banner({ user }: BannerProps) {
     const [time, setTime] = useState('')
@@ -25,7 +24,7 @@ export default function Banner({ user }: BannerProps) {
     }, [])
 
     const role = user?.role || null
-    const displayName = user ? formalName(user) || user.displayName || null : null
+    const displayName = user?.displayName || null
     const pathname = usePathname()
 
     const homeHref = role === 'nurse' ? '/nurse' : role === 'admin' ? '/admin' : role === 'provider' ? '/portal' : '/'

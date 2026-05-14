@@ -773,7 +773,12 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
       body: JSON.stringify({ planTier, trialExpiresAt }),
     })
     setPlanSaving(false)
-    setPlanMessage(res.ok ? 'Plan saved.' : 'Error saving plan.')
+    if (res.ok) {
+      setPlanMessage('Plan saved.')
+    } else {
+      const body = await res.json().catch(() => ({}))
+      setPlanMessage(body.error || `Error saving plan (${res.status}).`)
+    }
   }
 
   async function toggleDemo() {

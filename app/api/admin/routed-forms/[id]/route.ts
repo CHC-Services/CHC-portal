@@ -1,13 +1,27 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../lib/prisma'
 import { verifyToken } from '../../../../../lib/auth'
-import { deleteFromS3 } from '../../../../../lib/s3'
+import { deleteFromS3, getPresignedDownloadUrl } from '../../../../../lib/s3'
 import { sendRoutedFormAlert } from '../../../../../lib/sendEmail'
 
 function adminOnly(req: Request) {
   const cookie = req.headers.get('cookie') || ''
   const token = cookie.split('auth_token=').pop()?.split(';')[0]
   return token ? verifyToken(token) : null
+}
+
+// GET /api/admin/routed-forms/[id] — return presigned download URL for the signed copy
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const session = adminOnly(req)
+  if (!session || session.role !== 'admin') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const form = await (prisma.routedForm as any).findUnique({ where: { id } })
+  if (!form) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!form.signedKey) return NextResponse.json({ error: 'No signed copy available' }, { status: 404 })
+
+  const url = await getPresignedDownloadUrl(form.signedKey, 900)
+  return NextResponse.json({ url })
 }
 
 // DELETE /api/admin/routed-forms/[id] — cancel and remove a pending routed form

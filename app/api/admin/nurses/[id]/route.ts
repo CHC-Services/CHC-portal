@@ -94,7 +94,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (medicaidNumber !== undefined) data.medicaidNumber      = medicaidNumber ? encrypt(medicaidNumber) : null
 
   try {
-    const updated = await prisma.nurseProfile.update({
+    const updated = await (prisma.nurseProfile.update as any)({
       where: { id },
       data,
       select: { userId: true },

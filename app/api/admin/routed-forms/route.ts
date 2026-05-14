@@ -15,9 +15,13 @@ export async function GET(req: Request) {
   const session = adminOnly(req)
   if (!session || session.role !== 'admin') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const forms = await prisma.routedForm.findMany({
+  const forms = await (prisma.routedForm.findMany as any)({
     orderBy: { createdAt: 'desc' },
-    include: { nurse: { select: { displayName: true, user: { select: { email: true } } } } },
+    select: {
+      id: true, title: true, category: true, urgent: true, status: true,
+      routedBy: true, createdAt: true, signedAt: true, signedKey: true, signedFileName: true,
+      nurse: { select: { displayName: true, user: { select: { email: true } } } },
+    },
   })
   return NextResponse.json({ forms })
 }

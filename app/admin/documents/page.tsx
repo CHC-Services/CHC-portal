@@ -62,9 +62,10 @@ export default function AdminDocumentsPage() {
   const [rfRouting, setRfRouting] = useState(false)
   const [rfMessage, setRfMessage] = useState('')
   const [rfMessageIsError, setRfMessageIsError] = useState(false)
-  const [routedForms, setRoutedForms] = useState<{ id: string; title: string; category: string; urgent: boolean; status: string; routedBy: string; createdAt: string; nurse: { displayName: string } }[]>([])
+  const [routedForms, setRoutedForms] = useState<{ id: string; title: string; category: string; urgent: boolean; status: string; routedBy: string; createdAt: string; signedAt: string | null; signedKey: string | null; signedFileName: string | null; nurse: { displayName: string } }[]>([])
   const [rfDeleting, setRfDeleting] = useState<string | null>(null)
   const [rfResending, setRfResending] = useState<string | null>(null)
+  const [rfDownloading, setRfDownloading] = useState<string | null>(null)
 
   // Form Templates state
   const [formTemplates, setFormTemplates] = useState<FormTemplate[]>([])
@@ -678,7 +679,29 @@ export default function AdminDocumentsPage() {
                     <span className="font-semibold text-[#2F3E4E] truncate">{f.nurse.displayName}</span>
                     <span className="text-[#7A8F79] truncate flex-1">{f.title}</span>
                     {f.status === 'signed' ? (
-                      <span className="text-green-600 font-semibold flex-shrink-0">✓ Signed</span>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <span className="text-green-600 font-semibold">✓ Signed</span>
+                        <button
+                          type="button"
+                          title="Download signed copy"
+                          disabled={rfDownloading === f.id}
+                          onClick={async () => {
+                            setRfDownloading(f.id)
+                            const res = await fetch(`/api/admin/routed-forms/${f.id}`, { credentials: 'include' })
+                            const data = await res.json()
+                            if (data.url) {
+                              const a = document.createElement('a')
+                              a.href = data.url
+                              a.download = f.signedFileName || `${f.title}-signed.pdf`
+                              a.click()
+                            }
+                            setRfDownloading(null)
+                          }}
+                          className="text-[#7A8F79] hover:text-[#2F3E4E] border border-[#D9E1E8] px-1.5 py-0.5 rounded transition disabled:opacity-40"
+                        >
+                          {rfDownloading === f.id ? '…' : '↓'}
+                        </button>
+                      </div>
                     ) : (
                       <div className="flex items-center gap-1 flex-shrink-0">
                         <button

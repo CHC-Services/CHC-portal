@@ -37,6 +37,8 @@ export default function MyHours() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [linkedPatients, setLinkedPatients] = useState<LinkedPatient[]>([])
   const [selectedPatient, setSelectedPatient] = useState('')
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
+  const [filterPatient, setFilterPatient] = useState('')
 
   function loadEntries() {
     return fetch('/api/time-entry', { credentials: 'include' })
@@ -156,6 +158,52 @@ export default function MyHours() {
   const hoursUnbilled = yearEntries
     .filter(e => !e.billed)
     .reduce((sum, e) => sum + e.hours, 0)
+
+  const patientFilteredEntries = filterPatient
+    ? yearEntries.filter(e => e.patient?.id === filterPatient)
+    : yearEntries
+
+  const sortedYearEntries = [...patientFilteredEntries].sort((a, b) => {
+    const dir = sortDir === 'asc' ? 1 : -1
+    if (sortKey === 'hours') return (a.hours - b.hours) * dir
+    return (a.workDate > b.workDate ? 1 : -1) * dir
+  })
+  const groupMap = new Map<string, TimeEntry[]>()
+  const ungroupedEntries: TimeEntry[] = []
+  for (const e of sortedYearEntries) {
+    if (e.billed && e.claimRef) {
+      if (!groupMap.has(e.claimRef)) groupMap.set(e.claimRef, [])
+      groupMap.get(e.claimRef)!.push(e)
+    } else {
+      ungroupedEntries.push(e)
+    }
+  }
+  type DisplayItem =
+    | { kind: 'entry'; entry: TimeEntry }
+    | { kind: 'group'; claimRef: string; entries: TimeEntry[] }
+  const displayItems: DisplayItem[] = [
+    ...ungroupedEntries.map(e => ({ kind: 'entry' as const, entry: e })),
+    ...[...groupMap.entries()].map(([claimRef, entries]) => ({ kind: 'group' as const, claimRef, entries })),
+  ]
+  displayItems.sort((a, b) => {
+    const dir = sortDir === 'asc' ? 1 : -1
+    if (sortKey === 'hours') {
+      const aH = a.kind === 'group' ? a.entries.reduce((s, e) => s + e.hours, 0) : a.entry.hours
+      const bH = b.kind === 'group' ? b.entries.reduce((s, e) => s + e.hours, 0) : b.entry.hours
+      return (aH - bH) * dir
+    }
+    const aD = a.kind === 'group' ? a.entries[0].workDate : a.entry.workDate
+    const bD = b.kind === 'group' ? b.entries[0].workDate : b.entry.workDate
+    return (aD > bD ? 1 : -1) * dir
+  })
+  const allGroupRefs = [...groupMap.keys()]
+  function toggleGroup(ref: string) {
+    setExpandedGroups(prev => {
+      const next = new Set(prev)
+      next.has(ref) ? next.delete(ref) : next.add(ref)
+      return next
+    })
+  }
 
   const monthName = now.toLocaleString('default', { month: 'long' })
   const priorMonthName = new Date(priorMonthYear, priorMonth).toLocaleString('default', { month: 'long' })
@@ -317,11 +365,10 @@ export default function MyHours() {
           )}
 
           <div className="mt-5 pt-4 border-t border-[#D9E1E8] text-xs text-[#7A8F79] space-y-1">
-            <p>• Select the exact date worked.</p>
-            <p>• Submit whole hours only — no partial hours.</p>
-            <p>• One submission per calendar day.</p>
-            <p>• <strong className="font-semibold">To correct an entry</strong> — resubmit the same date with updated hours or notes. The existing record will be replaced automatically.</p>
-            <p>• 🔒 means that date has been submitted for billing and can no longer be edited or deleted.</p>
+            <p>• Total the hours worked for each date - <i>one entry per calendar day.</i></p>
+            <p>• Enter in 1 hour increments — <i>no partial hours.</i></p>
+            <p>• <strong className="font-semibold text-[#2F3E4E]">To correct an entry</strong> — resubmit the full details with the correction/note. The existing record will be replaced automatically.</p>
+            <p>• 🔒 indicates that date has been billed and can no longer be edited or deleted.</p>
           </div>
         </div>
 
@@ -340,6 +387,43 @@ export default function MyHours() {
             )}
           </div>
 
+          {/* Patient filter + Expand/Collapse controls */}
+          {(linkedPatients.length > 0 || allGroupRefs.length > 0) && (
+            <div className="flex items-center justify-between gap-2 mb-2">
+              {linkedPatients.length > 0 ? (
+                <select
+                  value={filterPatient}
+                  onChange={e => setFilterPatient(e.target.value)}
+                  className="text-xs border border-[#D9E1E8] rounded-lg px-2 py-1 text-[#2F3E4E] focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
+                >
+                  <option value="">All Patients</option>
+                  {linkedPatients.map(p => (
+                    <option key={p.patientId} value={p.patientId}>
+                      {p.merged.lastName}, {p.merged.firstName?.[0]}.
+                    </option>
+                  ))}
+                </select>
+              ) : <div />}
+              {allGroupRefs.length > 0 && (
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => setExpandedGroups(new Set(allGroupRefs))}
+                    className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] font-semibold transition"
+                  >
+                    Expand All
+                  </button>
+                  <span className="text-[#D9E1E8] text-xs">|</span>
+                  <button
+                    onClick={() => setExpandedGroups(new Set())}
+                    className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] font-semibold transition"
+                  >
+                    Collapse All
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           {effectiveTier === 'FREE' && (
             <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
               <span className="text-amber-500 text-sm">🔒</span>
@@ -353,6 +437,8 @@ export default function MyHours() {
             <p className="text-sm text-[#7A8F79]">Loading…</p>
           ) : yearEntries.length === 0 ? (
             <p className="text-sm text-[#7A8F79] italic">No submissions for {selectedYear}.</p>
+          ) : displayItems.length === 0 ? (
+            <p className="text-sm text-[#7A8F79] italic">No entries for the selected patient in {selectedYear}.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -361,7 +447,7 @@ export default function MyHours() {
                     <th className="py-2 pr-2 w-6">
                       <input
                         type="checkbox"
-                        checked={yearEntries.filter(e => !e.billed).length > 0 && selected.size === yearEntries.filter(e => !e.billed).length}
+                        checked={ungroupedEntries.filter(e => !e.billed).length > 0 && selected.size === ungroupedEntries.filter(e => !e.billed).length}
                         onChange={toggleAll}
                         className="accent-[#7A8F79]"
                       />
@@ -376,7 +462,7 @@ export default function MyHours() {
                       className="text-right py-2 pr-4 cursor-pointer select-none hover:text-[#2F3E4E] transition"
                       onClick={() => handleSort('hours')}
                     >
-                      Hours {sortKey === 'hours' ? (sortDir === 'asc' ? '↑' : '↓') : <span className="opacity-30">↕</span>}
+                      HRS {sortKey === 'hours' ? (sortDir === 'asc' ? '↑' : '↓') : <span className="opacity-30">↕</span>}
                     </th>
                     <th className="text-left py-2 pr-4">Patient</th>
                     <th className="text-left py-2 pr-4">Notes</th>
@@ -384,13 +470,61 @@ export default function MyHours() {
                   </tr>
                 </thead>
                 <tbody>
-                  {[...yearEntries]
-                    .sort((a, b) => {
-                      const dir = sortDir === 'asc' ? 1 : -1
-                      if (sortKey === 'hours') return (a.hours - b.hours) * dir
-                      return (a.workDate > b.workDate ? 1 : -1) * dir
-                    })
-                    .map((entry, i) => (
+                  {displayItems.flatMap((item, i) => {
+                    if (item.kind === 'group') {
+                      const isExpanded = expandedGroups.has(item.claimRef)
+                      const totalHours = item.entries.reduce((s, e) => s + e.hours, 0)
+                      const entryDates = [...item.entries].map(e => e.workDate).sort()
+                      const d0 = entryDates[0]
+                      const d1 = entryDates[entryDates.length - 1]
+                      const groupDateRange = d0 === d1
+                        ? new Date(d0).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+                        : `${new Date(d0).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })} – ${new Date(d1).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}`
+                      const uniquePatients = [...new Set(item.entries.filter(e => e.patient).map(e => `${e.patient!.lastName}, ${e.patient!.firstName[0]}.`))]
+                      const patientLabel = uniquePatients.length === 0 ? null : uniquePatients.length === 1 ? uniquePatients[0] : `${uniquePatients[0]} +${uniquePatients.length - 1}`
+                      return [
+                        <tr
+                          key={`grp-${item.claimRef}`}
+                          onClick={() => toggleGroup(item.claimRef)}
+                          className="border-b border-[#D9E1E8] bg-[#EEF1EF] cursor-pointer hover:bg-[#E3EAE3] select-none"
+                        >
+                          <td className="py-1.5 pr-2">
+                            <span title="Billed — locked" className="text-green-500 text-xs select-none">🔒</span>
+                          </td>
+                          <td className="py-1.5 pr-4 text-[#2F3E4E] whitespace-nowrap text-xs font-semibold">
+                            {groupDateRange}
+                          </td>
+                          <td className="py-1.5 pr-4 text-right font-bold text-[#2F3E4E]">{totalHours}</td>
+                          <td className="py-1.5 pr-4 text-xs text-[#7A8F79]">
+                            {patientLabel ?? <span className="italic">—</span>}
+                          </td>
+                          <td className="py-1.5 pr-4 text-[#7A8F79] text-xs">{item.entries.length} {item.entries.length === 1 ? 'entry' : 'entries'}</td>
+                          <td className="py-1.5 text-xs font-mono text-[#2F3E4E] font-semibold">
+                            {item.claimRef} <span className="text-[#7A8F79] text-[10px] ml-1">{isExpanded ? '▲' : '▼'}</span>
+                          </td>
+                        </tr>,
+                        ...(isExpanded ? item.entries.map(entry => (
+                          <tr key={entry.id} className="border-b border-[#D9E1E8] bg-green-50">
+                            <td className="py-1.5 pr-2 pl-3">
+                              <span title="Billed — locked" className="text-green-500 text-xs select-none">🔒</span>
+                            </td>
+                            <td className="py-1.5 pr-4 text-[#2F3E4E] whitespace-nowrap text-xs pl-3">
+                              {new Date(entry.workDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
+                            </td>
+                            <td className="py-1.5 pr-4 text-right font-semibold text-[#2F3E4E] text-xs">{entry.hours}</td>
+                            <td className="py-1.5 pr-4 text-xs text-[#7A8F79]">
+                              {entry.patient
+                                ? `${entry.patient.lastName}, ${entry.patient.firstName[0]}.`
+                                : <span className="italic">—</span>}
+                            </td>
+                            <td className="py-1.5 pr-4 text-[#7A8F79] italic text-xs">{entry.notes || '—'}</td>
+                            <td className="py-1.5 text-xs font-mono text-[#2F3E4E]">{entry.claimRef}</td>
+                          </tr>
+                        )) : []),
+                      ]
+                    }
+                    const entry = item.entry
+                    return [
                       <tr
                         key={entry.id}
                         className={`border-b border-[#D9E1E8] last:border-0 ${
@@ -401,28 +535,29 @@ export default function MyHours() {
                             : i % 2 === 0 ? '' : 'bg-[#F4F6F5]'
                         }`}
                       >
-                        <td className="py-2 pr-2">
+                        <td className="py-1.5 pr-2">
                           {entry.billed ? (
                             <span title="Locked — billed by admin" className="text-green-500 text-xs select-none">🔒</span>
                           ) : (
                             <input type="checkbox" checked={selected.has(entry.id)} onChange={() => toggleSelect(entry.id)} className="accent-[#7A8F79]" />
                           )}
                         </td>
-                        <td className="py-2 pr-4 text-[#2F3E4E] whitespace-nowrap">
+                        <td className="py-1.5 pr-4 text-[#2F3E4E] whitespace-nowrap text-sm">
                           {new Date(entry.workDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
                         </td>
-                        <td className="py-2 pr-4 text-right font-semibold text-[#2F3E4E]">{entry.hours}</td>
-                        <td className="py-2 pr-4 text-xs text-[#7A8F79]">
+                        <td className="py-1.5 pr-4 text-right font-semibold text-[#2F3E4E]">{entry.hours}</td>
+                        <td className="py-1.5 pr-4 text-xs text-[#7A8F79]">
                           {entry.patient
                             ? `${entry.patient.lastName}, ${entry.patient.firstName[0]}.`
                             : <span className="italic">—</span>}
                         </td>
-                        <td className="py-2 pr-4 text-[#7A8F79] italic text-xs">{entry.notes || '—'}</td>
-                        <td className="py-2 text-xs font-mono text-[#2F3E4E]">
+                        <td className="py-1.5 pr-4 text-[#7A8F79] italic text-xs">{entry.notes || '—'}</td>
+                        <td className="py-1.5 text-xs font-mono text-[#2F3E4E]">
                           {entry.claimRef || <span className="text-[#7A8F79] not-italic">—</span>}
                         </td>
-                      </tr>
-                    ))}
+                      </tr>,
+                    ]
+                  })}
                 </tbody>
               </table>
             </div>

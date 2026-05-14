@@ -1646,7 +1646,6 @@ ${emailHeader('Enrollment Confirmed')}
   <p style="margin:0 0 22px;font-size:14px;color:#4a5568;line-height:1.65">
     You&rsquo;re now enrolled in billing services through
     <span style="font-style:italic;color:#2F3E4E;font-family:Georgia,serif">Coming Home</span><span style="color:#7A8F79;font-weight:600">care</span>.
-    Your signed service agreement has been saved to your provider documents in the portal.
   </p>
 
   <div style="background:#2F3E4E;border-radius:14px;padding:20px 24px;margin-bottom:22px">

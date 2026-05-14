@@ -274,6 +274,7 @@ export default function MyHours() {
                 <select
                   value={selectedPatient}
                   onChange={e => setSelectedPatient(e.target.value)}
+                  required
                   className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] text-sm"
                 >
                   <option value="">— No patient selected —</option>

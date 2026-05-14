@@ -1547,6 +1547,221 @@ export async function sendRoutedFormAlert({
   }
 }
 
+const ENROLL_QUOTES = [
+  { text: 'How very little can be done under the spirit of fear.', author: 'Florence Nightingale' },
+  { text: 'Kindness is a language every patient understands.', author: '' },
+  { text: 'The greatest wealth is health.', author: 'Virgil' },
+  { text: 'Sometimes the most important medicine is simply being there.', author: '' },
+  { text: 'Small consistent actions create extraordinary outcomes.', author: 'Coming Home Care' },
+  { text: 'The best way to find yourself is to lose yourself in the service of others.', author: 'Gandhi' },
+  { text: 'Start by doing what’s necessary; then do what’s possible; and suddenly you are doing the impossible.', author: 'Francis of Assisi' },
+]
+
+function enrollQuoteHtml() {
+  const q = ENROLL_QUOTES[Math.floor(Math.random() * ENROLL_QUOTES.length)]
+  return q.author ? `&ldquo;${q.text}&rdquo; &mdash; ${q.author}` : `&ldquo;${q.text}&rdquo;`
+}
+
+const PLAN_RATES: Record<string, { dos: string; weekMax?: string }> = {
+  'ST-COM':  { dos: '$4 per date of service' },
+  'ST-MED':  { dos: '$3 per date of service' },
+  'ST-DUAL': { dos: '$5 per date of service' },
+  'LT-COM':  { dos: '$3 per date of service', weekMax: 'Weekly cap: $10' },
+  'LT-MED':  { dos: '$2 per date of service', weekMax: 'Weekly cap: $10' },
+  'LT-DUAL': { dos: '$4 per date of service', weekMax: 'Weekly cap: $15' },
+}
+
+function emailHeader(title: string) {
+  return `
+  <div style="background:#2F3E4E;padding:24px 32px">
+    <table style="width:100%;border-collapse:collapse"><tr>
+      <td style="vertical-align:middle;width:130px">
+        <div style="background:#ffffff;border-radius:10px;padding:7px 12px;display:inline-block;line-height:0">
+          <img src="${PORTAL_URL}/chc_logo.png" alt="Coming Home Care" style="height:46px;width:auto;display:block"/>
+        </div>
+      </td>
+      <td style="text-align:right;vertical-align:middle;padding-left:16px">
+        <p style="margin:0;color:#7A8F79;font-size:10px;letter-spacing:3px;text-transform:uppercase;font-weight:700">Provider Portal</p>
+        <p style="margin:5px 0 0;color:#ffffff;font-size:18px;font-weight:800;letter-spacing:0.3px">${title}</p>
+      </td>
+    </tr></table>
+  </div>`
+}
+
+function emailFooter(contactEmail: string) {
+  const q = enrollQuoteHtml()
+  return `
+  <div style="background:#7A8F79;padding:10px 32px">
+    <p style="margin:0;color:#ffffff;font-size:9.5px;font-style:italic;text-align:center;line-height:1.5;opacity:0.92">${q}</p>
+  </div>
+  <div style="background:#1c2433;padding:12px 32px">
+    <p style="margin:0 0 3px;font-size:11px;text-align:center;color:rgba(255,255,255,0.45)">
+      Questions? <a href="mailto:${contactEmail}" style="color:#7A8F79;text-decoration:none">${contactEmail}</a>
+    </p>
+    <p style="margin:0;font-size:10px;text-align:center;color:rgba(255,255,255,0.25)">
+      <span style="font-style:italic;font-family:Georgia,serif">Coming Home</span><span style="color:#7A8F79">care</span> Services, LLC &nbsp;&middot;&nbsp; Buffalo, NY
+    </p>
+  </div>`
+}
+
+export async function sendEnrollmentConfirmation({
+  to,
+  displayName,
+  planCode,
+  termType,
+  carrierType,
+}: {
+  to: string
+  displayName: string
+  planCode: string
+  termType: string
+  carrierType: string
+}): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) return false
+  const resend = createLoggedResend('alert', displayName)
+
+  const termLabel    = termType === 'short_term' ? 'Short-Term' : 'Long-Term'
+  const carrierLabel = carrierType === 'commercial' ? 'Commercial Insurance' : carrierType === 'medicaid' ? 'Medicaid' : 'Dual Payer'
+  const rate         = PLAN_RATES[planCode]
+  const dos          = rate?.dos ?? ''
+  const weekMax      = rate?.weekMax ?? ''
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to,
+      subject: `You’re enrolled — ${planCode} billing service agreement confirmed`,
+      html: `
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background:#D9E1E8;font-family:'Helvetica Neue',Arial,sans-serif">
+<div style="padding:36px 16px">
+<div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(47,62,78,0.13)">
+
+${emailHeader('Enrollment Confirmed')}
+
+<div style="padding:26px 32px 0">
+  <p style="margin:0 0 4px;font-size:10px;color:#7A8F79;text-transform:uppercase;letter-spacing:2px;font-weight:700">Welcome,</p>
+  <p style="margin:0 0 16px;font-size:22px;font-weight:800;color:#2F3E4E;line-height:1.2">${displayName}</p>
+  <p style="margin:0 0 22px;font-size:14px;color:#4a5568;line-height:1.65">
+    You&rsquo;re now enrolled in billing services through
+    <span style="font-style:italic;color:#2F3E4E;font-family:Georgia,serif">Coming Home</span><span style="color:#7A8F79;font-weight:600">care</span>.
+    Your signed service agreement has been saved to your provider documents in the portal.
+  </p>
+
+  <div style="background:#2F3E4E;border-radius:14px;padding:20px 24px;margin-bottom:22px">
+    <p style="margin:0 0 3px;font-size:9px;color:#7A8F79;text-transform:uppercase;letter-spacing:2.5px;font-weight:700">Your Enrolled Plan</p>
+    <p style="margin:0 0 2px;font-size:24px;font-weight:900;color:#ffffff;letter-spacing:2px">${planCode}</p>
+    <p style="margin:0 0 14px;font-size:12px;color:rgba(255,255,255,0.5)">${termLabel} &nbsp;&middot;&nbsp; ${carrierLabel}</p>
+    <div style="border-top:1px solid rgba(255,255,255,0.1);padding-top:12px">
+      <table style="width:100%;border-collapse:collapse"><tr>
+        <td>
+          <p style="margin:0;font-size:14px;color:#ffffff;font-weight:700">${dos}</p>
+          ${weekMax ? `<p style="margin:2px 0 0;font-size:11px;color:rgba(255,255,255,0.45)">${weekMax}</p>` : ''}
+        </td>
+        <td style="text-align:right;vertical-align:middle">
+          <span style="display:inline-block;background:rgba(122,143,121,0.25);color:#9fbf9d;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;padding:4px 10px;border-radius:20px">Active</span>
+        </td>
+      </tr></table>
+    </div>
+  </div>
+
+  <div style="border-left:3px solid #7A8F79;padding:2px 0 2px 16px;margin-bottom:22px">
+    <p style="margin:0 0 8px;font-size:13px;color:#4a5568;line-height:1.5">Your signed agreement is saved to <strong style="color:#2F3E4E">myDocuments</strong> in the provider portal.</p>
+    <p style="margin:0 0 8px;font-size:13px;color:#4a5568;line-height:1.5">Invoices are sent to this email address on a biweekly to monthly basis.</p>
+    <p style="margin:0;font-size:13px;color:#4a5568;line-height:1.5">You may update your plan or unenroll at any time from <strong style="color:#2F3E4E">myProfile</strong>.</p>
+  </div>
+
+  <table style="width:100%;border-collapse:collapse;margin-bottom:28px">
+    <tr><td style="text-align:center">
+      <a href="${PORTAL_URL}/nurse" style="display:inline-block;background:#2F3E4E;color:#ffffff;text-decoration:none;padding:13px 36px;border-radius:10px;font-size:14px;font-weight:700;letter-spacing:0.5px">
+        Go to My Dashboard &rarr;
+      </a>
+    </td></tr>
+  </table>
+</div>
+
+${emailFooter('billing@cominghomecare.com')}
+
+</div>
+</div>
+</body>
+</html>`,
+    })
+    return !error
+  } catch {
+    return false
+  }
+}
+
+export async function sendEnrollmentOptOutAck({
+  to,
+  displayName,
+}: {
+  to: string
+  displayName: string
+}): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) return false
+  const resend = createLoggedResend('alert', displayName)
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to,
+      subject: 'Your Coming Home Care account is ready — billing setup skipped',
+      html: `
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background:#D9E1E8;font-family:'Helvetica Neue',Arial,sans-serif">
+<div style="padding:36px 16px">
+<div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(47,62,78,0.13)">
+
+${emailHeader('Setup Complete')}
+
+<div style="padding:26px 32px 0">
+  <p style="margin:0 0 4px;font-size:10px;color:#7A8F79;text-transform:uppercase;letter-spacing:2px;font-weight:700">Hi,</p>
+  <p style="margin:0 0 16px;font-size:22px;font-weight:800;color:#2F3E4E">${displayName}</p>
+  <p style="margin:0 0 20px;font-size:14px;color:#4a5568;line-height:1.65">
+    Your provider account with
+    <span style="font-style:italic;color:#2F3E4E;font-family:Georgia,serif">Coming Home</span><span style="color:#7A8F79;font-weight:600">care</span>
+    is all set. You chose not to add billing services at this time &mdash; that&rsquo;s completely fine.
+  </p>
+
+  <div style="background:#F4F6F5;border-radius:12px;padding:18px 22px;margin-bottom:22px">
+    <p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#2F3E4E">Enrolling later is easy</p>
+    <p style="margin:0 0 8px;font-size:13px;color:#4a5568;line-height:1.5">
+      From your dashboard, go to <strong style="color:#2F3E4E">myProfile</strong> and click
+      <strong style="color:#2F3E4E">&ldquo;Enroll in Billing Services&rdquo;</strong> whenever you&rsquo;re ready.
+      There&rsquo;s no deadline.
+    </p>
+    <p style="margin:0;font-size:13px;color:#4a5568;line-height:1.5">
+      You can also reach us at
+      <a href="mailto:enroll@cominghomecare.com" style="color:#7A8F79;text-decoration:none;font-weight:600">enroll@cominghomecare.com</a>.
+    </p>
+  </div>
+
+  <table style="width:100%;border-collapse:collapse;margin-bottom:28px">
+    <tr><td style="text-align:center">
+      <a href="${PORTAL_URL}/nurse" style="display:inline-block;background:#2F3E4E;color:#ffffff;text-decoration:none;padding:13px 36px;border-radius:10px;font-size:14px;font-weight:700;letter-spacing:0.5px">
+        Go to My Dashboard &rarr;
+      </a>
+    </td></tr>
+  </table>
+</div>
+
+${emailFooter('support@cominghomecare.com')}
+
+</div>
+</div>
+</body>
+</html>`,
+    })
+    return !error
+  } catch {
+    return false
+  }
+}
+
 export async function sendFormReturnedAlert({
   nurseName,
   nurseEmail,

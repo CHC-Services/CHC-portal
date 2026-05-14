@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../../lib/prisma'
 import { verifyToken } from '../../../../lib/auth'
-import { sendEnrollmentAlert } from '../../../../lib/sendEmail'
+import { sendEnrollmentAlert, sendEnrollmentConfirmation, sendEnrollmentOptOutAck } from '../../../../lib/sendEmail'
 import { randomUUID } from 'crypto'
 
 type TermType = 'short_term' | 'long_term'
@@ -27,6 +27,12 @@ export async function POST(req: Request) {
 
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown'
   const nurseName = session.displayName || session.name || 'Unknown Nurse'
+
+  const nurseUser = await (prisma.nurseProfile.findUnique as any)({
+    where: { id: session.nurseProfileId! },
+    select: { user: { select: { email: true } } },
+  })
+  const nurseEmail: string | undefined = nurseUser?.user?.email
 
   const data: Record<string, unknown> = {
     onboardingComplete: true,
@@ -68,6 +74,20 @@ export async function POST(req: Request) {
   const alertDate = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
   const emailSent = await sendEnrollmentAlert({ nurseName, action, details: emailDetails, lastName, insType, date: alertDate })
+
+  if (nurseEmail) {
+    if (enrolledInBilling) {
+      sendEnrollmentConfirmation({
+        to: nurseEmail,
+        displayName: nurseName,
+        planCode: data.billingPlan as string,
+        termType: termType || 'long_term',
+        carrierType: carrierType || 'commercial',
+      })
+    } else {
+      sendEnrollmentOptOutAck({ to: nurseEmail, displayName: nurseName })
+    }
+  }
 
   await prisma.enrollmentLog.create({
     data: {

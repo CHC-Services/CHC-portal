@@ -8,6 +8,8 @@ import {
   sendInvoiceEmail,
   sendReceiptEmail,
   sendEnrollmentAlert,
+  sendEnrollmentConfirmation,
+  sendEnrollmentOptOutAck,
   sendBillingInquiry,
   sendWeeklyHoursReminder,
   sendDocumentExpirationReminder,
@@ -131,13 +133,29 @@ export async function POST(req: Request) {
       ok = await sendEnrollmentAlert({
         nurseName: adminName,
         action: 'opted_in',
-        details: 'Carrier: BCBS, Medicaid · Plan: B (Dual Payer) · Start: April 2026',
+        details: 'Plan: LT-COM (Long-Term · Commercial) · Start: April 2026',
       })
       break
     }
 
     case 'enrollment_alert_out': {
       ok = await sendEnrollmentAlert({ nurseName: adminName, action: 'opted_out' })
+      break
+    }
+
+    case 'enroll_confirm': {
+      ok = await sendEnrollmentConfirmation({
+        to,
+        displayName: adminName,
+        planCode: 'LT-COM',
+        termType: 'long_term',
+        carrierType: 'commercial',
+      })
+      break
+    }
+
+    case 'enroll_optout': {
+      ok = await sendEnrollmentOptOutAck({ to, displayName: adminName })
       break
     }
 

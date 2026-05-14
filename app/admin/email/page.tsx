@@ -863,8 +863,10 @@ export default function AdminMessagingPage() {
                     <optgroup label="Billing / Invoices">
                       <option value="invoice">Invoice Sent to Provider</option>
                       <option value="receipt">Payment Receipt</option>
-                      <option value="enrollment_alert_in">Billing Enrollment — Opted In</option>
-                      <option value="enrollment_alert_out">Billing Enrollment — Opted Out</option>
+                      <option value="enrollment_alert_in">Billing Enrollment Alert — Opted In (to admin)</option>
+                      <option value="enrollment_alert_out">Billing Enrollment Alert — Opted Out (to admin)</option>
+                      <option value="enroll_confirm">Enrollment Confirmation (to provider)</option>
+                      <option value="enroll_optout">Setup Complete — Billing Skipped (to provider)</option>
                       <option value="billing_inquiry">Billing Inquiry (Public Form)</option>
                     </optgroup>
                     <optgroup label="Reminders / Alerts">

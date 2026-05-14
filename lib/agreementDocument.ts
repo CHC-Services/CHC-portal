@@ -317,6 +317,7 @@ export function buildBillingAgreementHtml(opts: {
   ip: string
   title: string
   isSample?: boolean
+  billingPlan?: string
 }) {
   const logoBase64 = loadLogoBase64()
 
@@ -326,6 +327,16 @@ export function buildBillingAgreementHtml(opts: {
   const timeStr = opts.signedAt.toLocaleTimeString('en-US', {
     hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
   })
+
+  const PLAN_DISPLAY: Record<string, string> = {
+    'ST-COM':  '$4/DOS — Short-Term · Commercial',
+    'ST-MED':  '$3/DOS — Short-Term · Medicaid',
+    'ST-DUAL': '$5/DOS — Short-Term · Dual',
+    'LT-COM':  '$3/DOS (max $10/wk) — Long-Term · Commercial',
+    'LT-MED':  '$2/DOS (max $10/wk) — Long-Term · Medicaid',
+    'LT-DUAL': '$4/DOS (max $15/wk) — Long-Term · Dual',
+  }
+  const enrolledPlanLabel = opts.billingPlan ? (PLAN_DISPLAY[opts.billingPlan] ?? opts.billingPlan) : ''
 
   const sampleBanner = opts.isSample ? `
     <div style="background:#f59e0b;color:#fff;text-align:center;padding:10px 16px;font-family:sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;">
@@ -417,49 +428,65 @@ ${sampleBanner}
       Fees are based on the selected billing plan and the volume of claims submitted per billing cycle.
     </div>
 
-    <!-- Weekly Plans -->
-    <p class="section-heading">Weekly Billing Memberships by Date of Service (DOS) Volume</p>
+    <!-- Rate Schedule -->
+    <p class="section-heading">Billing Rate Schedule — Per Date of Service (DOS)</p>
     <div class="intro-box">
-      Plans are flexible. If you add or drop a case that changes your billing needs, email
-      <strong>billing@cominghomecare.com</strong> and we can adjust the plan to fit your needs.<br>
-      All plans include a 2-week preview of <em>my</em><strong>Portal</strong> Basic access.
+      Rates are billed per date of service submitted within each billing cycle.
+      Claims are grouped by the New York State Medicaid billing cycle <strong>(Thursday–Wednesday)</strong>.
+      Plans are flexible — if your needs change, email <strong>billing@cominghomecare.com</strong> and we will update your plan accordingly.
     </div>
 
     <table class="plan-table">
       <thead>
         <tr>
-          <th>Plan</th>
-          <th>Name</th>
-          <th>Rate</th>
-          <th>Dates of Service</th>
+          <th style="width:28%">Term</th>
+          <th style="text-align:center${opts.billingPlan === 'ST-COM' || opts.billingPlan === 'LT-COM' ? ';background:#4a6741' : ''}">Commercial</th>
+          <th style="text-align:center${opts.billingPlan === 'ST-MED' || opts.billingPlan === 'LT-MED' ? ';background:#4a6741' : ''}">Medicaid</th>
+          <th style="text-align:center${opts.billingPlan === 'ST-DUAL' || opts.billingPlan === 'LT-DUAL' ? ';background:#4a6741' : ''}">Dual (Both)</th>
         </tr>
       </thead>
       <tbody>
-        <tr>
-          <td><strong>#M1</strong></td>
-          <td><em>The Side-Gig</em></td>
-          <td><strong>$5/week</strong></td>
-          <td>1–2 dates of service</td>
+        <tr${opts.billingPlan?.startsWith('ST') ? ' style="background:#f0f4f0"' : ''}>
+          <td>
+            <strong>Short-Term</strong><br>
+            <span style="font-size:10px;color:#718096;">≤ 30 days / one-time event</span>
+          </td>
+          <td style="text-align:center;${opts.billingPlan === 'ST-COM' ? 'background:#e2ece2;font-weight:700;' : ''}">
+            <strong>$4</strong> <span style="font-size:10px;color:#718096;">/DOS</span>
+          </td>
+          <td style="text-align:center;${opts.billingPlan === 'ST-MED' ? 'background:#e2ece2;font-weight:700;' : ''}">
+            <strong>$3</strong> <span style="font-size:10px;color:#718096;">/DOS</span>
+          </td>
+          <td style="text-align:center;${opts.billingPlan === 'ST-DUAL' ? 'background:#e2ece2;font-weight:700;' : ''}">
+            <strong>$5</strong> <span style="font-size:10px;color:#718096;">/DOS</span>
+          </td>
         </tr>
-        <tr>
-          <td><strong>#M2</strong></td>
-          <td><em>The Full-Timer</em></td>
-          <td><strong>$10/week</strong></td>
-          <td>3–5 dates of service</td>
-        </tr>
-        <tr>
-          <td><strong>#M3</strong></td>
-          <td><em>The Work-a-Holic</em></td>
-          <td><strong>$15/week</strong></td>
-          <td>Up to 7 dates of service</td>
+        <tr${opts.billingPlan?.startsWith('LT') ? ' style="background:#f0f4f0"' : ''}>
+          <td>
+            <strong>Long-Term</strong><br>
+            <span style="font-size:10px;color:#718096;">Ongoing / &gt; 30 days</span>
+          </td>
+          <td style="text-align:center;${opts.billingPlan === 'LT-COM' ? 'background:#e2ece2;font-weight:700;' : ''}">
+            <strong>$3</strong> <span style="font-size:10px;color:#718096;">/DOS</span><br>
+            <span style="font-size:10px;color:#718096;font-style:italic;">max $10/week</span>
+          </td>
+          <td style="text-align:center;${opts.billingPlan === 'LT-MED' ? 'background:#e2ece2;font-weight:700;' : ''}">
+            <strong>$2</strong> <span style="font-size:10px;color:#718096;">/DOS</span><br>
+            <span style="font-size:10px;color:#718096;font-style:italic;">max $10/week</span>
+          </td>
+          <td style="text-align:center;${opts.billingPlan === 'LT-DUAL' ? 'background:#e2ece2;font-weight:700;' : ''}">
+            <strong>$4</strong> <span style="font-size:10px;color:#718096;">/DOS</span><br>
+            <span style="font-size:10px;color:#718096;font-style:italic;">max $15/week</span>
+          </td>
         </tr>
       </tbody>
     </table>
-    <p class="plan-note">*Each additional DOS submitted above the enrolled plan max will incur a fee of $2.</p>
-    <p class="section-body">
-      Claims are grouped according to the New York State Medicaid billing cycle (Thursday–Wednesday).
-      Fees are calculated based on the number of dates of service within each billing cycle, not based on upload timing.
-    </p>
+
+    ${enrolledPlanLabel ? `
+    <div style="background:#2F3E4E;border-radius:8px;padding:12px 18px;margin:-8px 0 20px;font-family:sans-serif;">
+      <p style="margin:0 0 2px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#7A8F79;">Enrolled Plan</p>
+      <p style="margin:0;font-size:13px;font-weight:700;color:#fff;">${enrolledPlanLabel}</p>
+    </div>` : ''}
 
     <!-- Invoicing -->
     <p class="section-heading">Invoicing &amp; Payment Terms</p>
@@ -467,6 +494,7 @@ ${sampleBanner}
       Invoices are issued on a biweekly to monthly basis depending on claim volume and are sent to the email address
       on file. Payment is due within <strong>30 days</strong> of the invoice date.
       <ul>
+        <li><strong>Early Payment Credit:</strong> Invoices paid in full within <strong>7 days</strong> of the invoice date receive a <strong>$4 credit</strong> applied to the following month's invoice.</li>
         <li>Balances unpaid after 30 days may incur a <strong>15% late fee</strong>.</li>
         <li>Balances unpaid after 60 days may incur a <strong>20% late fee</strong>.</li>
         <li>Balances unpaid 90 days or more may incur a <strong>22% late fee</strong> per additional month.</li>

@@ -4,10 +4,13 @@ import { verifyToken } from '../../../../lib/auth'
 import { sendEnrollmentAlert } from '../../../../lib/sendEmail'
 import { randomUUID } from 'crypto'
 
-function derivePlan(carrierCount: number): string {
-  if (carrierCount === 1) return 'A1/A2'
-  if (carrierCount === 2) return 'B'
-  return 'custom'
+type TermType = 'short_term' | 'long_term'
+type CarrierType = 'commercial' | 'medicaid' | 'dual'
+
+function derivePlan(termType: TermType, carrierType: CarrierType): string {
+  const prefix = termType === 'short_term' ? 'ST' : 'LT'
+  const suffix = carrierType === 'commercial' ? 'COM' : carrierType === 'medicaid' ? 'MED' : 'DUAL'
+  return `${prefix}-${suffix}`
 }
 
 export async function POST(req: Request) {
@@ -20,7 +23,7 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json()
-  const { enrolledInBilling, carrierCount, billingDurationType, billingDurationNote, signature, isReEnroll } = body
+  const { enrolledInBilling, termType, carrierType, billingDurationNote, signature, isReEnroll } = body
 
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown'
   const nurseName = session.displayName || session.name || 'Unknown Nurse'
@@ -33,18 +36,24 @@ export async function POST(req: Request) {
   let action: 'opted_out' | 'opted_in' | 're_enrolled' = 'opted_out'
   let logNote: string | undefined
   let emailDetails: string | undefined
+  let insType = 'Single'
 
   if (enrolledInBilling) {
+    const plan = derivePlan(termType as TermType, carrierType as CarrierType)
     action = isReEnroll ? 're_enrolled' : 'opted_in'
-    data.carrierCount        = carrierCount || 1
-    data.billingDurationType = billingDurationType || 'full_year'
+    data.billingDurationType = termType || 'long_term'
     data.billingDurationNote = billingDurationNote || null
-    data.billingPlan         = derivePlan(carrierCount || 1)
+    data.carrierCount        = carrierType === 'dual' ? 2 : 1
+    data.billingPlan         = plan
     data.agreementSignature  = signature || null
     data.agreementSignedAt   = new Date()
     data.agreementIp         = ip
-    logNote     = `Plan: ${derivePlan(carrierCount || 1)}, ${carrierCount} carrier(s), ${billingDurationType === 'full_year' ? 'full year' : billingDurationNote}`
+
+    const termLabel    = termType === 'short_term' ? 'Short-Term' : 'Long-Term'
+    const carrierLabel = carrierType === 'commercial' ? 'Commercial' : carrierType === 'medicaid' ? 'Medicaid' : 'Dual'
+    logNote      = `Plan: ${plan} (${termLabel} · ${carrierLabel})${billingDurationNote ? ` — ${billingDurationNote}` : ''}`
     emailDetails = logNote
+    insType      = carrierType === 'dual' ? 'Dual' : 'Single'
   } else {
     action  = 'opted_out'
     logNote = 'Nurse opted out of billing services during onboarding.'
@@ -56,13 +65,10 @@ export async function POST(req: Request) {
   })
 
   const lastName = (session as any).lastName || nurseName.split(' ').slice(-1)[0] || nurseName
-  const insType  = (carrierCount || 1) >= 3 ? 'Multi' : (carrierCount || 1) === 2 ? 'Dual' : 'Single'
   const alertDate = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
-  // Fire email alert (non-blocking)
   const emailSent = await sendEnrollmentAlert({ nurseName, action, details: emailDetails, lastName, insType, date: alertDate })
 
-  // Log the event
   await prisma.enrollmentLog.create({
     data: {
       id:               randomUUID(),

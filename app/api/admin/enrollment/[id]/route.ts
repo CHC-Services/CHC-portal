@@ -13,7 +13,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await params
   const body = await req.json()
-  const { billingStatus, serviceStartDate, serviceEndDate } = body
+  const { billingStatus, serviceStartDate, serviceEndDate, billingPlan } = body
 
   if (billingStatus !== undefined) {
     const allowed = ['Active', 'Termed', 'Seasonal', 'Pending', null]
@@ -22,10 +22,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
   }
 
+  const VALID_PLANS = ['ST-COM','ST-MED','ST-DUAL','LT-COM','LT-MED','LT-DUAL','custom',null,'']
+  if (billingPlan !== undefined && !VALID_PLANS.includes(billingPlan)) {
+    return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
+  }
+
   const data: Record<string, unknown> = {}
   if (billingStatus !== undefined) data.billingStatus = billingStatus
   if (serviceStartDate !== undefined) data.serviceStartDate = serviceStartDate || null
   if (serviceEndDate !== undefined) data.serviceEndDate = serviceEndDate || null
+  if (billingPlan !== undefined) data.billingPlan = billingPlan || null
 
   const updated = await (prisma.nurseProfile as any).update({
     where: { id },

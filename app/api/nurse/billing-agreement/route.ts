@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { initials } = await req.json()
+  const { initials, termType, carrierType } = await req.json()
   if (!initials || initials.trim().length < 1) {
     return NextResponse.json({ error: 'Initials are required' }, { status: 400 })
   }
@@ -50,6 +50,13 @@ export async function POST(req: Request) {
   const fullName = [profile.firstName, profile.lastName].filter(Boolean).join(' ')
     || profile.displayName || session.displayName || ''
 
+  function derivePlan(term?: string, carrier?: string) {
+    if (!term || !carrier) return undefined
+    const prefix = term === 'short_term' ? 'ST' : 'LT'
+    const suffix = carrier === 'commercial' ? 'COM' : carrier === 'medicaid' ? 'MED' : 'DUAL'
+    return `${prefix}-${suffix}`
+  }
+
   const html = buildBillingAgreementHtml({
     displayName: fullName,
     accountNumber: acctNum,
@@ -58,6 +65,7 @@ export async function POST(req: Request) {
     signedAt,
     ip,
     title: docTitle,
+    billingPlan: derivePlan(termType, carrierType),
   })
 
   const htmlBuffer = Buffer.from(html, 'utf-8')

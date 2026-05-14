@@ -50,11 +50,58 @@ const BADGE_COLORS: Record<string, string> = {
   'Never Enrolled': 'bg-gray-100 text-gray-500',
 }
 
-const PLAN_LABELS: Record<string, string> = {
-  A1: 'A1 — Medicaid',
-  A2: 'A2 — Commercial',
-  B:  'B — Dual',
-  custom: 'Custom',
+const PLAN_OPTIONS = [
+  { value: 'ST-COM',  label: 'ST-COM (Short-Term Commercial)' },
+  { value: 'ST-MED',  label: 'ST-MED (Short-Term Medicaid)' },
+  { value: 'ST-DUAL', label: 'ST-DUAL (Short-Term Dual)' },
+  { value: 'LT-COM',  label: 'LT-COM (Long-Term Commercial)' },
+  { value: 'LT-MED',  label: 'LT-MED (Long-Term Medicaid)' },
+  { value: 'LT-DUAL', label: 'LT-DUAL (Long-Term Dual)' },
+  { value: 'custom',  label: 'Custom' },
+]
+
+function PlanCell({ nurse, onSave }: { nurse: Nurse; onSave: (plan: string | null) => void }) {
+  const [open, setOpen] = useState(false)
+  const [val, setVal] = useState(nurse.billingPlan ?? '')
+
+  function commit(v: string) {
+    setOpen(false)
+    onSave(v || null)
+  }
+
+  if (open) {
+    return (
+      <select
+        autoFocus
+        value={val}
+        onChange={e => setVal(e.target.value)}
+        onBlur={() => commit(val)}
+        onKeyDown={e => { if (e.key === 'Enter') commit(val); if (e.key === 'Escape') setOpen(false) }}
+        className="w-[160px] border border-[#7A8F79] rounded px-1 py-0.5 text-[11px] text-[#2F3E4E] bg-white focus:outline-none"
+      >
+        <option value="">— none —</option>
+        {PLAN_OPTIONS.map(o => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+    )
+  }
+
+  return (
+    <button
+      onClick={() => { setVal(nurse.billingPlan ?? ''); setOpen(true) }}
+      className="text-left hover:underline transition"
+      title="Click to edit plan"
+    >
+      {nurse.billingPlan ? (
+        <span className="bg-[#D9E1E8] text-[#2F3E4E] px-1.5 py-0.5 rounded text-[10px] font-semibold">
+          {nurse.billingPlan}
+        </span>
+      ) : (
+        <span className="italic text-[#7A8F79] opacity-50 text-[10px]">set plan</span>
+      )}
+    </button>
+  )
 }
 
 function isExpired(dateStr?: string | null): boolean {
@@ -152,6 +199,7 @@ export default function EnrollmentPage() {
   const [tab, setTab] = useState<Tab>('Active')
   const [search, setSearch] = useState('')
   const [updating, setUpdating] = useState<string | null>(null)
+  const [resetting, setResetting] = useState<string | null>(null)
   const [sortField, setSortField] = useState<'status' | 'name' | 'plan' | 'since' | 'range' | null>(null)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [editing, setEditing] = useState<EditingCell | null>(null)
@@ -205,6 +253,39 @@ export default function EnrollmentPage() {
     }
     return filtered
   }, [nurses, tab, search, sortField, sortDir])
+
+  async function resetEnrollment(nurseId: string, displayName: string) {
+    if (!confirm(`Reset enrollment for ${displayName}? They will be sent through the full onboarding wizard on their next login.`)) return
+    setResetting(nurseId)
+    const res = await fetch(`/api/admin/enrollment/${nurseId}/reset`, {
+      method: 'POST',
+      credentials: 'include',
+    })
+    if (res.ok) {
+      setNurses(prev => prev.map(n => n.id === nurseId ? {
+        ...n,
+        onboardingComplete: false,
+        enrolledInBilling: undefined,
+        billingPlan: undefined,
+        billingDurationType: undefined,
+        billingStatus: undefined,
+      } : n))
+    }
+    setResetting(null)
+  }
+
+  async function setPlan(nurseId: string, plan: string | null) {
+    const res = await fetch(`/api/admin/enrollment/${nurseId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ billingPlan: plan }),
+    })
+    if (res.ok) {
+      const updated = await res.json()
+      setNurses(prev => prev.map(n => n.id === nurseId ? { ...n, billingPlan: updated.billingPlan } : n))
+    }
+  }
 
   async function setStatus(nurseId: string, status: string | null) {
     setUpdating(nurseId)
@@ -358,11 +439,7 @@ export default function EnrollmentPage() {
 
                       {/* Plan */}
                       <td className="px-3 py-2 hidden sm:table-cell">
-                        {n.billingPlan ? (
-                          <span className="bg-[#D9E1E8] text-[#2F3E4E] px-1.5 py-0.5 rounded text-[10px] font-semibold">
-                            {PLAN_LABELS[n.billingPlan] ?? n.billingPlan}
-                          </span>
-                        ) : '—'}
+                        <PlanCell nurse={n} onSave={(plan) => setPlan(n.id, plan)} />
                       </td>
 
                       {/* Duration */}
@@ -419,6 +496,14 @@ export default function EnrollmentPage() {
                               {a}
                             </button>
                           ))}
+                          <button
+                            disabled={resetting === n.id}
+                            onClick={() => resetEnrollment(n.id, n.displayName)}
+                            className="px-2 py-0.5 rounded text-[10px] font-semibold border border-red-200 text-red-400 hover:border-red-400 hover:text-red-600 transition disabled:opacity-40"
+                            title="Reset enrollment — nurse will re-complete onboarding on next login"
+                          >
+                            {resetting === n.id ? '…' : 'Reset'}
+                          </button>
                           <Link
                             href={`/admin/nurse/${n.user.id}`}
                             className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#2F3E4E] text-white hover:bg-[#7A8F79] transition"

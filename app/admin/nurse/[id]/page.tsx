@@ -396,8 +396,12 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   const workDateRef = useRef<DateInputHandle>(null)
   const [workHours, setWorkHours] = useState('')
   const [workNotes, setWorkNotes] = useState('')
+  const [workPatientId, setWorkPatientId] = useState('')
   const [workSubmitting, setWorkSubmitting] = useState(false)
   const [workMessage, setWorkMessage] = useState('')
+
+  // Nurse's linked patients (for the Log Hours dropdown)
+  const [nursePatients, setNursePatients] = useState<{ id: string; accountNumber: string; firstName: string; lastName: string }[]>([])
 
   async function fetchDocuments() {
     const res = await fetch(`/api/admin/documents?nurseId=${id}`, { credentials: 'include' })
@@ -419,6 +423,19 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
       const refs: Record<string, string> = {}
       d.forEach((e: TimeEntry) => { refs[e.id] = e.claimRef || '' })
       setClaimRefs(refs)
+    }
+  }
+
+  async function fetchNursePatients() {
+    const r = await fetch(`/api/admin/patients?nurseId=${id}`, { credentials: 'include' })
+    const d = await r.json()
+    if (Array.isArray(d.patients)) {
+      setNursePatients(d.patients.map((p: any) => ({
+        id: p.id,
+        accountNumber: p.accountNumber,
+        firstName: p.firstName,
+        lastName: p.lastName,
+      })))
     }
   }
 
@@ -539,6 +556,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
       .finally(() => setLoading(false))
 
     fetchEntries()
+    fetchNursePatients()
     fetchDocuments()
     fetchCategories()
     fetchInvoiceHistory()
@@ -851,7 +869,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ nurseId: id, workDate, hours: parseFloat(workHours), notes: workNotes }),
+      body: JSON.stringify({ nurseId: id, workDate, hours: parseFloat(workHours), notes: workNotes, patientId: workPatientId || undefined }),
     })
     const data = await res.json()
     setWorkSubmitting(false)
@@ -860,6 +878,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
       setWorkDate('')
       setWorkHours('')
       setWorkNotes('')
+      setWorkPatientId('')
       fetchEntries()
       requestAnimationFrame(() => workDateRef.current?.focus())
     } else {
@@ -1578,6 +1597,24 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                   />
                 </div>
               </div>
+              {nursePatients.length > 0 && (
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Patient</label>
+                  <select
+                    value={workPatientId}
+                    onChange={e => setWorkPatientId(e.target.value)}
+                    required
+                    className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                  >
+                    <option value="">— Select patient —</option>
+                    {nursePatients.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.lastName}, {p.firstName} ({p.accountNumber})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="space-y-1">
                 <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Notes <span className="normal-case font-normal">(optional)</span></label>
                 <input
@@ -1591,7 +1628,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
               <div className="flex items-center gap-3">
                 <button
                   type="submit"
-                  disabled={workSubmitting || !workDate || !workHours}
+                  disabled={workSubmitting || !workDate || !workHours || (nursePatients.length > 0 && !workPatientId)}
                   className="bg-[#7A8F79] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#2F3E4E] transition disabled:opacity-50"
                 >
                   {workSubmitting ? 'Adding…' : 'Add Entry'}

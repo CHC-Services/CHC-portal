@@ -76,7 +76,13 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   if (!adminAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const { searchParams } = new URL(req.url)
+  const nurseIdFilter = searchParams.get('nurseId')
+
   const patients = await (prisma.patient.findMany as any)({
+    where: nurseIdFilter
+      ? { nurseLinks: { some: { nurseId: nurseIdFilter } } }
+      : undefined,
     include: {
       nurseLinks: {
         include: {

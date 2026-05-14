@@ -178,14 +178,40 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#D9E1E8] flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-[#D9E1E8] flex flex-col items-center pt-8 pb-12 px-6">
 
-      {/* Progress dots */}
-      {!optedOutConfirm && (
-        <div className="flex gap-2 mb-6">
-          {Array.from({ length: totalSteps }, (_, i) => i + 1).map(n => (
-            <div key={n} className={`w-2.5 h-2.5 rounded-full transition-all ${step >= n ? 'bg-[#2F3E4E]' : 'bg-[#D9E1E8] border border-[#7A8F79]'}`} />
-          ))}
+      {/* Welcome banner — first-time landing, step 1 only */}
+      {!optedOutConfirm && step === 1 && (
+        <div className="w-full max-w-xl mb-5 rounded-2xl overflow-hidden shadow-md">
+          <div
+            className="px-6 pt-6 pb-5"
+            style={{ background: 'linear-gradient(135deg, #2F3E4E 0%, #3a4f61 100%)' }}
+          >
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#7A8F79] mb-2">
+              Coming Home Care Services
+            </p>
+            <h2 className="text-2xl font-bold text-white leading-snug">
+              Welcome to <span className="italic text-[#7A8F79]">my</span>Provider
+            </h2>
+            <p className="text-sm text-white/65 mt-2 leading-relaxed">
+              We&apos;re glad to have you. This short setup connects your provider account to our billing
+              services — it only takes a minute and you can update your preferences at any time.
+            </p>
+          </div>
+          <div
+            className="px-6 py-3 border-t border-white/10"
+            style={{ background: 'rgba(30,42,54,0.85)' }}
+          >
+            <p className="text-xs text-white/50">
+              Questions? Reach us at{' '}
+              <a
+                href="mailto:enroll@cominghomecare.com"
+                className="text-[#7A8F79] font-semibold hover:text-white transition"
+              >
+                enroll@cominghomecare.com
+              </a>
+            </p>
+          </div>
         </div>
       )}
 
@@ -315,8 +341,12 @@ export default function OnboardingPage() {
                   subNode={
                     <span className="flex flex-col gap-0.5 mt-0.5">
                       <span>{sub}</span>
-                      {rate && <strong className="text-[#2F3E4E]">{rate.dos}</strong>}
-                      {rate?.weekMax && <span className="italic">{rate.weekMax}</span>}
+                      {rate && (
+                        <span className="flex items-center gap-1.5">
+                          <strong className="text-[#2F3E4E]">{rate.dos}</strong>
+                          {rate.weekMax && <span className="italic">{rate.weekMax}</span>}
+                        </span>
+                      )}
                     </span>
                   }
                 />
@@ -326,6 +356,15 @@ export default function OnboardingPage() {
 
           <NavRow onBack={() => setStep(2)} onNext={() => setStep(4)} nextDisabled={!answers.carrierType} />
         </StepCard>
+      )}
+
+      {/* Progress dots — below card */}
+      {!optedOutConfirm && (
+        <div className="flex gap-2 mt-5">
+          {Array.from({ length: totalSteps }, (_, i) => i + 1).map(n => (
+            <div key={n} className={`w-2.5 h-2.5 rounded-full transition-all ${step >= n ? 'bg-[#2F3E4E]' : 'bg-[#D9E1E8] border border-[#7A8F79]'}`} />
+          ))}
+        </div>
       )}
 
       {/* ── Step 4 — Agreement ── */}

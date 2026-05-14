@@ -34,7 +34,7 @@ export default function MyHours() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   const [effectiveTier, setEffectiveTier] = useState<'FREE' | 'BASIC' | 'PRO'>('FREE')
   const [sortKey, setSortKey] = useState<'date' | 'hours'>('date')
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [linkedPatients, setLinkedPatients] = useState<LinkedPatient[]>([])
   const [selectedPatient, setSelectedPatient] = useState('')
 
@@ -118,7 +118,7 @@ export default function MyHours() {
     })
     const data = await res.json()
     if (res.ok) {
-      setMessage('Hours submitted successfully.')
+      setMessage(data.corrected ? 'Entry corrected — existing record updated.' : 'Hours submitted successfully.')
       setWorkDate('')
       setHours('')
       setNotes('')
@@ -319,6 +319,8 @@ export default function MyHours() {
             <p>• Select the exact date worked.</p>
             <p>• Submit whole hours only — no partial hours.</p>
             <p>• One submission per calendar day.</p>
+            <p>• <strong className="font-semibold">To correct an entry</strong> — resubmit the same date with updated hours or notes. The existing record will be replaced automatically.</p>
+            <p>• 🔒 means that date has been submitted for billing and can no longer be edited or deleted.</p>
           </div>
         </div>
 

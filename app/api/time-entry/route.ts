@@ -67,10 +67,38 @@ export async function POST(req: Request) {
 
   const { workDate, hours, notes, patientId } = await req.json()
 
+  const nurseId = session.nurseProfileId!
+  const parsedDate = new Date(workDate)
+
+  const existing = await (prisma.timeEntry.findFirst as any)({
+    where: { nurseId, workDate: parsedDate },
+  })
+
+  if (existing) {
+    if (existing.billed) {
+      return NextResponse.json(
+        { error: 'This date has already been submitted for billing and cannot be changed.' },
+        { status: 409 }
+      )
+    }
+    const entry = await (prisma.timeEntry.update as any)({
+      where: { id: existing.id },
+      data: {
+        hours: parseInt(hours, 10),
+        notes,
+        ...(patientId ? { patientId } : { patientId: null }),
+      },
+      include: {
+        patient: { select: { id: true, accountNumber: true, firstName: true, lastName: true } },
+      },
+    })
+    return NextResponse.json({ ...entry, corrected: true })
+  }
+
   const entry = await (prisma.timeEntry.create as any)({
     data: {
-      nurseId: session.nurseProfileId!,
-      workDate: new Date(workDate),
+      nurseId,
+      workDate: parsedDate,
       hours: parseInt(hours, 10),
       notes,
       ...(patientId ? { patientId } : {}),

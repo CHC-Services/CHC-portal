@@ -348,7 +348,7 @@ export default function OnboardingPage() {
                         </span>
                       )}
                       {type === 'dual' && (
-                        <span className="text-[#7A8F79] text-[10px] italic">Once Primary Insurance benefit max is met, rate drops to $2 Medicaid pricing.</span>
+                        <span className="text-[#7A8F79] text-[10px] font-bold italic">Once Primary Insurance benefit max is met, rate drops to <span className="text-[#2F3E4E] font-bold">$2 Medicaid</span> pricing.</span>
                       )}
                     </span>
                   }

@@ -1,0 +1,2 @@
+ALTER TABLE "NurseProfile" ADD COLUMN IF NOT EXISTS "etin" TEXT;
+ALTER TABLE "NurseProfile" ADD COLUMN IF NOT EXISTS "epacesUserId" TEXT;

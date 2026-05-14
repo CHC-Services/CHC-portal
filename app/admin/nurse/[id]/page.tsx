@@ -154,6 +154,7 @@ type TimeEntry = {
   invoiceId?: string
   invoice?: { invoiceNumber: string; status: string }
   claimRef?: string
+  patient?: { id: string; accountNumber: string; firstName: string; lastName: string } | null
 }
 
 export default function NurseDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -1077,6 +1078,10 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                 <Field label="NPI (Individual)" field="npiNumber"   profile={profile} setProfile={setProfile} sensitive />
                 <Field label="Medicaid ID"    field="medicaidNumber" profile={profile} setProfile={setProfile} sensitive />
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="ETIN (Electronic Transmitter ID)" field="etin"        profile={profile} setProfile={setProfile} />
+                <Field label="ePaces User ID"                   field="epacesUserId" profile={profile} setProfile={setProfile} />
+              </div>
             </Section>
 
             {/* Business Provider Information */}
@@ -1578,8 +1583,8 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
               Log Hours
             </h2>
             <form onSubmit={submitTimeEntry} className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
+              <div className="flex gap-3 items-end">
+                <div className="flex-1 space-y-1">
                   <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Date of Service</label>
                   <DateInput ref={workDateRef} value={workDate} onChange={setWorkDate} />
                 </div>
@@ -1591,9 +1596,9 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                     min="0"
                     value={workHours}
                     onChange={e => setWorkHours(e.target.value)}
-                    placeholder="e.g. 8"
+                    placeholder="8"
                     required
-                    className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                    className="w-16 border border-[#D9E1E8] px-2 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
                   />
                 </div>
               </div>
@@ -1681,7 +1686,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
               <p className="text-sm text-[#7A8F79] italic">No time entries yet.</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm min-w-[560px]">
+                <table className="w-full text-sm min-w-[660px]">
                   <thead>
                     <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
                       <th className="text-left py-2 pr-3 w-8">
@@ -1694,6 +1699,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                         />
                       </th>
                       <SortTh field="date" label="Date" />
+                      <th className="text-left py-2 pr-4">Patient</th>
                       <th className="text-left py-2 pr-4">Claim Ref #</th>
                       <SortTh field="hours" label="Hrs" />
                       <SortTh field="notes" label="Notes" />
@@ -1713,6 +1719,12 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                           <td className="py-2 pr-3"><span className="block w-4 h-4 rounded bg-green-200" /></td>
                           <td className="py-2 pr-4 text-xs text-[#2F3E4E] whitespace-nowrap">
                             {minDate === maxDate ? minDate : `${minDate} – ${maxDate}`}
+                          </td>
+                          <td className="py-2 pr-4 text-xs text-[#7A8F79]">
+                            {(() => {
+                              const pts = [...new Set(group.filter(e => e.patient).map(e => `${e.patient!.lastName}, ${e.patient!.firstName[0]}.`))]
+                              return pts.length === 0 ? '—' : pts.length === 1 ? pts[0] : `${pts[0]} +${pts.length - 1}`
+                            })()}
                           </td>
                           <td className="py-2 pr-4 text-xs text-[#7A8F79]">{firstRef || '—'}</td>
                           <td className="py-2 pr-4 text-right text-xs text-[#7A8F79]">{group.reduce((s, e) => s + e.hours, 0)}</td>
@@ -1738,6 +1750,9 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                             <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(entry.id)} className="w-4 h-4 accent-[#7A8F79]" />
                           </td>
                           <td className="py-2.5 pr-4 text-xs text-[#2F3E4E] whitespace-nowrap">{dateStr}</td>
+                          <td className="py-2.5 pr-4 text-xs text-[#7A8F79] whitespace-nowrap">
+                            {entry.patient ? `${entry.patient.lastName}, ${entry.patient.firstName[0]}.` : <span className="italic">—</span>}
+                          </td>
                           <td className="py-2.5 pr-4">
                             <input
                               type="text"

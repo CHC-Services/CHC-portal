@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
 type TermType = 'short_term' | 'long_term'
@@ -12,6 +12,21 @@ type Answers = {
   carrierType: CarrierType | null
   billingDurationNote: string
   signature: string
+}
+
+type EnrollmentInfo = {
+  firstName: string
+  lastName: string
+  dob: string
+  address: string
+  city: string
+  state: string
+  zip: string
+  phone: string
+  npiNumber: string
+  etin: string
+  epacesUserId: string
+  ssn: string
 }
 
 // ── Rates per plan ──────────────────────────────────────────────────────────
@@ -126,10 +141,50 @@ export default function OnboardingPage() {
     billingDurationNote: '',
     signature: '',
   })
+  const [enrollInfo, setEnrollInfo] = useState<EnrollmentInfo>({
+    firstName: '',
+    lastName: '',
+    dob: '',
+    address: '',
+    city: '',
+    state: '',
+    zip: '',
+    phone: '',
+    npiNumber: '',
+    etin: '',
+    epacesUserId: '',
+    ssn: '',
+  })
 
   const set = (patch: Partial<Answers>) => setAnswers(a => ({ ...a, ...patch }))
+  const setInfo = (patch: Partial<EnrollmentInfo>) => setEnrollInfo(a => ({ ...a, ...patch }))
   const selectedPlan = derivePlan(answers.termType, answers.carrierType)
-  const totalSteps = answers.enrolledInBilling === false ? 1 : 4
+  const totalSteps = answers.enrolledInBilling === false ? 1 : 5
+  const isCommercial = answers.carrierType === 'commercial' || answers.carrierType === 'dual'
+
+  // Pre-fill enrollment info from existing profile
+  useEffect(() => {
+    fetch('/api/nurse/profile', { credentials: 'include' })
+      .then(r => r.json())
+      .then(({ profile }) => {
+        if (!profile) return
+        setEnrollInfo(prev => ({
+          ...prev,
+          firstName:    profile.firstName    || '',
+          lastName:     profile.lastName     || '',
+          dob:          profile.dob          || '',
+          address:      profile.address      || '',
+          city:         profile.city         || '',
+          state:        profile.state        || '',
+          zip:          profile.zip          || '',
+          phone:        profile.phone        || '',
+          npiNumber:    profile.npiNumber    || '',
+          etin:         profile.etin         || '',
+          epacesUserId: profile.epacesUserId || '',
+        }))
+      })
+      .catch(() => {})
+  }, [])
 
   async function skipBilling() {
     setSubmitting(true)
@@ -143,7 +198,8 @@ export default function OnboardingPage() {
     setOptedOutConfirm(true)
   }
 
-  async function submit() {
+  // Step 4: sign billing agreement → advance to step 5
+  async function signAgreement() {
     setSubmitting(true); setError('')
 
     const agreeRes = await fetch('/api/nurse/billing-agreement', {
@@ -163,6 +219,62 @@ export default function OnboardingPage() {
       return
     }
 
+    setSubmitting(false)
+    setStep(5)
+  }
+
+  // Step 5: save profile data, generate remittance form, complete onboarding
+  async function submitEnrollmentInfo() {
+    setSubmitting(true); setError('')
+
+    // Save profile fields (etin, epacesUserId, and any updated personal info)
+    const profileRes = await fetch('/api/nurse/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        firstName:    enrollInfo.firstName,
+        lastName:     enrollInfo.lastName,
+        dob:          enrollInfo.dob,
+        address:      enrollInfo.address,
+        city:         enrollInfo.city,
+        state:        enrollInfo.state,
+        zip:          enrollInfo.zip,
+        phone:        enrollInfo.phone,
+        npiNumber:    enrollInfo.npiNumber,
+        etin:         enrollInfo.etin,
+        epacesUserId: enrollInfo.epacesUserId,
+        ...(isCommercial && enrollInfo.ssn ? { ssn: enrollInfo.ssn } : {}),
+      }),
+    })
+    if (!profileRes.ok) {
+      setError('Failed to save provider information. Please try again.')
+      setSubmitting(false)
+      return
+    }
+
+    // Generate and download the remittance form
+    try {
+      const pdfRes = await fetch('/api/nurse/remittance-form', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(enrollInfo),
+      })
+      if (pdfRes.ok) {
+        const blob = await pdfRes.blob()
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'Electronic_Remittance_Enrollment.pdf'
+        a.click()
+        URL.revokeObjectURL(url)
+      }
+    } catch {
+      // Non-fatal — continue even if PDF fails
+    }
+
+    // Complete onboarding
     const res = await fetch('/api/nurse/onboarding', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -176,6 +288,17 @@ export default function OnboardingPage() {
       setSubmitting(false)
     }
   }
+
+  const step5RequiredFilled =
+    enrollInfo.firstName.trim() &&
+    enrollInfo.lastName.trim() &&
+    enrollInfo.dob.trim() &&
+    enrollInfo.address.trim() &&
+    enrollInfo.npiNumber.trim() &&
+    enrollInfo.etin.trim() &&
+    enrollInfo.epacesUserId.trim() &&
+    enrollInfo.phone.trim() &&
+    (!isCommercial || enrollInfo.ssn.trim())
 
   return (
     <div className="min-h-screen bg-[#D9E1E8] flex flex-col items-center pt-8 pb-12 px-6">
@@ -191,7 +314,7 @@ export default function OnboardingPage() {
               Coming Home Care Services
             </p>
             <h2 className="text-2xl font-bold text-white leading-snug">
-              Welcome to <span className="italic text-[#7A8F79]">my</span>Provider
+              Welcome to your <span className="italic text-[#7A8F79]">my</span>Provider Portal
             </h2>
             <p className="text-sm text-white/65 mt-2 leading-relaxed">
               We&apos;re glad to have you. This short setup connects your provider account to our billing
@@ -227,8 +350,8 @@ export default function OnboardingPage() {
             <h2 className="text-xl font-bold text-[#2F3E4E] mb-2">Got it — no billing services for now.</h2>
             <p className="text-sm text-[#7A8F79] leading-relaxed mb-6">
               You can enroll in billing services at any time by clicking{' '}
-              <strong className="text-[#2F3E4E]">"Enroll in Services"</strong> in your provider dashboard.
-              There's no deadline — whenever you're ready, we're here.
+              <strong className="text-[#2F3E4E]">&ldquo;Enroll in Services&rdquo;</strong> in your provider dashboard.
+              There&apos;s no deadline — whenever you&apos;re ready, we&apos;re here.
             </p>
             <button onClick={() => router.push('/nurse')}
               className="w-full bg-[#2F3E4E] text-white py-3 rounded-xl hover:bg-[#7A8F79] transition font-semibold">
@@ -277,7 +400,7 @@ export default function OnboardingPage() {
       {/* ── Step 2 — Short-term or Long-term ── */}
       {!optedOutConfirm && step === 2 && (
         <StepCard>
-          <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-2">Step 2 of 4</p>
+          <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-2">Step 2 of 5</p>
           <Question text="How long will you need billing services?" />
           <div className="space-y-3">
             <ChoiceButton
@@ -322,7 +445,7 @@ export default function OnboardingPage() {
       {/* ── Step 3 — Carrier type ── */}
       {!optedOutConfirm && step === 3 && (
         <StepCard>
-          <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-2">Step 3 of 4</p>
+          <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-2">Step 3 of 5</p>
           <Question text="Which insurance carrier(s) will need to be billed?" />
           <div className="space-y-3 mb-5">
             {([
@@ -362,7 +485,7 @@ export default function OnboardingPage() {
       )}
 
       {/* Progress dots — below card */}
-      {!optedOutConfirm && (
+      {!optedOutConfirm && step < 4 && (
         <div className="flex gap-2 mt-5">
           {Array.from({ length: totalSteps }, (_, i) => i + 1).map(n => (
             <div key={n} className={`w-2.5 h-2.5 rounded-full transition-all ${step >= n ? 'bg-[#2F3E4E]' : 'bg-[#D9E1E8] border border-[#7A8F79]'}`} />
@@ -377,7 +500,7 @@ export default function OnboardingPage() {
 
             {/* Modal header */}
             <div className="bg-[#1c2433] rounded-t-2xl px-6 py-5 shrink-0">
-              <p className="text-xs font-semibold uppercase tracking-widest text-[#7A8F79] mb-0.5">Step 4 of 4</p>
+              <p className="text-xs font-semibold uppercase tracking-widest text-[#7A8F79] mb-0.5">Step 4 of 5</p>
               <h2 className="text-lg font-bold text-white">Medical Claim Billing Service Agreement</h2>
               <p className="text-xs text-white/50 mt-0.5">Coming Home Care Services, LLC · Provider Portal</p>
             </div>
@@ -425,7 +548,7 @@ export default function OnboardingPage() {
                   <p className="text-xs font-bold text-green-800">Early Payment Credit</p>
                   <p className="text-xs text-green-700 mt-0.5">
                     Pay your invoice in full within <strong>7 days</strong> of the invoice date and receive a
-                    <strong> $4 credit</strong> applied to your next month's invoice.
+                    <strong> $4 credit</strong> applied to your next month&apos;s invoice.
                   </p>
                 </div>
                 <ul className="text-xs text-[#4a5568] list-disc list-inside space-y-1 leading-relaxed">
@@ -464,6 +587,17 @@ export default function OnboardingPage() {
                 </p>
               </div>
 
+              {/* Records & EOB Authorization */}
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-2">Records &amp; EOB Authorization</p>
+                <p className="text-xs text-[#4a5568] leading-relaxed">
+                  By enrolling in billing services, the provider authorizes Coming Home Care Services, LLC to
+                  request and access Explanation of Benefits (EOB) documents, remittance advice, and related
+                  claim records from payers and clearinghouses as necessary to fulfill contracted billing
+                  services, resolve claim disputes, and reconcile payments on the provider&apos;s behalf.
+                </p>
+              </div>
+
               {/* Rate Changes */}
               <div>
                 <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-2">Rate Changes</p>
@@ -480,7 +614,7 @@ export default function OnboardingPage() {
             <div className="border-t border-[#D9E1E8] px-6 py-5 bg-[#f9fafb] rounded-b-2xl shrink-0">
               <p className="text-xs font-semibold text-[#2F3E4E] mb-1">Your Initials</p>
               <p className="text-xs text-[#7A8F79] mb-3">
-                By entering your initials and clicking Sign &amp; Enroll, you confirm you have read and agree to all terms above.
+                By entering your initials and clicking Sign &amp; Continue, you confirm you have read and agree to all terms above.
                 A signed copy will be saved to your account documents.
               </p>
               <div className="flex items-end gap-4 mb-4">
@@ -505,12 +639,194 @@ export default function OnboardingPage() {
                   className="flex-1 border border-[#D9E1E8] text-[#7A8F79] py-2.5 rounded-xl hover:border-[#7A8F79] transition font-semibold text-sm">
                   Back
                 </button>
-                <button type="button" onClick={submit} disabled={!answers.signature.trim() || submitting}
+                <button type="button" onClick={signAgreement} disabled={!answers.signature.trim() || submitting}
                   className="flex-1 bg-[#2F3E4E] text-white py-2.5 rounded-xl hover:bg-[#7A8F79] transition font-semibold text-sm disabled:opacity-40">
-                  {submitting ? 'Saving…' : 'Sign & Enroll'}
+                  {submitting ? 'Saving…' : 'Sign & Continue'}
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Step 5 — Provider Enrollment Information ── */}
+      {!optedOutConfirm && step === 5 && (
+        <div className="w-full max-w-xl space-y-0">
+          <div className="bg-white rounded-xl shadow-sm p-8">
+            <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-1">Step 5 of 5</p>
+            <h2 className="text-xl font-bold text-[#2F3E4E] mb-1 leading-snug">Provider Enrollment Information</h2>
+            <p className="text-sm text-[#7A8F79] mb-6 leading-relaxed">
+              This information will be used to complete your electronic remittance enrollment form.
+              Fields pre-filled from your profile — update anything that needs correcting.
+            </p>
+
+            <div className="space-y-4">
+
+              {/* Name row */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">First Name <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    value={enrollInfo.firstName}
+                    onChange={e => setInfo({ firstName: e.target.value })}
+                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Last Name <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    value={enrollInfo.lastName}
+                    onChange={e => setInfo({ lastName: e.target.value })}
+                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                  />
+                </div>
+              </div>
+
+              {/* DOB + Phone */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Date of Birth <span className="text-red-500">*</span></label>
+                  <input
+                    type="date"
+                    value={enrollInfo.dob}
+                    onChange={e => setInfo({ dob: e.target.value })}
+                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Phone <span className="text-red-500">*</span></label>
+                  <input
+                    type="tel"
+                    value={enrollInfo.phone}
+                    onChange={e => setInfo({ phone: e.target.value })}
+                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                  />
+                </div>
+              </div>
+
+              {/* Address */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Street Address <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  value={enrollInfo.address}
+                  onChange={e => setInfo({ address: e.target.value })}
+                  className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                />
+              </div>
+
+              {/* City / State / Zip */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-2">
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">City</label>
+                  <input
+                    type="text"
+                    value={enrollInfo.city}
+                    onChange={e => setInfo({ city: e.target.value })}
+                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">State</label>
+                  <input
+                    type="text"
+                    value={enrollInfo.state}
+                    maxLength={2}
+                    onChange={e => setInfo({ state: e.target.value.toUpperCase() })}
+                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] uppercase"
+                  />
+                </div>
+              </div>
+
+              {/* NPI */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">NPI Number <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  value={enrollInfo.npiNumber}
+                  onChange={e => setInfo({ npiNumber: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                  placeholder="10-digit NPI"
+                  className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] font-mono"
+                />
+              </div>
+
+              {/* ETIN + ePaces User ID */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">
+                    ETIN <span className="text-red-500">*</span>
+                    <span className="ml-1 normal-case font-normal text-[#aab]">(3–4 chars)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={enrollInfo.etin}
+                    onChange={e => setInfo({ etin: e.target.value.slice(0, 4) })}
+                    placeholder="e.g. A1B"
+                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] font-mono uppercase"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">ePaces User ID <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    value={enrollInfo.epacesUserId}
+                    onChange={e => setInfo({ epacesUserId: e.target.value })}
+                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                  />
+                </div>
+              </div>
+
+              {/* SS# — commercial only */}
+              {isCommercial && (
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">
+                    Social Security Number <span className="text-red-500">*</span>
+                    <span className="ml-2 text-[10px] normal-case font-normal bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded">
+                      required for commercial billing · stored encrypted
+                    </span>
+                  </label>
+                  <input
+                    type="password"
+                    value={enrollInfo.ssn}
+                    onChange={e => setInfo({ ssn: e.target.value.replace(/\D/g, '').slice(0, 9) })}
+                    placeholder="9 digits, no dashes"
+                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] font-mono"
+                  />
+                </div>
+              )}
+
+            </div>
+
+            <div className="mt-5 p-4 bg-[#F4F6F5] rounded-lg text-xs text-[#7A8F79] leading-relaxed">
+              After submitting, your data will be used to auto-fill the NYS Electronic Remittance enrollment form.
+              The completed form will download automatically.
+            </div>
+
+            {error && <p className="text-xs text-red-600 font-medium mt-3">{error}</p>}
+
+            <div className="flex gap-3 mt-6">
+              <button type="button" onClick={() => setStep(4)}
+                className="flex-1 border border-[#D9E1E8] text-[#7A8F79] py-3 rounded-xl hover:border-[#7A8F79] transition font-semibold">
+                Back
+              </button>
+              <button
+                type="button"
+                onClick={submitEnrollmentInfo}
+                disabled={!step5RequiredFilled || submitting}
+                className="flex-1 bg-[#2F3E4E] text-white py-3 rounded-xl hover:bg-[#7A8F79] transition font-semibold disabled:opacity-40"
+              >
+                {submitting ? 'Completing enrollment…' : 'Complete Enrollment'}
+              </button>
+            </div>
+          </div>
+
+          {/* Progress dots for step 5 */}
+          <div className="flex gap-2 mt-5 justify-center">
+            {Array.from({ length: 5 }, (_, i) => i + 1).map(n => (
+              <div key={n} className={`w-2.5 h-2.5 rounded-full transition-all ${5 >= n ? 'bg-[#2F3E4E]' : 'bg-[#D9E1E8] border border-[#7A8F79]'}`} />
+            ))}
           </div>
         </div>
       )}

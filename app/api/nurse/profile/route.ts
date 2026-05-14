@@ -88,6 +88,8 @@ export async function PATCH(req: Request) {
     bizZip,
     bizPhone,
     bizEmail,
+    etin,
+    epacesUserId,
     currentPassword,
     newPassword
   } = body
@@ -126,6 +128,8 @@ export async function PATCH(req: Request) {
   if (bizZip !== undefined) updates.bizZip = bizZip
   if (bizPhone !== undefined) updates.bizPhone = bizPhone
   if (bizEmail !== undefined) updates.bizEmail = bizEmail
+  if (etin !== undefined) updates.etin = etin || null
+  if (epacesUserId !== undefined) updates.epacesUserId = epacesUserId || null
 
   // apply profile updates
   let displayNameChanged = false

@@ -64,6 +64,8 @@ model NurseProfile {
   ssnEncrypted   String?   // AES-256-GCM encrypted
   npiNumber      String?
   medicaidNumber String?
+  etin           String?   // Electronic Transmitter Identification Number (3-4 chars)
+  epacesUserId   String?   // ePaces system user ID
 
   // Business provider — admin-managed, conditional
   hasBusinessProvider  Boolean @default(false)

@@ -25,7 +25,7 @@ function createLoggedResend(category: EmailCategory, recipientName: string | nul
 }
 
 const FROM         = 'Coming Home Care <support@cominghomecare.com>'
-const BILLING_FROM = 'Coming Home Care Billing <billing@cominghomecare.com>'
+const BILLING_FROM = 'Coming Homecare Billing <billing@cominghomecare.com>'
 const ENROLL_TO    = 'enroll@cominghomecare.com'
 const BILLING_TO   = 'billing@cominghomecare.com'
 const SUPPORT_TO   = 'support@cominghomecare.com'
@@ -1400,7 +1400,7 @@ export async function sendReceiptEmail({
   </div>
 
   <!-- Payment received stripe -->
-  <div style="background:${isPaidInFull ? '#16a34a' : '#2563eb'};padding:18px 40px;display:flex;align-items:center;justify-content:space-between">
+  <div style="background:#7A8F79;padding:18px 40px;display:flex;align-items:center;justify-content:space-between">
     <div style="display:flex;align-items:center">
       ${checkIcon}
       <p style="margin:0;color:#ffffff;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase">
@@ -1465,6 +1465,13 @@ export async function sendReceiptEmail({
     ${paymentNote ? `<div style="margin-top:14px;padding:10px 14px;background:#f4f6f8;border-left:3px solid #7A8F79;border-radius:0 8px 8px 0"><p style="margin:0;font-size:12px;color:#4a5a6a"><strong>Note:</strong> ${paymentNote}</p></div>` : ''}
   </div>
 
+  <!-- Tax / save receipt note -->
+  <div style="margin:0 40px 24px;padding:12px 16px;background:#f4f6f8;border-left:3px solid #7A8F79;border-radius:0 8px 8px 0">
+    <p style="margin:0;font-size:12px;color:#4a5a6a;line-height:1.65">
+      <strong style="color:#2F3E4E">Save this receipt</strong> — billing service fees are typically tax deductible for independent healthcare providers. Please retain this for your records. A duplicate copy is also saved to your <strong style="color:#2F3E4E">myDocuments</strong> section in the portal.
+    </p>
+  </div>
+
   <!-- CTA -->
   <div style="text-align:center;padding:0 40px 32px">
     <a href="${PORTAL_URL}/nurse/invoices"
@@ -1474,9 +1481,11 @@ export async function sendReceiptEmail({
   </div>
 
   <!-- Footer -->
-  <div style="background:#2F3E4E;padding:20px 40px;display:flex;justify-content:space-between;align-items:center">
-    <p style="margin:0;font-size:12px;color:#7A8F79;font-weight:600">Coming Home Care Services, LLC</p>
-    <p style="margin:0;font-size:11px;color:#4a5a6a">cominghomecare.com</p>
+  <div style="background:#2F3E4E;padding:10px 20px">
+    <table style="width:100%;border-collapse:collapse"><tr>
+      <td><p style="margin:0;font-size:10px;color:#ffffff;font-weight:600">Coming Home Care Services, LLC</p></td>
+      <td style="text-align:right"><p style="margin:0;font-size:10px;font-weight:600;color:#9fbf9d">cominghomecare.com</p></td>
+    </tr></table>
   </div>
 
 </div>

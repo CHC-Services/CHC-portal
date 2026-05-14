@@ -903,23 +903,58 @@ export async function sendNewDocumentAlert({
       replyTo: 'support@cominghomecare.com',
       subject: `New document added to your profile — ${documentTitle}`,
       html: `
-        <div style="font-family:sans-serif;max-width:520px;padding:32px;color:#2F3E4E">
-          <h2 style="margin:0 0 4px;color:#2F3E4E">New Document Added</h2>
-          <p style="margin:0 0 24px;font-size:13px;color:#7A8F79">Coming Home Care Services, LLC</p>
-          <div style="background:#f4f6f8;border-radius:10px;padding:20px 24px;margin-bottom:24px">
-            <p style="margin:0 0 10px;font-size:14px">Hi <strong>${nurseName}</strong>,</p>
-            <p style="margin:0 0 16px;font-size:14px">A new document has been added to your provider profile:</p>
-            <p style="margin:0 0 4px;font-size:15px;font-weight:700;color:#2F3E4E">${documentTitle}</p>
-            <p style="margin:0 0 4px;font-size:13px;color:#7A8F79">Category: ${category}</p>
-            <p style="margin:0;font-size:13px;color:#7A8F79">Added: ${dateStr}</p>
-          </div>
-          <p style="font-size:13px;color:#2F3E4E;margin-bottom:20px">
-            You can view and download this document any time from your
-            <a href="${PORTAL_URL}/nurse/documents" style="color:#7A8F79;font-weight:600">myDocuments</a> page.
-          </p>
-          <hr style="border:none;border-top:1px solid #D9E1E8;margin:24px 0"/>
-          <p style="font-size:11px;color:#aab">Coming Home Care Services, LLC · Automated document alert</p>
-        </div>
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background:#D9E1E8 !important;font-family:'Helvetica Neue',Arial,sans-serif;color:#2F3E4E !important">
+<div style="padding:36px 16px;background:#D9E1E8 !important">
+<div style="max-width:560px;margin:0 auto;background:#ffffff !important;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(47,62,78,0.13)">
+
+${emailHeader('New Document')}
+
+<div style="padding:26px 32px 0;background:#ffffff !important">
+  <p style="margin:0 0 4px;font-size:10px;color:#7A8F79 !important;text-transform:uppercase;letter-spacing:2px;font-weight:700">Hello,</p>
+  <p style="margin:0 0 18px;font-size:22px;font-weight:800;color:#2F3E4E !important;line-height:1.2">${nurseName}</p>
+  <p style="margin:0 0 20px;font-size:14px;color:#4a5568 !important;line-height:1.65">
+    A new document has been added to your provider profile on
+    <span style="font-style:italic;color:#2F3E4E !important;font-family:Georgia,serif">Coming Home</span><span style="color:#7A8F79 !important;font-weight:600">care</span>.
+  </p>
+
+  <div style="background:#2F3E4E !important;border-radius:14px;padding:20px 24px;margin-bottom:22px">
+    <p style="margin:0 0 3px;font-size:9px;color:#7A8F79 !important;text-transform:uppercase;letter-spacing:2.5px;font-weight:700">Document</p>
+    <p style="margin:0 0 10px;font-size:18px;font-weight:800;color:#ffffff !important;line-height:1.25">${documentTitle}</p>
+    <table style="width:100%;border-collapse:collapse;border-top:1px solid rgba(255,255,255,0.1);padding-top:0"><tr>
+      <td style="padding-top:12px;vertical-align:top">
+        <p style="margin:0 0 3px;font-size:10px;color:rgba(255,255,255,0.45) !important;text-transform:uppercase;letter-spacing:1.5px;font-weight:600">Category</p>
+        <p style="margin:0;font-size:13px;color:#ffffff !important;font-weight:600">${category}</p>
+      </td>
+      <td style="padding-top:12px;text-align:right;vertical-align:top">
+        <p style="margin:0 0 3px;font-size:10px;color:rgba(255,255,255,0.45) !important;text-transform:uppercase;letter-spacing:1.5px;font-weight:600">Added</p>
+        <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.7) !important">${dateStr}</p>
+      </td>
+    </tr></table>
+  </div>
+
+  <div style="border-left:3px solid #7A8F79;padding:2px 0 2px 16px;margin-bottom:22px">
+    <p style="margin:0;font-size:13px;color:#4a5568 !important;line-height:1.6">
+      You can view and download this document any time from <strong style="color:#2F3E4E !important">myDocuments</strong> in the provider portal.
+    </p>
+  </div>
+
+  <table style="width:100%;border-collapse:collapse;margin-bottom:28px">
+    <tr><td style="text-align:center">
+      <a href="${PORTAL_URL}/nurse/documents" style="display:inline-block;background:#2F3E4E !important;color:#ffffff !important;text-decoration:none;padding:13px 36px;border-radius:10px;font-size:14px;font-weight:700;letter-spacing:0.5px">
+        View in myDocuments &rarr;
+      </a>
+    </td></tr>
+  </table>
+</div>
+
+${emailFooter('support@cominghomecare.com')}
+
+</div>
+</div>
+</body>
+</html>
       `,
     })
     return !error
@@ -970,34 +1005,60 @@ export async function sendNewClaimAlert({
       replyTo: 'support@cominghomecare.com',
       subject: `New claim added to your account — ${claimId}`,
       html: `
-        <div style="font-family:sans-serif;max-width:520px;padding:32px;color:#2F3E4E">
-          <h2 style="margin:0 0 4px;color:#2F3E4E">New Claim Added</h2>
-          <p style="margin:0 0 24px;font-size:13px;color:#7A8F79">Coming Home Care Services, LLC</p>
-          <div style="background:#f4f6f8;border-radius:10px;padding:20px 24px;margin-bottom:24px">
-            <p style="margin:0 0 12px;font-size:14px">Hi <strong>${nurseName}</strong>,</p>
-            <p style="margin:0 0 16px;font-size:14px">A new claim has been added to your account:</p>
-            <table style="width:100%;border-collapse:collapse;font-size:14px">
-              <tr>
-                <td style="padding:6px 0;color:#7A8F79;font-weight:600;width:140px">Claim ID</td>
-                <td style="padding:6px 0;font-family:monospace;font-weight:700;color:#2F3E4E">${claimId}</td>
-              </tr>
-              <tr>
-                <td style="padding:6px 0;color:#7A8F79;font-weight:600">Date of Service</td>
-                <td style="padding:6px 0;color:#2F3E4E;font-weight:600">${fmtDOS()}</td>
-              </tr>
-              <tr>
-                <td style="padding:6px 0;color:#7A8F79;font-weight:600">Total Billed</td>
-                <td style="padding:6px 0;color:#2F3E4E;font-weight:700">${fmtMoney(totalBilled)}</td>
-              </tr>
-            </table>
-          </div>
-          <p style="font-size:13px;color:#2F3E4E;margin-bottom:20px">
-            Track this claim and all your billing activity on your
-            <a href="${PORTAL_URL}/nurse/claims" style="color:#7A8F79;font-weight:600">myClaims</a> page.
-          </p>
-          <hr style="border:none;border-top:1px solid #D9E1E8;margin:24px 0"/>
-          <p style="font-size:11px;color:#aab">Coming Home Care Services, LLC · Automated claim alert</p>
-        </div>
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background:#D9E1E8 !important;font-family:'Helvetica Neue',Arial,sans-serif;color:#2F3E4E !important">
+<div style="padding:36px 16px;background:#D9E1E8 !important">
+<div style="max-width:560px;margin:0 auto;background:#ffffff !important;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(47,62,78,0.13)">
+
+${emailHeader('New Claim')}
+
+<div style="padding:26px 32px 0;background:#ffffff !important">
+  <p style="margin:0 0 4px;font-size:10px;color:#7A8F79 !important;text-transform:uppercase;letter-spacing:2px;font-weight:700">Hello,</p>
+  <p style="margin:0 0 18px;font-size:22px;font-weight:800;color:#2F3E4E !important;line-height:1.2">${nurseName}</p>
+  <p style="margin:0 0 20px;font-size:14px;color:#4a5568 !important;line-height:1.65">
+    A new claim has been added to your account on
+    <span style="font-style:italic;color:#2F3E4E !important;font-family:Georgia,serif">Coming Home</span><span style="color:#7A8F79 !important;font-weight:600">care</span>.
+  </p>
+
+  <div style="background:#2F3E4E !important;border-radius:14px;padding:20px 24px;margin-bottom:22px">
+    <p style="margin:0 0 3px;font-size:9px;color:#7A8F79 !important;text-transform:uppercase;letter-spacing:2.5px;font-weight:700">Claim ID</p>
+    <p style="margin:0 0 14px;font-size:22px;font-weight:900;color:#ffffff !important;letter-spacing:1.5px;font-family:monospace">${claimId}</p>
+    <div style="border-top:1px solid rgba(255,255,255,0.1);padding-top:12px">
+      <table style="width:100%;border-collapse:collapse"><tr>
+        <td style="vertical-align:top;width:50%">
+          <p style="margin:0 0 3px;font-size:10px;color:rgba(255,255,255,0.45) !important;text-transform:uppercase;letter-spacing:1.5px;font-weight:600">Date of Service</p>
+          <p style="margin:0;font-size:13px;color:#ffffff !important;font-weight:600">${fmtDOS()}</p>
+        </td>
+        <td style="vertical-align:top;text-align:right">
+          <p style="margin:0 0 3px;font-size:10px;color:rgba(255,255,255,0.45) !important;text-transform:uppercase;letter-spacing:1.5px;font-weight:600">Total Billed</p>
+          <p style="margin:0;font-size:18px;font-weight:800;color:#ffffff !important">${fmtMoney(totalBilled)}</p>
+        </td>
+      </tr></table>
+    </div>
+  </div>
+
+  <div style="border-left:3px solid #7A8F79;padding:2px 0 2px 16px;margin-bottom:22px">
+    <p style="margin:0;font-size:13px;color:#4a5568 !important;line-height:1.6">
+      Track this claim and all your billing activity from <strong style="color:#2F3E4E !important">myClaims</strong> in the provider portal.
+    </p>
+  </div>
+
+  <table style="width:100%;border-collapse:collapse;margin-bottom:28px">
+    <tr><td style="text-align:center">
+      <a href="${PORTAL_URL}/nurse/claims" style="display:inline-block;background:#2F3E4E !important;color:#ffffff !important;text-decoration:none;padding:13px 36px;border-radius:10px;font-size:14px;font-weight:700;letter-spacing:0.5px">
+        View in myClaims &rarr;
+      </a>
+    </td></tr>
+  </table>
+</div>
+
+${emailFooter('support@cominghomecare.com')}
+
+</div>
+</div>
+</body>
+</html>
       `,
     })
     return !error

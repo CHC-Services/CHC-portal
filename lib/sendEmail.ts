@@ -183,7 +183,7 @@ export async function sendInvoiceEmail({
   // Stacked payment button — icon on top, name, bold contact below
   const payBtn = (href: string, bg: string, icon: string, label: string, handle: string) => `
     <td style="padding:2px;width:25%">
-      <a href="${href}" style="display:block;background:${bg};border-radius:3px;padding:8px 4px 7px;text-decoration:none;text-align:center">
+      <a href="${href}" style="display:block;background:${bg};border-radius:3px;padding:6px 3px 5px;text-decoration:none;text-align:center">
         ${icon}
         <p style="margin:0 0 2px;font-size:9px;font-weight:800;color:#ffffff;line-height:1.2">${label}</p>
         <p style="margin:0;font-size:7px;font-weight:700;color:#ffffff;line-height:1.3;word-break:break-all">${handle}</p>
@@ -261,10 +261,15 @@ export async function sendInvoiceEmail({
 <html>
 <body style="margin:0;padding:0;background:#D9E1E8;font-family:'Helvetica Neue',Arial,sans-serif">
 <div style="padding:10px 8px">
-<div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:4px;overflow:hidden;box-shadow:0 2px 10px rgba(47,62,78,0.10)">
+<div style="max-width:480px;margin:0 auto;background:#ffffff;border-radius:4px;overflow:hidden;box-shadow:0 2px 10px rgba(47,62,78,0.10)">
 
-  <!-- ── Header: light blue ── -->
-  <div style="background:#C8DCF0;padding:14px 20px">
+  <!-- ── Nav bar: navy ── -->
+  <div style="background:#2F3E4E;padding:6px 20px">
+    <p style="margin:0;font-size:12px;font-weight:800;color:#ffffff;letter-spacing:0.5px">Invoice #${shortNum}</p>
+  </div>
+
+  <!-- ── Header: white ── -->
+  <div style="background:#ffffff;padding:14px 20px;border-bottom:1px solid #D9E1E8">
     <table style="width:100%;border-collapse:collapse"><tr>
 
       <!-- Logo -->
@@ -279,10 +284,8 @@ export async function sendInvoiceEmail({
         <p style="margin:0;font-size:26px;font-weight:900;color:rgba(47,62,78,0.06);letter-spacing:5px;text-transform:uppercase;white-space:nowrap">INVOICE</p>
       </td>
 
-      <!-- Right: invoice # + company info -->
+      <!-- Right: company contact info -->
       <td style="vertical-align:middle;text-align:right">
-        <p style="margin:0;font-size:16px;font-weight:900;color:#2F3E4E;letter-spacing:0.5px">#${shortNum}</p>
-        <p style="margin:9px 0 0;font-size:10px;font-weight:800;color:#2F3E4E;line-height:1.5">Coming Home Care Services, LLC</p>
         <p style="margin:0;font-size:9px;color:#3A5068;line-height:1.5">1661 Main St Apt 507</p>
         <p style="margin:0;font-size:9px;color:#3A5068;line-height:1.5">Buffalo, NY 14209</p>
         <p style="margin:1px 0 0;font-size:9px;color:#4A7A60;line-height:1.5">billing@cominghomecare.com</p>
@@ -338,15 +341,9 @@ export async function sendInvoiceEmail({
         </tr>
         <tr><td colspan="4" style="padding:2px 0"><hr style="border:none;border-top:1px solid #D9E1E8;margin:0"/></td></tr>
         ` : ''}
-        <!-- Total Due row — portal button left, label + amount right -->
+        <!-- Total Due row -->
         <tr>
-          <td style="padding:8px 0 0;vertical-align:bottom">
-            <a href="${PORTAL_URL}/nurse/invoices"
-               style="display:inline-block;background:#2F3E4E;color:#ffffff;text-decoration:none;padding:5px 11px;border-radius:3px;font-size:9px;font-weight:700;letter-spacing:0.5px;white-space:nowrap">
-              View in Portal &rarr;
-            </a>
-          </td>
-          <td colspan="2" style="padding:8px 0 0;text-align:right;padding-right:10px;font-size:9px;font-weight:700;color:#7A8F79;text-transform:uppercase;letter-spacing:1.5px;vertical-align:bottom">Total Due</td>
+          <td colspan="3" style="padding:8px 0 0;text-align:right;padding-right:10px;font-size:9px;font-weight:700;color:#7A8F79;text-transform:uppercase;letter-spacing:1.5px;vertical-align:bottom">Total Due</td>
           <td style="padding:8px 0 0;text-align:right;font-size:20px;font-weight:800;color:#2F3E4E;vertical-align:bottom">${fmtMoney(totalAmount)}</td>
         </tr>
       </tfoot>
@@ -372,15 +369,20 @@ export async function sendInvoiceEmail({
 
     ${promptPayNote}
 
-    <p style="margin:10px 0 0;font-size:11px;color:#2F3E4E">Please include <strong>#${shortNum}</strong> as your payment note.</p>
+    <table style="width:100%;border-collapse:collapse;margin-top:10px"><tr>
+      <td style="vertical-align:middle"><p style="margin:0;font-size:11px;color:#2F3E4E">Please include <strong>#${shortNum}</strong> as your payment note.</p></td>
+      <td style="text-align:right;vertical-align:middle;padding-left:10px">
+        <a href="${PORTAL_URL}/nurse/invoices" style="display:inline-block;background:#2F3E4E;color:#ffffff;text-decoration:none;padding:5px 11px;border-radius:3px;font-size:9px;font-weight:700;letter-spacing:0.5px;white-space:nowrap">View in Portal &rarr;</a>
+      </td>
+    </tr></table>
     ${totalAmount >= 50 ? '<p style="margin:5px 0 0;font-size:9px;color:#7A8F79;border-top:1px solid #D9E1E8;padding-top:6px">Credit card payments accepted for invoices of $50.00 or more — contact us for details.</p>' : ''}
   </div>
 
   <!-- ── Footer ── -->
   <div style="background:#2F3E4E;padding:10px 20px">
     <table style="width:100%;border-collapse:collapse"><tr>
-      <td><p style="margin:0;font-size:10px;color:#7A8F79;font-weight:600">Coming Home Care Services, LLC</p></td>
-      <td style="text-align:right"><p style="margin:0;font-size:10px;font-weight:600;color:#ffffff">cominghomecare.com</p></td>
+      <td><p style="margin:0;font-size:10px;color:#ffffff;font-weight:600">Coming Home Care Services, LLC</p></td>
+      <td style="text-align:right"><p style="margin:0;font-size:10px;font-weight:600;color:#9fbf9d">cominghomecare.com</p></td>
     </tr></table>
   </div>
 

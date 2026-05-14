@@ -264,7 +264,7 @@ export async function sendInvoiceEmail({
 <div style="max-width:480px;margin:0 auto;background:#ffffff;border-radius:4px;overflow:hidden;box-shadow:0 2px 10px rgba(47,62,78,0.10)">
 
   <!-- ── Nav bar: navy ── -->
-  <div style="background:#2F3E4E;padding:6px 20px">
+  <div style="background:#2F3E4E;padding:6px 20px;text-align:right">
     <p style="margin:0;font-size:12px;font-weight:800;color:#ffffff;letter-spacing:0.5px">Invoice #${shortNum}</p>
   </div>
 
@@ -273,15 +273,10 @@ export async function sendInvoiceEmail({
     <table style="width:100%;border-collapse:collapse"><tr>
 
       <!-- Logo -->
-      <td style="vertical-align:middle;width:110px">
-        <div style="background:#ffffff;border-radius:3px;padding:5px 8px;display:inline-block;line-height:0">
+      <td style="vertical-align:middle;width:130px">
+        <div style="line-height:0">
           <img src="${PORTAL_URL}/chc_logo.png" alt="Coming Home Care" style="height:58px;width:auto;display:block"/>
         </div>
-      </td>
-
-      <!-- Center: "INVOICE" watermark fill -->
-      <td style="vertical-align:middle;text-align:center;padding:0 6px">
-        <p style="margin:0;font-size:26px;font-weight:900;color:rgba(47,62,78,0.06);letter-spacing:5px;text-transform:uppercase;white-space:nowrap">INVOICE</p>
       </td>
 
       <!-- Right: company contact info -->

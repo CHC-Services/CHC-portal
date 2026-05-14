@@ -273,7 +273,7 @@ export default function MyHours() {
         </div>
       )}
 
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid md:grid-cols-[30%_1fr] gap-4 items-start">
 
         {/* Submit Hours form */}
         <div className="bg-white rounded-xl shadow-sm p-5">

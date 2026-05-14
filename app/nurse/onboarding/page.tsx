@@ -313,9 +313,10 @@ export default function OnboardingPage() {
                   selected={answers.carrierType === type}
                   onClick={() => set({ carrierType: type })}
                   subNode={
-                    <span>
-                      {sub}
-                      {rate && <> &nbsp;·&nbsp; <strong className="text-[#2F3E4E]">{rate.dos}</strong>{rate.weekMax && ` (${rate.weekMax})`}</>}
+                    <span className="flex flex-col gap-0.5 mt-0.5">
+                      <span>{sub}</span>
+                      {rate && <strong className="text-[#2F3E4E]">{rate.dos}</strong>}
+                      {rate?.weekMax && <span className="italic">{rate.weekMax}</span>}
                     </span>
                   }
                 />

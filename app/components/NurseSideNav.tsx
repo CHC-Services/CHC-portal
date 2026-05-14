@@ -14,6 +14,8 @@ const links = [
   { href: '/care',            label: 'Care'      },
 ]
 
+const DIVIDERS_BEFORE = new Set(['Patients', 'Invoices', 'Profile'])
+
 export default function NurseSideNav() {
   const pathname = usePathname()
 
@@ -21,54 +23,64 @@ export default function NurseSideNav() {
     <div
       className="hidden lg:flex flex-col shrink-0 self-start sticky"
       style={{
-        top: '200px',
-        marginTop: '170px',
-        width: '170px',
-        background: '#f0fff0',
-        border: '2.5px solid #2F3E4E',
-        boxShadow:
-          'inset 0 0 0 1px #4A5E49, ' +
-          '4px 8px 24px rgba(0,0,0,0.10), ' +
-          '4px 6px 0 rgba(45, 54, 64, 0.20)',
-        borderRadius: '12px',
+        top: '220px',
+        marginTop: '190px',
+        width: '168px',
+        background: '#F4F6F5',
+        border: '1px solid rgba(47,62,78,0.13)',
+        boxShadow: '0 4px 24px rgba(47,62,78,0.09), 0 1px 6px rgba(47,62,78,0.05)',
+        borderRadius: '14px',
         overflow: 'hidden',
       }}
     >
-      {/* Header label */}
-      <div className="px-3 pt-3 pb-2 border-b border-[#2F3E4E]/40 shrink-0">
-        <p className="text-[14px] text-center font-bold uppercase tracking-widest text-[#2F3E4E] select-none">
+      {/* Header */}
+      <div
+        className="px-3 pt-3 pb-2.5 shrink-0"
+        style={{
+          background: 'linear-gradient(135deg, #2F3E4E 0%, #3d5260 100%)',
+          borderBottom: '1px solid rgba(255,255,255,0.07)',
+        }}
+      >
+        <p className="text-[11px] text-center font-bold uppercase tracking-[0.18em] text-[#D9E1E8] select-none opacity-80">
           Provider Pages
         </p>
       </div>
 
       {/* Nav links */}
-      <nav className="flex flex-col gap-0.5 p-2">
+      <nav className="flex flex-col gap-0.5 p-1.5">
         {links.map((link) => {
           const active = pathname === link.href
           return (
             <div key={link.href}>
-              {['Patients', 'Invoices', 'Profile'].includes(link.label) && (
-                <div className="my-2.5 px-2">
+              {DIVIDERS_BEFORE.has(link.label) && (
+                <div className="my-1.5 px-2">
                   <div style={{
                     height: '1px',
-                    background: 'linear-gradient(to right, transparent, #2F3E4E55, transparent)',
+                    background: 'linear-gradient(to right, transparent, rgba(47,62,78,0.15), transparent)',
                   }} />
                 </div>
               )}
               <Link
                 href={link.href}
-                className={`flex items-baseline px-2.5 py-2 rounded-lg text-sm font-semibold transition-all leading-tight ${
+                className={`relative flex items-baseline px-3 py-[7px] rounded-lg text-sm font-semibold transition-all duration-150 leading-tight overflow-hidden ${
                   active
-                    ? 'bg-[#2F3E4E] text-white'
-                    : 'text-[#2F3E4E] hover:bg-[#2F3E4E]/10'
+                    ? 'bg-[#2F3E4E] text-white shadow-sm'
+                    : 'text-[#2F3E4E] hover:bg-[#2F3E4E]/[0.07] hover:text-[#2F3E4E]'
                 }`}
               >
+                {active && (
+                  <span
+                    className="absolute left-0 inset-y-[5px] w-[3px] rounded-r-full"
+                    style={{ background: '#7A8F79' }}
+                  />
+                )}
                 <span
                   style={{
-                    color: active ? '#C5D4C3' : '#4A5E49',
+                    color: active ? '#9fbf9d' : '#7A8F79',
                     fontStyle: 'italic',
                     fontSize: '0.72em',
                     marginRight: '1px',
+                    transition: 'color 150ms',
                   }}
                 >
                   my
@@ -79,6 +91,12 @@ export default function NurseSideNav() {
           )
         })}
       </nav>
+
+      {/* Footer accent line */}
+      <div className="mx-3 mb-2 mt-0.5" style={{
+        height: '1px',
+        background: 'linear-gradient(to right, transparent, rgba(47,62,78,0.10), transparent)',
+      }} />
     </div>
   )
 }

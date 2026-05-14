@@ -152,7 +152,7 @@ export default function MyPatients() {
     fetch('/api/nurse/profile', { credentials: 'include' })
       .then(r => r.json())
       .then(data => {
-        if (!data.profile?.portalAgreementSignedAt) { router.replace('/nurse/agreement'); return }
+        if (!data.profile?.portalAgreementSignedAt && !data.profile?.isDemo) { router.replace('/nurse/agreement'); return }
         if (!data.onboardingComplete) { router.replace('/nurse/onboarding'); return }
         loadPatients()
       })

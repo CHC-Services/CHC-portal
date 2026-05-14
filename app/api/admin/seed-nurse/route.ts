@@ -59,6 +59,7 @@ export async function POST(req: Request) {
       carrierCount:       2,
       billingDurationType: 'full_year',
       planStartDate:      '2026-01-01',
+      isDemo:             true,
       onboardingComplete: true,
       agreementSignedAt:  new Date('2025-12-18T14:22:00Z'),
       agreementSignature: profile.displayName || user.name,

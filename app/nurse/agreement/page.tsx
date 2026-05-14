@@ -61,7 +61,7 @@ export default function AgreementPage() {
       .then(r => r.json())
       .then(data => {
         if (!data.profile) { router.replace('/login'); return }
-        if (data.profile.portalAgreementSignedAt) { router.replace('/nurse'); return }
+        if (data.profile.portalAgreementSignedAt || data.profile.isDemo) { router.replace('/nurse'); return }
         setDisplayName(data.profile.displayName || '')
       })
   }, [router])
@@ -120,7 +120,7 @@ export default function AgreementPage() {
           {/* Intro */}
           <div className="bg-white rounded-2xl shadow-sm p-6 mb-4">
             <p className="text-sm text-[#4a5568] leading-relaxed">
-              This agreement outlines the basics of responsible use of the <b><span className="italic text-[#7A8F79]">my</span>Provider</b> portal.  Protecting patient and user data is high priority, but alsoa team effort. By agreeing to the points below, you understand that once PHI is downloaded, saved, or printed from the site, it’s your responsibility to maintain its confidentiality by keeping PHI data securely stored until it can be disposed of properly.
+              This agreement outlines the basics of responsible use for the <b><span className="italic text-[#7A8F79]">my</span>Provider</b> portal.  Protecting patient and user data is high priority, but alsoa team effort. By agreeing to the points below, you understand that once PHI is downloaded, saved, or printed from the site, it’s your responsibility to maintain its confidentiality by keeping PHI data securely stored until it can be disposed of properly.
             </p>
             <p className="text-xs text-[#7A8F79] mt-3 font-medium">Check each box to confirm you have read and understood that item.</p>
           </div>
@@ -163,13 +163,6 @@ export default function AgreementPage() {
                 </div>
               </label>
             ))}
-          </div>
-
-          {/* Closing remark */}
-          <div className="bg-[#2F3E4E] rounded-2xl p-6 mb-4">
-            <p className="text-xs font-semibold uppercase tracking-widest text-[#7A8F79] mb-2">A Note From Us</p>
-            <p className="text-sm text-white/90 leading-relaxed">{CLOSING_REMARK}</p>
-            <p className="text-xs text-[#7A8F79] mt-3">— The Coming Home Care Team</p>
           </div>
 
           {/* Signature block */}

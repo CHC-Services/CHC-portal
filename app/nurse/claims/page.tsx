@@ -419,7 +419,8 @@ function ClaimRow({ primary: c, chain, eobDocs }: ClaimGroup & { eobDocs: { id: 
   )
 }
 
-const YEARS = ['', '2024', '2025', '2026', '2027', '2028', '2029', '2030'] as const
+const currentYear = new Date().getFullYear()
+const YEARS = ['', ...Array.from({ length: currentYear - 2023 }, (_, i) => String(2024 + i))]
 
 export default function NurseClaimsPage() {
   const [claims, setClaims] = useState<Claim[]>([])

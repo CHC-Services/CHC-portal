@@ -91,7 +91,7 @@ export default function MyHours() {
     fetch('/api/nurse/profile', { credentials: 'include' })
       .then(r => r.json())
       .then(async data => {
-        if (!data.profile?.portalAgreementSignedAt) {
+        if (!data.profile?.portalAgreementSignedAt && !data.profile?.isDemo) {
           router.replace('/nurse/agreement')
           return
         }

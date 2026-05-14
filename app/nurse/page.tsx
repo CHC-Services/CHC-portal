@@ -42,7 +42,7 @@ export default function NurseDashboard() {
       .then(async data => {
         if (data.user?.lastLoginAt) setLastLoginAt(data.user.lastLoginAt)
 
-        if (!data.profile?.portalAgreementSignedAt) {
+        if (!data.profile?.portalAgreementSignedAt && !data.profile?.isDemo) {
           router.replace('/nurse/agreement')
           return
         }

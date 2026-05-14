@@ -106,7 +106,7 @@ export default function NurseDashboard() {
 
       {/* Page header */}
       <div className="flex items-stretch gap-6 mb-5">
-        <div className="shrink-0">
+        <div className="shrink-0 page-heading">
           <h1 className="text-3xl font-bold text-[#2F3E4E]">
             <span className="text-[#7A8F79] italic">my</span>Dashboard
           </h1>
@@ -159,7 +159,7 @@ export default function NurseDashboard() {
           <span className="text-xs font-bold text-[#7A8F79] shrink-0 border border-[#D9E1E8] rounded-full px-3 py-1">Basic · $5/mo</span>
         </div>
       ) : invoiceSummary && (
-        <div className="bg-white rounded-xl shadow-sm p-5 mb-4">
+        <div className="card bg-white rounded-xl p-5 mb-4">
           <div className="flex items-start justify-between mb-4">
             <p className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79]">
               Account Summary
@@ -174,29 +174,29 @@ export default function NurseDashboard() {
             )}
           </div>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="bg-[#F4F6F5] rounded-xl p-4">
+            <div className="bg-[#F4F6F5] rounded-xl p-4 border-t-2 border-[#2F3E4E]">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Account Total</p>
               <p className="text-2xl font-black text-[#2F3E4E]">
                 ${invoiceSummary.accountTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
             </div>
-            <div className="bg-[#F4F6F5] rounded-xl p-4">
+            <div className="bg-[#F4F6F5] rounded-xl p-4 border-t-2 border-green-400">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Paid to Date</p>
               <p className="text-2xl font-black text-green-600">
                 ${invoiceSummary.totalPaid.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
             </div>
-            <div className="bg-[#F4F6F5] rounded-xl p-4">
+            <div className="bg-[#F4F6F5] rounded-xl p-4 border-t-2 border-[#7A8F79]">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Total Invoices</p>
               <p className="text-2xl font-black text-[#2F3E4E]">{invoiceSummary.totalInvoices}</p>
             </div>
-            <div className="bg-[#F4F6F5] rounded-xl p-4">
+            <div className={`bg-[#F4F6F5] rounded-xl p-4 border-t-2 ${invoiceSummary.count > 0 ? 'border-amber-400' : 'border-green-400'}`}>
               <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Invoices Due</p>
               <p className={`text-2xl font-black ${invoiceSummary.count > 0 ? 'text-amber-600' : 'text-green-600'}`}>
                 {invoiceSummary.count}
               </p>
             </div>
-            <div className="bg-[#F4F6F5] rounded-xl p-4">
+            <div className={`bg-[#F4F6F5] rounded-xl p-4 border-t-2 ${invoiceSummary.totalDue > 0 ? 'border-red-400' : 'border-green-400'}`}>
               <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Balance Due</p>
               <p className={`text-2xl font-black ${invoiceSummary.totalDue > 0 ? 'text-red-500' : 'text-green-600'}`}>
                 ${invoiceSummary.totalDue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -219,24 +219,24 @@ export default function NurseDashboard() {
           <span className="text-xs font-bold text-[#7A8F79] shrink-0 border border-[#D9E1E8] rounded-full px-3 py-1">Basic · $5/mo</span>
         </div>
       ) : claimSummary && (
-        <div className="bg-white rounded-xl shadow-sm p-5 mb-4">
+        <div className="card bg-white rounded-xl p-5 mb-4">
           <p className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] mb-4">
             Claim Reimbursement Summary
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-[#F4F6F5] rounded-xl p-4">
+            <div className="bg-[#F4F6F5] rounded-xl p-4 border-t-2 border-[#2F3E4E]">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Total Billed</p>
               <p className="text-2xl font-black text-[#2F3E4E]">${claimSummary.totalBilled.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
             </div>
-            <div className="bg-[#F4F6F5] rounded-xl p-4">
+            <div className="bg-[#F4F6F5] rounded-xl p-4 border-t-2 border-[#7A8F79]">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Total Allowed</p>
               <p className="text-2xl font-black text-[#2F3E4E]">${claimSummary.totalAllowed.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
             </div>
-            <div className="bg-[#F4F6F5] rounded-xl p-4">
+            <div className="bg-[#F4F6F5] rounded-xl p-4 border-t-2 border-green-400">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Total Paid</p>
               <p className="text-2xl font-black text-green-600">${claimSummary.totalPaid.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
             </div>
-            <div className="bg-[#E8EDE7] rounded-xl p-4">
+            <div className="bg-[#E8EDE7] rounded-xl p-4 border-t-2 border-[#7A8F79]">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Avg Rate per Hour</p>
               {claimSummary.avgPerHour !== null ? (
                 <p className="text-2xl font-black text-[#2F3E4E]">${claimSummary.avgPerHour.toFixed(2)}</p>
@@ -258,24 +258,24 @@ export default function NurseDashboard() {
           <span className="text-xs font-bold text-[#7A8F79] shrink-0 border border-[#D9E1E8] rounded-full px-3 py-1">Basic · $5/mo</span>
         </div>
       ) : claimSummary && (
-        <div className="bg-white rounded-xl shadow-sm p-5 mb-4">
+        <div className="card bg-white rounded-xl p-5 mb-4">
           <p className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] mb-4">
             Claim Count Summary
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-[#F4F6F5] rounded-xl p-4">
+            <div className="bg-[#F4F6F5] rounded-xl p-4 border-t-2 border-[#2F3E4E]">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Submitted</p>
               <p className="text-2xl font-black text-[#2F3E4E]">{claimSummary.statusCounts.submitted}</p>
             </div>
-            <div className="bg-[#F4F6F5] rounded-xl p-4">
+            <div className="bg-[#F4F6F5] rounded-xl p-4 border-t-2 border-amber-400">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Pending</p>
               <p className="text-2xl font-black text-amber-600">{claimSummary.statusCounts.pending}</p>
             </div>
-            <div className="bg-[#F4F6F5] rounded-xl p-4">
+            <div className="bg-[#F4F6F5] rounded-xl p-4 border-t-2 border-green-400">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Paid</p>
               <p className="text-2xl font-black text-green-600">{claimSummary.statusCounts.paid}</p>
             </div>
-            <div className="bg-[#F4F6F5] rounded-xl p-4">
+            <div className="bg-[#F4F6F5] rounded-xl p-4 border-t-2 border-red-400">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Denied</p>
               <p className="text-2xl font-black text-red-500">{claimSummary.statusCounts.denied}</p>
             </div>
@@ -293,24 +293,24 @@ export default function NurseDashboard() {
           <span className="text-xs font-bold text-[#7A8F79] shrink-0 border border-[#D9E1E8] rounded-full px-3 py-1">Basic · $5/mo</span>
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm p-5 mb-4">
+        <div className="card bg-white rounded-xl p-5 mb-4">
           <p className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] mb-4">
             Logged Hours Summary
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-[#F4F6F5] rounded-xl p-4">
+            <div className="bg-[#F4F6F5] rounded-xl p-4 border-t-2 border-[#7A8F79]">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">{monthName}</p>
               <p className="text-2xl font-black text-[#2F3E4E]">{hoursThisMonth}</p>
             </div>
-            <div className="bg-[#F4F6F5] rounded-xl p-4">
+            <div className="bg-[#F4F6F5] rounded-xl p-4 border-t-2 border-[#7A8F79]/50">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">{priorMonthName}</p>
               <p className="text-2xl font-black text-[#2F3E4E]">{hoursPriorMonth}</p>
             </div>
-            <div className="bg-[#F4F6F5] rounded-xl p-4">
+            <div className="bg-[#F4F6F5] rounded-xl p-4 border-t-2 border-[#2F3E4E]">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">{selectedYear} Total</p>
               <p className="text-2xl font-black text-[#2F3E4E]">{hoursYTD}</p>
             </div>
-            <div className="bg-[#F4F6F5] rounded-xl p-4">
+            <div className="bg-[#F4F6F5] rounded-xl p-4 border-t-2 border-amber-400">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Waiting to be Billed</p>
               <p className="text-2xl font-black text-amber-600">{hoursUnbilled}</p>
             </div>

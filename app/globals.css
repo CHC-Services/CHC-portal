@@ -80,10 +80,35 @@ select,
 textarea {
   color: #2F3E4E !important;
   background-color: #ffffff !important;
+  border-color: rgba(47, 62, 78, 0.2) !important;
 }
 
 input::placeholder,
 textarea::placeholder {
   color: #7A8F79 !important;
   opacity: 1;
+}
+
+/* ── Elevation & structure utilities ────────────────────────────────── */
+
+/* Floating card — replaces shadow-sm on white panels */
+.card {
+  border: 1px solid rgba(47, 62, 78, 0.07);
+  box-shadow: 0 2px 14px rgba(47, 62, 78, 0.07), 0 1px 4px rgba(47, 62, 78, 0.04);
+}
+
+/* Page section heading with sage left accent */
+.page-heading {
+  border-left: 3px solid #7A8F79;
+  padding-left: 10px;
+}
+
+/* Table row with left-edge hover accent */
+.data-row {
+  border-left: 2px solid transparent;
+  transition: background-color 120ms ease, border-left-color 120ms ease;
+}
+.data-row:hover {
+  background-color: #F4F6F5;
+  border-left-color: #7A8F79;
 }

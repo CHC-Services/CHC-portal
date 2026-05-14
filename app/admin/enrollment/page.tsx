@@ -359,7 +359,7 @@ export default function EnrollmentPage() {
 
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
-          <div>
+          <div className="page-heading">
             <h1 className="text-2xl font-bold text-[#2F3E4E]">
               <span className="text-[#7A8F79] italic">ad</span>Enrollment
             </h1>
@@ -393,7 +393,7 @@ export default function EnrollmentPage() {
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
+        <div className="card bg-white rounded-xl overflow-x-auto">
           {loading ? (
             <p className="text-sm text-[#7A8F79] p-6 text-center">Loading...</p>
           ) : visible.length === 0 ? (
@@ -422,7 +422,7 @@ export default function EnrollmentPage() {
                   const actions = STATUS_ACTIONS[status] ?? []
                   const autoTermed = isExpired(n.serviceEndDate) && n.billingStatus !== 'Seasonal'
                   return (
-                    <tr key={n.id} className="hover:bg-[#F4F6F5] transition">
+                    <tr key={n.id} className="data-row">
 
                       {/* Provider */}
                       <td className="px-3 py-2">

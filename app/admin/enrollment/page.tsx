@@ -106,6 +106,46 @@ function toInputDate(d?: string | null): string {
 
 type EditingCell = { nurseId: string; field: 'serviceStartDate' | 'serviceEndDate' }
 
+function DateCell({
+  nurse, field, editing, editVal, setEditVal, setEditing, startEdit, commitEdit,
+}: {
+  nurse: Nurse
+  field: EditingCell['field']
+  editing: EditingCell | null
+  editVal: string
+  setEditVal: (v: string) => void
+  setEditing: (e: EditingCell | null) => void
+  startEdit: (nurseId: string, field: EditingCell['field'], current?: string | null) => void
+  commitEdit: () => void
+}) {
+  const isEditingThis = editing?.nurseId === nurse.id && editing?.field === field
+  const value = field === 'serviceStartDate' ? nurse.serviceStartDate : nurse.serviceEndDate
+  const expired = field === 'serviceEndDate' && isExpired(nurse.serviceEndDate)
+
+  if (isEditingThis) {
+    return (
+      <input
+        type="date"
+        autoFocus
+        value={editVal}
+        onChange={e => setEditVal(e.target.value)}
+        onBlur={commitEdit}
+        onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') setEditing(null) }}
+        className="w-[110px] border border-[#7A8F79] rounded px-1 py-0.5 text-[11px] text-[#2F3E4E] focus:outline-none"
+      />
+    )
+  }
+
+  return (
+    <button
+      onClick={() => startEdit(nurse.id, field, value)}
+      className={`text-left hover:underline transition ${expired ? 'text-red-500' : 'text-[#7A8F79]'} ${!value ? 'italic opacity-50' : ''}`}
+    >
+      {value ? fmtDate(value) : (field === 'serviceStartDate' ? 'set start' : 'ongoing')}
+    </button>
+  )
+}
+
 export default function EnrollmentPage() {
   const [nurses, setNurses] = useState<Nurse[]>([])
   const [loading, setLoading] = useState(true)
@@ -217,35 +257,6 @@ export default function EnrollmentPage() {
     }
     setUpdating(null)
     setEditing(null)
-  }
-
-  function DateCell({ nurse, field }: { nurse: Nurse; field: EditingCell['field'] }) {
-    const isEditingThis = editing?.nurseId === nurse.id && editing?.field === field
-    const value = field === 'serviceStartDate' ? nurse.serviceStartDate : nurse.serviceEndDate
-    const expired = field === 'serviceEndDate' && isExpired(nurse.serviceEndDate)
-
-    if (isEditingThis) {
-      return (
-        <input
-          type="date"
-          autoFocus
-          value={editVal}
-          onChange={e => setEditVal(e.target.value)}
-          onBlur={commitEdit}
-          onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') setEditing(null) }}
-          className="w-[110px] border border-[#7A8F79] rounded px-1 py-0.5 text-[11px] text-[#2F3E4E] focus:outline-none"
-        />
-      )
-    }
-
-    return (
-      <button
-        onClick={() => startEdit(nurse.id, field, value)}
-        className={`text-left hover:underline transition ${expired ? 'text-red-500' : 'text-[#7A8F79]'} ${!value ? 'italic opacity-50' : ''}`}
-      >
-        {value ? fmtDate(value) : (field === 'serviceStartDate' ? 'set start' : 'ongoing')}
-      </button>
-    )
   }
 
   const cols = [
@@ -371,11 +382,11 @@ export default function EnrollmentPage() {
                         <div className="flex flex-col gap-0.5">
                           <div className="flex items-center gap-1">
                             <span className="text-[9px] font-bold uppercase tracking-wide text-[#7A8F79] w-7">Start</span>
-                            <DateCell nurse={n} field="serviceStartDate" />
+                            <DateCell nurse={n} field="serviceStartDate" editing={editing} editVal={editVal} setEditVal={setEditVal} setEditing={setEditing} startEdit={startEdit} commitEdit={commitEdit} />
                           </div>
                           <div className="flex items-center gap-1">
                             <span className="text-[9px] font-bold uppercase tracking-wide text-[#7A8F79] w-7">End</span>
-                            <DateCell nurse={n} field="serviceEndDate" />
+                            <DateCell nurse={n} field="serviceEndDate" editing={editing} editVal={editVal} setEditVal={setEditVal} setEditing={setEditing} startEdit={startEdit} commitEdit={commitEdit} />
                           </div>
                           {autoTermed && (
                             <span className="text-[9px] text-red-400 font-semibold">auto-termed</span>

@@ -80,7 +80,7 @@ export async function GET(req: Request) {
     include: {
       nurseLinks: {
         include: {
-          nurse: { select: { id: true, displayName: true, accountNumber: true } },
+          nurse: { select: { id: true, displayName: true, firstName: true, lastName: true, accountNumber: true } },
         },
       },
       priorAuths: { orderBy: [{ paStartDate: 'desc' }, { createdAt: 'desc' }] },

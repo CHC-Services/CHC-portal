@@ -7,6 +7,7 @@ import AdminNav from '../../../components/AdminNav'
 import { DateInput, DateInputHandle } from '../../../components/DateInput'
 import { fmtPhoneInput } from '../../../../lib/formatPhone'
 import { shortInvoiceNumber } from '../../../../lib/formatInvoice'
+import { formalName } from '../../../../lib/auth'
 
 type Profile = Record<string, any>
 
@@ -789,7 +790,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   }
 
   async function resendInvite() {
-    if (!confirm(`This will reset ${profile.displayName}'s password and send them a new login email. Continue?`)) return
+    if (!confirm(`This will reset ${formalName(profile) || profile.displayName}'s password and send them a new login email. Continue?`)) return
     setInviteSending(true)
     setInviteMessage('')
     const res = await fetch(`/api/admin/nurses/${id}/resend-invite`, {
@@ -993,7 +994,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
 
       {/* ── Row 2: Provider name + account number ── */}
       <div className="flex items-baseline gap-4 mb-5">
-        <h1 className="text-3xl font-bold text-[#2F3E4E]">{profile.displayName}</h1>
+        <h1 className="text-3xl font-bold text-[#2F3E4E]">{formalName(profile) || profile.displayName}</h1>
         {profile.accountNumber && (
           <span className="text-2xl font-mono font-bold text-[#7A8F79]">#{profile.accountNumber}</span>
         )}
@@ -1824,7 +1825,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
           <div className="lg:col-span-3 bg-white rounded-xl shadow-sm p-6 space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-3 pb-2 border-b border-[#D9E1E8]">
               <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79]">
-                Claims — {profile.displayName}
+                Claims — {formalName(profile) || profile.displayName}
               </h2>
               <div className="flex flex-wrap gap-1.5">
                 {(['', '2024', '2025', '2026', '2027', '2028', '2029', '2030'] as const).map(y => (
@@ -2054,7 +2055,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
             {/* ── Col 2+3: Invoice list ── */}
             <div className="lg:col-span-2 bg-white rounded-xl shadow-sm p-6 space-y-4">
               <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8]">
-                Invoices — {profile.displayName}
+                Invoices — {formalName(profile) || profile.displayName}
               </h2>
               {invoiceHistory.length === 0 ? (
                 <p className="text-sm text-[#7A8F79] italic">No invoices created yet.</p>
@@ -2119,7 +2120,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
           {/* Document Library */}
           <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
             <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8]">
-              Document Library — {profile.displayName}
+              Document Library — {formalName(profile) || profile.displayName}
             </h2>
             {documents.length === 0 ? (
               <p className="text-sm text-[#7A8F79] italic">No documents uploaded yet.</p>
@@ -2742,7 +2743,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                   <div className="grid grid-cols-2 gap-4 bg-[#F4F6F5] rounded-xl p-4 text-sm">
                     <div>
                       <p className="text-xs text-[#7A8F79] uppercase tracking-widest font-semibold mb-0.5">Bill To</p>
-                      <p className="font-semibold">{profile.displayName}</p>
+                      <p className="font-semibold">{formalName(profile) || profile.displayName}</p>
                       <p className="text-[#7A8F79]">{profile.user?.email || ''}</p>
                     </div>
                     <div className="text-right">

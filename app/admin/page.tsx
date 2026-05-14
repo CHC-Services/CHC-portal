@@ -400,7 +400,7 @@ function NurseRow({ nurse, onDeleted, onRefresh }: { nurse: Nurse; onDeleted: ()
           <div className="mt-4 pt-4 border-t border-[#D9E1E8]">
             {confirmDelete ? (
               <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
-                <p className="text-sm text-red-700 font-semibold">Permanently delete {nurse.displayName}? This cannot be undone.</p>
+                <p className="text-sm text-red-700 font-semibold">Permanently delete {displayName}? This cannot be undone.</p>
                 <div className="flex gap-2">
                   <button onClick={() => setConfirmDelete(false)} className="flex-1 border border-[#D9E1E8] text-[#7A8F79] py-1.5 rounded text-sm font-semibold">Cancel</button>
                   <button onClick={handleDelete} disabled={deleting} className="flex-1 bg-red-600 text-white py-1.5 rounded text-sm font-semibold hover:bg-red-700 disabled:opacity-50">

@@ -347,6 +347,9 @@ export default function OnboardingPage() {
                           {rate.weekMax && <span className="italic">{rate.weekMax}</span>}
                         </span>
                       )}
+                      {type === 'dual' && (
+                        <span className="text-[#7A8F79] text-[10px] italic">Once Primary Insurance benefit max is met, rate drops to $2 Medicaid pricing.</span>
+                      )}
                     </span>
                   }
                 />

@@ -1,13 +1,14 @@
 'use client'
 
 type BannerProps = {
-  user: { id: string; role: string; displayName?: string; isDemo?: boolean } | null;
+  user: { id: string; role: string; displayName?: string; firstName?: string; lastName?: string; isDemo?: boolean } | null;
 };
 
 import { usePathname } from "next/navigation";
 import Image from 'next/image'
 import Link from "next/link";
 import { useEffect, useState } from 'react'
+import { formalName } from '../../lib/auth'
 
 export default function Banner({ user }: BannerProps) {
     const [time, setTime] = useState('')
@@ -24,7 +25,7 @@ export default function Banner({ user }: BannerProps) {
     }, [])
 
     const role = user?.role || null
-    const displayName = user?.displayName || null
+    const displayName = user ? formalName(user) || user.displayName || null : null
     const pathname = usePathname()
 
     const homeHref = role === 'nurse' ? '/nurse' : role === 'admin' ? '/admin' : role === 'provider' ? '/portal' : '/'

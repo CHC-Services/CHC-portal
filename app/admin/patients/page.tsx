@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import AdminNav from '../../components/AdminNav'
+import { formalName } from '../../../lib/auth'
 
 type PatientPA = {
   id: string
@@ -15,7 +16,7 @@ type PatientPA = {
 type NurseLink = {
   id: string
   isActive: boolean
-  nurse: { id: string; displayName: string; accountNumber: string | null }
+  nurse: { id: string; displayName: string; firstName?: string; lastName?: string; accountNumber: string | null }
 }
 
 type Patient = {
@@ -57,7 +58,7 @@ type Patient = {
   _count: { timeEntries: number }
 }
 
-type Nurse = { id: string; displayName: string; accountNumber: string | null }
+type Nurse = { id: string; displayName: string; firstName?: string; lastName?: string; accountNumber: string | null }
 
 const US_STATES = [
   'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA',
@@ -319,7 +320,7 @@ export default function AdPatients() {
       p.firstName.toLowerCase().includes(q) ||
       p.lastName.toLowerCase().includes(q) ||
       p.insuranceId.toLowerCase().includes(q) ||
-      p.nurseLinks.some(l => l.nurse.displayName.toLowerCase().includes(q))
+      p.nurseLinks.some(l => (formalName(l.nurse) || l.nurse.displayName).toLowerCase().includes(q))
     )
   })
 
@@ -387,7 +388,7 @@ export default function AdPatients() {
                     </span>
                   </td>
                   <td className="py-3 px-4 text-xs text-[#7A8F79]">
-                    {p.nurseLinks.filter(l => l.isActive).map(l => l.nurse.displayName).join(', ') || '—'}
+                    {p.nurseLinks.filter(l => l.isActive).map(l => formalName(l.nurse) || l.nurse.displayName).join(', ') || '—'}
                   </td>
                   <td className="py-3 px-4 text-right text-[#2F3E4E] font-semibold">{p._count.timeEntries}</td>
                 </tr>
@@ -461,7 +462,7 @@ export default function AdPatients() {
                   <div className="space-y-2 mb-3">
                     {selected.nurseLinks.filter(l => l.isActive).map(l => (
                       <div key={l.id} className="flex items-center justify-between bg-[#F4F6F5] rounded-lg px-3 py-2">
-                        <span className="text-sm text-[#2F3E4E] font-semibold">{l.nurse.displayName}</span>
+                        <span className="text-sm text-[#2F3E4E] font-semibold">{formalName(l.nurse) || l.nurse.displayName}</span>
                         <button
                           onClick={() => handleUnlink(l.nurse.id)}
                           className="text-xs text-red-500 hover:text-red-700 font-semibold transition"
@@ -482,7 +483,7 @@ export default function AdPatients() {
                     {nurses
                       .filter(n => !selected.nurseLinks.some(l => l.isActive && l.nurse.id === n.id))
                       .map(n => (
-                        <option key={n.id} value={n.id}>{n.displayName}{n.accountNumber ? ` (${n.accountNumber})` : ''}</option>
+                        <option key={n.id} value={n.id}>{formalName(n) || n.displayName}{n.accountNumber ? ` (${n.accountNumber})` : ''}</option>
                       ))
                     }
                   </select>

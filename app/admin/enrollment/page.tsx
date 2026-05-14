@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import AdminNav from '../../components/AdminNav'
 import Link from 'next/link'
+import { formalName } from '../../../lib/auth'
 
 type Nurse = {
   id: string
@@ -427,7 +428,7 @@ export default function EnrollmentPage() {
                       {/* Provider */}
                       <td className="px-3 py-2">
                         <Link href={`/admin/nurse/${n.user.id}`} className="font-semibold hover:text-[#7A8F79] transition">
-                          {n.displayName}
+                          {formalName(n) || n.displayName}
                         </Link>
                         <div className="text-[10px] text-[#7A8F79] truncate max-w-[140px]">{n.user.email}</div>
                       </td>

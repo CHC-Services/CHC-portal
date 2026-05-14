@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import AdminNav from '../../components/AdminNav'
+import { formalName } from '../../../lib/auth'
 
 type TimeEntry = {
   id: string
@@ -13,6 +14,8 @@ type TimeEntry = {
   createdAt: string
   nurse: {
     displayName: string
+    firstName?: string
+    lastName?: string
     accountNumber: string | null
   }
 }
@@ -71,8 +74,9 @@ export default function AdminHoursPage() {
 
   const filtered = entries
     .filter(e => {
+      const nurseName = formalName(e.nurse) || e.nurse.displayName
       const matchSearch = search === '' ||
-        e.nurse.displayName.toLowerCase().includes(search.toLowerCase()) ||
+        nurseName.toLowerCase().includes(search.toLowerCase()) ||
         (e.nurse.accountNumber ?? '').toLowerCase().includes(search.toLowerCase())
       const matchFilter =
         filter === 'all' ? true :
@@ -94,10 +98,11 @@ export default function AdminHoursPage() {
   const billedHoursYear = yearEntries.filter(e => e.billed).reduce((s, e) => s + e.hours, 0)
 
   // Group by nurse for summary strip
-  const nurseMap: Record<string, { displayName: string; hours: number; billed: number }> = {}
+  const nurseMap: Record<string, { label: string; hours: number; billed: number }> = {}
   for (const e of filtered) {
-    const key = e.nurse.displayName
-    if (!nurseMap[key]) nurseMap[key] = { displayName: e.nurse.displayName, hours: 0, billed: 0 }
+    const label = formalName(e.nurse) || e.nurse.displayName
+    const key = label
+    if (!nurseMap[key]) nurseMap[key] = { label, hours: 0, billed: 0 }
     nurseMap[key].hours += e.hours
     if (e.billed) nurseMap[key].billed += e.hours
   }
@@ -142,8 +147,8 @@ export default function AdminHoursPage() {
           <h2 className="text-sm font-semibold text-[#2F3E4E] mb-3 uppercase tracking-wide">By Nurse</h2>
           <div className="flex flex-wrap gap-3">
             {Object.values(nurseMap).map(n => (
-              <div key={n.displayName} className="border border-[#D9E1E8] rounded-lg px-4 py-2 text-sm">
-                <p className="font-semibold text-[#2F3E4E]">{n.displayName}</p>
+              <div key={n.label} className="border border-[#D9E1E8] rounded-lg px-4 py-2 text-sm">
+                <p className="font-semibold text-[#2F3E4E]">{n.label}</p>
                 <p className="text-[#7A8F79] text-xs">
                   {n.hours} hrs total &bull; {n.billed} billed &bull; {n.hours - n.billed} unbilled
                 </p>
@@ -226,7 +231,7 @@ export default function AdminHoursPage() {
                       />
                     </td>
                     <td className={`py-2 pr-4 font-semibold whitespace-nowrap ${entry.billed ? 'text-[#7A8F79]' : 'text-[#2F3E4E]'}`}>
-                      {entry.nurse.displayName}
+                      {formalName(entry.nurse) || entry.nurse.displayName}
                     </td>
                     <td className="py-2 pr-4 text-xs whitespace-nowrap text-[#7A8F79]">
                       {entry.nurse.accountNumber ?? '—'}

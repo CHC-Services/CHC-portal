@@ -31,6 +31,8 @@ export async function POST(req: Request) {
     nurseProfileId: user.nurseProfile?.id,
     name: (user as any).name,
     displayName: user.nurseProfile?.displayName,
+    firstName: (user.nurseProfile as any)?.firstName ?? undefined,
+    lastName: (user.nurseProfile as any)?.lastName ?? undefined,
     isDemo: (user.nurseProfile as any)?.isDemo ?? false,
     portalAgreementSigned,
   })

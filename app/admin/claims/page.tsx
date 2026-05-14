@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, Fragment, useMemo } from 'react'
 import AdminNav from '../../components/AdminNav'
 import { payCycleDateLabel, calcMedicaidCycleInfo } from '../../../lib/medicaidPayCycle'
+import { formalName } from '../../../lib/auth'
 
 // 3-segment MM / DD / YYYY date input.
 // Auto-advances: MM→DD on 2 digits, DD→YYYY on 2 digits, YYYY→nextRef on 4 digits.
@@ -136,7 +137,7 @@ type CommercialClaim = {
   dateFullyFinalized: string | null
   resubmissionOf: string | null
   processingNotes: string | null
-  nurse: { displayName: string; accountNumber: string | null; isDemo: boolean }
+  nurse: { displayName: string; firstName?: string; lastName?: string; accountNumber: string | null; isDemo: boolean }
 }
 
 type MedicaidClaimRow = {
@@ -153,7 +154,7 @@ type MedicaidClaimRow = {
   depositDate: string | null
   statusCodes: string[]
   notes: string | null
-  nurse?: { displayName: string; accountNumber?: string | null; isDemo?: boolean }
+  nurse?: { displayName: string; firstName?: string; lastName?: string; accountNumber?: string | null; isDemo?: boolean }
 }
 
 type UnifiedClaim =
@@ -609,7 +610,7 @@ function ClaimDetailModal({
             <h2 className="text-base font-bold text-[#2F3E4E]">
               {claim._type === 'commercial'
                 ? (cForm.providerName || claim.providerName || 'Claim')
-                : (claim.nurse?.displayName || 'Medicaid Claim')}
+                : (claim.nurse ? (formalName(claim.nurse) || claim.nurse.displayName) : 'Medicaid Claim')}
             </h2>
             {claim._type === 'medicaid' && (
               <span className="text-xs font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">Medicaid</span>
@@ -1171,7 +1172,7 @@ export default function AdminClaimsPage() {
   const [showReminderList, setShowReminderList] = useState(false)
 
   // Nurse roster for provider autocomplete
-  type NurseOption = { id: string; displayName: string; providerAliases: string[] }
+  type NurseOption = { id: string; displayName: string; firstName?: string; lastName?: string; providerAliases: string[] }
   const [nurses, setNurses] = useState<NurseOption[]>([])
 
   // Add Claim modal
@@ -1369,7 +1370,7 @@ export default function AdminClaimsPage() {
     fetch('/api/admin/nurses', { credentials: 'include' })
       .then(r => r.json())
       .then((data: any[]) => {
-        if (Array.isArray(data)) setNurses(data.map(n => ({ id: n.id, displayName: n.displayName, providerAliases: n.providerAliases || [] })))
+        if (Array.isArray(data)) setNurses(data.map(n => ({ id: n.id, displayName: n.displayName, firstName: n.firstName, lastName: n.lastName, providerAliases: n.providerAliases || [] })))
       })
       .catch(() => {})
     fetch('/api/admin/medicaid/status-codes', { credentials: 'include' })
@@ -1479,14 +1480,14 @@ export default function AdminClaimsPage() {
     if (!val.trim()) { setProviderSuggestions([]); return }
     const q = val.toLowerCase()
     const matches = nurses.filter(n =>
-      n.displayName.toLowerCase().includes(q) ||
+      (formalName(n) || n.displayName).toLowerCase().includes(q) ||
       n.providerAliases.some(a => a.toLowerCase().includes(q))
     ).slice(0, 6)
     setProviderSuggestions(matches)
   }
 
   function selectNurse(nurse: NurseOption) {
-    setProviderInput(nurse.displayName)
+    setProviderInput(formalName(nurse) || nurse.displayName)
     setSelectedNurseId(nurse.id)
     setAddForm(f => ({ ...f, providerName: nurse.displayName }))
     setProviderSuggestions([])
@@ -2160,7 +2161,7 @@ export default function AdminClaimsPage() {
                             onMouseEnter={() => setActiveSuggestionIdx(i)}
                             className={`w-full text-left px-4 py-2.5 text-sm transition ${i === activeSuggestionIdx ? 'bg-[#2F3E4E] text-white' : 'hover:bg-[#f4f6f8]'}`}
                           >
-                            <span className="font-semibold">{n.displayName}</span>
+                            <span className="font-semibold">{formalName(n) || n.displayName}</span>
                             {n.providerAliases.length > 0 && (
                               <span className={`text-xs ml-2 ${i === activeSuggestionIdx ? 'text-[#D9E1E8]' : 'text-[#7A8F79]'}`}>{n.providerAliases.join(', ')}</span>
                             )}

@@ -18,7 +18,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     include: {
       nurseLinks: {
         include: {
-          nurse: { select: { id: true, displayName: true, accountNumber: true } },
+          nurse: { select: { id: true, displayName: true, firstName: true, lastName: true, accountNumber: true } },
         },
       },
       priorAuths: { orderBy: [{ paStartDate: 'desc' }, { createdAt: 'desc' }] },
@@ -26,7 +26,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         orderBy: { workDate: 'desc' },
         take: 50,
         include: {
-          nurse: { select: { displayName: true, accountNumber: true } },
+          nurse: { select: { displayName: true, firstName: true, lastName: true, accountNumber: true } },
         },
       },
     },

@@ -60,7 +60,7 @@ export async function POST(req: Request) {
         id: true,
         email: true,
         role: true,
-        nurseProfile: { select: { id: true, displayName: true } },
+        nurseProfile: { select: { id: true, displayName: true, firstName: true, lastName: true } },
       },
     })
 
@@ -72,6 +72,8 @@ export async function POST(req: Request) {
       nurseProfileId: user.nurseProfile?.id,
       name: fullName,
       displayName,
+      firstName: (user.nurseProfile as any)?.firstName ?? undefined,
+      lastName: (user.nurseProfile as any)?.lastName ?? undefined,
     })
 
     const res = NextResponse.json({ ok: true })

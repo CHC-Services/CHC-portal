@@ -10,9 +10,9 @@ export async function GET(req: Request) {
   if (!session) return NextResponse.json(null, { status: 401 })
 
   const profile = session.nurseProfileId
-    ? await prisma.nurseProfile.findUnique({
+    ? await (prisma.nurseProfile.findUnique as any)({
         where: { id: session.nurseProfileId },
-        select: { displayName: true },
+        select: { displayName: true, firstName: true, lastName: true },
       })
     : null
 
@@ -21,6 +21,8 @@ export async function GET(req: Request) {
     role: session.role,
     name: session.name,
     displayName: profile?.displayName ?? session.displayName ?? session.name,
+    firstName: profile?.firstName ?? session.firstName,
+    lastName: profile?.lastName ?? session.lastName,
     email: (await prisma.user.findUnique({ where: { id: session.id }, select: { email: true } }))?.email,
   })
 }

@@ -19,7 +19,7 @@ export async function GET(req: Request) {
     orderBy: [{ billed: 'asc' }, { workDate: 'desc' }],
     include: {
       nurse: {
-        select: { displayName: true, accountNumber: true }
+        select: { displayName: true, firstName: true, lastName: true, accountNumber: true }
       }
     }
   })

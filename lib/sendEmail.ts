@@ -916,19 +916,23 @@ ${emailHeader('New Document')}
     <span style="font-style:italic;color:#2F3E4E !important;font-family:Georgia,serif">Coming Home</span><span style="color:#7A8F79 !important;font-weight:600">care</span>.
   </p>
 
-  <div style="background:#2F3E4E !important;border-radius:14px;padding:20px 24px;margin-bottom:22px">
-    <p style="margin:0 0 3px;font-size:9px;color:#7A8F79 !important;text-transform:uppercase;letter-spacing:2.5px;font-weight:700">Document</p>
-    <p style="margin:0 0 10px;font-size:18px;font-weight:800;color:#ffffff !important;line-height:1.25">${documentTitle}</p>
-    <table style="width:100%;border-collapse:collapse;border-top:1px solid rgba(255,255,255,0.1);padding-top:0"><tr>
-      <td style="padding-top:12px;vertical-align:top">
-        <p style="margin:0 0 3px;font-size:10px;color:rgba(255,255,255,0.45) !important;text-transform:uppercase;letter-spacing:1.5px;font-weight:600">Category</p>
-        <p style="margin:0;font-size:13px;color:#ffffff !important;font-weight:600">${category}</p>
-      </td>
-      <td style="padding-top:12px;text-align:right;vertical-align:top">
-        <p style="margin:0 0 3px;font-size:10px;color:rgba(255,255,255,0.45) !important;text-transform:uppercase;letter-spacing:1.5px;font-weight:600">Added</p>
-        <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.7) !important">${dateStr}</p>
-      </td>
-    </tr></table>
+  <div style="border-radius:14px;overflow:hidden;margin-bottom:22px">
+    <div style="background:#2F3E4E !important;padding:16px 20px">
+      <p style="margin:0 0 4px;font-size:9px;color:#7A8F79 !important;text-transform:uppercase;letter-spacing:2.5px;font-weight:700">Document</p>
+      <p style="margin:0;font-size:14px;font-weight:700;color:#ffffff !important;line-height:1.35">${documentTitle}</p>
+    </div>
+    <div style="background:#D9E1E8 !important;padding:14px 20px">
+      <table style="width:100%;border-collapse:collapse"><tr>
+        <td style="vertical-align:top">
+          <p style="margin:0 0 3px;font-size:10px;color:#2F3E4E !important;text-transform:uppercase;letter-spacing:1.5px;font-weight:700">Category</p>
+          <p style="margin:0;font-size:12px;color:#2F3E4E !important;font-weight:600">${category}</p>
+        </td>
+        <td style="vertical-align:top;text-align:right">
+          <p style="margin:0 0 5px;font-size:10px;color:#2F3E4E !important;text-transform:uppercase;letter-spacing:1.5px;font-weight:700">Added</p>
+          <span style="display:inline-block;background:#2F3E4E !important;color:#ffffff !important;font-size:11px;font-weight:600;padding:2px 9px;border-radius:4px">${dateStr}</span>
+        </td>
+      </tr></table>
+    </div>
   </div>
 
   <div style="border-left:3px solid #7A8F79;padding:2px 0 2px 16px;margin-bottom:22px">
@@ -1018,18 +1022,20 @@ ${emailHeader('New Claim')}
     <span style="font-style:italic;color:#2F3E4E !important;font-family:Georgia,serif">Coming Home</span><span style="color:#7A8F79 !important;font-weight:600">care</span>.
   </p>
 
-  <div style="background:#2F3E4E !important;border-radius:14px;padding:20px 24px;margin-bottom:22px">
-    <p style="margin:0 0 3px;font-size:9px;color:#7A8F79 !important;text-transform:uppercase;letter-spacing:2.5px;font-weight:700">Claim ID</p>
-    <p style="margin:0 0 14px;font-size:22px;font-weight:900;color:#ffffff !important;letter-spacing:1.5px;font-family:monospace">${claimId}</p>
-    <div style="border-top:1px solid rgba(255,255,255,0.1);padding-top:12px">
+  <div style="border-radius:14px;overflow:hidden;margin-bottom:22px">
+    <div style="background:#2F3E4E !important;padding:16px 20px">
+      <p style="margin:0 0 4px;font-size:9px;color:#7A8F79 !important;text-transform:uppercase;letter-spacing:2.5px;font-weight:700">Claim ID</p>
+      <p style="margin:0;font-size:14px;font-weight:700;color:#ffffff !important;letter-spacing:1px;font-family:monospace">${claimId}</p>
+    </div>
+    <div style="background:#D9E1E8 !important;padding:14px 20px">
       <table style="width:100%;border-collapse:collapse"><tr>
         <td style="vertical-align:top;width:50%">
-          <p style="margin:0 0 3px;font-size:10px;color:rgba(255,255,255,0.45) !important;text-transform:uppercase;letter-spacing:1.5px;font-weight:600">Date of Service</p>
-          <p style="margin:0;font-size:13px;color:#ffffff !important;font-weight:600">${fmtDOS()}</p>
+          <p style="margin:0 0 3px;font-size:10px;color:#2F3E4E !important;text-transform:uppercase;letter-spacing:1.5px;font-weight:700">Date of Service</p>
+          <p style="margin:0;font-size:12px;color:#2F3E4E !important;font-weight:600">${fmtDOS()}</p>
         </td>
         <td style="vertical-align:top;text-align:right">
-          <p style="margin:0 0 3px;font-size:10px;color:rgba(255,255,255,0.45) !important;text-transform:uppercase;letter-spacing:1.5px;font-weight:600">Total Billed</p>
-          <p style="margin:0;font-size:18px;font-weight:800;color:#ffffff !important">${fmtMoney(totalBilled)}</p>
+          <p style="margin:0 0 3px;font-size:10px;color:#2F3E4E !important;text-transform:uppercase;letter-spacing:1.5px;font-weight:700">Total Billed</p>
+          <p style="margin:0;font-size:16px;font-weight:800;color:#2F3E4E !important">${fmtMoney(totalBilled)}</p>
         </td>
       </tr></table>
     </div>

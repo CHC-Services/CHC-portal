@@ -163,61 +163,43 @@ function ClaimRow({ primary: c, chain, eobDocs }: ClaimGroup & { eobDocs: { id: 
       {/* ── Compact summary row (always visible, click to expand) ── */}
       <button
         onClick={() => setExpanded(e => !e)}
-        className="w-full text-left px-4 pt-3 pb-2.5 hover:bg-[#F4F6F5] transition-colors"
+        className="w-full text-left px-4 pt-2 pb-2 hover:bg-[#F4F6F5] transition-colors"
       >
-        {/* Row 1: resubmit indicator | | | status + chevron */}
-        <div className="grid grid-cols-4 items-center mb-1">
-          <div>
-            {c.resubmissionOf && (
-              <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full whitespace-nowrap">
-                ↻ Resubmission
-              </span>
-            )}
+        {/* Resubmit indicator — only rendered when present, no blank row otherwise */}
+        {c.resubmissionOf && (
+          <div className="mb-0.5">
+            <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full whitespace-nowrap">
+              ↻ Resubmission
+            </span>
           </div>
-          <div />
-          <div />
-          <div className="flex justify-end items-center gap-2">
+        )}
+
+        {/* Row 1: Claim ID label | Total Billed label | Total Reimb label | date value */}
+        <div className="grid grid-cols-4 gap-2 items-end">
+          <p className="text-[10px] text-[#7A8F79] leading-tight">Claim ID</p>
+          <p className="text-[10px] text-[#7A8F79] leading-tight">Total Billed</p>
+          <p className="text-[10px] text-[#7A8F79] leading-tight">Total Reimb.</p>
+          <p className="text-xs font-semibold text-[#2F3E4E] leading-tight text-right">{fmtDate(dateValue)}</p>
+        </div>
+
+        {/* Row 2: claimId + DOS | billed $$ | reimb $$ | date label + status + chevron */}
+        <div className="grid grid-cols-4 gap-2 items-center mt-0.5">
+          <div>
+            <p className="text-xs font-mono font-semibold text-[#2F3E4E] truncate leading-tight">{c.claimId || '—'}</p>
+            <p className="text-[10px] text-[#7A8F79] leading-tight mt-0.5">{fmtDOS(c.dosStart, c.dosStop)}</p>
+          </div>
+          <p className="text-xs font-semibold text-[#2F3E4E] leading-tight">{fmt(c.totalBilled, '$')}</p>
+          <p className="text-xs font-semibold text-[#7A8F79] leading-tight">{fmt(c.totalReimbursed, '$')}</p>
+          <div className="flex items-center justify-end gap-1.5">
+            <span className={`text-[10px] leading-tight whitespace-nowrap ${isFinal ? 'text-green-700' : 'text-[#7A8F79]'}`}>{dateLabel}</span>
             <StageBadge stage={c.claimStage} />
             <span className="text-[#7A8F79] text-[10px]">{expanded ? '▲' : '▼'}</span>
           </div>
         </div>
 
-        {/* Row 2: Claim ID | Total Billed label | Total Reimb label | date value */}
-        <div className="grid grid-cols-4 gap-2 items-end">
-          <div>
-            <p className="text-[10px] text-[#7A8F79] leading-tight">Claim ID</p>
-          </div>
-          <div>
-            <p className="text-[10px] text-[#7A8F79] leading-tight">Total Billed</p>
-          </div>
-          <div>
-            <p className="text-[10px] text-[#7A8F79] leading-tight">Total Reimb.</p>
-          </div>
-          <div className="text-right">
-            <p className="text-xs font-semibold text-[#2F3E4E] leading-tight">{fmtDate(dateValue)}</p>
-          </div>
-        </div>
-
-        {/* Row 3: DOS | billed $$ | reimb $$ | date label */}
-        <div className="grid grid-cols-4 gap-2 items-start mt-0.5">
-          <div>
-            <p className="text-xs font-mono font-semibold text-[#2F3E4E] truncate leading-tight">{c.claimId || '—'}</p>
-            <p className="text-[10px] text-[#7A8F79] leading-tight mt-0.5">{fmtDOS(c.dosStart, c.dosStop)}</p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-[#2F3E4E] leading-tight">{fmt(c.totalBilled, '$')}</p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-[#7A8F79] leading-tight">{fmt(c.totalReimbursed, '$')}</p>
-          </div>
-          <div className="text-right">
-            <p className={`text-[10px] leading-tight ${isFinal ? 'text-green-700' : 'text-[#7A8F79]'}`}>{dateLabel}</p>
-          </div>
-        </div>
-
-        {/* Row 4: Processing notes — 1 line preview, spans full width */}
+        {/* Processing notes — 1 line preview, spans full width */}
         {firstNoteLine && (
-          <div className="mt-2 pt-2 border-t border-[#D9E1E8]">
+          <div className="mt-1.5 pt-1.5 border-t border-[#D9E1E8]">
             <p className="text-[11px] text-[#7A8F79] truncate leading-tight">
               <span className="font-semibold text-[#7A8F79] uppercase tracking-wide text-[10px]">Note · </span>
               {firstNoteLine}

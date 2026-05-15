@@ -36,7 +36,20 @@ function HoursTab() {
   const [filter, setFilter] = useState<'all' | 'unbilled' | 'billed'>('unbilled')
   const [search, setSearch] = useState('')
   const [toggling, setToggling] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
   const [claimRefs, setClaimRefs] = useState<Record<string, string>>({})
+  const [sortCol, setSortCol] = useState<'claimRef' | 'nurse' | 'account' | 'date' | 'hours' | 'notes' | 'billed'>('date')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  function handleSort(col: typeof sortCol) {
+    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortCol(col); setSortDir('asc') }
+  }
+
+  function SortIcon({ col }: { col: typeof sortCol }) {
+    if (sortCol !== col) return <span className="ml-1 opacity-20">↕</span>
+    return <span className="ml-1">{sortDir === 'asc' ? '↑' : '↓'}</span>
+  }
 
   function load() {
     fetch('/api/admin/time-entries', { credentials: 'include' })
@@ -64,6 +77,14 @@ function HoursTab() {
     setEntries(prev => prev.map(e => e.id === id ? { ...e, claimRef: value || null } : e))
   }
 
+  async function deleteEntry(id: string) {
+    if (!confirm('Delete this time entry? This cannot be undone.')) return
+    setDeleting(id)
+    await fetch(`/api/admin/time-entry/${id}`, { method: 'DELETE', credentials: 'include' })
+    setEntries(prev => prev.filter(e => e.id !== id))
+    setDeleting(null)
+  }
+
   async function toggleBilled(entry: TimeEntry) {
     setToggling(entry.id)
     await fetch('/api/admin/time-entries', {
@@ -88,7 +109,19 @@ function HoursTab() {
         !e.billed
       return matchSearch && matchFilter
     })
-    .sort((a, b) => new Date(a.workDate).getTime() - new Date(b.workDate).getTime())
+    .sort((a, b) => {
+      let cmp = 0
+      switch (sortCol) {
+        case 'claimRef':  cmp = (a.claimRef ?? '').localeCompare(b.claimRef ?? ''); break
+        case 'nurse':     cmp = (formalName(a.nurse) || a.nurse.displayName).localeCompare(formalName(b.nurse) || b.nurse.displayName); break
+        case 'account':   cmp = (a.nurse.accountNumber ?? '').localeCompare(b.nurse.accountNumber ?? ''); break
+        case 'date':      cmp = new Date(a.workDate).getTime() - new Date(b.workDate).getTime(); break
+        case 'hours':     cmp = a.hours - b.hours; break
+        case 'notes':     cmp = (a.notes ?? '').localeCompare(b.notes ?? ''); break
+        case 'billed':    cmp = Number(a.billed) - Number(b.billed); break
+      }
+      return sortDir === 'asc' ? cmp : -cmp
+    })
 
   const totalHours    = filtered.reduce((s, e) => s + e.hours, 0)
   const billedHours   = filtered.filter(e => e.billed).reduce((s, e) => s + e.hours, 0)
@@ -190,13 +223,12 @@ function HoursTab() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
-                  <th className="text-left py-2 pr-4">Claim Ref #</th>
-                  <th className="text-left py-2 pr-4">Nurse</th>
-                  <th className="text-left py-2 pr-4">Account</th>
-                  <th className="text-left py-2 pr-4">Date Worked</th>
-                  <th className="text-right py-2 pr-4">Hours</th>
-                  <th className="text-left py-2 pr-4">Notes</th>
-                  <th className="text-center py-2">Billed</th>
+                  {([ ['claimRef','Claim Ref #','left'], ['nurse','Nurse','left'], ['account','Account','left'], ['date','Date Worked','left'], ['hours','Hours','right'], ['notes','Notes','left'], ['billed','Billed','center'] ] as [typeof sortCol, string, string][]).map(([col, label, align]) => (
+                    <th key={col} className={`py-2 pr-4 text-${align} cursor-pointer select-none hover:text-[#2F3E4E] transition whitespace-nowrap`} onClick={() => handleSort(col)}>
+                      {label}<SortIcon col={col} />
+                    </th>
+                  ))}
+                  <th className="py-2"></th>
                 </tr>
               </thead>
               <tbody>
@@ -246,6 +278,18 @@ function HoursTab() {
                             <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                           </svg>
                         )}
+                      </button>
+                    </td>
+                    <td className="py-2 pl-2">
+                      <button
+                        onClick={() => deleteEntry(entry.id)}
+                        disabled={deleting === entry.id}
+                        title="Delete entry"
+                        className="text-red-300 hover:text-red-500 transition disabled:opacity-40"
+                      >
+                        <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4">
+                          <path d="M2 4h12M6 4V2h4v2M5 4v9a1 1 0 001 1h4a1 1 0 001-1V4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
                       </button>
                     </td>
                   </tr>

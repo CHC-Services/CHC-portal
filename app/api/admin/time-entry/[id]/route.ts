@@ -53,3 +53,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const entry = await prisma.timeEntry.update({ where: { id }, data })
   return NextResponse.json(entry)
 }
+
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = adminOnly(req)
+  if (!session || session.role !== 'admin') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const { id } = await params
+  await prisma.timeEntry.delete({ where: { id } })
+  return NextResponse.json({ ok: true })
+}

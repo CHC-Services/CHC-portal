@@ -541,11 +541,19 @@ export default function AdminDashboard() {
       <AdminNav />
 
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-[#2F3E4E]"><span className="text-[#7A8F79] italic">ad</span>Roster</h1>
-        <p className="text-sm text-[#7A8F79] mt-1">
-          {now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-        </p>
+      <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-3xl font-bold text-[#2F3E4E]"><span className="text-[#7A8F79] italic">ad</span>Roster</h1>
+          <p className="text-sm text-[#7A8F79] mt-1">
+            {now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          </p>
+        </div>
+        <Link
+          href="/admin/enrollment"
+          className="text-xs font-semibold text-[#7A8F79] border border-[#D9E1E8] rounded-lg px-3 py-1.5 hover:border-[#7A8F79] hover:text-[#2F3E4E] transition whitespace-nowrap"
+        >
+          Billing Enrollment →
+        </Link>
       </div>
 
       {/* Quick Actions */}
@@ -563,8 +571,8 @@ export default function AdminDashboard() {
           className="bg-white rounded-xl shadow-sm p-5 flex flex-col gap-2 hover:shadow-md transition group"
         >
           <span className="text-2xl">💳</span>
-          <span className="font-semibold text-[#2F3E4E] group-hover:text-[#7A8F79] transition">Billing Summary</span>
-          <span className="text-xs text-[#7A8F79]">Enrollment status & billing plans</span>
+          <span className="font-semibold text-[#2F3E4E] group-hover:text-[#7A8F79] transition">Billing</span>
+          <span className="text-xs text-[#7A8F79]">Hours, invoices & campaigns</span>
         </Link>
         <Link
           href="/admin/calendar"

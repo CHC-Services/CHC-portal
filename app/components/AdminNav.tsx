@@ -3,19 +3,44 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
-const links = [
-  { prefix: 'ad', label: 'Roster',    href: '/admin' },
-  { prefix: 'ad', label: 'Claims',    href: '/admin/claims' },
-  { prefix: 'ad', label: 'Hours',     href: '/admin/hours' },
-  { prefix: 'ad', label: 'Invoicing', href: '/admin/invoicing' },
-  { prefix: 'ad', label: 'Calendar',  href: '/admin/calendar' },
-  { prefix: 'ad', label: 'Docs',      href: '/admin/documents' },
-  { prefix: 'ad', label: 'Messaging', href: '/admin/email' },
-  { prefix: 'ad', label: 'FAQ',       href: '/admin/faq' },
-  { prefix: 'ad', label: 'Backups',   href: '/admin/backups' },
-  { prefix: 'ad', label: 'Campaigns',  href: '/admin/campaigns' },
-  { prefix: 'ad', label: 'Enrollment', href: '/admin/enrollment' },
-  { prefix: '',   label: 'Add Provider', href: '/admin#add-provider' },
+type NavLink = {
+  prefix: string
+  label: string
+  href: string
+  activePaths: string[]
+  exactHome?: boolean
+}
+
+const links: NavLink[] = [
+  {
+    prefix: 'ad', label: 'Providers', href: '/admin',
+    activePaths: ['/admin/nurse/', '/admin/enrollment'],
+    exactHome: true,
+  },
+  {
+    prefix: 'ad', label: 'Claims',   href: '/admin/claims',
+    activePaths: ['/admin/claims'],
+  },
+  {
+    prefix: 'ad', label: 'Billing',  href: '/admin/billing',
+    activePaths: ['/admin/billing', '/admin/hours', '/admin/invoicing', '/admin/campaigns'],
+  },
+  {
+    prefix: 'ad', label: 'Patients', href: '/admin/patients',
+    activePaths: ['/admin/patients'],
+  },
+  {
+    prefix: 'ad', label: 'Documents', href: '/admin/documents',
+    activePaths: ['/admin/documents'],
+  },
+  {
+    prefix: 'ad', label: 'Comms',    href: '/admin/comms',
+    activePaths: ['/admin/comms', '/admin/email', '/admin/calendar', '/admin/faq', '/admin/messages'],
+  },
+  {
+    prefix: '', label: '⚙',           href: '/admin/system',
+    activePaths: ['/admin/system', '/admin/ideas', '/admin/backups', '/admin/medicaid'],
+  },
 ]
 
 export default function AdminNav() {
@@ -24,9 +49,9 @@ export default function AdminNav() {
   return (
     <div className="flex flex-wrap gap-2 mb-6">
       {links.map(link => {
-        const active = link.href === '/admin'
-          ? pathname === '/admin'
-          : pathname.startsWith(link.href)
+        const active = link.exactHome
+          ? pathname === '/admin' || link.activePaths.some(p => pathname.startsWith(p))
+          : link.activePaths.some(p => pathname.startsWith(p))
         return (
           <Link
             key={link.href}
@@ -37,9 +62,7 @@ export default function AdminNav() {
                 : 'bg-white text-[#2F3E4E] border border-[#D9E1E8] hover:border-[#7A8F79] hover:text-[#7A8F79]'
             }`}
           >
-            {link.prefix && (
-              <span className="italic text-[#7A8F79]">{link.prefix}</span>
-            )}
+            {link.prefix && <span className="italic text-[#7A8F79]">{link.prefix}</span>}
             {link.label}
           </Link>
         )

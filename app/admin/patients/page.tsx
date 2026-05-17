@@ -380,7 +380,7 @@ export default function AdPatients() {
                     <span className="font-mono text-xs text-[#7A8F79]">{p.accountNumber}</span>
                     {p.isLocked && <span className="ml-1.5 text-[9px] font-bold text-red-500 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded-full">Locked</span>}
                   </td>
-                  <td className="py-3 px-4 font-semibold text-[#2F3E4E]">{p.firstName} {p.lastName}</td>
+                  <td className="py-3 px-4 font-semibold text-[#2F3E4E]">{p.lastName}, {p.firstName}</td>
                   <td className="py-3 px-4 text-[#7A8F79]">{p.dob}</td>
                   <td className="py-3 px-4">
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${p.insuranceType === 'Medicaid' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
@@ -407,7 +407,7 @@ export default function AdPatients() {
           >
             <div className="flex items-center justify-between p-5 border-b border-[#D9E1E8] sticky top-0 bg-white z-10">
               <div>
-                <p className="text-lg font-bold text-[#2F3E4E]">{selected.firstName} {selected.lastName}</p>
+                <p className="text-lg font-bold text-[#2F3E4E]">{selected.lastName}, {selected.firstName}</p>
                 <p className="text-xs font-mono text-[#7A8F79]">{selected.accountNumber}</p>
               </div>
               <div className="flex items-center gap-2">

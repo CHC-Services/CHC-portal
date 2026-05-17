@@ -1,9 +1,20 @@
+export type DashboardSection = 'account' | 'reimbursement' | 'claims' | 'hours' | 'documents'
+
+export const DASHBOARD_SECTION_LABELS: Record<DashboardSection, string> = {
+  account:       'Account Summary',
+  reimbursement: 'Reimbursement Summary',
+  claims:        'Count Summary',
+  hours:         'Hours Summary',
+  documents:     'Documents Summary',
+}
+
 export type PortalSettings = {
   fontSize: 'xs' | 'sm' | 'md' | 'lg'
   gutterColor: string
   density: 'compact' | 'default' | 'relaxed'
   radius: 'sharp' | 'default' | 'rounded'
   elevation: 'flat' | 'default' | 'raised'
+  dashboardOrder: DashboardSection[]
 }
 
 export const DEFAULTS: PortalSettings = {
@@ -12,6 +23,7 @@ export const DEFAULTS: PortalSettings = {
   density: 'default',
   radius: 'default',
   elevation: 'default',
+  dashboardOrder: ['account', 'reimbursement', 'claims', 'hours', 'documents'],
 }
 
 export const FONT_SIZE_MAP: Record<PortalSettings['fontSize'], string> = {

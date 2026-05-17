@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react'
 import {
   type PortalSettings,
+  type DashboardSection,
   DEFAULTS,
+  DASHBOARD_SECTION_LABELS,
   GUTTER_COLORS,
   loadSettings,
   saveSettings,
@@ -190,6 +192,48 @@ export default function NurseAppearancePage() {
                 }}
               />
             ))}
+          </div>
+        </div>
+
+        {/* Dashboard Section Order */}
+        <div className="bg-white rounded-xl shadow-sm p-5">
+          <p className={sectionTitle}>Dashboard Layout</p>
+          <p className="text-xs text-[#7A8F79] mb-3">Drag the sections into the order you want them to appear on myDashboard.</p>
+          <div className="flex flex-col gap-2">
+            {settings.dashboardOrder.map((section, idx) => {
+              const moveUp = () => {
+                if (idx === 0) return
+                const next = [...settings.dashboardOrder]
+                ;[next[idx - 1], next[idx]] = [next[idx], next[idx - 1]]
+                update('dashboardOrder', next as DashboardSection[])
+              }
+              const moveDown = () => {
+                if (idx === settings.dashboardOrder.length - 1) return
+                const next = [...settings.dashboardOrder]
+                ;[next[idx], next[idx + 1]] = [next[idx + 1], next[idx]]
+                update('dashboardOrder', next as DashboardSection[])
+              }
+              return (
+                <div key={section} className="flex items-center gap-3 bg-[#F4F6F5] rounded-lg px-3 py-2.5 border border-[#D9E1E8]">
+                  <span className="text-[10px] font-bold text-[#7A8F79] w-4 text-center shrink-0">{idx + 1}</span>
+                  <span className="flex-1 text-xs font-semibold text-[#2F3E4E]">{DASHBOARD_SECTION_LABELS[section]}</span>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={moveUp}
+                      disabled={idx === 0}
+                      className="w-6 h-6 flex items-center justify-center rounded text-[#7A8F79] hover:bg-[#D9E1E8] disabled:opacity-25 transition"
+                      aria-label="Move up"
+                    >▲</button>
+                    <button
+                      onClick={moveDown}
+                      disabled={idx === settings.dashboardOrder.length - 1}
+                      className="w-6 h-6 flex items-center justify-center rounded text-[#7A8F79] hover:bg-[#D9E1E8] disabled:opacity-25 transition"
+                      aria-label="Move down"
+                    >▼</button>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
 

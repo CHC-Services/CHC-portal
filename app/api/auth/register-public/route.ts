@@ -42,7 +42,7 @@ export async function POST(req: Request) {
         email: email.toLowerCase().trim(),
         password: hashed,
         name: fullName,
-        role: 'provider',
+        role: 'nurse',
         nurseProfile: {
           create: {
             displayName,

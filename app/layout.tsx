@@ -29,7 +29,7 @@ export default async function RootLayout({
         <link rel="icon" href="/favicon.png" type="image/png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
-      <body className="pt-[135px] md:pt-[200px]">
+      <body className="pt-[135px] lg:pt-[200px]">
         <PortalSettingsProvider />
         <Banner user={user} />
         <PullToRefresh />

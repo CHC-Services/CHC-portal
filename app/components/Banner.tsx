@@ -72,32 +72,35 @@ export default function Banner({ user }: BannerProps) {
     ) : null
 
     // Row 1: personal "my" portal links
-    // Nurse links marked md:hidden live in the floating side nav on desktop; keep them here for mobile hamburger
+    // Nurse links marked lg:hidden live in the floating side nav on desktop; keep them here for mobile hamburger
     const myRow = role === 'nurse' ? (
         <>
-            <Link href="/nurse" onClick={() => setMenuOpen(false)} className={`md:hidden transition ${pathname === "/nurse" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+            <Link href="/nurse" onClick={() => setMenuOpen(false)} className={`lg:hidden transition ${pathname === "/nurse" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Dashboard
             </Link>
-            <Link href="/calendar" onClick={() => setMenuOpen(false)} className={`md:hidden transition ${pathname === "/calendar" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+            <Link href="/calendar" onClick={() => setMenuOpen(false)} className={`lg:hidden transition ${pathname === "/calendar" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Calendar
             </Link>
-            <Link href="/nurse/patients" onClick={() => setMenuOpen(false)} className={`md:hidden transition ${pathname === "/nurse/patients" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+            <Link href="/nurse/patients" onClick={() => setMenuOpen(false)} className={`lg:hidden transition ${pathname === "/nurse/patients" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Patients
             </Link>
-            <Link href="/nurse/hours" onClick={() => setMenuOpen(false)} className={`md:hidden transition ${pathname === "/nurse/hours" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+            <Link href="/nurse/hours" onClick={() => setMenuOpen(false)} className={`lg:hidden transition ${pathname === "/nurse/hours" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Hours
             </Link>
-            <Link href="/nurse/claims" onClick={() => setMenuOpen(false)} className={`md:hidden transition ${pathname === "/nurse/claims" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+            <Link href="/nurse/claims" onClick={() => setMenuOpen(false)} className={`lg:hidden transition ${pathname === "/nurse/claims" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Claims
             </Link>
-            <Link href="/nurse/invoices" onClick={() => setMenuOpen(false)} className={`md:hidden transition ${pathname === "/nurse/invoices" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+            <Link href="/nurse/invoices" onClick={() => setMenuOpen(false)} className={`lg:hidden transition ${pathname === "/nurse/invoices" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Invoices
             </Link>
-            <Link href="/nurse/documents" onClick={() => setMenuOpen(false)} className={`md:hidden transition ${pathname === "/nurse/documents" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+            <Link href="/nurse/documents" onClick={() => setMenuOpen(false)} className={`lg:hidden transition ${pathname === "/nurse/documents" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Documents
             </Link>
-            <Link href="/nurse/profile" onClick={() => setMenuOpen(false)} className={`md:hidden transition ${pathname === "/nurse/profile" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+            <Link href="/nurse/profile" onClick={() => setMenuOpen(false)} className={`lg:hidden transition ${pathname === "/nurse/profile" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Profile
+            </Link>
+            <Link href="/nurse/appearance" onClick={() => setMenuOpen(false)} className={`lg:hidden transition ${pathname === "/nurse/appearance" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Appearance
             </Link>
         </>
     ) : role === 'admin' ? (
@@ -149,7 +152,7 @@ export default function Banner({ user }: BannerProps) {
                     <Link href="/resources" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/resources" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                         Resources
                     </Link>
-                    <Link href="/care" onClick={() => setMenuOpen(false)} className={`transition ${role === 'nurse' ? 'md:hidden ' : ''}${pathname === "/care" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                    <Link href="/care" onClick={() => setMenuOpen(false)} className={`transition ${role === 'nurse' ? 'lg:hidden ' : ''}${pathname === "/care" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                         <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Care
                     </Link>
                 </>
@@ -170,6 +173,7 @@ export default function Banner({ user }: BannerProps) {
             { href: '/nurse/claims', label: 'Claims', icon: '📋' },
             { href: '/nurse/documents', label: 'Documents', icon: '📁' },
             { href: '/nurse/profile', label: 'Profile', icon: '👤' },
+            { href: '/nurse/appearance', label: 'Appearance', icon: '🎨' },
         ] : []),
         ...(role === 'provider' ? [
             { href: '/portal', label: 'Portal', icon: '🏠' },
@@ -191,8 +195,8 @@ export default function Banner({ user }: BannerProps) {
                 </div>
             )}
 
-            {/* ── MOBILE header (hidden on md+) ── */}
-            <div className={`md:hidden fixed left-0 w-full bg-[#F4F6F5] text-[#2f3e4e] z-50 shadow-sm ${user?.isDemo ? 'top-[30px]' : 'top-0'}`}>
+            {/* ── MOBILE header (hidden on lg+) ── */}
+            <div className={`lg:hidden fixed left-0 w-full bg-[#F4F6F5] text-[#2f3e4e] z-50 shadow-sm ${user?.isDemo ? 'top-[30px]' : 'top-0'}`}>
 
                 {/* Row 1: Logo | Auth button(s) */}
                 <div className="flex items-center justify-between px-3 pt-3 pb-1">
@@ -257,8 +261,8 @@ export default function Banner({ user }: BannerProps) {
                 )}
             </div>
 
-            {/* ── DESKTOP header (hidden below md) ── */}
-            <div className={`hidden md:block fixed left-0 w-full bg-[#F4F6F5] text-[#2f3e4e] h-[200px] z-50 ${user?.isDemo ? 'top-[30px]' : 'top-0'}`}>
+            {/* ── DESKTOP header (hidden below lg) ── */}
+            <div className={`hidden lg:block fixed left-0 w-full bg-[#F4F6F5] text-[#2f3e4e] h-[200px] z-50 ${user?.isDemo ? 'top-[30px]' : 'top-0'}`}>
                 <div className="max-w-[1400px] mx-auto h-full flex items-center justify-between px-6 relative">
 
                     {/* Top-right: clock + sign out / New User? */}
@@ -324,8 +328,8 @@ export default function Banner({ user }: BannerProps) {
                 </div>
             </div>
 
-            {/* ── MOBILE bottom nav bar (hidden on md+) ── */}
-            <nav className="md:hidden fixed bottom-0 left-0 w-full bg-[#F4F6F5] border-t border-[#D9E1E8] z-50 flex justify-around items-center py-2 shadow-[0_-2px_8px_rgba(0,0,0,0.06)]">
+            {/* ── MOBILE bottom nav bar (hidden on lg+) ── */}
+            <nav className="lg:hidden fixed bottom-0 left-0 w-full bg-[#F4F6F5] border-t border-[#D9E1E8] z-50 flex justify-around items-center py-2 shadow-[0_-2px_8px_rgba(0,0,0,0.06)]">
                 {bottomNavItems.map(item => (
                     <Link
                         key={item.href}

@@ -427,7 +427,7 @@ export default function EnrollmentPage() {
 
                       {/* Provider */}
                       <td className="px-3 py-2">
-                        <Link href={`/admin/nurse/${n.user.id}`} className="font-semibold hover:text-[#7A8F79] transition">
+                        <Link href={`/admin/nurse/${n.id}`} className="font-semibold hover:text-[#7A8F79] transition">
                           {formalName(n) || n.displayName}
                         </Link>
                         <div className="text-[10px] text-[#7A8F79] truncate max-w-[140px]">{n.user.email}</div>
@@ -506,7 +506,7 @@ export default function EnrollmentPage() {
                             {resetting === n.id ? '…' : 'Reset'}
                           </button>
                           <Link
-                            href={`/admin/nurse/${n.user.id}`}
+                            href={`/admin/nurse/${n.id}`}
                             className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#2F3E4E] text-white hover:bg-[#7A8F79] transition"
                           >
                             View

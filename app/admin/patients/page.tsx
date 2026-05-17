@@ -388,7 +388,7 @@ export default function AdPatients() {
                     </span>
                   </td>
                   <td className="py-3 px-4 text-xs text-[#7A8F79]">
-                    {p.nurseLinks.filter(l => l.isActive).map(l => formalName(l.nurse) || l.nurse.displayName).join(', ') || '—'}
+                    {p.nurseLinks.filter(l => l.isActive).map(l => l.nurse.lastName || l.nurse.displayName).join(', ') || '—'}
                   </td>
                   <td className="py-3 px-4 text-right text-[#2F3E4E] font-semibold">{p._count.timeEntries}</td>
                 </tr>
@@ -462,7 +462,7 @@ export default function AdPatients() {
                   <div className="space-y-2 mb-3">
                     {selected.nurseLinks.filter(l => l.isActive).map(l => (
                       <div key={l.id} className="flex items-center justify-between bg-[#F4F6F5] rounded-lg px-3 py-2">
-                        <span className="text-sm text-[#2F3E4E] font-semibold">{formalName(l.nurse) || l.nurse.displayName}</span>
+                        <span className="text-sm text-[#2F3E4E] font-semibold">{l.nurse.lastName || l.nurse.displayName}</span>
                         <button
                           onClick={() => handleUnlink(l.nurse.id)}
                           className="text-xs text-red-500 hover:text-red-700 font-semibold transition"

@@ -14,7 +14,10 @@ export default function Footer() {
           <p className="text-xs text-[#7A8F79] mt-2 leading-relaxed">
             Streamlining provider enrollment, billing, and compliance for NY home care professionals.
           </p>
-          <p className="text-xs text-[#7A8F79] mt-4">&copy; {year} Coming Home Care. All rights reserved.</p>
+          <p className="text-xs text-[#7A8F79] mt-2">
+            Powered by <span className="text-[#7A8F79] italic">my</span><span className="text-white font-semibold">Provider</span><sup className="text-[10px]">™</sup>
+          </p>
+          <p className="text-xs text-[#7A8F79] mt-2">&copy; {year} Coming Home Care Services, LLC. All rights reserved.</p>
         </div>
 
         {/* Portal Links */}

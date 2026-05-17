@@ -636,7 +636,7 @@ export default function BillingPage() {
       </div>
 
       <div className="flex gap-2 mb-6">
-        {TABS.map(t => (
+        {TABS.filter(t => t.id !== 'invoices').map(t => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
@@ -649,6 +649,12 @@ export default function BillingPage() {
             {t.label}
           </button>
         ))}
+        <a
+          href="/admin/invoicing"
+          className="px-4 py-2 rounded-lg text-sm font-semibold transition bg-white text-[#2F3E4E] border border-[#D9E1E8] hover:border-[#7A8F79] hover:text-[#7A8F79]"
+        >
+          Invoices
+        </a>
       </div>
 
       {tab === 'hours'     && <HoursTab />}

@@ -14,8 +14,12 @@ type NavLink = {
 const links: NavLink[] = [
   {
     prefix: 'ad', label: 'Providers', href: '/admin',
-    activePaths: ['/admin/nurse/', '/admin/enrollment'],
+    activePaths: ['/admin/nurse/'],
     exactHome: true,
+  },
+  {
+    prefix: 'ad', label: 'Enrollment', href: '/admin/enrollment',
+    activePaths: ['/admin/enrollment'],
   },
   {
     prefix: 'ad', label: 'Claims',   href: '/admin/claims',

@@ -133,7 +133,7 @@ export default function SignupPage() {
                 type="text"
                 placeholder="First name"
                 value={firstName}
-                onChange={e => setFirstName(e.target.value)}
+                onChange={e => setFirstName(e.target.value.toUpperCase())}
                 required
                 className="w-full border border-[#D9E1E8] p-3 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79] bg-white focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
               />
@@ -141,7 +141,7 @@ export default function SignupPage() {
                 type="text"
                 placeholder="Last name"
                 value={lastName}
-                onChange={e => setLastName(e.target.value)}
+                onChange={e => setLastName(e.target.value.toUpperCase())}
                 required
                 className="w-full border border-[#D9E1E8] p-3 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79] bg-white focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
               />

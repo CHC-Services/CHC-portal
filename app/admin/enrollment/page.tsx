@@ -143,7 +143,7 @@ const STATUS_ACTIONS: Record<string, string[]> = {
 
 function fmtDate(d?: string | null) {
   if (!d) return '—'
-  return new Date(d).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: '2-digit' })
+  return new Date(d).toLocaleDateString('en-US', { timeZone: 'UTC', month: '2-digit', day: '2-digit', year: '2-digit' })
 }
 
 // ISO date string for <input type="date"> value

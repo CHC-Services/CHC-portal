@@ -5,6 +5,7 @@ import { getUserFromCookie } from "@/lib/getUserFromCookie";
 import Banner from "./components/Banner";
 import Footer from "./components/Footer";
 import PullToRefresh from "./components/PullToRefresh";
+import PortalSettingsProvider from "./components/PortalSettingsProvider";
 
 const cormorantUpright = Cormorant_Upright({
   subsets: ["latin"],
@@ -28,7 +29,8 @@ export default async function RootLayout({
         <link rel="icon" href="/favicon.png" type="image/png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
-      <body className="pt-[220px] md:pt-[200px]">
+      <body className="pt-[135px] md:pt-[200px]">
+        <PortalSettingsProvider />
         <Banner user={user} />
         <PullToRefresh />
         <div className="page-wrap px-4 sm:px-6">

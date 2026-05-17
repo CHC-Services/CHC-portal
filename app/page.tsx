@@ -122,11 +122,10 @@ export default async function Home() {
     <div className="min-h-screen bg-[#D9E1E8]">
 
       {/* ── Hero ── */}
-      <div className="bg-[#2F3E4E] px-6 md:px-10 py-12 md:py-16">
+      <div className="bg-[#2F3E4E] px-6 md:px-10 py-8 md:py-16">
         <div className="max-w-4xl mx-auto">
           {user ? (
             <>
-              {/* <HomeDefinition /> */}
               <p className="text-[#7A8F79] text-xs font-semibold uppercase tracking-widest mb-2">
                 {user.role === 'nurse' ? 'Nurse Portal' : user.role === 'admin' ? 'Admin Portal' : 'Provider Portal'}
               </p>
@@ -142,7 +141,6 @@ export default async function Home() {
             </>
           ) : (
             <>
-              {/* <HomeDefinition /> */}
               <p className="text-[#7A8F79] text-xs font-semibold uppercase tracking-widest mb-2">
                 Administrative Resources
               </p>
@@ -153,6 +151,20 @@ export default async function Home() {
               <p className="mt-4 text-[#D9E1E8] text-sm max-w-xl">
                 Coming Home Care's secure provider portal puts time tracking, claims management, billing services, and yearly renewal reminders all in one place — so your focus can stay on you and your patients.
               </p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link
+                  href="/billing"
+                  className="bg-[#7A8F79] text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-white hover:text-[#2F3E4E] transition"
+                >
+                  Enroll in Billing Services →
+                </Link>
+                <Link
+                  href="/login"
+                  className="border border-[#7A8F79] text-[#D9E1E8] px-6 py-3 rounded-xl font-semibold text-sm hover:bg-[#7A8F79] hover:text-white transition"
+                >
+                  Provider Login
+                </Link>
+              </div>
             </>
           )}
         </div>
@@ -230,6 +242,33 @@ export default async function Home() {
         {/* ── Logged-out: what the portal does ── */}
         {!user && (
           <>
+            {/* Enrollment CTA */}
+            <div className="bg-[#2F3E4E] rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+              <div>
+                <p className="text-[#7A8F79] text-xs font-semibold uppercase tracking-widest mb-1">New Provider?</p>
+                <h2 className="text-xl md:text-2xl font-bold text-white leading-snug">
+                  Enroll in billing services today.
+                </h2>
+                <p className="text-[#D9E1E8] text-sm mt-2 max-w-md">
+                  Sign up, choose a billing plan, and start submitting claims — all through one secure portal. Setup takes minutes.
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 shrink-0">
+                <Link
+                  href="/billing"
+                  className="bg-[#7A8F79] text-white px-7 py-3 rounded-xl font-bold text-sm text-center hover:bg-white hover:text-[#2F3E4E] transition"
+                >
+                  Enroll Now →
+                </Link>
+                <Link
+                  href="/resources"
+                  className="text-center text-xs text-[#7A8F79] hover:text-[#D9E1E8] transition"
+                >
+                  View enrollment guides first
+                </Link>
+              </div>
+            </div>
+
             <div>
               <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-3">Everything in One Place</p>
               <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">

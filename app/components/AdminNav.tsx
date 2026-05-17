@@ -43,7 +43,7 @@ const links: NavLink[] = [
   },
   {
     prefix: '', label: '⚙',           href: '/admin/system',
-    activePaths: ['/admin/system', '/admin/ideas', '/admin/backups', '/admin/medicaid'],
+    activePaths: ['/admin/system', '/admin/ideas', '/admin/backups', '/admin/system/appearance'],
   },
 ]
 

@@ -5,6 +5,12 @@ import AdminNav from '../../components/AdminNav'
 
 const CARDS = [
   {
+    href: '/admin/system/appearance',
+    title: 'Appearance',
+    description: 'Text size, gutter color, density, corner style, and card elevation.',
+    icon: '🎨',
+  },
+  {
     href: '/admin/ideas',
     title: 'Ideas',
     description: 'Feature requests and improvement ideas.',
@@ -15,12 +21,6 @@ const CARDS = [
     title: 'Backups',
     description: 'Data backup status and export tools.',
     icon: '🗄️',
-  },
-  {
-    href: '/admin/medicaid',
-    title: 'Medicaid',
-    description: 'Medicaid reference data and settings.',
-    icon: '🏥',
   },
 ]
 

@@ -153,7 +153,7 @@ export default async function Home() {
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
-                  href="/billing"
+                  href="/signup"
                   className="bg-[#7A8F79] text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-white hover:text-[#2F3E4E] transition"
                 >
                   Sign up for <i>my</i>Provider →

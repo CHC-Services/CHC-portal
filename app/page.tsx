@@ -156,7 +156,7 @@ export default async function Home() {
                   href="/billing"
                   className="bg-[#7A8F79] text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-white hover:text-[#2F3E4E] transition"
                 >
-                  Enroll in Billing Services →
+                  Sign up for <i>my</i>Provider →
                 </Link>
                 <Link
                   href="/login"
@@ -242,33 +242,6 @@ export default async function Home() {
         {/* ── Logged-out: what the portal does ── */}
         {!user && (
           <>
-            {/* Enrollment CTA */}
-            <div className="bg-[#2F3E4E] rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
-              <div>
-                <p className="text-[#7A8F79] text-xs font-semibold uppercase tracking-widest mb-1">New Provider?</p>
-                <h2 className="text-xl md:text-2xl font-bold text-white leading-snug">
-                  Enroll in billing services today.
-                </h2>
-                <p className="text-[#D9E1E8] text-sm mt-2 max-w-md">
-                  Sign up, choose a billing plan, and start submitting claims — all through one secure portal. Setup takes minutes.
-                </p>
-              </div>
-              <div className="flex flex-col gap-2 shrink-0">
-                <Link
-                  href="/billing"
-                  className="bg-[#7A8F79] text-white px-7 py-3 rounded-xl font-bold text-sm text-center hover:bg-white hover:text-[#2F3E4E] transition"
-                >
-                  Enroll Now →
-                </Link>
-                <Link
-                  href="/resources"
-                  className="text-center text-xs text-[#7A8F79] hover:text-[#D9E1E8] transition"
-                >
-                  View enrollment guides first
-                </Link>
-              </div>
-            </div>
-
             <div>
               <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-3">Everything in One Place</p>
               <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">

@@ -10,11 +10,12 @@ const links = [
   { href: '/nurse/claims',    label: 'Claims'    },
   { href: '/nurse/invoices',  label: 'Invoices'  },
   { href: '/nurse/documents', label: 'Documents' },
-  { href: '/nurse/profile',   label: 'Profile'   },
-  { href: '/care',            label: 'Care'      },
+  { href: '/nurse/profile',    label: 'Profile'    },
+  { href: '/care',             label: 'Care'       },
+  { href: '/nurse/appearance', label: 'Appearance' },
 ]
 
-const DIVIDERS_BEFORE = new Set(['Patients', 'Invoices', 'Profile'])
+const DIVIDERS_BEFORE = new Set(['Patients', 'Invoices', 'Profile', 'Appearance'])
 
 export default function NurseSideNav() {
   const pathname = usePathname()
@@ -53,7 +54,7 @@ export default function NurseSideNav() {
           return (
             <div key={link.href}>
               {DIVIDERS_BEFORE.has(link.label) && (
-                <div className="my-1.5 px-2">
+                <div className="my-3 px-2">
                   <div style={{
                     height: '1px',
                     background: 'linear-gradient(to right, transparent, rgba(47,62,78,0.15), transparent)',

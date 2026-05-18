@@ -584,7 +584,15 @@ export default function AdminMessagingPage() {
   const [logLoaded, setLogLoaded] = useState(false)
 
   // ── Weekly Reminder settings state ──────────────────────────────────────
-  const [wr, setWr] = useState({ dayOfWeek: '5', subject: '', body: '' })
+  const DEFAULT_REMINDER_BODY = `Hi {name},
+
+This is your weekly reminder to log any hours worked this week in the CHC Provider Portal. Staying current with your time entries helps ensure accurate and timely billing.
+
+Sign in and head to myDashboard to submit your hours for each day worked this week.
+
+If you have any questions about your hours or billing, reply to this email and we'll get back to you.`
+
+  const [wr, setWr] = useState({ dayOfWeek: '5', subject: '', body: DEFAULT_REMINDER_BODY })
   const [wrSaving, setWrSaving] = useState(false)
   const [wrSaved, setWrSaved] = useState(false)
   const [wrError, setWrError] = useState('')
@@ -630,7 +638,7 @@ export default function AdminMessagingPage() {
         setWr(prev => ({
           dayOfWeek: data['weeklyReminder.dayOfWeek'] ?? prev.dayOfWeek,
           subject:   data['weeklyReminder.subject']   ?? prev.subject,
-          body:      data['weeklyReminder.body']      ?? prev.body,
+          body:      data['weeklyReminder.body']      || prev.body,
         }))
       })
 
@@ -1159,7 +1167,7 @@ export default function AdminMessagingPage() {
                         <option value="5">Friday</option>
                         <option value="6">Saturday</option>
                       </select>
-                      <p className="text-[11px] text-[#7A8F79] mt-1">The cron fires daily at 3 pm UTC — emails only go out on this day.</p>
+                      <p className="text-[11px] text-[#7A8F79] mt-1">The cron fires daily at 4 pm EST — emails only go out on this day.</p>
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">
@@ -1175,14 +1183,13 @@ export default function AdminMessagingPage() {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">
-                        Email Body <span className="font-normal text-[#7A8F79]">(leave blank to use default — plain text, no HTML)</span>
+                        Email Body <span className="font-normal text-[#7A8F79]">(plain text — edits are saved and sent as-is)</span>
                       </label>
                       <textarea
                         value={wr.body}
                         onChange={e => { setWr(prev => ({ ...prev, body: e.target.value })); setWrSaved(false) }}
-                        rows={5}
-                        placeholder={'Hi {name},\n\nThis is your weekly reminder to log any hours worked this week in the CHC Provider Portal.\n\nSign in at https://cominghomecare.com/nurse and submit your hours under myDashboard.'}
-                        className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] resize-y font-mono"
+                        rows={10}
+                        className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] resize-y"
                       />
                       <p className="text-[11px] text-[#7A8F79] mt-1">Use <code className="bg-gray-100 px-1 rounded">{'{name}'}</code> to insert the provider&apos;s display name.</p>
                     </div>

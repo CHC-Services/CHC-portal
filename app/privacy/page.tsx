@@ -10,7 +10,7 @@ export default function PrivacyPage() {
             Terms of Service
           </h1>
           <p className="text-[#D9E1E8] mt-3 text-sm">
-            Coming Home Care Services LLC &nbsp;·&nbsp; Last Updated: April 21, 2026
+            Coming Home Care Services LLC &nbsp;·&nbsp; Last Updated: May 18, 2026
           </p>
         </div>
       </div>
@@ -125,14 +125,37 @@ export default function PrivacyPage() {
           </ul>
         </Section>
 
-        <Section number="9" title="Communications">
-          <p>The Company may send operational communications, including:</p>
+        <Section number="9" title="Communications and SMS Messaging">
+          <p>The Company may send operational communications through email and SMS text messaging, including:</p>
           <ul>
-            <li>Account notifications;</li>
-            <li>Workflow updates;</li>
-            <li>Billing reminders.</li>
+            <li>Account notifications and billing alerts;</li>
+            <li>Invoice issuance and payment confirmations;</li>
+            <li>Document expiration reminders;</li>
+            <li>Account status updates.</li>
           </ul>
-          <p>Users may manage notification preferences within their account settings.</p>
+          <Subsection title="9.1  SMS / Text Message Consent">
+            By providing your mobile phone number and checking the SMS opt-in checkbox during account
+            registration or onboarding, you expressly consent to receive recurring automated text messages
+            from Coming Home Care Services, LLC at the number you provide. Consent is not a condition of
+            purchasing any service. Message frequency varies. Message and data rates may apply.
+          </Subsection>
+          <Subsection title="9.2  Opt-Out">
+            You may opt out of SMS messages at any time by replying <strong>STOP</strong> to any message
+            you receive. After opting out, you will receive a single confirmation message and no further
+            SMS messages will be sent unless you re-subscribe by replying <strong>START</strong>.
+          </Subsection>
+          <Subsection title="9.3  Help">
+            Reply <strong>HELP</strong> to any SMS message to receive support contact information. You
+            may also contact us directly at{' '}
+            <a href="mailto:support@cominghomecare.com" className="text-[#7A8F79] underline underline-offset-2 hover:text-[#2F3E4E] transition">
+              support@cominghomecare.com
+            </a>.
+          </Subsection>
+          <Subsection title="9.4  Carriers">
+            Mobile carriers are not liable for delayed or undelivered messages. Supported carriers include
+            all major US carriers. For questions about message delivery, contact your carrier directly.
+          </Subsection>
+          <p>Users may manage email notification preferences within their account settings.</p>
         </Section>
 
         <Section number="10" title="Prohibited Conduct">

@@ -194,6 +194,15 @@ function DateCell({
   )
 }
 
+const BLANK_MANUAL = {
+  nurseId: '',
+  billingPlan: '',
+  billingDurationType: '',
+  serviceStartDate: '',
+  serviceEndDate: '',
+  billingStatus: 'Active',
+}
+
 export default function EnrollmentPage() {
   const [nurses, setNurses] = useState<Nurse[]>([])
   const [loading, setLoading] = useState(true)
@@ -205,6 +214,10 @@ export default function EnrollmentPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [editing, setEditing] = useState<EditingCell | null>(null)
   const [editVal, setEditVal] = useState('')
+  const [showManual, setShowManual] = useState(false)
+  const [manualForm, setManualForm] = useState({ ...BLANK_MANUAL })
+  const [manualSaving, setManualSaving] = useState(false)
+  const [manualError, setManualError] = useState('')
 
   function toggleSort(field: 'status' | 'name' | 'plan' | 'since' | 'range') {
     if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -254,6 +267,47 @@ export default function EnrollmentPage() {
     }
     return filtered
   }, [nurses, tab, search, sortField, sortDir])
+
+  async function submitManualEnrollment() {
+    setManualError('')
+    if (!manualForm.nurseId) { setManualError('Please select a provider.'); return }
+    if (!manualForm.billingPlan) { setManualError('Please select a billing plan.'); return }
+    if (!manualForm.serviceStartDate) { setManualError('Please set a service start date.'); return }
+    setManualSaving(true)
+    const res = await fetch(`/api/admin/enrollment/${manualForm.nurseId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        onboardingComplete: true,
+        enrolledInBilling: true,
+        billingStatus: manualForm.billingStatus,
+        billingPlan: manualForm.billingPlan,
+        billingDurationType: manualForm.billingDurationType || null,
+        serviceStartDate: manualForm.serviceStartDate,
+        serviceEndDate: manualForm.serviceEndDate || null,
+      }),
+    })
+    if (res.ok) {
+      const updated = await res.json()
+      setNurses(prev => prev.map(n => n.id === manualForm.nurseId ? {
+        ...n,
+        onboardingComplete: true,
+        enrolledInBilling: true,
+        billingStatus: updated.billingStatus,
+        billingPlan: updated.billingPlan,
+        billingDurationType: updated.billingDurationType,
+        serviceStartDate: updated.serviceStartDate,
+        serviceEndDate: updated.serviceEndDate,
+      } : n))
+      setShowManual(false)
+      setManualForm({ ...BLANK_MANUAL })
+    } else {
+      const err = await res.json().catch(() => ({}))
+      setManualError(err.error || 'Something went wrong.')
+    }
+    setManualSaving(false)
+  }
 
   async function resetEnrollment(nurseId: string, displayName: string) {
     if (!confirm(`Reset enrollment for ${displayName}? They will be sent through the full onboarding wizard on their next login.`)) return
@@ -359,21 +413,153 @@ export default function EnrollmentPage() {
         <AdminNav />
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
           <div className="page-heading">
             <h1 className="text-2xl font-bold text-[#2F3E4E]">
               <span className="text-[#7A8F79] italic">ad</span>Enrollment
             </h1>
             <p className="text-xs text-[#7A8F79] mt-0.5">Billing service enrollment status for all providers</p>
           </div>
-          <input
-            type="text"
-            placeholder="Search name, email, account..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="border border-[#D9E1E8] bg-white px-3 py-1.5 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] w-56"
-          />
+          <div className="flex items-center gap-2 flex-wrap">
+            <input
+              type="text"
+              placeholder="Search name, email, account..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="border border-[#D9E1E8] bg-white px-3 py-1.5 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] w-56"
+            />
+            <button
+              onClick={() => { setManualForm({ ...BLANK_MANUAL }); setManualError(''); setShowManual(true) }}
+              className="px-4 py-1.5 rounded-lg text-sm font-semibold bg-[#2F3E4E] text-white hover:bg-[#7A8F79] transition whitespace-nowrap"
+            >
+              + Manual Enroll
+            </button>
+          </div>
         </div>
+
+        {/* Manual Enrollment Modal */}
+        {showManual && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-base font-bold text-[#2F3E4E]">Manual Enrollment</h2>
+                <button onClick={() => setShowManual(false)} className="text-[#7A8F79] hover:text-[#2F3E4E] text-xl leading-none transition">✕</button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Provider picker */}
+                <div>
+                  <label className="block text-xs font-semibold text-[#7A8F79] uppercase tracking-widest mb-1">Provider *</label>
+                  <select
+                    value={manualForm.nurseId}
+                    onChange={e => setManualForm(f => ({ ...f, nurseId: e.target.value }))}
+                    className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                  >
+                    <option value="">— Select a provider —</option>
+                    {[...nurses]
+                      .sort((a, b) => (formalName(a) || a.displayName).localeCompare(formalName(b) || b.displayName))
+                      .map(n => (
+                        <option key={n.id} value={n.id}>
+                          {formalName(n) || n.displayName}{n.accountNumber ? ` (${n.accountNumber})` : ''}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                {/* Billing Plan */}
+                <div>
+                  <label className="block text-xs font-semibold text-[#7A8F79] uppercase tracking-widest mb-1">Billing Plan *</label>
+                  <select
+                    value={manualForm.billingPlan}
+                    onChange={e => setManualForm(f => ({ ...f, billingPlan: e.target.value }))}
+                    className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                  >
+                    <option value="">— Select a plan —</option>
+                    {PLAN_OPTIONS.map(o => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Duration Type */}
+                <div>
+                  <label className="block text-xs font-semibold text-[#7A8F79] uppercase tracking-widest mb-1">Duration Type</label>
+                  <select
+                    value={manualForm.billingDurationType}
+                    onChange={e => setManualForm(f => ({ ...f, billingDurationType: e.target.value }))}
+                    className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                  >
+                    <option value="">— Select —</option>
+                    <option value="full_year">Full Year</option>
+                    <option value="policy_specific">Policy Specific</option>
+                  </select>
+                </div>
+
+                {/* Status */}
+                <div>
+                  <label className="block text-xs font-semibold text-[#7A8F79] uppercase tracking-widest mb-1">Initial Status</label>
+                  <div className="flex gap-2">
+                    {(['Active', 'Pending', 'Seasonal'] as const).map(s => (
+                      <button
+                        key={s}
+                        onClick={() => setManualForm(f => ({ ...f, billingStatus: s }))}
+                        className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition ${
+                          manualForm.billingStatus === s
+                            ? 'bg-[#2F3E4E] text-white border-[#2F3E4E]'
+                            : 'bg-white text-[#2F3E4E] border-[#D9E1E8] hover:border-[#7A8F79]'
+                        }`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Service dates */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-[#7A8F79] uppercase tracking-widest mb-1">Service Start *</label>
+                    <input
+                      type="date"
+                      value={manualForm.serviceStartDate}
+                      onChange={e => setManualForm(f => ({ ...f, serviceStartDate: e.target.value }))}
+                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#7A8F79] uppercase tracking-widest mb-1">Service End</label>
+                    <input
+                      type="date"
+                      value={manualForm.serviceEndDate}
+                      onChange={e => setManualForm(f => ({ ...f, serviceEndDate: e.target.value }))}
+                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                    />
+                  </div>
+                </div>
+
+                {manualError && (
+                  <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{manualError}</p>
+                )}
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setShowManual(false)}
+                  className="flex-1 py-2 rounded-lg text-sm font-semibold border border-[#D9E1E8] text-[#7A8F79] hover:border-[#7A8F79] transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitManualEnrollment}
+                  disabled={manualSaving}
+                  className="flex-1 py-2 rounded-lg text-sm font-semibold bg-[#2F3E4E] text-white hover:bg-[#7A8F79] transition disabled:opacity-50"
+                >
+                  {manualSaving ? 'Saving…' : 'Enroll Provider'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="flex flex-wrap gap-1.5 mb-3">

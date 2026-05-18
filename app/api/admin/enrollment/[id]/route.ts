@@ -13,7 +13,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await params
   const body = await req.json()
-  const { billingStatus, serviceStartDate, serviceEndDate, billingPlan } = body
+  const { billingStatus, serviceStartDate, serviceEndDate, billingPlan, billingDurationType, onboardingComplete, enrolledInBilling } = body
 
   if (billingStatus !== undefined) {
     const allowed = ['Active', 'Termed', 'Seasonal', 'Pending', null]
@@ -27,11 +27,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
   }
 
+  const VALID_DURATIONS = ['full_year', 'policy_specific', null, '']
+  if (billingDurationType !== undefined && !VALID_DURATIONS.includes(billingDurationType)) {
+    return NextResponse.json({ error: 'Invalid duration type' }, { status: 400 })
+  }
+
   const data: Record<string, unknown> = {}
   if (billingStatus !== undefined) data.billingStatus = billingStatus
   if (serviceStartDate !== undefined) data.serviceStartDate = serviceStartDate || null
   if (serviceEndDate !== undefined) data.serviceEndDate = serviceEndDate || null
   if (billingPlan !== undefined) data.billingPlan = billingPlan || null
+  if (billingDurationType !== undefined) data.billingDurationType = billingDurationType || null
+  if (onboardingComplete !== undefined) data.onboardingComplete = onboardingComplete
+  if (enrolledInBilling !== undefined) data.enrolledInBilling = enrolledInBilling
 
   const updated = await (prisma.nurseProfile as any).update({
     where: { id },

@@ -8,7 +8,7 @@ export default function PrivacyPolicyPage() {
           <p className="text-xs font-semibold uppercase tracking-widest text-[#7A8F79] mb-2">Legal</p>
           <h1 className="text-3xl md:text-4xl font-bold text-white leading-tight">Privacy Policy</h1>
           <p className="text-[#D9E1E8] mt-3 text-sm">
-            Coming Home Care Services LLC &nbsp;·&nbsp; Last Updated: April 21, 2026
+            Coming Home Care Services LLC &nbsp;·&nbsp; Last Updated: May 18, 2026
           </p>
         </div>
       </div>
@@ -42,6 +42,7 @@ export default function PrivacyPolicyPage() {
           <ul>
             <li>Account details and professional credentials;</li>
             <li>Uploaded documents and Protected Health Information (&ldquo;PHI&rdquo;);</li>
+            <li>Mobile phone number, when voluntarily provided and SMS consent is given;</li>
             <li>Limited technical and usage data to maintain system performance and security.</li>
           </ul>
         </PolicySection>
@@ -64,7 +65,28 @@ export default function PrivacyPolicyPage() {
           </p>
         </PolicySection>
 
-        <PolicySection number="5" title="Data Sharing">
+        <PolicySection number="5" title="SMS Messaging">
+          <p>
+            If you provide your mobile phone number and opt in to SMS communications, we will use that
+            number solely to send account-related text messages, including billing alerts, invoice
+            notifications, and document expiration reminders.
+          </p>
+          <ul>
+            <li>Your phone number is never sold or shared with third parties for marketing purposes;</li>
+            <li>SMS opt-in data is not shared with any third party;</li>
+            <li>Message frequency varies based on account activity;</li>
+            <li>Message and data rates may apply;</li>
+            <li>Reply <strong>STOP</strong> at any time to opt out. Reply <strong>HELP</strong> for support information.</li>
+          </ul>
+          <p>
+            For full SMS terms, see Section 9 of our{' '}
+            <a href="/privacy" className="text-[#7A8F79] underline underline-offset-2 hover:text-[#2F3E4E] transition">
+              Terms of Service
+            </a>.
+          </p>
+        </PolicySection>
+
+        <PolicySection number="6" title="Data Sharing">
           <p>We do not sell user data. Information is disclosed only:</p>
           <ul>
             <li>With user authorization;</li>
@@ -73,7 +95,7 @@ export default function PrivacyPolicyPage() {
           </ul>
         </PolicySection>
 
-        <PolicySection number="6" title="Data Security">
+        <PolicySection number="7" title="Data Security">
           <p>
             We implement commercially reasonable administrative, technical, and physical safeguards
             to protect your information. However, no method of transmission over the internet or
@@ -81,14 +103,14 @@ export default function PrivacyPolicyPage() {
           </p>
         </PolicySection>
 
-        <PolicySection number="7" title="User Rights">
+        <PolicySection number="8" title="User Rights">
           <p>
             Users may access, download, or request deletion of their data at any time, subject to
             applicable legal obligations and retention requirements.
           </p>
         </PolicySection>
 
-        <PolicySection number="8" title="Data Retention">
+        <PolicySection number="9" title="Data Retention">
           <p>
             Data is retained only as long as necessary for business and legal purposes. When
             data is no longer needed, it is securely deleted or anonymized in accordance with
@@ -96,7 +118,7 @@ export default function PrivacyPolicyPage() {
           </p>
         </PolicySection>
 
-        <PolicySection number="9" title="Policy Updates">
+        <PolicySection number="10" title="Policy Updates">
           <p>
             We may update this Privacy Policy periodically. Continued use of the Platform
             following any update constitutes your acceptance of the revised Policy. The &ldquo;Last

@@ -362,9 +362,14 @@ export default function NurseDashboard() {
         {/* Page header */}
         <div className="flex items-stretch gap-6 mb-5">
           <div className="shrink-0 page-heading">
-            <h1 className="text-3xl font-bold text-[#2F3E4E]">
-              <span className="text-[#7A8F79] italic">my</span>Dashboard
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold text-[#2F3E4E]">
+                <span className="text-[#7A8F79] italic">my</span>Dashboard
+              </h1>
+              <Link href="/nurse/ideas" title="Submit an idea" className="text-[#7A8F79] hover:text-[#2F3E4E] transition text-xl leading-none">
+                💡
+              </Link>
+            </div>
             <p className="text-sm text-[#7A8F79] mt-1">
               {now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </p>

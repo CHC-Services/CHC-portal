@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import AdminNav from '../../components/AdminNav'
 import { formalName } from '../../../lib/formatName'
@@ -28,6 +28,241 @@ type TimeEntry = {
 
 function fmtDate(date: string) {
   return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+}
+
+type NurseOption = {
+  id: string
+  displayName: string
+  firstName?: string
+  lastName?: string
+  accountNumber?: string
+}
+
+type PatientOption = {
+  id: string
+  firstName: string
+  lastName: string
+  accountNumber?: string
+}
+
+function QuickEntryForm({ onAdded }: { onAdded: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [nurses, setNurses] = useState<NurseOption[]>([])
+  const [nurseId, setNurseId] = useState('')
+  const [patients, setPatients] = useState<PatientOption[]>([])
+  const [patientId, setPatientId] = useState('')
+  const [dateParts, setDateParts] = useState({ mm: '', dd: '', yyyy: '' })
+  const [hours, setHours] = useState('')
+  const [notes, setNotes] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+  const mmRef = useRef<HTMLInputElement>(null)
+  const ddRef = useRef<HTMLInputElement>(null)
+  const yyyyRef = useRef<HTMLInputElement>(null)
+  const hoursRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    fetch('/api/admin/nurses', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setNurses(data.filter((n: any) => !n.isDemo))
+        }
+      })
+  }, [])
+
+  useEffect(() => {
+    setPatients([])
+    setPatientId('')
+    if (!nurseId) return
+    fetch(`/api/admin/patients?nurseId=${nurseId}`, { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data)) setPatients(data)
+      })
+  }, [nurseId])
+
+  function handleDatePart(field: 'mm' | 'dd' | 'yyyy', val: string) {
+    const digits = val.replace(/\D/g, '')
+    setDateParts(prev => ({ ...prev, [field]: digits }))
+    if (field === 'mm' && digits.length === 2) ddRef.current?.focus()
+    if (field === 'dd' && digits.length === 2) yyyyRef.current?.focus()
+    if (field === 'yyyy' && digits.length === 4) hoursRef.current?.focus()
+  }
+
+  function reset() {
+    setNurseId(''); setPatients([]); setPatientId('')
+    setDateParts({ mm: '', dd: '', yyyy: '' }); setHours(''); setNotes('')
+    setError(''); setSuccess('')
+  }
+
+  async function submit() {
+    setError(''); setSuccess('')
+    if (!nurseId) { setError('Select a nurse.'); return }
+    const { mm, dd, yyyy } = dateParts
+    if (!mm || !dd || !yyyy || yyyy.length < 4) { setError('Enter a complete date.'); return }
+    const workDate = `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`
+    const h = parseInt(hours, 10)
+    if (!h || h < 1 || h > 99) { setError('Hours must be 1–99.'); return }
+
+    setSaving(true)
+    const res = await fetch('/api/admin/time-entry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ nurseId, workDate, hours: h, notes: notes || null, patientId: patientId || null }),
+    })
+    const data = await res.json()
+    setSaving(false)
+    if (!res.ok) { setError(data.error || 'Failed to save.'); return }
+    setSuccess('Entry added!')
+    setTimeout(() => setSuccess(''), 2500)
+    reset()
+    onAdded()
+    mmRef.current?.focus()
+  }
+
+  const nurseLabel = (n: NurseOption) => formalName(n) || n.displayName
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-[#F4F6F5] transition"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-lg leading-none">⚡</span>
+          <span className="text-sm font-bold text-[#2F3E4E] uppercase tracking-wide">Quick Hour Entry</span>
+          {success && <span className="text-xs text-green-600 font-semibold bg-green-50 px-2 py-0.5 rounded-full">{success}</span>}
+        </div>
+        <span className="text-[#7A8F79] text-xs font-semibold">{open ? '▲ collapse' : '▼ expand'}</span>
+      </button>
+
+      {open && (
+        <div className="border-t border-[#D9E1E8] px-5 py-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+
+            {/* Nurse */}
+            <div className="lg:col-span-1 space-y-1">
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#7A8F79]">Nurse *</label>
+              <select
+                value={nurseId}
+                onChange={e => setNurseId(e.target.value)}
+                className="w-full border border-[#D9E1E8] rounded-lg px-2 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+              >
+                <option value="">— Select —</option>
+                {[...nurses].sort((a, b) => nurseLabel(a).localeCompare(nurseLabel(b))).map(n => (
+                  <option key={n.id} value={n.id}>
+                    {nurseLabel(n)}{n.accountNumber ? ` (${n.accountNumber})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Patient */}
+            <div className="lg:col-span-1 space-y-1">
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#7A8F79]">Patient</label>
+              <select
+                value={patientId}
+                onChange={e => setPatientId(e.target.value)}
+                disabled={!nurseId || patients.length === 0}
+                className="w-full border border-[#D9E1E8] rounded-lg px-2 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] disabled:opacity-40"
+              >
+                <option value="">— None —</option>
+                {patients.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.firstName} {p.lastName}{p.accountNumber ? ` · ${p.accountNumber}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Date — segmented MM / DD / YYYY */}
+            <div className="lg:col-span-1 space-y-1">
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#7A8F79]">Date Worked *</label>
+              <div className="flex items-center border border-[#D9E1E8] rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-[#7A8F79] bg-white">
+                <input
+                  ref={mmRef}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={2}
+                  placeholder="MM"
+                  value={dateParts.mm}
+                  onChange={e => handleDatePart('mm', e.target.value)}
+                  className="w-10 text-center text-sm text-[#2F3E4E] py-2 focus:outline-none bg-transparent"
+                />
+                <span className="text-[#D9E1E8] font-bold select-none">/</span>
+                <input
+                  ref={ddRef}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={2}
+                  placeholder="DD"
+                  value={dateParts.dd}
+                  onChange={e => handleDatePart('dd', e.target.value)}
+                  className="w-10 text-center text-sm text-[#2F3E4E] py-2 focus:outline-none bg-transparent"
+                />
+                <span className="text-[#D9E1E8] font-bold select-none">/</span>
+                <input
+                  ref={yyyyRef}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={4}
+                  placeholder="YYYY"
+                  value={dateParts.yyyy}
+                  onChange={e => handleDatePart('yyyy', e.target.value)}
+                  className="w-16 text-center text-sm text-[#2F3E4E] py-2 focus:outline-none bg-transparent"
+                />
+              </div>
+            </div>
+
+            {/* Hours */}
+            <div className="lg:col-span-1 space-y-1">
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#7A8F79]">Hours *</label>
+              <input
+                ref={hoursRef}
+                type="text"
+                inputMode="numeric"
+                maxLength={2}
+                placeholder="e.g. 8"
+                value={hours}
+                onChange={e => setHours(e.target.value.replace(/\D/g, '').slice(0, 2))}
+                className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] text-center font-bold focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+              />
+            </div>
+
+            {/* Notes + Submit */}
+            <div className="lg:col-span-1 space-y-1">
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#7A8F79]">Notes</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Optional"
+                  value={notes}
+                  onChange={e => setNotes(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') submit() }}
+                  className="flex-1 border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                />
+                <button
+                  onClick={submit}
+                  disabled={saving}
+                  className="px-4 py-2 bg-[#2F3E4E] text-white rounded-lg text-sm font-bold hover:bg-[#7A8F79] transition disabled:opacity-50 whitespace-nowrap"
+                >
+                  {saving ? '…' : '+ Add'}
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+          {error && (
+            <p className="mt-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">{error}</p>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function HoursTab() {
@@ -142,6 +377,8 @@ function HoursTab() {
 
   return (
     <div className="space-y-6">
+      <QuickEntryForm onAdded={load} />
+
       {/* Stats strip */}
       <div className="grid grid-cols-5 gap-3">
         <div className="bg-white rounded-xl shadow-sm px-4 py-4 flex flex-col gap-1 border-t-4 border-[#7A8F79]">

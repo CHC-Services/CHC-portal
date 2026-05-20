@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcrypt'
 import { prisma } from '../../../../lib/prisma'
-import { signToken } from '../../../../lib/auth'
+import { signToken, signPendingToken } from '../../../../lib/auth'
 
 export async function POST(req: Request) {
   const { email, password } = await req.json()
@@ -19,6 +19,20 @@ export async function POST(req: Request) {
 
   if (!valid) {
     return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+  }
+
+  // If 2FA is enabled, issue a short-lived pending token instead of a full session
+  if ((user as any).mfaEnabled && (user as any).mfaSecret) {
+    const pendingToken = signPendingToken(user.id)
+    const res = NextResponse.json({ requires2FA: true })
+    res.cookies.set('pending_2fa', pendingToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 300, // 5 minutes to enter the code
+    })
+    return res
   }
 
   await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } })

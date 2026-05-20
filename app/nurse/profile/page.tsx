@@ -12,6 +12,15 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<any>({})
   const [message, setMessage] = useState('')
 
+  // 2FA state
+  const [mfaEnabled, setMfaEnabled] = useState(false)
+  const [mfaStep, setMfaStep] = useState<'idle' | 'setup' | 'disabling'>('idle')
+  const [mfaQr, setMfaQr] = useState('')
+  const [mfaSecret, setMfaSecret] = useState('')
+  const [mfaCode, setMfaCode] = useState('')
+  const [mfaMessage, setMfaMessage] = useState('')
+  const [mfaLoading, setMfaLoading] = useState(false)
+
   // password fields
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -31,7 +40,11 @@ export default function ProfilePage() {
         return r.json()
       })
       .then((data) => {
-        if (data) { setUser(data.user); setProfile(data.profile || {}) }
+        if (data) {
+          setUser(data.user)
+          setProfile(data.profile || {})
+          setMfaEnabled(data.user?.mfaEnabled ?? false)
+        }
       })
       .finally(() => setLoading(false))
   }, [router])
@@ -90,6 +103,64 @@ export default function ProfilePage() {
     } else {
       setEmailMessage(data.error || 'Could not update email.')
     }
+  }
+
+  async function startMfaSetup() {
+    setMfaMessage('')
+    setMfaLoading(true)
+    const res = await fetch('/api/auth/2fa/setup', { method: 'POST', credentials: 'include' })
+    const data = await res.json()
+    setMfaQr(data.qrCodeUrl)
+    setMfaSecret(data.secret)
+    setMfaStep('setup')
+    setMfaCode('')
+    setMfaLoading(false)
+  }
+
+  async function enableMfa() {
+    if (mfaCode.length !== 6) { setMfaMessage('Enter the 6-digit code from your app.'); return }
+    setMfaLoading(true)
+    setMfaMessage('')
+    const res = await fetch('/api/auth/2fa/enable', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ secret: mfaSecret, code: mfaCode }),
+    })
+    const data = await res.json()
+    if (res.ok) {
+      setMfaEnabled(true)
+      setMfaStep('idle')
+      setMfaQr('')
+      setMfaSecret('')
+      setMfaCode('')
+      setMfaMessage('✓ Two-factor authentication is now enabled.')
+    } else {
+      setMfaMessage(data.error || 'Invalid code — try again.')
+    }
+    setMfaLoading(false)
+  }
+
+  async function disableMfa() {
+    if (mfaCode.length !== 6) { setMfaMessage('Enter your current 6-digit code to confirm.'); return }
+    setMfaLoading(true)
+    setMfaMessage('')
+    const res = await fetch('/api/auth/2fa/disable', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ code: mfaCode }),
+    })
+    const data = await res.json()
+    if (res.ok) {
+      setMfaEnabled(false)
+      setMfaStep('idle')
+      setMfaCode('')
+      setMfaMessage('Two-factor authentication has been disabled.')
+    } else {
+      setMfaMessage(data.error || 'Invalid code — try again.')
+    }
+    setMfaLoading(false)
   }
 
   if (loading) return <div className="p-8">Loading…</div>
@@ -189,6 +260,130 @@ export default function ProfilePage() {
             </button>
             {message && <p className="text-sm text-center text-[#2F3E4E]">{message}</p>}
           </form>
+
+          {/* 2FA */}
+          <div className="bg-white rounded-xl shadow p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-xl font-semibold text-[#2F3E4E]">
+                  Two-Factor Authentication
+                </h2>
+                <p className="text-xs text-[#7A8F79] mt-0.5">Require a code from your authenticator app at login.</p>
+              </div>
+              <span className={`text-xs font-bold px-3 py-1 rounded-full ${mfaEnabled ? 'bg-green-100 text-green-700' : 'bg-[#F4F6F5] text-[#7A8F79]'}`}>
+                {mfaEnabled ? '✓ Enabled' : 'Off'}
+              </span>
+            </div>
+
+            {mfaMessage && (
+              <p className={`text-xs font-medium px-3 py-2 rounded-lg mb-4 ${mfaMessage.startsWith('✓') ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>
+                {mfaMessage}
+              </p>
+            )}
+
+            {/* Idle — not yet set up */}
+            {mfaStep === 'idle' && !mfaEnabled && (
+              <button
+                onClick={startMfaSetup}
+                disabled={mfaLoading}
+                className="w-full bg-[#2F3E4E] text-white py-2 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-50"
+              >
+                {mfaLoading ? 'Loading…' : 'Set Up 2FA'}
+              </button>
+            )}
+
+            {/* Setup flow — show QR + verify first code */}
+            {mfaStep === 'setup' && (
+              <div className="space-y-4">
+                <p className="text-sm text-[#2F3E4E]">
+                  Scan this QR code with <strong>Apple Passwords</strong>, <strong>Google Authenticator</strong>, or any TOTP app, then enter the 6-digit code to confirm.
+                </p>
+                {mfaQr && (
+                  <div className="flex justify-center">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={mfaQr} alt="2FA QR Code" className="w-48 h-48 rounded-xl border border-[#D9E1E8]" />
+                  </div>
+                )}
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Can&apos;t scan? Enter this code manually:</p>
+                  <p className="font-mono text-xs bg-[#F4F6F5] rounded-lg px-3 py-2 text-[#2F3E4E] tracking-widest break-all">{mfaSecret}</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">6-Digit Verification Code</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="000000"
+                    value={mfaCode}
+                    onChange={e => setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] text-center text-xl font-bold tracking-widest focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setMfaStep('idle'); setMfaQr(''); setMfaSecret(''); setMfaCode(''); setMfaMessage('') }}
+                    className="flex-1 border border-[#D9E1E8] text-[#7A8F79] py-2 rounded-lg text-sm font-semibold hover:border-[#7A8F79] transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={enableMfa}
+                    disabled={mfaLoading || mfaCode.length !== 6}
+                    className="flex-1 bg-[#2F3E4E] text-white py-2 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-50"
+                  >
+                    {mfaLoading ? 'Verifying…' : 'Enable 2FA'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Enabled — show disable option */}
+            {mfaStep === 'idle' && mfaEnabled && (
+              <div className="space-y-3">
+                <p className="text-xs text-[#7A8F79]">Your account is protected. To disable, enter your current authenticator code below.</p>
+                {mfaStep === 'idle' && (
+                  <button
+                    onClick={() => { setMfaStep('disabling'); setMfaCode(''); setMfaMessage('') }}
+                    className="w-full border border-red-300 text-red-500 py-2 rounded-lg text-sm font-semibold hover:bg-red-50 transition"
+                  >
+                    Disable 2FA
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Disabling flow */}
+            {mfaStep === 'disabling' && (
+              <div className="space-y-3">
+                <p className="text-sm text-[#2F3E4E]">Enter your current 6-digit authenticator code to confirm.</p>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="000000"
+                  value={mfaCode}
+                  onChange={e => setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] text-center text-xl font-bold tracking-widest focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setMfaStep('idle'); setMfaCode(''); setMfaMessage('') }}
+                    className="flex-1 border border-[#D9E1E8] text-[#7A8F79] py-2 rounded-lg text-sm font-semibold hover:border-[#7A8F79] transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={disableMfa}
+                    disabled={mfaLoading || mfaCode.length !== 6}
+                    className="flex-1 bg-red-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-red-700 transition disabled:opacity-50"
+                  >
+                    {mfaLoading ? 'Disabling…' : 'Confirm Disable'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* myLogin — email + password, 2-col */}
           <div className="bg-white rounded-xl shadow p-6">

@@ -36,3 +36,17 @@ export function verifyToken(token: string) {
     return null;
   }
 }
+
+export function signPendingToken(userId: string) {
+  return jwt.sign({ id: userId, type: 'pending_2fa' }, JWT_SECRET, { expiresIn: '5m' })
+}
+
+export function verifyPendingToken(token: string): { id: string } | null {
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as any
+    if (payload.type !== 'pending_2fa') return null
+    return { id: payload.id }
+  } catch {
+    return null
+  }
+}

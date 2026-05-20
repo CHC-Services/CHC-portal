@@ -41,7 +41,8 @@ export async function GET(req: Request) {
     medicaidNumber: safeDecrypt(p.medicaidNumber),
   } : null
 
-  return NextResponse.json({ user, profile, onboardingComplete: (profileRaw as any)?.onboardingComplete ?? false })
+  const { password, mfaSecret, passwordResetToken, ...safeUser } = user as any
+  return NextResponse.json({ user: safeUser, profile, onboardingComplete: (profileRaw as any)?.onboardingComplete ?? false })
 }
 
 export async function PATCH(req: Request) {

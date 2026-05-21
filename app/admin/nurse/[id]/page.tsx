@@ -136,10 +136,16 @@ const ROLE_OPTIONS = [
 ]
 
 const FEE_PLANS = [
-  { value: 'A1', label: 'A1 — Medicaid Single Payer', amount: 2.00 },
-  { value: 'A2', label: 'A2 — Commercial Single Payer', amount: 3.00 },
-  { value: 'B',  label: 'B — Dual Payer', amount: 4.00 },
-  { value: 'C',  label: 'C — 3+ Payer', amount: 6.00 },
+  { value: 'ST-MED',  label: 'Short-Term Medicaid',        amount: 3.00,  perClaim: false },
+  { value: 'ST-COM',  label: 'Short-Term Commercial',       amount: 4.00,  perClaim: false },
+  { value: 'ST-DUAL', label: 'Short-Term Dual',             amount: 5.00,  perClaim: false },
+  { value: 'LT-MED',  label: 'Long-Term Medicaid',          amount: 2.00,  perClaim: false },
+  { value: 'LT-COM',  label: 'Long-Term Commercial',        amount: 3.00,  perClaim: false },
+  { value: 'LT-DUAL', label: 'Long-Term Dual',              amount: 4.00,  perClaim: false },
+  { value: 'VR-MED',  label: 'Void & Resubmit — Medicaid', amount: 4.00,  perClaim: true  },
+  { value: 'VR-COM',  label: 'Void & Resubmit — Comm.',    amount: 5.00,  perClaim: true  },
+  { value: 'CORR',    label: 'Correction — Provider Error', amount: 3.00,  perClaim: true  },
+  { value: 'SAMEDAY', label: 'Same-Day Service Fee',        amount: 10.00, perClaim: true  },
 ]
 
 type TimeEntry = {
@@ -403,6 +409,10 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
 
   // Nurse's linked patients (for the Log Hours dropdown)
   const [nursePatients, setNursePatients] = useState<{ id: string; accountNumber: string; firstName: string; lastName: string }[]>([])
+  const [linkPatientOpen, setLinkPatientOpen] = useState(false)
+  const [linkPatientSearch, setLinkPatientSearch] = useState('')
+  const [allPatients, setAllPatients] = useState<{ id: string; accountNumber: string; firstName: string; lastName: string }[]>([])
+  const [linkingPatientId, setLinkingPatientId] = useState<string | null>(null)
 
   async function fetchDocuments() {
     const res = await fetch(`/api/admin/documents?nurseId=${id}`, { credentials: 'include' })
@@ -438,6 +448,39 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
         lastName: p.lastName,
       })))
     }
+  }
+
+  async function saveEntryPatient(entryId: string, patientId: string) {
+    const res = await fetch(`/api/admin/time-entry/${entryId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ patientId: patientId || null }),
+    })
+    if (res.ok) {
+      const patient = patientId ? (nursePatients.find(p => p.id === patientId) ?? null) : null
+      setEntries(prev => prev.map(e => e.id === entryId ? { ...e, patient } : e))
+    }
+  }
+
+  async function loadAllPatients() {
+    const r = await fetch('/api/admin/patients', { credentials: 'include' })
+    const d = await r.json()
+    if (Array.isArray(d.patients)) {
+      setAllPatients(d.patients.map((p: any) => ({ id: p.id, accountNumber: p.accountNumber, firstName: p.firstName, lastName: p.lastName })))
+    }
+  }
+
+  async function linkPatient(patientId: string) {
+    setLinkingPatientId(patientId)
+    await fetch(`/api/admin/patients/${patientId}/assign`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ nurseId: id }),
+    })
+    await fetchNursePatients()
+    setLinkingPatientId(null)
   }
 
   async function handleAddCategory(e: React.FormEvent) {
@@ -662,7 +705,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   }
 
   async function toggleInvoiceFlag(entry: TimeEntry, checked: boolean, feePlan?: string) {
-    const plan = feePlan ?? entry.invoiceFeePlan ?? 'A1'
+    const plan = feePlan ?? entry.invoiceFeePlan ?? 'LT-MED'
     const res = await fetch(`/api/admin/time-entry/${entry.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -936,7 +979,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ readyToInvoice: true, invoiceFeePlan: entry?.invoiceFeePlan || 'A1' }),
+        body: JSON.stringify({ readyToInvoice: true, invoiceFeePlan: entry?.invoiceFeePlan || 'LT-MED' }),
       })
     }))
     setBulkFlagging(false)
@@ -1607,9 +1650,9 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                   />
                 </div>
               </div>
-              {nursePatients.length > 0 && (
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Patient</label>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Patient <span className="text-red-400">*</span></label>
+                {nursePatients.length > 0 ? (
                   <select
                     value={workPatientId}
                     onChange={e => setWorkPatientId(e.target.value)}
@@ -1623,8 +1666,16 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                       </option>
                     ))}
                   </select>
-                </div>
-              )}
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => { loadAllPatients(); setLinkPatientOpen(true); setLinkPatientSearch('') }}
+                    className="w-full text-left border border-dashed border-[#D9E1E8] rounded-lg px-3 py-2 text-xs text-[#7A8F79] hover:border-[#7A8F79] hover:text-[#2F3E4E] transition"
+                  >
+                    No patients linked — click to link a patient →
+                  </button>
+                )}
+              </div>
               <div className="space-y-1">
                 <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Notes <span className="normal-case font-normal">(optional)</span></label>
                 <input
@@ -1638,7 +1689,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
               <div className="flex items-center gap-3">
                 <button
                   type="submit"
-                  disabled={workSubmitting || !workDate || !workHours || (nursePatients.length > 0 && !workPatientId)}
+                  disabled={workSubmitting || !workDate || !workHours || !workPatientId}
                   className="bg-[#7A8F79] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#2F3E4E] transition disabled:opacity-50"
                 >
                   {workSubmitting ? 'Adding…' : 'Add Entry'}
@@ -1654,14 +1705,22 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
               <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79]">
                 Time Log &amp; Invoice Assignment
               </h2>
-              {pendingEntries.length > 0 && selectedCount === 0 && (
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setShowInvoiceModal(true)}
-                  className="bg-[#7A8F79] text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-[#2F3E4E] transition"
+                  onClick={() => { loadAllPatients(); setLinkPatientOpen(true); setLinkPatientSearch('') }}
+                  className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] border border-[#D9E1E8] bg-white px-2.5 py-1 rounded-lg transition"
                 >
-                  Create Invoice ({pendingEntries.length} flagged · ${pendingTotal.toFixed(2)})
+                  + Link Patient
                 </button>
-              )}
+                {pendingEntries.length > 0 && selectedCount === 0 && (
+                  <button
+                    onClick={() => setShowInvoiceModal(true)}
+                    className="bg-[#7A8F79] text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-[#2F3E4E] transition"
+                  >
+                    Create Invoice ({pendingEntries.length} flagged · ${pendingTotal.toFixed(2)})
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Bulk action bar */}
@@ -1755,8 +1814,26 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                             <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(entry.id)} className="w-4 h-4 accent-[#7A8F79]" />
                           </td>
                           <td className="py-2.5 pr-4 text-xs text-[#2F3E4E] whitespace-nowrap">{dateStr}</td>
-                          <td className="py-2.5 pr-4 text-xs text-[#7A8F79] whitespace-nowrap">
-                            {entry.patient ? `${entry.patient.lastName}, ${entry.patient.firstName[0]}.` : <span className="italic">—</span>}
+                          <td className="py-2.5 pr-4 text-xs whitespace-nowrap">
+                            {nursePatients.length > 0 ? (
+                              <select
+                                value={entry.patient?.id ?? ''}
+                                onChange={e => saveEntryPatient(entry.id, e.target.value)}
+                                className="border border-[#D9E1E8] rounded px-1.5 py-1 text-xs text-[#2F3E4E] focus:outline-none focus:ring-1 focus:ring-[#7A8F79] max-w-[130px]"
+                              >
+                                <option value="">— None —</option>
+                                {nursePatients.map(p => (
+                                  <option key={p.id} value={p.id}>{p.lastName}, {p.firstName[0]}.</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <button
+                                onClick={() => { loadAllPatients(); setLinkPatientOpen(true); setLinkPatientSearch('') }}
+                                className="text-xs text-[#7A8F79] underline hover:text-[#2F3E4E]"
+                              >
+                                link patient
+                              </button>
+                            )}
                           </td>
                           <td className="py-2.5 pr-4">
                             <input
@@ -1804,12 +1881,12 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                             {entry.readyToInvoice ? (
                               <div className="flex items-center gap-1.5">
                                 <select
-                                  value={entry.invoiceFeePlan ?? 'A1'}
+                                  value={entry.invoiceFeePlan ?? 'LT-MED'}
                                   onChange={e => toggleInvoiceFlag(entry, true, e.target.value)}
                                   className="border border-[#D9E1E8] rounded px-1.5 py-1 text-xs text-[#2F3E4E] focus:outline-none focus:ring-1 focus:ring-[#7A8F79]"
                                 >
                                   {FEE_PLANS.map(p => (
-                                    <option key={p.value} value={p.value}>{p.value} — ${p.amount.toFixed(2)}</option>
+                                    <option key={p.value} value={p.value}>{p.value} — ${p.amount.toFixed(2)}{p.perClaim ? ' × claims' : '/DOS'}</option>
                                   ))}
                                 </select>
                                 <span className="text-xs font-bold text-[#2F3E4E]">${(entry.invoiceFeeAmt ?? 0).toFixed(2)}</span>
@@ -2409,10 +2486,74 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       )}{/* end proDocs tab */}
 
+      {/* ── Link Patient Modal ── */}
+      {linkPatientOpen && (() => {
+        const query = linkPatientSearch.toLowerCase()
+        const filtered = allPatients.filter(p =>
+          !nursePatients.some(np => np.id === p.id) &&
+          (`${p.firstName} ${p.lastName} ${p.accountNumber}`).toLowerCase().includes(query)
+        )
+        return (
+          <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[80vh] flex flex-col">
+              <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-[#D9E1E8]">
+                <div>
+                  <h3 className="text-base font-bold text-[#2F3E4E]">Link a Patient</h3>
+                  <p className="text-xs text-[#7A8F79] mt-0.5">Search all patients and link to this provider</p>
+                </div>
+                <button onClick={() => setLinkPatientOpen(false)} className="text-[#7A8F79] hover:text-[#2F3E4E] text-xl leading-none">×</button>
+              </div>
+              <div className="px-6 py-3 border-b border-[#D9E1E8]">
+                <input
+                  autoFocus
+                  type="text"
+                  value={linkPatientSearch}
+                  onChange={e => setLinkPatientSearch(e.target.value)}
+                  placeholder="Search by name or account #…"
+                  className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                />
+              </div>
+              <div className="flex-1 overflow-y-auto divide-y divide-[#D9E1E8]">
+                {allPatients.length === 0 ? (
+                  <p className="text-sm text-[#7A8F79] italic text-center py-8">Loading…</p>
+                ) : filtered.length === 0 ? (
+                  <p className="text-sm text-[#7A8F79] italic text-center py-8">{linkPatientSearch ? 'No matches.' : 'All patients already linked.'}</p>
+                ) : (
+                  filtered.map(p => (
+                    <div key={p.id} className="flex items-center justify-between px-6 py-3">
+                      <div>
+                        <p className="text-sm font-semibold text-[#2F3E4E]">{p.lastName}, {p.firstName}</p>
+                        <p className="text-xs text-[#7A8F79]">{p.accountNumber}</p>
+                      </div>
+                      <button
+                        onClick={async () => { await linkPatient(p.id); if (nursePatients.length + 1 >= allPatients.filter(ap => !nursePatients.some(np => np.id === ap.id)).length) setLinkPatientOpen(false) }}
+                        disabled={linkingPatientId === p.id}
+                        className="bg-[#7A8F79] text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-[#2F3E4E] transition disabled:opacity-50"
+                      >
+                        {linkingPatientId === p.id ? 'Linking…' : 'Link'}
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="px-6 py-4 border-t border-[#D9E1E8] text-right">
+                <button onClick={() => setLinkPatientOpen(false)} className="text-sm text-[#7A8F79] hover:text-[#2F3E4E]">Done</button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
       {/* ── Invoice Preview Modal ── */}
       {previewInvoice && (() => {
         const fmtI = (d: string | Date) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
-        const FEE_LABELS: Record<string,string> = { A1: 'Medicaid — Single Payer', A2: 'Commercial — Single Payer', B: 'Dual Payer', C: '3+ Payer' }
+        const FEE_LABELS: Record<string,string> = {
+          'ST-MED': 'Short-Term Medicaid', 'ST-COM': 'Short-Term Commercial', 'ST-DUAL': 'Short-Term Dual',
+          'LT-MED': 'Long-Term Medicaid',  'LT-COM': 'Long-Term Commercial',  'LT-DUAL': 'Long-Term Dual',
+          'VR-MED': 'Void & Resubmit — Medicaid', 'VR-COM': 'Void & Resubmit — Commercial',
+          'CORR': 'Correction — Provider Error', 'SAMEDAY': 'Same-Day Service Fee',
+          A1: 'Medicaid — Single Payer', A2: 'Commercial — Single Payer', B: 'Dual Payer', C: '3+ Payer',
+        }
         const det = previewDetail
         return (
           <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
@@ -2555,7 +2696,13 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
       {showInvoiceModal && (() => {
         const dueDate = invoiceDueTerm === 'ASAP' ? null : new Date(Date.now() + Number(invoiceDueTerm) * 86400000)
         const fmtI = (d: string | Date) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
-        const FEE_LABELS: Record<string,string> = { A1: 'Medicaid — Single Payer', A2: 'Commercial — Single Payer', B: 'Dual Payer', C: '3+ Payer' }
+        const FEE_LABELS: Record<string,string> = {
+          'ST-MED': 'Short-Term Medicaid', 'ST-COM': 'Short-Term Commercial', 'ST-DUAL': 'Short-Term Dual',
+          'LT-MED': 'Long-Term Medicaid',  'LT-COM': 'Long-Term Commercial',  'LT-DUAL': 'Long-Term Dual',
+          'VR-MED': 'Void & Resubmit — Medicaid', 'VR-COM': 'Void & Resubmit — Commercial',
+          'CORR': 'Correction — Provider Error', 'SAMEDAY': 'Same-Day Service Fee',
+          A1: 'Medicaid — Single Payer', A2: 'Commercial — Single Payer', B: 'Dual Payer', C: '3+ Payer',
+        }
         return (
           <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -2587,13 +2734,13 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                             {new Date(e.workDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
                           </span>
                           <select
-                            value={e.invoiceFeePlan ?? 'A1'}
+                            value={e.invoiceFeePlan ?? 'LT-MED'}
                             onChange={ev => toggleInvoiceFlag(e, true, ev.target.value)}
                             className="flex-1 border border-[#D9E1E8] rounded px-2 py-1 text-xs text-[#2F3E4E] focus:outline-none focus:ring-1 focus:ring-[#7A8F79] bg-white"
                           >
                             {FEE_PLANS.map(p => (
                               <option key={p.value} value={p.value}>
-                                {p.value} — {p.label.replace(/^[A-Z\d]+ — /, '')} · ${p.amount.toFixed(2)}
+                                {p.value} — {p.label} · ${p.amount.toFixed(2)}{p.perClaim ? ' × claims' : '/DOS'}
                               </option>
                             ))}
                           </select>

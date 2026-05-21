@@ -9,6 +9,10 @@ function buildInvoiceHtml(invoice: any): string {
   const fmtDate = (d: string | Date) =>
     new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
   const FEE_LABELS: Record<string, string> = {
+    'ST-MED': 'Short-Term Medicaid', 'ST-COM': 'Short-Term Commercial', 'ST-DUAL': 'Short-Term Dual',
+    'LT-MED': 'Long-Term Medicaid',  'LT-COM': 'Long-Term Commercial',  'LT-DUAL': 'Long-Term Dual',
+    'VR-MED': 'Void & Resubmit — Medicaid', 'VR-COM': 'Void & Resubmit — Commercial',
+    'CORR': 'Correction — Provider Error', 'SAMEDAY': 'Same-Day Service Fee',
     A1: 'Medicaid — Single Payer', A2: 'Commercial — Single Payer', B: 'Dual Payer', C: '3+ Payer',
   }
   const nurse = invoice.nurse

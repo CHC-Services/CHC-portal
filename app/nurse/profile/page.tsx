@@ -530,7 +530,7 @@ function NotifPrefsBlock({ profile, setProfile }: { profile: any; setProfile: (p
         <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-3">Reminders</p>
         <div className="space-y-3">
           {[
-            { field: 'receiveNotifications',  label: 'Weekly Hour Submission',     desc: 'Friday reminder to submit your hours for the week' },
+            { field: 'receiveNotifications',  label: 'Weekly Hour Submission',     desc: 'Weekly reminder to submit your hours' },
             { field: 'notifyBillingReminder', label: 'Billing Reminder',           desc: 'Reminders related to invoices and billing activity' },
             { field: 'notifyDocExpiring',     label: 'Document / License Expiring', desc: 'Alerts before a document or license on file reaches its expiration date' },
           ].map(({ field, label, desc }) => (
@@ -547,8 +547,8 @@ function NotifPrefsBlock({ profile, setProfile }: { profile: any; setProfile: (p
         <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-3">Alerts</p>
         <div className="space-y-3">
           {[
-            { field: 'notifyNewDocument', label: 'New Document Added', desc: 'Email when your coordinator uploads a document to your profile' },
-            { field: 'notifyNewClaim',    label: 'New Claim Added',    desc: 'Email when a new claim is added to your account' },
+            { field: 'notifyNewDocument', label: 'New Document Added', desc: 'Email when a new document is uploaded to your account' },
+            { field: 'notifyNewClaim',    label: 'New Claim Added',    desc: 'Email when a new claim is added to your profile' },
           ].map(({ field, label, desc }) => (
             <NotifToggle key={field} label={label} desc={desc} checked={profile[field] !== false}
               onChange={async (val) => {

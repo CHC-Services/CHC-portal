@@ -79,7 +79,7 @@ function QuickEntryForm({ onAdded }: { onAdded: () => void }) {
     fetch(`/api/admin/patients?nurseId=${nurseId}`, { credentials: 'include' })
       .then(r => r.json())
       .then(data => {
-        if (Array.isArray(data)) setPatients(data)
+        if (Array.isArray(data.patients)) setPatients(data.patients)
       })
   }, [nurseId])
 
@@ -105,6 +105,8 @@ function QuickEntryForm({ onAdded }: { onAdded: () => void }) {
     const workDate = `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`
     const h = parseInt(hours, 10)
     if (!h || h < 1 || h > 99) { setError('Hours must be 1–99.'); return }
+    if (patients.length === 0) { setError('No patients linked to this nurse — link a patient first.'); return }
+    if (!patientId) { setError('Select a patient.'); return }
 
     setSaving(true)
     const res = await fetch('/api/admin/time-entry', {
@@ -162,20 +164,26 @@ function QuickEntryForm({ onAdded }: { onAdded: () => void }) {
 
             {/* Patient */}
             <div className="lg:col-span-1 space-y-1">
-              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#7A8F79]">Patient</label>
-              <select
-                value={patientId}
-                onChange={e => setPatientId(e.target.value)}
-                disabled={!nurseId || patients.length === 0}
-                className="w-full border border-[#D9E1E8] rounded-lg px-2 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] disabled:opacity-40"
-              >
-                <option value="">— None —</option>
-                {patients.map(p => (
-                  <option key={p.id} value={p.id}>
-                    {p.firstName} {p.lastName}{p.accountNumber ? ` · ${p.accountNumber}` : ''}
-                  </option>
-                ))}
-              </select>
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#7A8F79]">Patient <span className="text-red-400">*</span></label>
+              {nurseId && patients.length === 0 ? (
+                <div className="border border-dashed border-[#D9E1E8] rounded-lg px-2 py-2 text-[11px] text-[#7A8F79] italic">
+                  No patients linked to this nurse
+                </div>
+              ) : (
+                <select
+                  value={patientId}
+                  onChange={e => setPatientId(e.target.value)}
+                  disabled={!nurseId}
+                  className="w-full border border-[#D9E1E8] rounded-lg px-2 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] disabled:opacity-40"
+                >
+                  <option value="">— Select patient —</option>
+                  {patients.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.firstName} {p.lastName}{p.accountNumber ? ` · ${p.accountNumber}` : ''}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             {/* Date — segmented MM / DD / YYYY */}

@@ -316,16 +316,16 @@ export default function MyHours() {
               </div>
             </div>
 
-            {linkedPatients.length > 0 && (
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Patient</label>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Patient <span className="text-red-400">*</span></label>
+              {linkedPatients.length > 0 ? (
                 <select
                   value={selectedPatient}
                   onChange={e => setSelectedPatient(e.target.value)}
                   required
                   className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] text-sm"
                 >
-                  <option value="">— No patient selected —</option>
+                  <option value="">— Select patient —</option>
                   {linkedPatients.map(p => {
                     const initial = p.merged.firstName?.[0] || ''
                     const shortLast = p.merged.lastName?.slice(0, 8) || ''
@@ -336,8 +336,12 @@ export default function MyHours() {
                     )
                   })}
                 </select>
-              </div>
-            )}
+              ) : (
+                <p className="text-xs text-[#7A8F79] italic border border-[#D9E1E8] rounded-lg p-2 bg-[#F4F6F5]">
+                  No patients assigned — contact your administrator.
+                </p>
+              )}
+            </div>
 
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">
@@ -352,7 +356,8 @@ export default function MyHours() {
 
             <button
               type="submit"
-              className="w-full bg-[#2F3E4E] text-white py-2 rounded-lg hover:bg-[#7A8F79] transition font-semibold tracking-wide"
+              disabled={!workDate || !hours || !selectedPatient || linkedPatients.length === 0}
+              className="w-full bg-[#2F3E4E] text-white py-2 rounded-lg hover:bg-[#7A8F79] transition font-semibold tracking-wide disabled:opacity-50"
             >
               Submit
             </button>

@@ -122,6 +122,8 @@ function NurseRow({ nurse, onDeleted, onRefresh }: { nurse: Nurse; onDeleted: ()
   const logDateRef = useRef<DateInputHandle>(null)
   const [logHours, setLogHours] = useState('')
   const [logNotes, setLogNotes] = useState('')
+  const [logPatientId, setLogPatientId] = useState('')
+  const [logPatients, setLogPatients] = useState<{ id: string; accountNumber: string; firstName: string; lastName: string }[]>([])
   const [logMessage, setLogMessage] = useState('')
   const [logSubmitting, setLogSubmitting] = useState(false)
   const [deletingEntry, setDeletingEntry] = useState<string | null>(null)
@@ -137,7 +139,7 @@ function NurseRow({ nurse, onDeleted, onRefresh }: { nurse: Nurse; onDeleted: ()
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ nurseId: nurse.id, workDate: logDate, hours: logHours, notes: logNotes })
+      body: JSON.stringify({ nurseId: nurse.id, workDate: logDate, hours: logHours, notes: logNotes, patientId: logPatientId || null })
     })
     const data = await res.json()
     setLogSubmitting(false)
@@ -145,6 +147,7 @@ function NurseRow({ nurse, onDeleted, onRefresh }: { nurse: Nurse; onDeleted: ()
       setLogDate('')
       setLogHours('')
       setLogNotes('')
+      setLogPatientId('')
       setLogMessage('Hours logged.')
       onRefresh()
       requestAnimationFrame(() => logDateRef.current?.focus())
@@ -343,7 +346,16 @@ function NurseRow({ nurse, onDeleted, onRefresh }: { nurse: Nurse; onDeleted: ()
           {/* Log hours on behalf of nurse */}
           <div className="mt-4 pt-4 border-t border-[#D9E1E8]">
             <button
-              onClick={() => { setLogOpen(!logOpen); setLogMessage('') }}
+              onClick={() => {
+                const next = !logOpen
+                setLogOpen(next)
+                setLogMessage('')
+                if (next && logPatients.length === 0) {
+                  fetch(`/api/admin/patients?nurseId=${nurse.id}`, { credentials: 'include' })
+                    .then(r => r.json())
+                    .then(d => { if (Array.isArray(d.patients)) setLogPatients(d.patients) })
+                }
+              }}
               className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] underline underline-offset-2"
             >
               {logOpen ? 'Cancel' : '+ Log hours on behalf of this nurse'}
@@ -373,6 +385,26 @@ function NurseRow({ nurse, onDeleted, onRefresh }: { nurse: Nurse; onDeleted: ()
                     />
                   </div>
                 </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Patient <span className="text-red-400">*</span></label>
+                  {logPatients.length > 0 ? (
+                    <select
+                      value={logPatientId}
+                      onChange={e => setLogPatientId(e.target.value)}
+                      required
+                      className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] text-sm focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                    >
+                      <option value="">— Select patient —</option>
+                      {logPatients.map(p => (
+                        <option key={p.id} value={p.id}>{p.lastName}, {p.firstName} ({p.accountNumber})</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <p className="text-[11px] text-[#7A8F79] italic border border-dashed border-[#D9E1E8] rounded-lg p-2">
+                      No patients linked — visit this nurse&apos;s profile to link patients.
+                    </p>
+                  )}
+                </div>
                 <input
                   type="text"
                   placeholder="Notes (optional)"
@@ -382,7 +414,7 @@ function NurseRow({ nurse, onDeleted, onRefresh }: { nurse: Nurse; onDeleted: ()
                 />
                 <button
                   type="submit"
-                  disabled={logSubmitting}
+                  disabled={logSubmitting || logPatients.length === 0 || !logPatientId}
                   className="bg-[#2F3E4E] text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-50"
                 >
                   {logSubmitting ? 'Saving…' : 'Log Hours'}

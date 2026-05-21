@@ -549,6 +549,7 @@ export default function OnboardingPage() {
                   <p className="text-xs text-green-700 mt-0.5">
                     Pay your invoice in full within <strong>7 days</strong> of the invoice date and receive a
                     <strong> $4 credit</strong> applied to your next month&apos;s invoice.
+                    Applies to invoices of <strong>$20.00 or more</strong>.
                   </p>
                 </div>
                 <ul className="text-xs text-[#4a5568] list-disc list-inside space-y-1 leading-relaxed">

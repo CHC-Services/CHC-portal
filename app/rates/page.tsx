@@ -112,7 +112,8 @@ export default function RatesPage() {
                 <p className="font-bold text-green-800 text-sm">Early Payment Credit</p>
                 <p className="text-xs text-green-700 mt-0.5 leading-relaxed">
                   Pay your invoice in full within <strong>7 days</strong> of the invoice date and receive a{' '}
-                  <strong>$4 credit</strong> applied to your next month&apos;s invoice.
+                  <strong>$4 credit</strong> applied to your next month&apos;s invoice.{' '}
+                  <span className="text-green-600">Applies to invoices of <strong>$20.00 or more</strong>.</span>
                 </p>
               </div>
             </div>

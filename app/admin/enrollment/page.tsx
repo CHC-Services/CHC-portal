@@ -645,11 +645,11 @@ export default function EnrollmentPage() {
                       <td className="px-3 py-2 hidden lg:table-cell">
                         <div className="flex flex-col gap-0.5">
                           <div className="flex items-center gap-1">
-                            <span className="text-[9px] font-bold uppercase tracking-wide text-[#7A8F79] w-7">Start</span>
+                            <span className="text-[9px] font-bold uppercase tracking-wide text-[#7A8F79] w-4">S:</span>
                             <DateCell nurse={n} field="serviceStartDate" editing={editing} editVal={editVal} setEditVal={setEditVal} setEditing={setEditing} startEdit={startEdit} commitEdit={commitEdit} />
                           </div>
                           <div className="flex items-center gap-1">
-                            <span className="text-[9px] font-bold uppercase tracking-wide text-[#7A8F79] w-7">End</span>
+                            <span className="text-[9px] font-bold uppercase tracking-wide text-[#7A8F79] w-4">E:</span>
                             <DateCell nurse={n} field="serviceEndDate" editing={editing} editVal={editVal} setEditVal={setEditVal} setEditing={setEditing} startEdit={startEdit} commitEdit={commitEdit} />
                           </div>
                           {autoTermed && (

@@ -79,7 +79,7 @@ export default function RatesPage() {
           </div>
           <div className="px-5 py-3 bg-[#f8faf8] border-t border-[#D9E1E8]">
             <p className="text-[11px] text-[#7A8F79]">
-              <strong className="text-[#2F3E4E]">Dual payer note:</strong> Once the primary commercial insurance benefit maximum is met, the rate drops to the $2 Medicaid rate for remaining DOS.
+              <strong className="text-[#2F3E4E]">Dual payer note:</strong> Once the primary commercial insurance benefit maximum is met, the rate drops to the <span className="text-[#2F3E4E]">$2 Medicaid</span> rate for remaining DOS.
               Claims are grouped by the NY State Medicaid billing cycle (Thursday–Wednesday). Plans are flexible — email{' '}
               <a href="mailto:billing@cominghomecare.com" className="underline hover:text-[#2F3E4E]">billing@cominghomecare.com</a> if your needs change.
             </p>

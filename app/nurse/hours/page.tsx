@@ -309,7 +309,7 @@ export default function MyHours() {
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Hours Worked</label>
                 <input
-                  type="number" step="1" min="1" placeholder="e.g. 8"
+                  type="number" step="1" min="1" max="16" maxLength={2} placeholder="e.g. 8"
                   value={hours} onChange={e => setHours(e.target.value)} required
                   className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
                 />

@@ -186,6 +186,16 @@ export default function RatesPage() {
               </div>
               <span className="font-bold text-orange-700 bg-orange-50 border border-orange-200 px-3 py-1 rounded-full text-xs whitespace-nowrap">$3 / occurrence</span>
             </div>
+            <div className="px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex-1">
+                <p className="font-semibold text-[#2F3E4E]">Provider-submitted claim — void &amp; resubmit</p>
+                <p className="text-xs text-[#7A8F79] mt-0.5">Claim already submitted by the provider that requires CHC to void, correct, and resubmit on their behalf</p>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <span className="font-bold text-blue-700 bg-blue-50 border border-blue-200 px-3 py-1 rounded-full text-xs whitespace-nowrap">Medicaid — $4 / claim</span>
+                <span className="font-bold text-purple-700 bg-purple-50 border border-purple-200 px-3 py-1 rounded-full text-xs whitespace-nowrap">Commercial — $5 / claim</span>
+              </div>
+            </div>
           </div>
         </section>
 

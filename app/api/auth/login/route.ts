@@ -4,7 +4,8 @@ import { prisma } from '../../../../lib/prisma'
 import { signToken, signPendingToken } from '../../../../lib/auth'
 
 export async function POST(req: Request) {
-  const { email, password } = await req.json()
+  const { email: rawEmail, password } = await req.json()
+  const email = rawEmail?.trim().toLowerCase()
 
   const user = await prisma.user.findUnique({
     where: { email },

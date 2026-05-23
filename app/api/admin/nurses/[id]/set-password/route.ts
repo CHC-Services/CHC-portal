@@ -33,12 +33,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   })
 
   // Send notification email with the new password (before hashing)
-  await sendPasswordResetByAdmin({
+  const emailSent = await sendPasswordResetByAdmin({
     to: nurse.user.email,
     displayName: nurse.displayName,
     email: nurse.user.email,
     password,
   })
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, emailSent })
 }

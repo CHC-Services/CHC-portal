@@ -883,7 +883,10 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
     })
     setPwSaving(false)
     if (res.ok) {
-      setPwMessage('Password updated successfully.')
+      const data = await res.json()
+      setPwMessage(data.emailSent
+        ? 'Password updated and email sent to nurse.'
+        : 'Password updated — but notification email failed to send. Give them the password directly.')
       setNewPassword('')
     } else {
       setPwMessage('Error updating password.')

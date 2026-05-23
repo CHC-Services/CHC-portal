@@ -6,7 +6,8 @@ import { randomBytes } from 'crypto'
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function POST(req: Request) {
-  const { email } = await req.json()
+  const { email: rawEmail } = await req.json()
+  const email = rawEmail?.trim().toLowerCase()
 
   // Always return the same response to prevent email enumeration
   const ok = NextResponse.json({ ok: true })

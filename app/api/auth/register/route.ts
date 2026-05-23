@@ -23,7 +23,8 @@ async function generateAccountNumber(): Promise<string> {
 
 export async function POST(req: Request) {
   try {
-    const { email, password, role, name, displayName } = await req.json()
+    const { email: rawEmail, password, role, name, displayName } = await req.json()
+    const email = rawEmail?.trim().toLowerCase()
 
     const userCount = await prisma.user.count()
 

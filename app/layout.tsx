@@ -26,6 +26,7 @@ export default async function RootLayout({
     <html lang="en" className={cormorantUpright.variable}>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, shrink-to-fit=no" />
+        <meta name="impact-site-verification" content="17c5bddd-6c9b-4133-98b8-d982eaf4cfc5" />
         <link rel="icon" href="/favicon.png" type="image/png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>

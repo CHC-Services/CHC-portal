@@ -22,7 +22,7 @@
     "jsonwebtoken": "^9.0.3",
     "next": "16.1.6",
     "pdf-lib": "^1.17.1",
-    "prisma": "^6.19.2",
+    "prisma": "^7.8.0",
     "qrcode": "^1.5.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",

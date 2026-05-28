@@ -3020,6 +3020,34 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                     </div>
                   )}
 
+                  {(lateFeePlan !== 'none' || promptPayEnabled) && (
+                    <div className="rounded-xl border border-[#D9E1E8] overflow-hidden">
+                      <div className="bg-[#F4F6F5] px-4 py-2 border-b border-[#D9E1E8]">
+                        <p className="text-xs font-semibold uppercase tracking-widest text-[#7A8F79]">Payment Terms</p>
+                      </div>
+                      <div className="px-4 py-3 space-y-2">
+                        {lateFeePlan === 'flat' && lateFeeAmt && (
+                          <p className="text-xs text-[#4a5a6a]">
+                            <span className="font-semibold text-orange-600">Late Fee:</span>{' '}
+                            A fee of <strong>${parseFloat(lateFeeAmt).toFixed(2)}</strong> per month will be assessed for each month this invoice remains unpaid past the due date.
+                          </p>
+                        )}
+                        {lateFeePlan === 'percent' && lateFeePercent && (
+                          <p className="text-xs text-[#4a5a6a]">
+                            <span className="font-semibold text-orange-600">Late Fee:</span>{' '}
+                            A fee of <strong>{lateFeePercent}%</strong> of the invoice total per month will be assessed for each month this invoice remains unpaid past the due date.
+                          </p>
+                        )}
+                        {promptPayEnabled && promptPayCredit && promptPayDays && (
+                          <p className="text-xs text-[#4a5a6a]">
+                            <span className="font-semibold text-green-700">Prompt Pay Bonus:</span>{' '}
+                            Pay this invoice within <strong>{promptPayDays} days</strong> of the issue date to receive a <strong>${parseFloat(promptPayCredit).toFixed(2)} credit</strong> applied to your next invoice.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="bg-[#f4f6f8] rounded-xl p-4">
                     <p className="text-xs font-semibold uppercase tracking-widest text-[#7A8F79] mb-3">Payment Methods</p>
                     <div className="grid grid-cols-2 gap-2">

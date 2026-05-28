@@ -156,6 +156,7 @@ model NurseProfile {
   providerCredits     ProviderCredit[]
   nursePatients       NursePatient[]
   routedForms         RoutedForm[]
+  medicaidPayWeekLogs MedicaidPayWeekLog[]
 }
 
 model RoutedForm {
@@ -756,4 +757,18 @@ model NursePatient {
   @@unique([nurseId, patientId])
   @@index([nurseId])
   @@index([patientId])
+}
+
+model MedicaidPayWeekLog {
+  id          String    @id @default(uuid())
+  nurseId     String
+  depositDate String    // YYYY-MM-DD — key for the pay week
+  receivedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  nurse NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
+
+  @@unique([nurseId, depositDate])
+  @@index([nurseId])
 }

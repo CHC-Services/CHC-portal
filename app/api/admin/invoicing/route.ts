@@ -19,17 +19,30 @@ export async function GET(req: Request) {
   const year = parseInt(searchParams.get('year') || String(new Date().getFullYear()))
 
   if (view === 'income') {
-    // Monthly + yearly income breakdown
-    const invoices = await (prisma.invoice.findMany as any)({
-      where: {
-        status: { in: ['Paid', 'Partial'] },
-        sentAt: {
-          gte: new Date(`${year}-01-01`),
-          lte: new Date(`${year}-12-31T23:59:59`),
+    // Monthly + yearly income breakdown.
+    // "Invoiced" is bucketed by invoice sentAt (when the bill went out).
+    // "Collected" is bucketed by individual payment appliedAt (when cash actually came in).
+
+    const [invoices, payments] = await Promise.all([
+      (prisma.invoice.findMany as any)({
+        where: {
+          sentAt: {
+            gte: new Date(`${year}-01-01`),
+            lte: new Date(`${year}-12-31T23:59:59Z`),
+          },
         },
-      },
-      select: { sentAt: true, paidAmount: true, totalAmount: true, status: true, nurseId: true },
-    })
+        select: { sentAt: true, totalAmount: true },
+      }),
+      (prisma.payment.findMany as any)({
+        where: {
+          appliedAt: {
+            gte: new Date(`${year}-01-01`),
+            lte: new Date(`${year}-12-31T23:59:59Z`),
+          },
+        },
+        select: { appliedAt: true, amount: true },
+      }),
+    ])
 
     const monthly: Record<number, { invoiced: number; collected: number; count: number }> = {}
     for (let m = 1; m <= 12; m++) monthly[m] = { invoiced: 0, collected: 0, count: 0 }
@@ -37,8 +50,12 @@ export async function GET(req: Request) {
     for (const inv of invoices) {
       const m = new Date(inv.sentAt).getMonth() + 1
       monthly[m].invoiced += inv.totalAmount
-      monthly[m].collected += inv.status === 'Paid' ? inv.totalAmount : (inv.paidAmount || 0)
       monthly[m].count++
+    }
+
+    for (const p of payments) {
+      const m = new Date(p.appliedAt).getMonth() + 1
+      monthly[m].collected += p.amount
     }
 
     const yearTotal = Object.values(monthly).reduce((s, m) => ({

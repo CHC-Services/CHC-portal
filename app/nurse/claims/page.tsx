@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import PortalMessages from '../../components/PortalMessages'
+import { payCycleDateLabel } from '../../../lib/medicaidPayCycle'
 
 // ── Search helper — checks every string/number field on a claim ──────────────
 function claimMatchesSearch(c: Claim, q: string): boolean {
@@ -52,6 +53,21 @@ type Claim = {
   resubmissionOf: string | null
   processingNotes: string | null
   updatedAt: string
+}
+
+type MedicaidClaim = {
+  id: string
+  patientCtrlNum: string
+  payerCtrlNum: string | null
+  dosStart: string | null
+  dosStop: string | null
+  totalCharge: number
+  paidAmount: number | null
+  processedDate: string | null
+  estPayCycle: number | null
+  depositDate: string | null
+  statusCodes: string[]
+  notes: string | null
 }
 
 function fmt(val: number | null, prefix = '') {
@@ -419,10 +435,291 @@ function ClaimRow({ primary: c, chain, eobDocs }: ClaimGroup & { eobDocs: { id: 
   )
 }
 
+// ─── Medicaid Pay Log Tab ─────────────────────────────────────────────────────
+
+type WeekGroup = {
+  depositDate: string      // YYYY-MM-DD or '' for unscheduled
+  cycle: number | null
+  claims: MedicaidClaim[]
+  totalCharge: number
+  totalPaid: number
+}
+
+function MedicaidPayLogTab({ medicaidClaims, received, onToggleReceived }: {
+  medicaidClaims: MedicaidClaim[]
+  received: Record<string, string | null>   // depositDate → receivedAt ISO string or null
+  onToggleReceived: (depositDate: string, isReceived: boolean) => void
+}) {
+  const groups = buildWeekGroups(medicaidClaims)
+  const scheduledGroups = groups.filter(g => g.depositDate !== '')
+  const unscheduled = groups.find(g => g.depositDate === '')
+
+  const totalEverPaid = medicaidClaims.reduce((s, c) => s + (c.paidAmount ?? 0), 0)
+  const totalEverCharged = medicaidClaims.reduce((s, c) => s + c.totalCharge, 0)
+  const receivedWeeks = scheduledGroups.filter(g => received[g.depositDate] != null)
+  const totalReconciled = receivedWeeks.reduce((s, g) => s + g.totalPaid, 0)
+
+  if (medicaidClaims.length === 0) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm p-12 text-center">
+        <div className="w-14 h-14 rounded-full bg-[#D9E1E8] flex items-center justify-center mx-auto mb-4">
+          <svg className="w-7 h-7 text-[#7A8F79]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+        </div>
+        <p className="text-[#2F3E4E] font-semibold">No Medicaid claims on file yet</p>
+        <p className="text-[#7A8F79] text-sm mt-1">Your weekly pay log will appear here once Medicaid claims are processed.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Summary bar */}
+      <div className="grid grid-cols-3 gap-2 md:gap-4">
+        <div className="bg-white rounded-xl p-2.5 md:p-4 shadow-sm">
+          <p className="text-[9px] md:text-xs uppercase tracking-widest text-[#7A8F79] font-semibold leading-tight">Total Claims</p>
+          <p className="text-base md:text-2xl font-bold text-[#2F3E4E] mt-0.5">{medicaidClaims.length}</p>
+        </div>
+        <div className="bg-white rounded-xl p-2.5 md:p-4 shadow-sm">
+          <p className="text-[9px] md:text-xs uppercase tracking-widest text-[#7A8F79] font-semibold leading-tight">Total Paid</p>
+          <p className="text-base md:text-2xl font-bold text-[#2F3E4E] mt-0.5 truncate">{fmt(totalEverPaid, '$')}</p>
+        </div>
+        <div className="bg-white rounded-xl p-2.5 md:p-4 shadow-sm">
+          <p className="text-[9px] md:text-xs uppercase tracking-widest text-[#7A8F79] font-semibold leading-tight">Reconciled</p>
+          <p className="text-base md:text-2xl font-bold text-green-700 mt-0.5 truncate">{fmt(totalReconciled, '$')}</p>
+        </div>
+      </div>
+
+      {/* Column headers */}
+      <div className="hidden md:grid grid-cols-[2fr_2fr_1fr_1fr_auto] gap-x-3 px-4 text-[10px] font-bold uppercase tracking-widest text-[#7A8F79]">
+        <span>Patient Ctrl #</span>
+        <span>Payer Ctrl #</span>
+        <span>Charge</span>
+        <span>Paid</span>
+        <span className="w-24 text-right">Received</span>
+      </div>
+
+      {/* Scheduled week groups */}
+      {scheduledGroups.map(group => {
+        const isReceived = received[group.depositDate] != null
+        const receivedDate = received[group.depositDate]
+        return (
+          <div
+            key={group.depositDate}
+            className={`bg-white rounded-xl shadow-sm overflow-hidden border-l-4 transition-colors ${
+              isReceived ? 'border-green-500' : 'border-[#D9E1E8]'
+            }`}
+          >
+            {/* Week header */}
+            <div className={`flex items-center justify-between px-4 py-3 border-b border-[#D9E1E8] ${isReceived ? 'bg-green-50' : 'bg-[#F4F6F5]'}`}>
+              <div className="flex items-center gap-3 flex-wrap">
+                {group.cycle != null && (
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] bg-white border border-[#D9E1E8] px-2 py-0.5 rounded-full">
+                    Cycle {group.cycle}
+                  </span>
+                )}
+                <span className="text-sm font-bold text-[#2F3E4E]">
+                  Pay Date: {new Date(group.depositDate + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
+                </span>
+                <span className="text-xs font-semibold text-[#7A8F79]">
+                  {group.claims.length} claim{group.claims.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+              <div className="flex items-center gap-3 shrink-0 ml-2">
+                <div className="text-right">
+                  <p className="text-[10px] text-[#7A8F79] uppercase tracking-wide font-semibold">Expected</p>
+                  <p className="text-sm font-bold text-[#2F3E4E]">{fmt(group.totalPaid, '$')}</p>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer group/check select-none">
+                  <span className="text-xs font-semibold text-[#7A8F79] group-hover/check:text-[#2F3E4E] transition">
+                    {isReceived ? 'Received' : 'Mark received'}
+                  </span>
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      checked={isReceived}
+                      onChange={e => onToggleReceived(group.depositDate, e.target.checked)}
+                      className="sr-only"
+                    />
+                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                      isReceived
+                        ? 'bg-green-500 border-green-500'
+                        : 'bg-white border-[#D9E1E8] group-hover/check:border-[#7A8F79]'
+                    }`}>
+                      {isReceived && (
+                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* Received timestamp */}
+            {isReceived && receivedDate && (
+              <div className="px-4 py-1.5 bg-green-50 border-b border-green-100">
+                <p className="text-[10px] text-green-700 font-semibold">
+                  ✓ Marked received {new Date(receivedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </p>
+              </div>
+            )}
+
+            {/* Claim rows */}
+            <div className="divide-y divide-[#D9E1E8]">
+              {group.claims.map(claim => (
+                <div key={claim.id} className="px-4 py-2.5 md:grid md:grid-cols-[2fr_2fr_1fr_1fr_auto] md:gap-x-3 md:items-center">
+                  {/* Mobile layout */}
+                  <div className="md:hidden">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-[10px] text-[#7A8F79] font-semibold uppercase tracking-wide">Patient Ctrl #</p>
+                        <p className="text-xs font-mono font-bold text-[#2F3E4E]">{claim.patientCtrlNum}</p>
+                        {claim.payerCtrlNum && (
+                          <p className="text-[10px] text-[#7A8F79] mt-0.5 font-mono">{claim.payerCtrlNum}</p>
+                        )}
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-[10px] text-[#7A8F79] font-semibold uppercase tracking-wide">Paid</p>
+                        <p className="text-xs font-bold text-[#2F3E4E]">{fmt(claim.paidAmount, '$')}</p>
+                        <p className="text-[10px] text-[#7A8F79]">of {fmt(claim.totalCharge, '$')}</p>
+                      </div>
+                    </div>
+                    {claim.notes && (
+                      <p className="text-[10px] text-[#7A8F79] mt-1 italic line-clamp-2">{claim.notes}</p>
+                    )}
+                  </div>
+                  {/* Desktop layout */}
+                  <p className="hidden md:block text-xs font-mono font-semibold text-[#2F3E4E] truncate">{claim.patientCtrlNum}</p>
+                  <p className="hidden md:block text-xs font-mono text-[#7A8F79] truncate">{claim.payerCtrlNum || '—'}</p>
+                  <p className="hidden md:block text-xs text-[#2F3E4E]">{fmt(claim.totalCharge, '$')}</p>
+                  <p className="hidden md:block text-xs font-semibold text-[#2F3E4E]">{fmt(claim.paidAmount, '$')}</p>
+                  <div className="hidden md:block w-24">
+                    {claim.notes && (
+                      <p className="text-[10px] text-[#7A8F79] italic line-clamp-2 text-right">{claim.notes}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Group totals footer */}
+            {group.claims.length > 1 && (
+              <div className="md:grid md:grid-cols-[2fr_2fr_1fr_1fr_auto] md:gap-x-3 px-4 py-2 border-t border-[#D9E1E8] bg-[#F4F6F5]">
+                <p className="hidden md:block text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] col-span-2">Week Total</p>
+                <p className="hidden md:block text-xs font-bold text-[#2F3E4E]">{fmt(group.totalCharge, '$')}</p>
+                <p className="hidden md:block text-xs font-bold text-[#2F3E4E]">{fmt(group.totalPaid, '$')}</p>
+                <div className="hidden md:block w-24" />
+                {/* Mobile footer */}
+                <div className="md:hidden flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-[#7A8F79]">Week Total</span>
+                  <div className="text-right">
+                    <span className="text-xs font-bold text-[#2F3E4E]">{fmt(group.totalPaid, '$')}</span>
+                    <span className="text-[10px] text-[#7A8F79] ml-1">paid / {fmt(group.totalCharge, '$')} charged</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })}
+
+      {/* Unscheduled claims */}
+      {unscheduled && unscheduled.claims.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden border-l-4 border-yellow-300">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[#D9E1E8] bg-yellow-50">
+            <div>
+              <span className="text-sm font-bold text-[#2F3E4E]">Pending / No Deposit Date</span>
+              <span className="ml-2 text-xs text-[#7A8F79]">{unscheduled.claims.length} claim{unscheduled.claims.length !== 1 ? 's' : ''}</span>
+            </div>
+            <span className="text-sm font-bold text-[#2F3E4E]">{fmt(unscheduled.totalPaid, '$')}</span>
+          </div>
+          <div className="divide-y divide-[#D9E1E8]">
+            {unscheduled.claims.map(claim => (
+              <div key={claim.id} className="px-4 py-2.5 md:grid md:grid-cols-[2fr_2fr_1fr_1fr_auto] md:gap-x-3 md:items-center">
+                <div className="md:hidden">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-[10px] text-[#7A8F79] font-semibold uppercase tracking-wide">Patient Ctrl #</p>
+                      <p className="text-xs font-mono font-bold text-[#2F3E4E]">{claim.patientCtrlNum}</p>
+                      {claim.payerCtrlNum && <p className="text-[10px] text-[#7A8F79] mt-0.5 font-mono">{claim.payerCtrlNum}</p>}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-[10px] text-[#7A8F79] font-semibold uppercase tracking-wide">Paid</p>
+                      <p className="text-xs font-bold text-[#2F3E4E]">{fmt(claim.paidAmount, '$')}</p>
+                      <p className="text-[10px] text-[#7A8F79]">of {fmt(claim.totalCharge, '$')}</p>
+                    </div>
+                  </div>
+                </div>
+                <p className="hidden md:block text-xs font-mono font-semibold text-[#2F3E4E] truncate">{claim.patientCtrlNum}</p>
+                <p className="hidden md:block text-xs font-mono text-[#7A8F79] truncate">{claim.payerCtrlNum || '—'}</p>
+                <p className="hidden md:block text-xs text-[#2F3E4E]">{fmt(claim.totalCharge, '$')}</p>
+                <p className="hidden md:block text-xs font-semibold text-[#2F3E4E]">{fmt(claim.paidAmount, '$')}</p>
+                <div className="hidden md:block w-24" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Grand totals */}
+      <div className="bg-white rounded-xl shadow-sm px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+        <span className="text-xs font-bold uppercase tracking-widest text-[#7A8F79]">All-time totals</span>
+        <div className="flex items-center gap-6">
+          <div className="text-right">
+            <p className="text-[10px] text-[#7A8F79] uppercase tracking-wide font-semibold">Total Charged</p>
+            <p className="text-sm font-bold text-[#2F3E4E]">{fmt(totalEverCharged, '$')}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] text-[#7A8F79] uppercase tracking-wide font-semibold">Total Paid</p>
+            <p className="text-sm font-bold text-[#2F3E4E]">{fmt(totalEverPaid, '$')}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] text-green-700 uppercase tracking-wide font-semibold">Reconciled</p>
+            <p className="text-sm font-bold text-green-700">{fmt(totalReconciled, '$')}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function buildWeekGroups(claims: MedicaidClaim[]): WeekGroup[] {
+  const map = new Map<string, MedicaidClaim[]>()
+  for (const c of claims) {
+    const key = c.depositDate ? c.depositDate.slice(0, 10) : ''
+    if (!map.has(key)) map.set(key, [])
+    map.get(key)!.push(c)
+  }
+  const groups: WeekGroup[] = []
+  for (const [depositDate, claimsInGroup] of map.entries()) {
+    const cycle = claimsInGroup.find(c => c.estPayCycle != null)?.estPayCycle ?? null
+    groups.push({
+      depositDate,
+      cycle,
+      claims: claimsInGroup,
+      totalCharge: claimsInGroup.reduce((s, c) => s + c.totalCharge, 0),
+      totalPaid: claimsInGroup.reduce((s, c) => s + (c.paidAmount ?? 0), 0),
+    })
+  }
+  // Sort: scheduled weeks newest-first, unscheduled last
+  return groups.sort((a, b) => {
+    if (!a.depositDate) return 1
+    if (!b.depositDate) return -1
+    return b.depositDate.localeCompare(a.depositDate)
+  })
+}
+
+// ─── NurseClaimsPage ──────────────────────────────────────────────────────────
+
 const currentYear = new Date().getFullYear()
 const YEARS = ['', ...Array.from({ length: currentYear - 2023 }, (_, i) => String(2024 + i))]
 
 export default function NurseClaimsPage() {
+  const [activeTab, setActiveTab] = useState<'claims' | 'paylog'>('claims')
   const [claims, setClaims] = useState<Claim[]>([])
   const [enrolledInBilling, setEnrolledInBilling] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(true)
@@ -434,6 +731,11 @@ export default function NurseClaimsPage() {
   // Map from Claim.id (DB UUID) → array of EOB docs (supports multiple per claim)
   const [eobMap, setEobMap] = useState<Record<string, { id: string; fileName: string }[]>>({})
   const [effectiveTier, setEffectiveTier] = useState<'FREE' | 'BASIC' | 'PRO' | null>(null)
+
+  // Pay log state
+  const [medicaidClaims, setMedicaidClaims] = useState<MedicaidClaim[]>([])
+  const [paylogReceived, setPaylogReceived] = useState<Record<string, string | null>>({})
+  const [paylogLoaded, setPaylogLoaded] = useState(false)
 
   useEffect(() => {
     fetch('/api/nurse/plan', { credentials: 'include' })
@@ -463,6 +765,29 @@ export default function NurseClaimsPage() {
         setEobMap(map)
       })
   }, [])
+
+  // Load pay log data on first switch to paylog tab
+  useEffect(() => {
+    if (activeTab !== 'paylog' || paylogLoaded) return
+    Promise.all([
+      fetch('/api/nurse/medicaid', { credentials: 'include' }).then(r => r.json()),
+      fetch('/api/nurse/medicaid/paylog', { credentials: 'include' }).then(r => r.json()),
+    ]).then(([claims, received]) => {
+      if (Array.isArray(claims)) setMedicaidClaims(claims)
+      if (received && typeof received === 'object') setPaylogReceived(received)
+      setPaylogLoaded(true)
+    })
+  }, [activeTab, paylogLoaded])
+
+  async function handleToggleReceived(depositDate: string, isReceived: boolean) {
+    setPaylogReceived(prev => ({ ...prev, [depositDate]: isReceived ? new Date().toISOString() : null }))
+    await fetch('/api/nurse/medicaid/paylog', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ depositDate, received: isReceived }),
+    })
+  }
 
   // Show compact sticky bar when the search+year section scrolls behind the banner
   useEffect(() => {
@@ -579,9 +904,48 @@ export default function NurseClaimsPage() {
           <p className="text-sm text-[#7A8F79] mt-1">View the status of your submitted billing claims.</p>
         </div>
 
+        {/* Tab switcher */}
+        <div className="flex border-b border-[#D9E1E8] mb-6">
+          <button
+            onClick={() => setActiveTab('claims')}
+            className={`px-5 py-2.5 text-sm font-semibold transition border-b-2 -mb-px ${
+              activeTab === 'claims'
+                ? 'border-[#2F3E4E] text-[#2F3E4E]'
+                : 'border-transparent text-[#7A8F79] hover:text-[#2F3E4E]'
+            }`}
+          >
+            Claims
+          </button>
+          <button
+            onClick={() => setActiveTab('paylog')}
+            className={`px-5 py-2.5 text-sm font-semibold transition border-b-2 -mb-px ${
+              activeTab === 'paylog'
+                ? 'border-[#2F3E4E] text-[#2F3E4E]'
+                : 'border-transparent text-[#7A8F79] hover:text-[#2F3E4E]'
+            }`}
+          >
+            Medicaid Pay Log
+          </button>
+        </div>
+
         <PortalMessages priority="Claims" />
 
+        {/* ── Pay Log Tab ── */}
+        {activeTab === 'paylog' && (
+          <div className="mt-2">
+            {!paylogLoaded ? (
+              <div className="text-center text-[#7A8F79] py-16">Loading…</div>
+            ) : (
+              <MedicaidPayLogTab
+                medicaidClaims={medicaidClaims}
+                received={paylogReceived}
+                onToggleReceived={handleToggleReceived}
+              />
+            )}
+          </div>
+        )}
 
+        {activeTab === 'claims' && (<>
 
         {/* Billing services promo — shown when not enrolled */}
         {enrolledInBilling !== true && (
@@ -730,6 +1094,7 @@ export default function NurseClaimsPage() {
           </div>
         )}
 
+        </>)}
 
       </div>
     </div>

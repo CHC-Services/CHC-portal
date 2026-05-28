@@ -1649,9 +1649,9 @@ export default function AdminClaimsPage() {
   const totalBilled = filteredAll.reduce((s, uc) =>
     s + (uc._type === 'commercial' ? (Number(uc.totalBilled) || 0) : uc.totalCharge), 0)
   const totalReimbursed = filteredAll.reduce((s, uc) =>
-    s + (uc._type === 'commercial' ? (uc.totalReimbursed || 0) : (uc.paidAmount || 0)), 0)
+    s + (uc._type === 'commercial' ? (Number(uc.totalReimbursed) || 0) : (Number(uc.paidAmount) || 0)), 0)
   const totalBalance = filteredAll.reduce((s, uc) =>
-    s + (uc._type === 'commercial' ? (uc.remainingBalance || 0) : Math.max(0, uc.totalCharge - (uc.paidAmount || 0))), 0)
+    s + (uc._type === 'commercial' ? (Number(uc.remainingBalance) || 0) : Math.max(0, Number(uc.totalCharge) - (Number(uc.paidAmount) || 0))), 0)
 
   const stages = [...new Set(claims.map(c => c.claimStage).filter(Boolean))] as string[]
 

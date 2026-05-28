@@ -21,6 +21,11 @@ type Invoice = {
   paidAt?: string
   s3Key?: string
   notes?: string
+  lateFeePlan?: string | null
+  lateFeeAmt?: number | null
+  lateFeePercent?: number | null
+  promptPayDays?: number | null
+  promptPayCredit?: number | null
   nurse?: { displayName: string; accountNumber: string | null }
   payments?: Payment[]
   entries?: { id: string }[]
@@ -107,6 +112,7 @@ export default function AdminInvoicingPage() {
   const [payAmount, setPayAmount] = useState('')
   const [payMethod, setPayMethod] = useState('Venmo')
   const [payNote, setPayNote] = useState('')
+  const [payPaidDate, setPayPaidDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [payMsg, setPayMsg] = useState('')
   const [paySubmitting, setPaySubmitting] = useState(false)
 
@@ -174,16 +180,23 @@ export default function AdminInvoicingPage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ amount: parseFloat(payAmount), method: payMethod, note: payNote }),
+      body: JSON.stringify({ amount: parseFloat(payAmount), method: payMethod, note: payNote, paidDate: payPaidDate }),
     })
     const data = await res.json()
     setPaySubmitting(false)
     if (res.ok) {
       const inv = invoices.find(i => i.id === payInvoiceId)
       const s3Note = data.s3Key ? ' Receipt saved to S3.' : ''
-      setPayMsg(`Payment applied — Receipt ${data.receiptNumber} · ${inv ? shortInvoiceNumber(inv.invoiceNumber) : ''} · Status: ${data.newStatus}.${s3Note}`)
+      const creditNote = data.promptPayCreditApplied
+        ? ` ✓ Prompt-pay credit of ${currency(data.promptPayCreditApplied)} queued for next invoice.`
+        : ''
+      const lateFeeNote = data.lateFeeApplied
+        ? ` Late fee of ${currency(data.lateFeeApplied)} recorded.`
+        : ''
+      setPayMsg(`Payment applied — Receipt ${data.receiptNumber} · ${inv ? shortInvoiceNumber(inv.invoiceNumber) : ''} · Status: ${data.newStatus}.${s3Note}${creditNote}${lateFeeNote}`)
       setPayAmount('')
       setPayNote('')
+      setPayPaidDate(new Date().toISOString().slice(0, 10))
       await loadAll()
     } else {
       setPayMsg(data.error || 'Payment failed.')
@@ -655,6 +668,90 @@ export default function AdminInvoicingPage() {
                   )
                 })()}
               </div>
+
+              {/* Date Paid */}
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wide text-[#7A8F79] mb-1">
+                  Date Paid <span className="normal-case font-normal text-[#7A8F79]">(used for late fee &amp; prompt-pay calculations)</span>
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={payPaidDate}
+                  onChange={e => setPayPaidDate(e.target.value)}
+                  className="w-full border border-[#D9E1E8] rounded-lg px-2 py-1.5 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                />
+              </div>
+
+              {/* Live fee / discount preview */}
+              {payInvoiceId && payPaidDate && (() => {
+                const inv = invoices.find(i => i.id === payInvoiceId)
+                if (!inv) return null
+                const paidMs   = new Date(payPaidDate + 'T12:00:00Z').getTime()
+                const sentMs   = new Date(inv.sentAt).getTime()
+                const dueMs    = new Date(inv.dueDate).getTime()
+                const daysSinceSent = Math.floor((paidMs - sentMs) / 86_400_000)
+                const daysOverdue   = Math.floor((paidMs - dueMs)  / 86_400_000)
+                const monthsOverdue = daysOverdue > 0 ? Math.floor(daysOverdue / 30) : 0
+
+                const lateFeeOwed =
+                  inv.lateFeePlan === 'flat' && inv.lateFeeAmt && monthsOverdue > 0
+                    ? monthsOverdue * inv.lateFeeAmt
+                  : inv.lateFeePlan === 'percent' && inv.lateFeePercent && monthsOverdue > 0
+                    ? monthsOverdue * (inv.lateFeePercent / 100) * inv.totalAmount
+                  : 0
+
+                const promptPayQualifies =
+                  inv.promptPayDays != null && inv.promptPayCredit != null &&
+                  daysSinceSent <= inv.promptPayDays
+
+                if (!inv.lateFeePlan && !inv.promptPayDays) return null
+
+                return (
+                  <div className="rounded-lg border border-[#D9E1E8] bg-[#F4F6F5] px-3 py-2.5 space-y-1.5 text-xs">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-[#7A8F79]">Payment Date Analysis</p>
+                    <p className="text-[#2F3E4E]">
+                      <span className="text-[#7A8F79]">Days since invoice sent:</span>{' '}
+                      <strong>{daysSinceSent}</strong>
+                      {daysOverdue > 0 && (
+                        <span className="ml-2 text-orange-600 font-semibold">
+                          ({daysOverdue} day{daysOverdue !== 1 ? 's' : ''} overdue · {monthsOverdue} month{monthsOverdue !== 1 ? 's' : ''})
+                        </span>
+                      )}
+                    </p>
+                    {inv.lateFeePlan && inv.lateFeePlan !== 'none' && (
+                      lateFeeOwed > 0 ? (
+                        <p className="text-orange-700 font-semibold">
+                          Late fee: {currency(lateFeeOwed)}{' '}
+                          <span className="font-normal text-[#7A8F79]">
+                            ({inv.lateFeePlan === 'flat'
+                              ? `${currency(inv.lateFeeAmt!)} × ${monthsOverdue} month${monthsOverdue !== 1 ? 's' : ''}`
+                              : `${inv.lateFeePercent}% × ${monthsOverdue} month${monthsOverdue !== 1 ? 's' : ''} on ${currency(inv.totalAmount)}`})
+                            — will be recorded automatically on full payment
+                          </span>
+                        </p>
+                      ) : (
+                        <p className="text-[#7A8F79]">No late fee — payment is on time.</p>
+                      )
+                    )}
+                    {inv.promptPayDays != null && inv.promptPayCredit != null && (
+                      promptPayQualifies ? (
+                        <p className="text-green-700 font-semibold">
+                          Prompt-pay credit: {currency(inv.promptPayCredit)}{' '}
+                          <span className="font-normal text-[#7A8F79]">
+                            (paid within {inv.promptPayDays}-day window — credit queued for next invoice on full payment)
+                          </span>
+                        </p>
+                      ) : (
+                        <p className="text-[#7A8F79]">
+                          No prompt-pay credit — {daysSinceSent} days since sent, window was {inv.promptPayDays} days.
+                        </p>
+                      )
+                    )}
+                  </div>
+                )
+              })()}
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-wide text-[#7A8F79] mb-1">Amount</label>
@@ -692,7 +789,7 @@ export default function AdminInvoicingPage() {
               </div>
               <button
                 type="submit"
-                disabled={paySubmitting || !payInvoiceId || !payAmount}
+                disabled={paySubmitting || !payInvoiceId || !payAmount || !payPaidDate}
                 className="w-full bg-[#2F3E4E] text-white py-2 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-50"
               >
                 {paySubmitting ? 'Applying…' : 'Apply Payment'}

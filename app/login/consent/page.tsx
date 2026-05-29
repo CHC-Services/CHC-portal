@@ -52,7 +52,7 @@ export default function ConsentPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#D9E1E8] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-[#D9E1E8] flex items-start justify-center pt-16 px-4">
       {/* Modal card */}
       <div className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden">
 

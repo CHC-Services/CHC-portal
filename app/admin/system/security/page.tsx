@@ -106,11 +106,13 @@ export default function SecuritySettingsPage() {
             <span className="text-lg mt-0.5">ℹ️</span>
             <div>
               <p className="font-bold text-[#2F3E4E] text-sm mb-1">Admin Account 2FA</p>
-              <p className="text-xs text-[#7A8F79] leading-relaxed">
-                Admin accounts have individual 2FA controlled separately via their user record.
-                Your admin account currently has 2FA enabled and is not affected by the toggle above.
-                To disable your own 2FA, update your account directly in the database or contact support.
+              <p className="text-xs text-[#7A8F79] leading-relaxed mb-3">
+                Admin accounts have individual 2FA controlled separately via their user record and are not affected by the toggle above.
+                To disable admin 2FA, run the following query in the Supabase SQL Editor:
               </p>
+              <pre className="bg-[#F4F6F5] border border-[#D9E1E8] rounded-lg px-4 py-3 text-xs text-[#2F3E4E] font-mono leading-relaxed whitespace-pre-wrap break-all select-all">
+{`UPDATE "User" SET "mfaEnabled" = false WHERE email = 'alex@cominghomecare.com';`}
+              </pre>
             </div>
           </div>
         </div>

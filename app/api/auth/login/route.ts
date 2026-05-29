@@ -55,11 +55,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
   }
 
-  const isAdminMfa = adminUser.role === 'admin' && adminUser.mfaEnabled
-  if (isAdminMfa) {
+  const globalSetting = await (prisma.systemSetting.findUnique as any)({ where: { key: 'twofa_enabled' } })
+  const globalTwoFa = globalSetting?.value === 'true'
+  const adminMfa = adminUser.role === 'admin' && adminUser.mfaEnabled
+  const needsTwoFa = globalTwoFa || adminMfa
+
+  if (needsTwoFa) {
+    // Non-admin users who haven't acknowledged 2FA yet see the consent modal first
+    const needsConsent = adminUser.role !== 'admin' && !(adminUser as any).twoFaConsentAt
+
     const pendingToken = signPendingToken(user.id)
     const res = NextResponse.json({
       requires2FA: true,
+      needsConsent,
       hasSms: !!adminUser.phone,
       phoneLast4: adminUser.phone ? maskPhone(adminUser.phone) : null,
       emailMasked: maskEmail(user.email),

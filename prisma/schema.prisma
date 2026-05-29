@@ -31,12 +31,13 @@ model User {
   name       String
   role       Role     @default(nurse)
 
-  // Admin-only MFA
+  // MFA / 2FA
   phone           String?
   smsOtp          String?
   smsOtpExpiresAt DateTime?
   mfaSecret       String?
-  mfaEnabled      Boolean  @default(false)
+  mfaEnabled      Boolean   @default(false)
+  twoFaConsentAt  DateTime?  // when non-admin user acknowledged 2FA enrollment
 
   passwordResetToken  String?
   passwordResetExpiry DateTime?

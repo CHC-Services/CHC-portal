@@ -11,6 +11,12 @@ const CARDS = [
     icon: '🎨',
   },
   {
+    href: '/admin/system/security',
+    title: 'Security',
+    description: 'Two-step verification controls and authentication settings.',
+    icon: '🔐',
+  },
+  {
     href: '/admin/ideas',
     title: 'Ideas',
     description: 'Feature requests and improvement ideas.',

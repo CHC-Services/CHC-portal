@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../lib/prisma'
 import { signToken, verifyPendingToken } from '../../../../../lib/auth'
-import speakeasy from 'speakeasy'
+import * as speakeasy from 'speakeasy'
 
 export async function POST(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -12,34 +12,71 @@ export async function POST(req: Request) {
   const { code } = await req.json()
   if (!code) return NextResponse.json({ error: 'Code required' }, { status: 400 })
 
-  const user = await (prisma.user as any).findUnique({
+  const user = await prisma.user.findUnique({
     where: { id: pending.id },
     include: { nurseProfile: true },
   })
-  if (!user?.mfaSecret) return NextResponse.json({ error: 'Invalid session' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Invalid session' }, { status: 401 })
 
-  const valid = (speakeasy as any).totp.verify({
-    secret: user.mfaSecret,
-    encoding: 'base32',
-    token: code,
-    window: 1,
-  })
+  type NurseProfile = {
+    id?: string
+    displayName?: string | null
+    firstName?: string | null
+    lastName?: string | null
+    isDemo?: boolean | null
+    portalAgreementSignedAt?: Date | null
+  }
+
+  type AuthUser = {
+    id: string
+    role: string
+    name?: string | null
+    smsOtp?: string | null
+    smsOtpExpiresAt?: Date | null
+    mfaSecret?: string | null
+    nurseProfile?: NurseProfile | null
+  }
+
+  const authUser = user as AuthUser
+  let valid = false
+
+  if (authUser.role === 'admin' && authUser.smsOtp) {
+    const expiresAt = authUser.smsOtpExpiresAt ? new Date(authUser.smsOtpExpiresAt) : null
+    if (expiresAt && expiresAt.getTime() > Date.now() && code === authUser.smsOtp) {
+      valid = true
+    }
+  } else if (authUser.mfaSecret) {
+    valid = speakeasy.totp.verify({
+      secret: authUser.mfaSecret,
+      encoding: 'base32',
+      token: code,
+      window: 1,
+    })
+  }
 
   if (!valid) return NextResponse.json({ error: 'Invalid code — try again' }, { status: 400 })
 
-  await (prisma.user as any).update({ where: { id: user.id }, data: { lastLoginAt: new Date() } })
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      lastLoginAt: new Date(),
+      smsOtp: null,
+      smsOtpExpiresAt: null,
+    },
+  })
 
-  const portalAgreementSigned = !!user.nurseProfile?.portalAgreementSignedAt
+  const nurseProfile = user.nurseProfile
+  const portalAgreementSigned = !!nurseProfile?.portalAgreementSignedAt
 
   const authToken = signToken({
     id: user.id,
     role: user.role,
-    nurseProfileId: user.nurseProfile?.id,
+    nurseProfileId: nurseProfile?.id,
     name: user.name,
-    displayName: user.nurseProfile?.displayName,
-    firstName: user.nurseProfile?.firstName ?? undefined,
-    lastName: user.nurseProfile?.lastName ?? undefined,
-    isDemo: user.nurseProfile?.isDemo ?? false,
+    displayName: nurseProfile?.displayName,
+    firstName: nurseProfile?.firstName ?? undefined,
+    lastName: nurseProfile?.lastName ?? undefined,
+    isDemo: nurseProfile?.isDemo ?? false,
     portalAgreementSigned,
   })
 

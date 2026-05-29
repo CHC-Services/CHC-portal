@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 
 export default function VerifyPage() {
+  const router = useRouter()
   const [code, setCode] = useState(['', '', '', '', '', ''])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -58,11 +60,11 @@ export default function VerifyPage() {
         return
       }
       if (data.role === 'admin') {
-        window.location.href = '/admin'
+        router.push('/admin')
       } else if ((data.role === 'nurse' || data.role === 'provider') && !data.portalAgreementSigned) {
-        window.location.href = '/nurse/agreement'
+        router.push('/nurse/agreement')
       } else {
-        window.location.href = '/nurse'
+        router.push('/nurse')
       }
     } catch {
       setError('Something went wrong. Please try again.')
@@ -81,13 +83,13 @@ export default function VerifyPage() {
           </p>
         </div>
         <div>
-          <p className="text-2xl font-bold text-white leading-snug">Two-Factor<br />Authentication</p>
+          <p className="text-2xl font-bold text-white leading-snug">Text Message<br />Authentication</p>
           <p className="text-sm text-[#D9E1E8] mt-3 leading-relaxed">
-            Open your authenticator app — Apple Passwords, Google Authenticator, or any TOTP app — and enter the 6-digit code.
+            We sent a one-time code to your phone. Enter the 6-digit number from that text message.
           </p>
         </div>
         <div className="border-t border-[#3d5166] pt-4 text-xs text-[#7A8F79] leading-relaxed">
-          Codes refresh every 30 seconds. If your code isn&apos;t working, wait for the next one.
+          The code expires in five minutes. If you don&apos;t receive it, try logging in again.
         </div>
       </div>
 
@@ -99,7 +101,7 @@ export default function VerifyPage() {
           </div>
           <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-1">Security Check</p>
           <h1 className="text-2xl font-bold text-[#2F3E4E] mb-1">Enter your 6-digit code</h1>
-          <p className="text-sm text-[#7A8F79] mb-8">From your authenticator app</p>
+          <p className="text-sm text-[#7A8F79] mb-8">Enter the 6-digit code we sent to your phone.</p>
 
           {/* 6 digit inputs */}
           <div className="flex gap-2 mb-6" onPaste={handlePaste}>

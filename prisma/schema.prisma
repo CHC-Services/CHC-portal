@@ -32,8 +32,11 @@ model User {
   role       Role     @default(nurse)
 
   // Admin-only MFA
-  mfaSecret  String?
-  mfaEnabled Boolean  @default(false)
+  phone           String?
+  smsOtp          String?
+  smsOtpExpiresAt DateTime?
+  mfaSecret       String?
+  mfaEnabled      Boolean  @default(false)
 
   passwordResetToken  String?
   passwordResetExpiry DateTime?

@@ -1869,3 +1869,45 @@ export async function sendFormReturnedAlert({
     return false
   }
 }
+
+export async function sendTwoFactorCodeEmail({
+  to,
+  name,
+  code,
+}: {
+  to: string
+  name: string
+  code: string
+}): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) return false
+  const resend = createLoggedResend('alert', name)
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to,
+      subject: 'Your myProvider login code',
+      html: `
+        <div style="font-family:sans-serif;max-width:480px;padding:32px;color:#2F3E4E">
+          <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#7A8F79;font-weight:700">Security Code</p>
+          <h2 style="margin:0 0 20px;color:#2F3E4E">Your myProvider Login Code</h2>
+          <p style="margin:0 0 24px;font-size:14px;color:#4a5568;line-height:1.6">
+            Use the code below to complete your login. It expires in <strong>5 minutes</strong>.
+          </p>
+          <div style="background:#F4F6F5;border-radius:12px;padding:24px;text-align:center;margin-bottom:24px">
+            <p style="margin:0;font-size:36px;font-weight:800;letter-spacing:10px;color:#2F3E4E;font-family:monospace">${code}</p>
+          </div>
+          <p style="margin:0 0 8px;font-size:13px;color:#7A8F79;line-height:1.6">
+            If you didn't request this code, someone may have your password. contact us immediately at
+            <a href="mailto:support@cominghomecare.com" style="color:#7A8F79">support@cominghomecare.com</a>.
+          </p>
+          <hr style="border:none;border-top:1px solid #D9E1E8;margin:24px 0"/>
+          <p style="font-size:11px;color:#aab">Coming Home Care Services, LLC · Do not share this code with anyone.</p>
+        </div>
+      `,
+    })
+    return !error
+  } catch {
+    return false
+  }
+}

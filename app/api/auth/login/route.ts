@@ -2,11 +2,15 @@ import { NextResponse } from 'next/server'
 import * as bcrypt from 'bcrypt'
 import { prisma } from '../../../../lib/prisma'
 import { signToken, signPendingToken } from '../../../../lib/auth'
-import { sendSms } from '../../../../lib/sendSms'
 
 function maskPhone(phone: string) {
   const digits = phone.replace(/\D/g, '')
   return digits.length >= 4 ? `••••${digits.slice(-4)}` : phone
+}
+
+function maskEmail(email: string) {
+  const [local, domain] = email.split('@')
+  return `${local[0]}***@${domain}`
 }
 
 export async function POST(req: Request) {
@@ -51,36 +55,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
   }
 
-  const isAdminSmsMfa = adminUser.role === 'admin' && adminUser.mfaEnabled
-  if (isAdminSmsMfa) {
-    if (!adminUser.phone) {
-      return NextResponse.json({ error: 'Admin 2FA phone number is not configured' }, { status: 400 })
-    }
-
-    const code = Math.floor(100000 + Math.random() * 900000).toString()
-    const message = `Your myProvider login code is ${code}. Do not share this code with anyone.`
-
-    const smsResult = await sendSms(adminUser.phone, message)
-    if (!smsResult.ok) {
-      return NextResponse.json({ error: smsResult.error || 'Unable to send SMS code. Please try again.' }, { status: 500 })
-    }
-
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        smsOtp: code,
-        smsOtpExpiresAt: new Date(Date.now() + 5 * 60 * 1000),
-      } as { smsOtp: string; smsOtpExpiresAt: Date },
-    })
-
+  const isAdminMfa = adminUser.role === 'admin' && adminUser.mfaEnabled
+  if (isAdminMfa) {
     const pendingToken = signPendingToken(user.id)
-    const res = NextResponse.json({ requires2FA: true, phoneLast4: maskPhone(adminUser.phone) })
+    const res = NextResponse.json({
+      requires2FA: true,
+      hasSms: !!adminUser.phone,
+      phoneLast4: adminUser.phone ? maskPhone(adminUser.phone) : null,
+      emailMasked: maskEmail(user.email),
+    })
     res.cookies.set('pending_2fa', pendingToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      maxAge: 300, // 5 minutes to enter the code
+      maxAge: 300,
     })
     return res
   }

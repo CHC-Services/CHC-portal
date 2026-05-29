@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useRef, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 
-export default function VerifyPage() {
+function VerifyContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const via = searchParams.get('via') // 'sms' | 'email'
   const [code, setCode] = useState(['', '', '', '', '', ''])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -76,7 +78,7 @@ export default function VerifyPage() {
     <div className="min-h-screen bg-[#D9E1E8] flex items-stretch">
 
       {/* Left branding panel */}
-      <div className="hidden md:flex flex-col justify-center bg-[#2F3E4E] text-white w-1/3 px-12 py-16 gap-6">
+      <div className="hidden md:flex flex-col justify-start pt-24 bg-[#2F3E4E] text-white w-1/3 px-12 py-16 gap-6">
         <div className="border-t border-[#3d5166] pt-6">
           <p className="text-sm tracking-widest text-[#7A8F79] font-semibold">
             <span className="italic text-lg">my</span><span className="font-bold text-lg text-white">Provider</span>
@@ -94,14 +96,16 @@ export default function VerifyPage() {
       </div>
 
       {/* Right — code entry */}
-      <div className="flex flex-col justify-center w-full md:w-2/3 px-8 md:px-16 py-16">
+      <div className="flex flex-col justify-start pt-24 w-full md:w-2/3 px-8 md:px-16 py-16">
         <div className="max-w-sm w-full mx-auto">
           <div className="mb-2">
             <Image src="/chc_logo.png" alt="CHC Logo" width={180} height={60} className="h-auto mb-6" />
           </div>
           <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-1">Security Check</p>
           <h1 className="text-2xl font-bold text-[#2F3E4E] mb-1">Enter your 6-digit code</h1>
-          <p className="text-sm text-[#7A8F79] mb-8">Enter the 6-digit code we sent to your phone.</p>
+          <p className="text-sm text-[#7A8F79] mb-8">
+            {via === 'email' ? 'Enter the 6-digit code we sent to your email address.' : 'Enter the 6-digit code we sent to your phone.'}
+          </p>
 
           {/* 6 digit inputs */}
           <div className="flex gap-2 mb-6" onPaste={handlePaste}>
@@ -141,5 +145,13 @@ export default function VerifyPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function VerifyPage() {
+  return (
+    <Suspense fallback={null}>
+      <VerifyContent />
+    </Suspense>
   )
 }

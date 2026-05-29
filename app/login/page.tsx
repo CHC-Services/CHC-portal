@@ -34,7 +34,18 @@ export default function LoginPage() {
       }
 
       if (data.requires2FA) {
-        window.location.href = '/login/verify'
+        if (data.hasSms) {
+          window.location.href = '/login/choose'
+        } else {
+          // No phone on file — auto-send to email and go straight to verify
+          await fetch('/api/auth/2fa/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ method: 'email' }),
+          })
+          window.location.href = '/login/verify?via=email'
+        }
         return
       }
 

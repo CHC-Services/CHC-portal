@@ -39,6 +39,7 @@ export const GUTTER_COLORS = [
   { label: 'Slate',     value: '#3D4D5C' },
   { label: 'Charcoal',  value: '#2A2E35' },
   { label: 'Espresso',  value: '#3C3028' },
+  { label: 'Maroon',    value: '#6B2737' },
 ]
 
 export const RADIUS_MAP: Record<PortalSettings['radius'], string> = {

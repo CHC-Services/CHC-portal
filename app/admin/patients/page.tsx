@@ -118,6 +118,13 @@ export default function AdPatients() {
 
   // Lock state
   const [locking, setLocking] = useState(false)
+  const [sortCol, setSortCol] = useState<'account' | 'name' | 'dob' | 'insurance' | 'providers' | 'entries'>('account')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  function handleSort(col: typeof sortCol) {
+    if (col === sortCol) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortCol(col); setSortDir('asc') }
+  }
 
   function loadPatients() {
     return fetch('/api/admin/patients', { credentials: 'include' })
@@ -324,6 +331,31 @@ export default function AdPatients() {
     )
   })
 
+  const sorted = [...filtered].sort((a, b) => {
+    let cmp = 0
+    if (sortCol === 'account') {
+      cmp = a.accountNumber.localeCompare(b.accountNumber, undefined, { numeric: true })
+    } else if (sortCol === 'name') {
+      cmp = a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName)
+    } else if (sortCol === 'dob') {
+      cmp = (a.dob || '').localeCompare(b.dob || '')
+    } else if (sortCol === 'insurance') {
+      cmp = a.insuranceType.localeCompare(b.insuranceType)
+    } else if (sortCol === 'providers') {
+      const aName = a.nurseLinks.find(l => l.isActive)?.nurse.lastName || ''
+      const bName = b.nurseLinks.find(l => l.isActive)?.nurse.lastName || ''
+      cmp = aName.localeCompare(bName)
+    } else if (sortCol === 'entries') {
+      cmp = a._count.timeEntries - b._count.timeEntries
+    }
+    return sortDir === 'asc' ? cmp : -cmp
+  })
+
+  function SortIcon({ col }: { col: typeof sortCol }) {
+    if (sortCol !== col) return <span className="ml-1 opacity-30">↕</span>
+    return <span className="ml-1">{sortDir === 'asc' ? '↑' : '↓'}</span>
+  }
+
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6">
       <AdminNav />
@@ -361,16 +393,26 @@ export default function AdPatients() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
-                <th className="text-left py-3 px-4">Account</th>
-                <th className="text-left py-3 px-4">Name</th>
-                <th className="text-left py-3 px-4">DOB</th>
-                <th className="text-left py-3 px-4">Insurance</th>
-                <th className="text-left py-3 px-4">Linked Providers</th>
-                <th className="text-right py-3 px-4">Entries</th>
+                {([
+                  { col: 'account', label: 'Account', align: 'left' },
+                  { col: 'name', label: 'Name', align: 'left' },
+                  { col: 'dob', label: 'DOB', align: 'left' },
+                  { col: 'insurance', label: 'Insurance', align: 'left' },
+                  { col: 'providers', label: 'Linked Providers', align: 'left' },
+                  { col: 'entries', label: 'Entries', align: 'right' },
+                ] as const).map(({ col, label, align }) => (
+                  <th
+                    key={col}
+                    onClick={() => handleSort(col)}
+                    className={`py-3 px-4 cursor-pointer select-none hover:text-[#2F3E4E] transition text-${align} whitespace-nowrap`}
+                  >
+                    {label}<SortIcon col={col} />
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {filtered.map((p, i) => (
+              {sorted.map((p, i) => (
                 <tr
                   key={p.id}
                   onClick={() => openPatient(p)}

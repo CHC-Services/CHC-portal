@@ -26,50 +26,29 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
   }
 
-  type NurseProfile = {
-    id?: string
-    displayName?: string | null
-    firstName?: string | null
-    lastName?: string | null
-    isDemo?: boolean | null
-    portalAgreementSignedAt?: Date | null
-  }
-
-  type AdminSmsUser = {
-    id: string
-    role: string
-    password: string
-    name?: string | null
-    phone?: string | null
-    smsOtp?: string | null
-    smsOtpExpiresAt?: Date | null
-    mfaEnabled?: boolean
-    mfaSecret?: string | null
-    nurseProfile?: NurseProfile | null
-  }
-
-  const adminUser = user as AdminSmsUser
-  const valid = await bcrypt.compare(password, adminUser.password)
+  const valid = await bcrypt.compare(password, user.password)
 
   if (!valid) {
     return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
   }
 
+  // Effective phone: User.phone takes priority, fall back to NurseProfile.phone
+  const effectivePhone = (user as any).phone || user.nurseProfile?.phone || null
+
   const globalSetting = await (prisma.systemSetting.findUnique as any)({ where: { key: 'twofa_enabled' } })
   const globalTwoFa = globalSetting?.value === 'true'
-  const adminMfa = adminUser.role === 'admin' && adminUser.mfaEnabled
+  const adminMfa = user.role === 'admin' && (user as any).mfaEnabled
   const needsTwoFa = globalTwoFa || adminMfa
 
   if (needsTwoFa) {
-    // Non-admin users who haven't acknowledged 2FA yet see the consent modal first
-    const needsConsent = adminUser.role !== 'admin' && !(adminUser as any).twoFaConsentAt
+    const needsConsent = user.role !== 'admin' && !(user as any).twoFaConsentAt
 
     const pendingToken = signPendingToken(user.id)
     const res = NextResponse.json({
       requires2FA: true,
       needsConsent,
-      hasSms: !!adminUser.phone,
-      phoneLast4: adminUser.phone ? maskPhone(adminUser.phone) : null,
+      hasSms: !!effectivePhone,
+      phoneLast4: effectivePhone ? maskPhone(effectivePhone) : null,
       emailMasked: maskEmail(user.email),
     })
     res.cookies.set('pending_2fa', pendingToken, {
@@ -78,19 +57,6 @@ export async function POST(req: Request) {
       sameSite: 'lax',
       path: '/',
       maxAge: 300,
-    })
-    return res
-  }
-
-  if (adminUser.mfaEnabled && adminUser.mfaSecret) {
-    const pendingToken = signPendingToken(user.id)
-    const res = NextResponse.json({ requires2FA: true })
-    res.cookies.set('pending_2fa', pendingToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 300, // 5 minutes to enter the code
     })
     return res
   }

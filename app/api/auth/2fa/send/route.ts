@@ -15,15 +15,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid method' }, { status: 400 })
   }
 
-  const user = await (prisma.user.findUnique as any)({ where: { id: pending.id } })
+  const user = await (prisma.user.findUnique as any)({ where: { id: pending.id }, include: { nurseProfile: true } })
   if (!user) return NextResponse.json({ error: 'Invalid session' }, { status: 401 })
+
+  const effectivePhone = user.phone || user.nurseProfile?.phone || null
 
   const code = Math.floor(100000 + Math.random() * 900000).toString()
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000)
 
   if (method === 'sms') {
-    if (!user.phone) return NextResponse.json({ error: 'No phone number on file' }, { status: 400 })
-    const result = await sendSms(user.phone, `Your myProvider login code is ${code}. Do not share this code with anyone.`)
+    if (!effectivePhone) return NextResponse.json({ error: 'No phone number on file' }, { status: 400 })
+    const result = await sendSms(effectivePhone, `Your myProvider login code is ${code}. Do not share this code with anyone.`)
     if (!result.ok) return NextResponse.json({ error: result.error || 'Unable to send SMS — try email instead' }, { status: 500 })
   } else {
     const sent = await sendTwoFactorCodeEmail({ to: user.email, name: user.name, code })

@@ -18,12 +18,14 @@ export async function GET(req: Request) {
   const pending = pendingToken ? verifyPendingToken(pendingToken) : null
   if (!pending) return NextResponse.json({ error: 'Session expired' }, { status: 401 })
 
-  const user = await (prisma.user.findUnique as any)({ where: { id: pending.id } })
+  const user = await (prisma.user.findUnique as any)({ where: { id: pending.id }, include: { nurseProfile: true } })
   if (!user) return NextResponse.json({ error: 'Invalid session' }, { status: 401 })
 
+  const effectivePhone = user.phone || user.nurseProfile?.phone || null
+
   return NextResponse.json({
-    hasSms: !!user.phone,
-    phoneLast4: user.phone ? maskPhone(user.phone) : null,
+    hasSms: !!effectivePhone,
+    phoneLast4: effectivePhone ? maskPhone(effectivePhone) : null,
     emailMasked: maskEmail(user.email),
   })
 }

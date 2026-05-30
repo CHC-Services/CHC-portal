@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   const authUser = user as AuthUser
   let valid = false
 
-  if (authUser.role === 'admin' && authUser.smsOtp) {
+  if (authUser.smsOtp) {
     const expiresAt = authUser.smsOtpExpiresAt ? new Date(authUser.smsOtpExpiresAt) : null
     if (expiresAt && expiresAt.getTime() > Date.now() && code === authUser.smsOtp) {
       valid = true

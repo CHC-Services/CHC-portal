@@ -18,7 +18,7 @@ export async function POST(req: Request) {
   const pending = pendingToken ? verifyPendingToken(pendingToken) : null
   if (!pending) return NextResponse.json({ error: 'Session expired — please log in again' }, { status: 401 })
 
-  const user = await (prisma.user.findUnique as any)({ where: { id: pending.id } })
+  const user = await (prisma.user.findUnique as any)({ where: { id: pending.id }, include: { nurseProfile: true } })
   if (!user) return NextResponse.json({ error: 'Invalid session' }, { status: 401 })
 
   await (prisma.user.update as any)({
@@ -26,10 +26,12 @@ export async function POST(req: Request) {
     data: { twoFaConsentAt: new Date() },
   })
 
+  const effectivePhone = user.phone || user.nurseProfile?.phone || null
+
   return NextResponse.json({
     ok: true,
-    hasSms: !!user.phone,
-    phoneLast4: user.phone ? maskPhone(user.phone) : null,
+    hasSms: !!effectivePhone,
+    phoneLast4: effectivePhone ? maskPhone(effectivePhone) : null,
     emailMasked: maskEmail(user.email),
   })
 }

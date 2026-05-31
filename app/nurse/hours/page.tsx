@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { DateInput, DateInputHandle } from '../../components/DateInput'
+import AddPatientModal from '../../components/AddPatientModal'
 
 type TimeEntry = {
   id: string
@@ -37,6 +38,7 @@ export default function MyHours() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [linkedPatients, setLinkedPatients] = useState<LinkedPatient[]>([])
   const [selectedPatient, setSelectedPatient] = useState('')
+  const [showAddPatient, setShowAddPatient] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [filterPatient, setFilterPatient] = useState('')
 
@@ -47,6 +49,12 @@ export default function MyHours() {
         if (Array.isArray(data)) setEntries(data)
       })
       .finally(() => setLoadingHistory(false))
+  }
+
+  function loadLinkedPatients() {
+    return fetch('/api/nurse/patients', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d.patients)) setLinkedPatients(d.patients) })
   }
 
   async function deleteSelected() {
@@ -318,29 +326,30 @@ export default function MyHours() {
 
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Patient <span className="text-red-400">*</span></label>
-              {linkedPatients.length > 0 ? (
-                <select
-                  value={selectedPatient}
-                  onChange={e => setSelectedPatient(e.target.value)}
-                  required
-                  className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] text-sm"
-                >
-                  <option value="">— Select patient —</option>
-                  {linkedPatients.map(p => {
-                    const initial = p.merged.firstName?.[0] || ''
-                    const shortLast = p.merged.lastName?.slice(0, 8) || ''
-                    return (
-                      <option key={p.patientId} value={p.patientId}>
-                        {shortLast}, {initial}.
-                      </option>
-                    )
-                  })}
-                </select>
-              ) : (
-                <p className="text-xs text-[#7A8F79] italic border border-[#D9E1E8] rounded-lg p-2 bg-[#F4F6F5]">
-                  No patients assigned — contact your administrator.
-                </p>
-              )}
+              <select
+                value={selectedPatient}
+                onChange={e => {
+                  if (e.target.value === '__add__') {
+                    setShowAddPatient(true)
+                  } else {
+                    setSelectedPatient(e.target.value)
+                  }
+                }}
+                required
+                className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] text-sm"
+              >
+                <option value="">— Select patient —</option>
+                {linkedPatients.map(p => {
+                  const initial = p.merged.firstName?.[0] || ''
+                  const shortLast = p.merged.lastName?.slice(0, 8) || ''
+                  return (
+                    <option key={p.patientId} value={p.patientId}>
+                      {shortLast}, {initial}.
+                    </option>
+                  )
+                })}
+                <option value="__add__">＋ Add New Patient…</option>
+              </select>
             </div>
 
             <div>
@@ -569,6 +578,16 @@ export default function MyHours() {
           )}
         </div>
       </div>
+
+      {showAddPatient && (
+        <AddPatientModal
+          onClose={() => setShowAddPatient(false)}
+          onSuccess={(patientId) => {
+            setShowAddPatient(false)
+            loadLinkedPatients().then(() => setSelectedPatient(patientId))
+          }}
+        />
+      )}
     </div>
   )
 }

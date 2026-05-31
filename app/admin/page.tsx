@@ -1,9 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import AdminNav from '../components/AdminNav'
-import { DateInput, DateInputHandle } from '../components/DateInput'
 
 type TimeEntry = {
   id: string
@@ -20,8 +19,34 @@ type Nurse = {
   displayName: string
   firstName: string | null
   lastName: string | null
+  middleInitial: string | null
   accountNumber: string | null
+  phone: string | null
+  address: string | null
+  city: string | null
+  state: string | null
+  zip: string | null
+  // encrypted fields — truthy means "on file", never display raw value
   npiNumber: string | null
+  medicaidNumber: string | null
+  dob: string | null
+  ssn: string | null
+  etin: string | null
+  epacesUserId: string | null
+  // business entity
+  hasBusinessProvider: boolean | null
+  bizNpi: string | null
+  bizNpiType: string | null
+  bizMedicaidId: string | null
+  bizEntityName: string | null
+  bizServiceAddress: string | null
+  bizCity: string | null
+  bizState: string | null
+  bizZip: string | null
+  bizPhone: string | null
+  bizEmail: string | null
+  ein: string | null
+  fein: string | null
   invoiceBalance: number
   totalInvoiced: number
   totalPaid: number
@@ -113,80 +138,27 @@ function PendingRequestRow({ nurse, onApprove, onDeny }: { nurse: Nurse; onAppro
   )
 }
 
-function NurseRow({ nurse, onDeleted, onRefresh }: { nurse: Nurse; onDeleted: () => void; onRefresh: () => void }) {
+function InfoField({ label, value, sensitive }: { label: string; value: string | null | undefined; sensitive?: boolean }) {
+  const display = value
+    ? sensitive ? '●●●●●●' : value
+    : '—'
+  return (
+    <div className="space-y-0.5">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79]">{label}</p>
+      <p className={`text-sm ${value ? 'text-[#2F3E4E]' : 'text-[#aab]'}`}>{display}</p>
+    </div>
+  )
+}
+
+function NurseRow({ nurse, onDeleted }: { nurse: Nurse; onDeleted: () => void }) {
   const [open, setOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const [logOpen, setLogOpen] = useState(false)
-  const [logDate, setLogDate] = useState('')
-  const logDateRef = useRef<DateInputHandle>(null)
-  const [logHours, setLogHours] = useState('')
-  const [logNotes, setLogNotes] = useState('')
-  const [logPatientId, setLogPatientId] = useState('')
-  const [logPatients, setLogPatients] = useState<{ id: string; accountNumber: string; firstName: string; lastName: string }[]>([])
-  const [logMessage, setLogMessage] = useState('')
-  const [logSubmitting, setLogSubmitting] = useState(false)
-  const [deletingEntry, setDeletingEntry] = useState<string | null>(null)
-  const [editingHoursId, setEditingHoursId] = useState<string | null>(null)
-  const [editHoursVal, setEditHoursVal] = useState('')
-  const [savingHours, setSavingHours] = useState(false)
-
-  async function submitHours(e: React.FormEvent) {
-    e.preventDefault()
-    setLogSubmitting(true)
-    setLogMessage('')
-    const res = await fetch('/api/admin/time-entry', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ nurseId: nurse.id, workDate: logDate, hours: logHours, notes: logNotes, patientId: logPatientId || null })
-    })
-    const data = await res.json()
-    setLogSubmitting(false)
-    if (res.ok) {
-      setLogDate('')
-      setLogHours('')
-      setLogNotes('')
-      setLogPatientId('')
-      setLogMessage('Hours logged.')
-      onRefresh()
-      requestAnimationFrame(() => logDateRef.current?.focus())
-    } else {
-      setLogMessage(data.error || 'Error logging hours.')
-    }
-  }
 
   async function handleDelete() {
     setDeleting(true)
     await fetch(`/api/admin/nurses/${nurse.id}`, { method: 'DELETE', credentials: 'include' })
     onDeleted()
-  }
-
-  async function saveHours(entryId: string) {
-    const h = parseFloat(editHoursVal)
-    if (isNaN(h) || h <= 0) { setEditingHoursId(null); return }
-    setSavingHours(true)
-    await fetch(`/api/admin/time-entry/${entryId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ hours: h }),
-    })
-    setSavingHours(false)
-    setEditingHoursId(null)
-    onRefresh()
-  }
-
-  async function deleteEntry(entryId: string) {
-    setDeletingEntry(entryId)
-    const res = await fetch('/api/admin/time-entry', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ id: entryId }),
-    })
-    setDeletingEntry(null)
-    if (res.ok) onRefresh()
   }
 
   const totalHours = nurse.timeEntries.reduce((sum, e) => sum + e.hours, 0)
@@ -271,167 +243,80 @@ function NurseRow({ nurse, onDeleted, onRefresh }: { nurse: Nurse; onDeleted: ()
       </button>
 
       {open && (
-        <div className="border-t border-[#D9E1E8] px-6 py-4">
-          {nurse.timeEntries.length === 0 ? (
-            <p className="text-sm text-[#7A8F79] italic">No hours submitted yet.</p>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
-                  <th className="text-left py-2 pr-4">Date</th>
-                  <th className="text-right py-2 pr-4">Hours</th>
-                  <th className="text-left py-2">Notes</th>
-                  <th className="w-6"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {nurse.timeEntries.map((entry, i) => (
-                  <tr
-                    key={entry.id}
-                    className={`border-b border-[#D9E1E8] last:border-0 ${i % 2 === 0 ? '' : 'bg-[#F4F6F5]'}`}
-                  >
-                    <td className="py-2 pr-4 text-[#2F3E4E] whitespace-nowrap">
-                      {new Date(entry.workDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
-                    </td>
-                    <td
-                      className="py-2 pr-4 text-right font-semibold text-[#2F3E4E] select-none"
-                      title={entry.invoiceId ? 'Already invoiced' : 'Double-click to edit hours'}
-                      onDoubleClick={() => {
-                        if (entry.invoiceId) return
-                        setEditingHoursId(entry.id)
-                        setEditHoursVal(String(entry.hours))
-                      }}
-                    >
-                      {editingHoursId === entry.id ? (
-                        <input
-                          autoFocus
-                          type="number"
-                          min="1"
-                          step="1"
-                          value={editHoursVal}
-                          onChange={e => setEditHoursVal(e.target.value)}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter') saveHours(entry.id)
-                            if (e.key === 'Escape') setEditingHoursId(null)
-                          }}
-                          onBlur={() => saveHours(entry.id)}
-                          disabled={savingHours}
-                          className="w-14 border border-[#7A8F79] rounded px-1 py-0.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-                        />
-                      ) : (
-                        <span className={`cursor-text ${entry.invoiceId ? 'text-[#7A8F79]' : 'underline decoration-dotted decoration-[#7A8F79] underline-offset-2'}`}>
-                          {entry.hours}
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-2 text-[#2F3E4E] italic text-xs">{entry.notes || '—'}</td>
-                    <td className="py-2 pl-2">
-                      <button
-                        onClick={() => deleteEntry(entry.id)}
-                        disabled={deletingEntry === entry.id}
-                        title="Delete entry"
-                        className="text-red-400 hover:text-red-600 transition disabled:opacity-40"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+        <div className="border-t border-[#D9E1E8] px-6 py-5">
+          <div className={`grid gap-6 ${nurse.hasBusinessProvider ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1 max-w-md'}`}>
 
-          {/* Log hours on behalf of nurse */}
-          <div className="mt-4 pt-4 border-t border-[#D9E1E8]">
-            <button
-              onClick={() => {
-                const next = !logOpen
-                setLogOpen(next)
-                setLogMessage('')
-                if (next && logPatients.length === 0) {
-                  fetch(`/api/admin/patients?nurseId=${nurse.id}`, { credentials: 'include' })
-                    .then(r => r.json())
-                    .then(d => { if (Array.isArray(d.patients)) setLogPatients(d.patients) })
-                }
-              }}
-              className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] underline underline-offset-2"
-            >
-              {logOpen ? 'Cancel' : '+ Log hours on behalf of this nurse'}
-            </button>
-            {logOpen && (
-              <form onSubmit={submitHours} className="mt-3 space-y-2 max-w-sm">
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Date Worked</label>
-                    <DateInput
-                      ref={logDateRef}
-                      value={logDate}
-                      onChange={setLogDate}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Hours</label>
-                    <input
-                      type="number"
-                      min="1"
-                      step="1"
-                      placeholder="e.g. 8"
-                      value={logHours}
-                      onChange={e => setLogHours(e.target.value)}
-                      required
-                      className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] text-sm focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-                    />
-                  </div>
+            {/* ── Left: Individual Provider Info ── */}
+            <div className="space-y-3">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] border-b border-[#D9E1E8] pb-1">Individual Provider Information</p>
+
+              <div className="grid grid-cols-3 gap-x-4 gap-y-2 text-sm">
+                <InfoField label="First Name" value={nurse.firstName} />
+                <InfoField label="MI" value={nurse.middleInitial} />
+                <InfoField label="Last Name" value={nurse.lastName} />
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                <InfoField label="Phone" value={nurse.phone} />
+                <InfoField label="Email" value={nurse.user.email} />
+              </div>
+              <InfoField label="Address" value={nurse.address} />
+              <div className="grid grid-cols-3 gap-x-4 gap-y-2 text-sm">
+                <InfoField label="City" value={nurse.city} />
+                <InfoField label="State" value={nurse.state} />
+                <InfoField label="ZIP" value={nurse.zip} />
+              </div>
+              {nurse.displayName && nurse.displayName !== nurse.firstName && (
+                <InfoField label="Preferred Name" value={nurse.displayName} />
+              )}
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                <InfoField label="Date of Birth" value={nurse.dob} sensitive />
+                <InfoField label="SSN" value={nurse.ssn} sensitive />
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                <InfoField label="NPI (Individual)" value={nurse.npiNumber} sensitive />
+                <InfoField label="Medicaid ID" value={nurse.medicaidNumber} sensitive />
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                <InfoField label="ETIN" value={nurse.etin} />
+                <InfoField label="ePaces User ID" value={nurse.epacesUserId} />
+              </div>
+            </div>
+
+            {/* ── Right: Business Provider Info (only if checked) ── */}
+            {nurse.hasBusinessProvider && (
+              <div className="space-y-3">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] border-b border-[#D9E1E8] pb-1">Business Provider Information</p>
+
+                <InfoField label="Entity Name" value={nurse.bizEntityName} />
+                <InfoField label="Service Address" value={nurse.bizServiceAddress} />
+                <div className="grid grid-cols-3 gap-x-4 gap-y-2 text-sm">
+                  <InfoField label="City" value={nurse.bizCity} />
+                  <InfoField label="State" value={nurse.bizState} />
+                  <InfoField label="ZIP" value={nurse.bizZip} />
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Patient <span className="text-red-400">*</span></label>
-                  {logPatients.length > 0 ? (
-                    <select
-                      value={logPatientId}
-                      onChange={e => setLogPatientId(e.target.value)}
-                      required
-                      className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] text-sm focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-                    >
-                      <option value="">— Select patient —</option>
-                      {logPatients.map(p => (
-                        <option key={p.id} value={p.id}>{p.lastName}, {p.firstName} ({p.accountNumber})</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <p className="text-[11px] text-[#7A8F79] italic border border-dashed border-[#D9E1E8] rounded-lg p-2">
-                      No patients linked — visit this nurse&apos;s profile to link patients.
-                    </p>
-                  )}
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  <InfoField label="Business Phone" value={nurse.bizPhone} />
+                  <InfoField label="Business Email" value={nurse.bizEmail} />
                 </div>
-                <input
-                  type="text"
-                  placeholder="Notes (optional)"
-                  value={logNotes}
-                  onChange={e => setLogNotes(e.target.value)}
-                  className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] text-sm focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-                />
-                <button
-                  type="submit"
-                  disabled={logSubmitting || logPatients.length === 0 || !logPatientId}
-                  className="bg-[#2F3E4E] text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-50"
-                >
-                  {logSubmitting ? 'Saving…' : 'Log Hours'}
-                </button>
-                {logMessage && (
-                  <p className={`text-xs font-medium ${logMessage.includes('Error') || logMessage.includes('already') ? 'text-red-500' : 'text-[#7A8F79]'}`}>
-                    {logMessage}
-                  </p>
-                )}
-              </form>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  <InfoField label="Business NPI" value={nurse.bizNpi} />
+                  <InfoField label="NPI Type" value={nurse.bizNpiType} />
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  <InfoField label="Business Medicaid ID" value={nurse.bizMedicaidId} />
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  <InfoField label="EIN" value={nurse.ein} sensitive />
+                  <InfoField label="FEIN" value={nurse.fein} sensitive />
+                </div>
+              </div>
             )}
           </div>
 
           {/* Delete nurse */}
-          <div className="mt-4 pt-4 border-t border-[#D9E1E8]">
+          <div className="mt-5 pt-4 border-t border-[#D9E1E8]">
             {confirmDelete ? (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2 max-w-sm">
                 <p className="text-sm text-red-700 font-semibold">Permanently delete {displayName}? This cannot be undone.</p>
                 <div className="flex gap-2">
                   <button onClick={() => setConfirmDelete(false)} className="flex-1 border border-[#D9E1E8] text-[#7A8F79] py-1.5 rounded text-sm font-semibold">Cancel</button>
@@ -723,7 +608,7 @@ export default function AdminDashboard() {
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold text-[#2F3E4E]">
             Nurse Roster
-            <span className="ml-2 text-sm font-normal text-[#7A8F79]">— click a nurse to expand their hours</span>
+            <span className="ml-2 text-sm font-normal text-[#7A8F79]">— click a nurse to view their profile</span>
           </h2>
           <a
             href="/api/admin/reports/time-matrix"
@@ -744,7 +629,7 @@ export default function AdminDashboard() {
         ) : (
           <div className="space-y-3">
             {liveNurses.map(nurse => (
-              <NurseRow key={nurse.id} nurse={nurse} onDeleted={loadNurses} onRefresh={loadNurses} />
+              <NurseRow key={nurse.id} nurse={nurse} onDeleted={loadNurses} />
             ))}
           </div>
         )}
@@ -756,7 +641,7 @@ export default function AdminDashboard() {
             </summary>
             <div className="space-y-3 mt-3">
               {demoNurses.map(nurse => (
-                <NurseRow key={nurse.id} nurse={nurse} onDeleted={loadNurses} onRefresh={loadNurses} />
+                <NurseRow key={nurse.id} nurse={nurse} onDeleted={loadNurses} />
               ))}
             </div>
           </details>

@@ -156,7 +156,7 @@ export default async function Home() {
                   href="/signup"
                   className="bg-[#7A8F79] text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-white hover:text-[#2F3E4E] transition"
                 >
-                  Sign up for <i>my</i>Provider →
+                  Enroll in <i>my</i>Provider →
                 </Link>
                 <Link
                   href="/login"

@@ -9,6 +9,9 @@ export default function SecuritySettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [smsQuota, setSmsQuota] = useState<number | null>(null)
+  const [smsQuotaLoading, setSmsQuotaLoading] = useState(false)
+  const [smsQuotaError, setSmsQuotaError] = useState('')
 
   useEffect(() => {
     fetch('/api/admin/system/security')
@@ -18,6 +21,21 @@ export default function SecuritySettingsPage() {
         setLoading(false)
       })
   }, [])
+
+  async function checkSmsQuota() {
+    setSmsQuotaLoading(true)
+    setSmsQuotaError('')
+    try {
+      const res = await fetch('/api/admin/system/textbelt-quota', { credentials: 'include' })
+      const data = await res.json()
+      if (!res.ok) { setSmsQuotaError(data.error || 'Failed to fetch quota'); return }
+      setSmsQuota(data.quotaRemaining)
+    } catch {
+      setSmsQuotaError('Could not reach TextBelt.')
+    } finally {
+      setSmsQuotaLoading(false)
+    }
+  }
 
   async function toggle() {
     setSaving(true)
@@ -96,6 +114,51 @@ export default function SecuritySettingsPage() {
             )}
             {saved && (
               <span className="text-xs text-green-600 font-medium">Saved</span>
+            )}
+          </div>
+        </div>
+
+        {/* TextBelt SMS Quota */}
+        <div className="bg-white rounded-2xl shadow-sm border border-transparent p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-lg">📱</span>
+                <p className="font-bold text-[#2F3E4E] text-sm">SMS Credits — TextBelt</p>
+              </div>
+              <p className="text-xs text-[#7A8F79] leading-relaxed">
+                Remaining texts available on your TextBelt account. Each 2FA code sent to a user consumes one credit.
+              </p>
+            </div>
+            <button
+              onClick={checkSmsQuota}
+              disabled={smsQuotaLoading}
+              className="shrink-0 border border-[#D9E1E8] text-[#7A8F79] text-xs font-semibold px-3 py-1.5 rounded-lg hover:border-[#7A8F79] hover:text-[#2F3E4E] transition disabled:opacity-50"
+            >
+              {smsQuotaLoading ? 'Checking…' : 'Check'}
+            </button>
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-[#D9E1E8]">
+            {smsQuotaError ? (
+              <p className="text-xs text-red-500">{smsQuotaError}</p>
+            ) : smsQuota === null ? (
+              <p className="text-xs text-[#7A8F79] italic">Click Check to fetch your current balance.</p>
+            ) : (
+              <div className="flex items-center gap-3">
+                <span className={`text-2xl font-black ${smsQuota < 10 ? 'text-red-500' : smsQuota < 50 ? 'text-amber-500' : 'text-green-600'}`}>
+                  {smsQuota.toLocaleString()}
+                </span>
+                <div>
+                  <p className="text-xs font-semibold text-[#2F3E4E]">texts remaining</p>
+                  {smsQuota < 10 && (
+                    <p className="text-xs text-red-500 font-medium">⚠ Low — purchase more at textbelt.com</p>
+                  )}
+                  {smsQuota >= 10 && smsQuota < 50 && (
+                    <p className="text-xs text-amber-600 font-medium">Getting low — consider topping up soon</p>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         </div>

@@ -4,38 +4,32 @@ import { useState, useEffect } from 'react'
 import AdminNav from '../../../components/AdminNav'
 import Link from 'next/link'
 
+type SmsKeyEntry = { label: string; addedAt: string; masked: string; quotaRemaining: number | null }
+
 export default function SecuritySettingsPage() {
   const [twofaEnabled, setTwofaEnabled] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [smsQuota, setSmsQuota] = useState<number | null>(null)
-  const [smsQuotaLoading, setSmsQuotaLoading] = useState(false)
-  const [smsQuotaError, setSmsQuotaError] = useState('')
+
+  // SMS key manager
+  const [smsKeys, setSmsKeys] = useState<SmsKeyEntry[]>([])
+  const [smsKeysLoading, setSmsKeysLoading] = useState(false)
+  const [smsKeysLoaded, setSmsKeysLoaded] = useState(false)
+  const [newApiKey, setNewApiKey] = useState('')
+  const [newKeyLabel, setNewKeyLabel] = useState('')
+  const [addingKey, setAddingKey] = useState(false)
+  const [addKeyError, setAddKeyError] = useState('')
+  const [deletingIndex, setDeletingIndex] = useState<number | null>(null)
 
   useEffect(() => {
-    fetch('/api/admin/system/security')
+    fetch('/api/admin/system/security', { credentials: 'include' })
       .then(r => r.json())
       .then(data => {
         setTwofaEnabled(data.twofaEnabled ?? false)
         setLoading(false)
       })
   }, [])
-
-  async function checkSmsQuota() {
-    setSmsQuotaLoading(true)
-    setSmsQuotaError('')
-    try {
-      const res = await fetch('/api/admin/system/textbelt-quota', { credentials: 'include' })
-      const data = await res.json()
-      if (!res.ok) { setSmsQuotaError(data.error || 'Failed to fetch quota'); return }
-      setSmsQuota(data.quotaRemaining)
-    } catch {
-      setSmsQuotaError('Could not reach TextBelt.')
-    } finally {
-      setSmsQuotaLoading(false)
-    }
-  }
 
   async function toggle() {
     setSaving(true)
@@ -44,6 +38,7 @@ export default function SecuritySettingsPage() {
     const res = await fetch('/api/admin/system/security', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ twofaEnabled: next }),
     })
     if (res.ok) {
@@ -52,6 +47,47 @@ export default function SecuritySettingsPage() {
       setTimeout(() => setSaved(false), 3000)
     }
     setSaving(false)
+  }
+
+  async function loadSmsKeys() {
+    setSmsKeysLoading(true)
+    try {
+      const res = await fetch('/api/admin/system/textbelt-keys', { credentials: 'include' })
+      const data = await res.json()
+      if (res.ok) { setSmsKeys(data.keys ?? []); setSmsKeysLoaded(true) }
+    } finally {
+      setSmsKeysLoading(false)
+    }
+  }
+
+  async function addKey() {
+    if (!newApiKey.trim()) return
+    setAddingKey(true)
+    setAddKeyError('')
+    const res = await fetch('/api/admin/system/textbelt-keys', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ apiKey: newApiKey.trim(), label: newKeyLabel.trim() }),
+    })
+    const data = await res.json()
+    setAddingKey(false)
+    if (!res.ok) { setAddKeyError(data.error || 'Failed to add key'); return }
+    setNewApiKey('')
+    setNewKeyLabel('')
+    loadSmsKeys()
+  }
+
+  async function deleteKey(index: number) {
+    setDeletingIndex(index)
+    await fetch('/api/admin/system/textbelt-keys', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ index }),
+    })
+    setDeletingIndex(null)
+    loadSmsKeys()
   }
 
   return (
@@ -69,7 +105,7 @@ export default function SecuritySettingsPage() {
       <div className="max-w-xl space-y-4">
 
         {/* 2FA global toggle */}
-        <div className="bg-white rounded-2xl shadow-sm border border-transparent p-6">
+        <div className="bg-white rounded-2xl shadow-sm p-6">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
@@ -91,80 +127,131 @@ export default function SecuritySettingsPage() {
               role="switch"
               aria-checked={twofaEnabled}
             >
-              <span
-                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${
-                  twofaEnabled ? 'translate-x-5' : 'translate-x-0'
-                }`}
-              />
+              <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${twofaEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
             </button>
           </div>
-
           <div className="mt-4 pt-4 border-t border-[#D9E1E8] flex items-center gap-2">
             {loading ? (
               <span className="text-xs text-[#7A8F79]">Loading…</span>
             ) : (
-              <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${
-                twofaEnabled
-                  ? 'bg-green-50 text-green-700 border border-green-200'
-                  : 'bg-[#F4F6F5] text-[#7A8F79] border border-[#D9E1E8]'
-              }`}>
+              <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${twofaEnabled ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-[#F4F6F5] text-[#7A8F79] border border-[#D9E1E8]'}`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${twofaEnabled ? 'bg-green-500' : 'bg-[#7A8F79]'}`} />
                 {twofaEnabled ? 'Enabled for all users' : 'Disabled — admin accounts only'}
               </span>
             )}
-            {saved && (
-              <span className="text-xs text-green-600 font-medium">Saved</span>
-            )}
+            {saved && <span className="text-xs text-green-600 font-medium">Saved</span>}
           </div>
         </div>
 
-        {/* TextBelt SMS Quota */}
-        <div className="bg-white rounded-2xl shadow-sm border border-transparent p-6">
-          <div className="flex items-start justify-between gap-4">
+        {/* TextBelt SMS Key Manager */}
+        <div className="bg-white rounded-2xl shadow-sm p-6">
+          <div className="flex items-start justify-between gap-4 mb-4">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-lg">📱</span>
-                <p className="font-bold text-[#2F3E4E] text-sm">SMS Credits — TextBelt</p>
+                <p className="font-bold text-[#2F3E4E] text-sm">SMS API Keys — TextBelt</p>
               </div>
               <p className="text-xs text-[#7A8F79] leading-relaxed">
-                Remaining texts available on your TextBelt account. Each 2FA code sent to a user consumes one credit.
+                Store one or more TextBelt API keys. When a key runs out of credits it automatically falls over to the next one.
+                Keys are stored in the database — no Vercel env var needed.
               </p>
             </div>
             <button
-              onClick={checkSmsQuota}
-              disabled={smsQuotaLoading}
+              onClick={smsKeysLoaded ? loadSmsKeys : loadSmsKeys}
+              disabled={smsKeysLoading}
               className="shrink-0 border border-[#D9E1E8] text-[#7A8F79] text-xs font-semibold px-3 py-1.5 rounded-lg hover:border-[#7A8F79] hover:text-[#2F3E4E] transition disabled:opacity-50"
             >
-              {smsQuotaLoading ? 'Checking…' : 'Check'}
+              {smsKeysLoading ? 'Loading…' : smsKeysLoaded ? 'Refresh' : 'Load Keys'}
             </button>
           </div>
 
-          <div className="mt-4 pt-4 border-t border-[#D9E1E8]">
-            {smsQuotaError ? (
-              <p className="text-xs text-red-500">{smsQuotaError}</p>
-            ) : smsQuota === null ? (
-              <p className="text-xs text-[#7A8F79] italic">Click Check to fetch your current balance.</p>
-            ) : (
-              <div className="flex items-center gap-3">
-                <span className={`text-2xl font-black ${smsQuota < 10 ? 'text-red-500' : smsQuota < 50 ? 'text-amber-500' : 'text-green-600'}`}>
-                  {smsQuota.toLocaleString()}
-                </span>
-                <div>
-                  <p className="text-xs font-semibold text-[#2F3E4E]">texts remaining</p>
-                  {smsQuota < 10 && (
-                    <p className="text-xs text-red-500 font-medium">⚠ Low — purchase more at textbelt.com</p>
-                  )}
-                  {smsQuota >= 10 && smsQuota < 50 && (
-                    <p className="text-xs text-amber-600 font-medium">Getting low — consider topping up soon</p>
-                  )}
-                </div>
-              </div>
-            )}
+          {/* Key list */}
+          {smsKeysLoaded && (
+            <div className="space-y-2 mb-4">
+              {smsKeys.length === 0 ? (
+                <p className="text-xs text-[#7A8F79] italic">No keys stored yet. Add one below.</p>
+              ) : (
+                smsKeys.map((entry, i) => (
+                  <div key={i} className="flex items-center justify-between gap-3 border border-[#D9E1E8] rounded-xl px-4 py-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${
+                          entry.quotaRemaining === null ? 'bg-[#D9E1E8]' :
+                          entry.quotaRemaining === 0 ? 'bg-red-400' :
+                          entry.quotaRemaining < 10 ? 'bg-amber-400' : 'bg-green-400'
+                        }`} />
+                        <p className="text-xs font-mono text-[#2F3E4E] truncate">{entry.masked}</p>
+                        {i === 0 && <span className="text-[10px] font-semibold bg-[#2F3E4E] text-white px-1.5 py-0.5 rounded-full shrink-0">Active</span>}
+                      </div>
+                      <p className="text-[10px] text-[#7A8F79] mt-0.5">{entry.label}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      {entry.quotaRemaining === null ? (
+                        <p className="text-xs text-[#7A8F79]">—</p>
+                      ) : entry.quotaRemaining === 0 ? (
+                        <p className="text-xs text-red-500 font-semibold">0 left</p>
+                      ) : (
+                        <p className={`text-sm font-black ${entry.quotaRemaining < 10 ? 'text-amber-500' : 'text-green-600'}`}>
+                          {entry.quotaRemaining.toLocaleString()}
+                        </p>
+                      )}
+                      <p className="text-[10px] text-[#7A8F79]">credits</p>
+                    </div>
+                    <button
+                      onClick={() => deleteKey(i)}
+                      disabled={deletingIndex === i}
+                      className="shrink-0 text-red-400 hover:text-red-600 text-xs font-semibold transition disabled:opacity-40"
+                    >
+                      {deletingIndex === i ? '…' : 'Remove'}
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* Add new key form */}
+          <div className="border-t border-[#D9E1E8] pt-4 space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Add a Key</p>
+            <input
+              type="text"
+              placeholder="TextBelt API key"
+              value={newApiKey}
+              onChange={e => setNewApiKey(e.target.value)}
+              className="w-full border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] font-mono"
+            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Label (e.g. Purchased June 2026)"
+                value={newKeyLabel}
+                onChange={e => setNewKeyLabel(e.target.value)}
+                className="flex-1 border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+              />
+              <button
+                onClick={addKey}
+                disabled={addingKey || !newApiKey.trim()}
+                className="shrink-0 bg-[#2F3E4E] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#7A8F79] transition disabled:opacity-50"
+              >
+                {addingKey ? 'Verifying…' : 'Add'}
+              </button>
+            </div>
+            {addKeyError && <p className="text-xs text-red-500">{addKeyError}</p>}
+            <p className="text-[10px] text-[#7A8F79]">The key is verified with TextBelt before saving. Keys are tried in order — the first one with credits is used automatically.</p>
+            <div className="mt-3 bg-[#F4F6F5] border border-[#D9E1E8] rounded-xl px-4 py-3 space-y-1">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-[#2F3E4E]">💡 Topping off your existing key</p>
+              <p className="text-[10px] text-[#7A8F79] leading-relaxed">
+                You don&apos;t need a new key when you run out. Go to <span className="font-semibold text-[#2F3E4E]">textbelt.com</span>, purchase additional credits, and enter your <span className="font-semibold text-[#2F3E4E]">existing key</span> at checkout. TextBelt adds the credits directly to it — your whitelist approval and message template stay intact. No new review required.
+              </p>
+              <p className="text-[10px] text-[#7A8F79] leading-relaxed">
+                Only add a second key here if you want a true backup. For normal use, one key topped off as needed is all you need.
+              </p>
+            </div>
           </div>
         </div>
 
         {/* Note about admin accounts */}
-        <div className="bg-white rounded-2xl shadow-sm border border-transparent p-6">
+        <div className="bg-white rounded-2xl shadow-sm p-6">
           <div className="flex items-start gap-3">
             <span className="text-lg mt-0.5">ℹ️</span>
             <div>

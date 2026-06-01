@@ -9,9 +9,11 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  // This route is now superseded by /api/admin/system/textbelt-keys (GET)
+  // Kept for backwards compatibility — checks env var key only
   const apiKey = process.env.TEXTBELT_API_KEY
   if (!apiKey) {
-    return NextResponse.json({ error: 'TEXTBELT_API_KEY is not configured' }, { status: 500 })
+    return NextResponse.json({ error: 'No env var key configured — use the key manager instead.' }, { status: 404 })
   }
 
   try {

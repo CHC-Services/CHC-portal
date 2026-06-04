@@ -422,7 +422,7 @@ export default function AdPatients() {
                     <span className="font-mono text-xs text-[#7A8F79]">{p.accountNumber}</span>
                     {p.isLocked && <span className="ml-1.5 text-[9px] font-bold text-red-500 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded-full">Locked</span>}
                   </td>
-                  <td className="py-3 px-4 font-semibold text-[#2F3E4E]">{p.lastName}, {p.firstName}</td>
+                  <td className="py-3 px-4 font-semibold text-[#2F3E4E] uppercase">{p.lastName}, {p.firstName}</td>
                   <td className="py-3 px-4 text-[#7A8F79]">{p.dob}</td>
                   <td className="py-3 px-4">
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${p.insuranceType === 'Medicaid' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
@@ -449,7 +449,7 @@ export default function AdPatients() {
           >
             <div className="flex items-center justify-between p-5 border-b border-[#D9E1E8] sticky top-0 bg-white z-10">
               <div>
-                <p className="text-lg font-bold text-[#2F3E4E]">{selected.lastName}, {selected.firstName}</p>
+                <p className="text-lg font-bold text-[#2F3E4E] uppercase">{selected.lastName}, {selected.firstName}</p>
                 <p className="text-xs font-mono text-[#7A8F79]">{selected.accountNumber}</p>
               </div>
               <div className="flex items-center gap-2">
@@ -543,7 +543,7 @@ export default function AdPatients() {
               {!editing ? (
                 <>
                   <Section title="Demographics">
-                    <Row label="Name" value={`${selected.firstName} ${selected.lastName}`} />
+                    <Row label="Name" value={`${selected.firstName} ${selected.lastName}`.toUpperCase()} />
                     <Row label="DOB" value={selected.dob} />
                     <Row label="Sex" value={selected.gender} />
                     <Row label="Phone" value={selected.phone} />
@@ -649,8 +649,8 @@ export default function AdPatients() {
                     <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-3 pb-1 border-b border-[#D9E1E8]">Demographics</p>
                     <div className="space-y-3">
                       <div className="grid grid-cols-2 gap-3">
-                        <div><label className={lbl}>First Name</label><input value={editData.firstName || ''} onChange={e => setField('firstName', e.target.value)} className={inp} /></div>
-                        <div><label className={lbl}>Last Name</label><input value={editData.lastName || ''} onChange={e => setField('lastName', e.target.value)} className={inp} /></div>
+                        <div><label className={lbl}>First Name</label><input value={editData.firstName || ''} onChange={e => setField('firstName', e.target.value.toUpperCase())} className={`${inp} uppercase`} /></div>
+                        <div><label className={lbl}>Last Name</label><input value={editData.lastName || ''} onChange={e => setField('lastName', e.target.value.toUpperCase())} className={`${inp} uppercase`} /></div>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div><label className={lbl}>DOB</label><input value={editData.dob || ''} onChange={e => setField('dob', e.target.value)} placeholder="YYYY-MM-DD" className={inp} /></div>
@@ -804,11 +804,11 @@ export default function AdPatients() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className={lbl}>First Name</label>
-                        <input required value={createData.firstName} onChange={e => setCreateField('firstName', e.target.value)} className={inp} />
+                        <input required value={createData.firstName} onChange={e => setCreateField('firstName', e.target.value.toUpperCase())} className={`${inp} uppercase`} />
                       </div>
                       <div>
                         <label className={lbl}>Last Name</label>
-                        <input required value={createData.lastName} onChange={e => setCreateField('lastName', e.target.value)} className={inp} />
+                        <input required value={createData.lastName} onChange={e => setCreateField('lastName', e.target.value.toUpperCase())} className={`${inp} uppercase`} />
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">

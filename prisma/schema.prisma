@@ -720,6 +720,19 @@ model Patient {
   caseRateAmount  String?                     // dollar amount of case rate
   policyNotes     String?                     // free-text policy rules (e.g. "100-day limit")
 
+  // Secondary / additional insurance
+  ins2Type              String?               // 'Medicaid' | 'Commercial' | 'Medicare' | 'Other'
+  ins2Id                String?               // secondary member ID
+  ins2Name              String?               // secondary carrier name
+  ins2Group             String?               // secondary group number
+  ins2Plan              String?               // secondary plan name
+  ins2SubscriberName    String?
+  ins2SubscriberRelation String?
+  ins2NetworkStatus     String?               // 'IN' | 'OON'
+  ins2HasCaseRate       Boolean  @default(false)
+  ins2CaseRateAmount    String?
+  ins2PolicyNotes       String?
+
   // Admin record lock — prevents nurses from editing overrides
   isLocked   Boolean   @default(false)
   lockedAt   DateTime?

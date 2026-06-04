@@ -50,6 +50,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     'paNumber', 'paStartDate', 'paEndDate',
     'subscriberName', 'subscriberRelation',
     'networkStatus', 'hasCaseRate', 'caseRateAmount', 'policyNotes',
+    'ins2Type', 'ins2Id', 'ins2Name', 'ins2Group', 'ins2Plan',
+    'ins2SubscriberName', 'ins2SubscriberRelation',
+    'ins2NetworkStatus', 'ins2HasCaseRate', 'ins2CaseRateAmount', 'ins2PolicyNotes',
   ]
   const data: Record<string, any> = {}
   for (const key of allowed) {

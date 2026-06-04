@@ -50,6 +50,17 @@ type PatientFields = {
   hasCaseRate: boolean
   caseRateAmount: string | null
   policyNotes: string | null
+  ins2Type: string | null
+  ins2Id: string | null
+  ins2Name: string | null
+  ins2Group: string | null
+  ins2Plan: string | null
+  ins2SubscriberName: string | null
+  ins2SubscriberRelation: string | null
+  ins2NetworkStatus: string | null
+  ins2HasCaseRate: boolean
+  ins2CaseRateAmount: string | null
+  ins2PolicyNotes: string | null
   isLocked: boolean
   lockedAt: string | null
   lockedBy: string | null
@@ -85,6 +96,75 @@ function Field({ label, value }: { label: string; value: string | null | undefin
   )
 }
 
+function NurseAdditionalInsuranceForm({
+  newPt, setPt, inp, lbl,
+}: {
+  newPt: ReturnType<typeof blankNewPt>
+  setPt: (field: string, value: any) => void
+  inp: string
+  lbl: string
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between text-xs font-bold uppercase tracking-widest text-[#2F3E4E] pb-1 border-b border-[#D9E1E8] mb-3 hover:text-[#7A8F79] transition"
+      >
+        <span>Additional Coverage</span>
+        <span className="text-[#7A8F79] font-normal normal-case tracking-normal text-xs">
+          {open ? '▲ hide' : '▼ + add secondary insurance'}
+        </span>
+      </button>
+      {open && (
+        <div className="space-y-3">
+          <div>
+            <label className={lbl}>Insurance Type</label>
+            <select value={newPt.ins2Type} onChange={e => setPt('ins2Type', e.target.value)} className={inp}>
+              <option value="">— Select type —</option>
+              <option>Medicaid</option><option>Commercial</option><option>Medicare</option><option>Other</option>
+            </select>
+          </div>
+          {newPt.ins2Type && (<>
+            <div>
+              <label className={lbl}>Member ID</label>
+              <input value={newPt.ins2Id} onChange={e => setPt('ins2Id', e.target.value)} className={inp} />
+            </div>
+            <div>
+              <label className={lbl}>Carrier Name <span className="normal-case font-normal text-[#aab]">(optional)</span></label>
+              <input value={newPt.ins2Name} onChange={e => setPt('ins2Name', e.target.value)} placeholder="e.g. Aetna, UnitedHealth…" className={inp} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={lbl}>Group # <span className="normal-case font-normal text-[#aab]">(optional)</span></label>
+                <input value={newPt.ins2Group} onChange={e => setPt('ins2Group', e.target.value)} className={inp} />
+              </div>
+              <div>
+                <label className={lbl}>Plan Name <span className="normal-case font-normal text-[#aab]">(optional)</span></label>
+                <input value={newPt.ins2Plan} onChange={e => setPt('ins2Plan', e.target.value)} className={inp} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={lbl}>Subscriber Name <span className="normal-case font-normal text-[#aab]">(optional)</span></label>
+                <input value={newPt.ins2SubscriberName} onChange={e => setPt('ins2SubscriberName', e.target.value)} className={inp} />
+              </div>
+              <div>
+                <label className={lbl}>Relation <span className="normal-case font-normal text-[#aab]">(optional)</span></label>
+                <select value={newPt.ins2SubscriberRelation} onChange={e => setPt('ins2SubscriberRelation', e.target.value)} className={inp}>
+                  <option value="">Select…</option>
+                  {['Self','Spouse','Child','Parent','Other'].map(r => <option key={r}>{r}</option>)}
+                </select>
+              </div>
+            </div>
+          </>)}
+        </div>
+      )}
+    </div>
+  )
+}
+
 type Step = 'search' | 'found' | 'notfound' | 'newform'
 
 const US_STATES = [
@@ -106,6 +186,9 @@ function blankNewPt() {
     paNumber: '', paStartDate: '', paEndDate: '',
     subscriberName: '', subscriberRelation: '',
     networkStatus: '', hasCaseRate: false, caseRateAmount: '', policyNotes: '',
+    ins2Type: '', ins2Id: '', ins2Name: '', ins2Group: '', ins2Plan: '',
+    ins2SubscriberName: '', ins2SubscriberRelation: '',
+    ins2NetworkStatus: '', ins2HasCaseRate: false, ins2CaseRateAmount: '', ins2PolicyNotes: '',
   }
 }
 
@@ -396,9 +479,9 @@ export default function MyPatients() {
                 </div>
               </section>
 
-              {/* Insurance */}
+              {/* Primary Insurance */}
               <section>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] mb-2">Insurance</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] mb-2">Primary Insurance</p>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
                   <Field label="Type" value={selectedPatient.merged.insuranceType} />
                   <Field label="Member ID" value={selectedPatient.merged.insuranceId} />
@@ -410,6 +493,32 @@ export default function MyPatients() {
                   <Field label="Relation" value={selectedPatient.merged.subscriberRelation} />
                 </div>
               </section>
+
+              {/* Additional Coverage */}
+              {(selectedPatient.merged.ins2Type || selectedPatient.merged.ins2Id) && (
+                <section>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] mb-2">Additional Coverage</p>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                    <Field label="Type" value={selectedPatient.merged.ins2Type} />
+                    <Field label="Member ID" value={selectedPatient.merged.ins2Id} />
+                    <Field label="Carrier" value={selectedPatient.merged.ins2Name} />
+                    <Field label="Group" value={selectedPatient.merged.ins2Group} />
+                    <Field label="Plan" value={selectedPatient.merged.ins2Plan} />
+                    <Field label="Network" value={selectedPatient.merged.ins2NetworkStatus} />
+                    <Field label="Subscriber" value={selectedPatient.merged.ins2SubscriberName} />
+                    <Field label="Relation" value={selectedPatient.merged.ins2SubscriberRelation} />
+                    {selectedPatient.merged.ins2HasCaseRate && (
+                      <Field label="Case Rate" value={selectedPatient.merged.ins2CaseRateAmount || 'Yes'} />
+                    )}
+                  </div>
+                  {selectedPatient.merged.ins2PolicyNotes && (
+                    <div className="mt-1.5">
+                      <p className="text-[10px] font-semibold uppercase text-[#7A8F79]">Policy Notes</p>
+                      <p className="text-xs text-[#2F3E4E] mt-0.5 whitespace-pre-line">{selectedPatient.merged.ins2PolicyNotes}</p>
+                    </div>
+                  )}
+                </section>
+              )}
 
               {/* Clinical */}
               <section>
@@ -655,9 +764,9 @@ export default function MyPatients() {
                     </div>
                   </div>
 
-                  {/* ── Insurance ── */}
+                  {/* ── Primary Insurance ── */}
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-3 pb-1 border-b border-[#D9E1E8]">Insurance</p>
+                    <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-3 pb-1 border-b border-[#D9E1E8]">Primary Insurance</p>
                     <div className="space-y-3">
                       <div>
                         <label className={lbl}>{insType === 'Medicaid' ? 'Medicaid Member ID' : 'Insurance Member ID'}</label>
@@ -697,6 +806,9 @@ export default function MyPatients() {
                       )}
                     </div>
                   </div>
+
+                  {/* ── Additional Coverage ── */}
+                  <NurseAdditionalInsuranceForm newPt={newPt} setPt={setPt} inp={inp} lbl={lbl} />
 
                   {/* ── Address ── */}
                   <div>

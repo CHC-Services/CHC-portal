@@ -20,6 +20,9 @@ export async function GET(req: Request) {
     include: {
       nurse: {
         select: { displayName: true, firstName: true, lastName: true, accountNumber: true }
+      },
+      patient: {
+        select: { firstName: true, lastName: true, accountNumber: true }
       }
     }
   })

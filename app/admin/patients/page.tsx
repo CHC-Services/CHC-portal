@@ -50,6 +50,17 @@ type Patient = {
   hasCaseRate: boolean
   caseRateAmount: string | null
   policyNotes: string | null
+  ins2Type: string | null
+  ins2Id: string | null
+  ins2Name: string | null
+  ins2Group: string | null
+  ins2Plan: string | null
+  ins2SubscriberName: string | null
+  ins2SubscriberRelation: string | null
+  ins2NetworkStatus: string | null
+  ins2HasCaseRate: boolean
+  ins2CaseRateAmount: string | null
+  ins2PolicyNotes: string | null
   isLocked: boolean
   lockedAt: string | null
   lockedBy: string | null
@@ -549,7 +560,7 @@ export default function AdPatients() {
                     <Row label="Phone" value={selected.phone} />
                     <Row label="High-Tech" value={selected.highTech ? 'Yes' : 'No'} />
                   </Section>
-                  <Section title="Insurance">
+                  <Section title="Primary Insurance">
                     <Row label="Type" value={selected.insuranceType} />
                     <Row label="Member ID" value={selected.insuranceId} />
                     {selected.insuranceName && <Row label="Carrier" value={selected.insuranceName} />}
@@ -558,6 +569,20 @@ export default function AdPatients() {
                     {selected.subscriberName && <Row label="Subscriber" value={selected.subscriberName} />}
                     {selected.subscriberRelation && <Row label="Relation" value={selected.subscriberRelation} />}
                   </Section>
+                  {(selected.ins2Type || selected.ins2Id) && (
+                    <Section title="Additional Coverage">
+                      {selected.ins2Type && <Row label="Type" value={selected.ins2Type} />}
+                      {selected.ins2Id && <Row label="Member ID" value={selected.ins2Id} />}
+                      {selected.ins2Name && <Row label="Carrier" value={selected.ins2Name} />}
+                      {selected.ins2Group && <Row label="Group #" value={selected.ins2Group} />}
+                      {selected.ins2Plan && <Row label="Plan" value={selected.ins2Plan} />}
+                      {selected.ins2SubscriberName && <Row label="Subscriber" value={selected.ins2SubscriberName} />}
+                      {selected.ins2SubscriberRelation && <Row label="Relation" value={selected.ins2SubscriberRelation} />}
+                      {selected.ins2NetworkStatus && <Row label="Network" value={selected.ins2NetworkStatus} />}
+                      {selected.ins2HasCaseRate && <Row label="Case Rate" value={selected.ins2CaseRateAmount || 'Yes'} />}
+                      {selected.ins2PolicyNotes && <Row label="Policy Notes" value={selected.ins2PolicyNotes} />}
+                    </Section>
+                  )}
                   {selected.address && (
                     <Section title="Address">
                       <Row label="Street" value={selected.address} />
@@ -671,7 +696,7 @@ export default function AdPatients() {
                   </div>
 
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-3 pb-1 border-b border-[#D9E1E8]">Insurance</p>
+                    <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-3 pb-1 border-b border-[#D9E1E8]">Primary Insurance</p>
                     <div className="space-y-3">
                       <div>
                         <label className={lbl}>Insurance Type</label>
@@ -697,6 +722,9 @@ export default function AdPatients() {
                       </div>
                     </div>
                   </div>
+
+                  {/* ── Additional Coverage ── */}
+                  <AdditionalInsuranceEdit editData={editData} setField={setField} inp={inp} lbl={lbl} />
 
                   <div>
                     <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-3 pb-1 border-b border-[#D9E1E8]">Address</p>
@@ -995,6 +1023,91 @@ export default function AdPatients() {
               </form>
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AdditionalInsuranceEdit({
+  editData, setField, inp, lbl,
+}: {
+  editData: Partial<Patient>
+  setField: (k: string, v: any) => void
+  inp: string
+  lbl: string
+}) {
+  const [open, setOpen] = useState(!!(editData.ins2Type || editData.ins2Id))
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between text-xs font-bold uppercase tracking-widest text-[#2F3E4E] pb-1 border-b border-[#D9E1E8] mb-3 hover:text-[#7A8F79] transition"
+      >
+        <span>Additional Coverage</span>
+        <span className="text-[#7A8F79] font-normal normal-case tracking-normal">
+          {open ? '▲ hide' : (editData.ins2Type || editData.ins2Id ? '▼ edit' : '▼ + add coverage')}
+        </span>
+      </button>
+      {open && (
+        <div className="space-y-3">
+          <div>
+            <label className={lbl}>Insurance Type</label>
+            <select value={editData.ins2Type || ''} onChange={e => setField('ins2Type', e.target.value || null)} className={inp}>
+              <option value="">— None —</option>
+              <option>Medicaid</option><option>Commercial</option><option>Medicare</option><option>Other</option>
+            </select>
+          </div>
+          {editData.ins2Type && (<>
+            <div><label className={lbl}>Member ID</label><input value={editData.ins2Id || ''} onChange={e => setField('ins2Id', e.target.value)} className={inp} /></div>
+            <div><label className={lbl}>Carrier Name</label><input value={editData.ins2Name || ''} onChange={e => setField('ins2Name', e.target.value)} className={inp} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className={lbl}>Group #</label><input value={editData.ins2Group || ''} onChange={e => setField('ins2Group', e.target.value)} className={inp} /></div>
+              <div><label className={lbl}>Plan</label><input value={editData.ins2Plan || ''} onChange={e => setField('ins2Plan', e.target.value)} className={inp} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className={lbl}>Subscriber Name</label><input value={editData.ins2SubscriberName || ''} onChange={e => setField('ins2SubscriberName', e.target.value)} className={inp} /></div>
+              <div>
+                <label className={lbl}>Relation</label>
+                <select value={editData.ins2SubscriberRelation || ''} onChange={e => setField('ins2SubscriberRelation', e.target.value)} className={inp}>
+                  <option value="">Select…</option>
+                  {['Self','Spouse','Child','Parent','Other'].map(r => <option key={r}>{r}</option>)}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className={lbl}>Network Status</label>
+              <div className="flex gap-2">
+                {['IN','OON'].map(s => (
+                  <button key={s} type="button" onClick={() => setField('ins2NetworkStatus', editData.ins2NetworkStatus === s ? null : s)}
+                    className={`flex-1 py-1.5 rounded-lg text-sm font-semibold border transition ${editData.ins2NetworkStatus === s ? 'bg-[#2F3E4E] text-white border-[#2F3E4E]' : 'border-[#D9E1E8] text-[#7A8F79] hover:bg-[#F4F6F5]'}`}>
+                    {s === 'IN' ? 'In-Network' : 'Out-of-Network'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <input type="checkbox" id="cr2Edit" checked={!!editData.ins2HasCaseRate} onChange={e => setField('ins2HasCaseRate', e.target.checked)} className="accent-[#7A8F79] w-4 h-4" />
+              <label htmlFor="cr2Edit" className="text-sm text-[#2F3E4E] font-semibold cursor-pointer">Agreed case rate</label>
+            </div>
+            {editData.ins2HasCaseRate && (
+              <div><label className={lbl}>Case Rate Amount</label><input value={editData.ins2CaseRateAmount || ''} onChange={e => setField('ins2CaseRateAmount', e.target.value)} placeholder="e.g. $125.00 / day" className={inp} /></div>
+            )}
+            <div>
+              <label className={lbl}>Policy Notes</label>
+              <textarea value={editData.ins2PolicyNotes || ''} onChange={e => setField('ins2PolicyNotes', e.target.value)} rows={2}
+                placeholder="e.g. Secondary covers remainder after primary…"
+                className="w-full border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] resize-none" />
+            </div>
+            <button type="button" onClick={() => {
+              ['ins2Type','ins2Id','ins2Name','ins2Group','ins2Plan','ins2SubscriberName','ins2SubscriberRelation','ins2NetworkStatus','ins2CaseRateAmount','ins2PolicyNotes'].forEach(k => setField(k, null))
+              setField('ins2HasCaseRate', false)
+              setOpen(false)
+            }} className="text-xs text-red-400 hover:text-red-600 transition font-semibold">
+              Remove additional coverage
+            </button>
+          </>)}
         </div>
       )}
     </div>

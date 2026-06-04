@@ -24,6 +24,11 @@ type TimeEntry = {
     lastName?: string
     accountNumber: string | null
   }
+  patient?: {
+    firstName: string
+    lastName: string
+    accountNumber: string
+  } | null
 }
 
 function fmtDate(date: string) {
@@ -281,7 +286,7 @@ function HoursTab() {
   const [toggling, setToggling] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [claimRefs, setClaimRefs] = useState<Record<string, string>>({})
-  const [sortCol, setSortCol] = useState<'claimRef' | 'nurse' | 'account' | 'date' | 'hours' | 'notes' | 'billed'>('date')
+  const [sortCol, setSortCol] = useState<'claimRef' | 'nurse' | 'account' | 'patient' | 'date' | 'hours' | 'notes' | 'billed'>('date')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
   function handleSort(col: typeof sortCol) {
@@ -358,6 +363,7 @@ function HoursTab() {
         case 'claimRef':  cmp = (a.claimRef ?? '').localeCompare(b.claimRef ?? ''); break
         case 'nurse':     cmp = (formalName(a.nurse) || a.nurse.displayName).localeCompare(formalName(b.nurse) || b.nurse.displayName); break
         case 'account':   cmp = (a.nurse.accountNumber ?? '').localeCompare(b.nurse.accountNumber ?? ''); break
+        case 'patient':   cmp = (a.patient?.lastName ?? '').localeCompare(b.patient?.lastName ?? ''); break
         case 'date':      cmp = new Date(a.workDate).getTime() - new Date(b.workDate).getTime(); break
         case 'hours':     cmp = a.hours - b.hours; break
         case 'notes':     cmp = (a.notes ?? '').localeCompare(b.notes ?? ''); break
@@ -468,7 +474,7 @@ function HoursTab() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
-                  {([ ['claimRef','Claim Ref #','left'], ['nurse','Nurse','left'], ['account','Account','left'], ['date','Date Worked','left'], ['hours','Hours','right'], ['notes','Notes','left'], ['billed','Billed','center'] ] as [typeof sortCol, string, string][]).map(([col, label, align]) => (
+                  {([ ['claimRef','Claim Ref #','left'], ['nurse','Nurse','left'], ['account','Account','left'], ['patient','Patient','left'], ['date','Date Worked','left'], ['hours','Hours','right'], ['notes','Notes','left'], ['billed','Billed','center'] ] as [typeof sortCol, string, string][]).map(([col, label, align]) => (
                     <th key={col} className={`py-2 pr-4 text-${align} cursor-pointer select-none hover:text-[#2F3E4E] transition whitespace-nowrap`} onClick={() => handleSort(col)}>
                       {label}<SortIcon col={col} />
                     </th>
@@ -499,6 +505,16 @@ function HoursTab() {
                     </td>
                     <td className="py-2 pr-4 text-xs whitespace-nowrap text-[#7A8F79]">
                       {entry.nurse.accountNumber ?? '—'}
+                    </td>
+                    <td className="py-2 pr-4 text-xs whitespace-nowrap">
+                      {entry.patient ? (
+                        <span className={entry.billed ? 'text-[#7A8F79]' : 'text-[#2F3E4E]'}>
+                          <span className="font-semibold uppercase">{entry.patient.lastName}, {entry.patient.firstName[0]}.</span>
+                          <span className="text-[#7A8F79] font-mono ml-1">{entry.patient.accountNumber}</span>
+                        </span>
+                      ) : (
+                        <span className="text-[#D9E1E8] italic">—</span>
+                      )}
                     </td>
                     <td className={`py-2 pr-4 whitespace-nowrap ${entry.billed ? 'text-[#7A8F79]' : 'text-[#2F3E4E]'}`}>
                       {fmtDate(entry.workDate)}

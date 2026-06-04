@@ -113,6 +113,17 @@ export async function POST(req: Request) {
       hasCaseRate: p.hasCaseRate ?? false,
       caseRateAmount: p.caseRateAmount || null,
       policyNotes: p.policyNotes || null,
+      ins2Type: p.ins2Type || null,
+      ins2Id: p.ins2Id?.trim() || null,
+      ins2Name: p.ins2Name || null,
+      ins2Group: p.ins2Group || null,
+      ins2Plan: p.ins2Plan || null,
+      ins2SubscriberName: p.ins2SubscriberName || null,
+      ins2SubscriberRelation: p.ins2SubscriberRelation || null,
+      ins2NetworkStatus: p.ins2NetworkStatus || null,
+      ins2HasCaseRate: p.ins2HasCaseRate ?? false,
+      ins2CaseRateAmount: p.ins2CaseRateAmount || null,
+      ins2PolicyNotes: p.ins2PolicyNotes || null,
     },
   })
 

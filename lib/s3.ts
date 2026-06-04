@@ -89,7 +89,14 @@ export async function getPresignedDownloadUrl(
   options: { contentType?: string; fileName?: string; inline?: boolean } = {},
 ): Promise<string> {
   const disposition = options.fileName
-    ? `${options.inline ? 'inline' : 'attachment'}; filename="${options.fileName.replace(/"/g, '')}"`
+    ? (() => {
+        const disp = options.inline ? 'inline' : 'attachment'
+        // ASCII-safe fallback (strips anything outside printable ASCII range)
+        const ascii = options.fileName!.replace(/[^\x20-\x7E]/g, '_').replace(/"/g, '')
+        // RFC 5987 encoding — handles all Unicode, spaces, dots, etc.
+        const encoded = encodeURIComponent(options.fileName!)
+        return `${disp}; filename="${ascii}"; filename*=UTF-8''${encoded}`
+      })()
     : options.inline ? 'inline' : undefined
 
   return getSignedUrl(

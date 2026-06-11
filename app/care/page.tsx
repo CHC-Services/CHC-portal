@@ -65,13 +65,13 @@ const musicStations = [
   {
     label: 'Lo-Fi Chill',
     mood: 'Focus & Unwind',
-    videoId: 'jfKfPfyJRdk',
+    videoId: 'lA9FONoiuFA',
     emoji: '🎧',
   },
   {
     label: 'Healing Frequencies',
     mood: 'Calm & Restore',
-    videoId: 'O4FBHwNLdaA',
+    videoId: 'go99WqXWGgk',
     emoji: '🎵',
   },
   {

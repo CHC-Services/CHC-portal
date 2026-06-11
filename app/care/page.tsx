@@ -372,7 +372,7 @@ export default function MyCarePage() {
                   <div>
                     <p className="text-xs font-bold uppercase tracking-widest text-[#3d8c8c] mb-0.5">Nurse Perk</p>
                     <p className="text-sm font-semibold text-[#1e4a55] leading-snug">
-                      As a nurse, you receive <span className="text-[#3d8c8c] font-bold text-base">10% off</span> all IV services — just mention Coming Home Care at booking.
+                      As a nurse, you receive <span className="text-[#3d8c8c] font-bold text-base">10% off</span> all IV services — just mention your profession at checkin.
                     </p>
                   </div>
                 </div>

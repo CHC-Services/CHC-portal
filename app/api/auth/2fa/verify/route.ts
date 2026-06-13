@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../lib/prisma'
 import { signToken, verifyPendingToken } from '../../../../../lib/auth'
 import * as speakeasy from 'speakeasy'
+import { logLogin, getIp } from '../../../../../lib/logLogin'
 
 export async function POST(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -54,7 +55,17 @@ export async function POST(req: Request) {
     })
   }
 
-  if (!valid) return NextResponse.json({ error: 'Invalid code — try again' }, { status: 400 })
+  if (!valid) {
+    logLogin({
+      accountType: authUser.role,
+      email: user.email,
+      firstName: authUser.nurseProfile?.firstName ?? null,
+      lastName: authUser.nurseProfile?.lastName ?? null,
+      result: 'Failed - Invalid 2FA code',
+      ip: getIp(req),
+    })
+    return NextResponse.json({ error: 'Invalid code — try again' }, { status: 400 })
+  }
 
   await prisma.user.update({
     where: { id: user.id },
@@ -66,6 +77,17 @@ export async function POST(req: Request) {
   })
 
   const nurseProfile = user.nurseProfile
+
+  logLogin({
+    accountType: user.role,
+    email: user.email,
+    firstName: nurseProfile?.firstName ?? null,
+    lastName: nurseProfile?.lastName ?? null,
+    accountNumber: (nurseProfile as any)?.accountNumber ?? null,
+    result: 'Success',
+    ip: getIp(req),
+  })
+
   const portalAgreementSigned = !!nurseProfile?.portalAgreementSignedAt
 
   const authToken = signToken({

@@ -17,6 +17,12 @@ const CARDS = [
     icon: '🔐',
   },
   {
+    href: '/admin/system/login-log',
+    title: 'Login Log',
+    description: 'Every login attempt with timestamp, account type, result, and IP address.',
+    icon: '🗒️',
+  },
+  {
     href: '/admin/ideas',
     title: 'Ideas',
     description: 'Feature requests and improvement ideas.',

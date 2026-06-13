@@ -2014,6 +2014,8 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                         if (['INS-1 Submitted', 'INS-2 Submitted', 'Resubmitted'].includes(s)) return 'bg-blue-100 text-blue-700'
                         if (s === 'Info Requested') return 'bg-orange-100 text-orange-700'
                         if (s === 'Appealed') return 'bg-purple-100 text-purple-700'
+                        if (s === 'Appeal Needed') return 'bg-fuchsia-100 text-fuchsia-800'
+                        if (s === 'Check Wait') return 'bg-red-800 text-gray-100'
                         return 'bg-gray-100 text-gray-600'
                       }
                       return (

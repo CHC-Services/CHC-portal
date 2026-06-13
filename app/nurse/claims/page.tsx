@@ -50,6 +50,7 @@ type Claim = {
   totalReimbursed: number | null
   remainingBalance: number | null
   dateFullyFinalized: string | null
+  checkReceivedDate: string | null
   resubmissionOf: string | null
   processingNotes: string | null
   updatedAt: string
@@ -106,6 +107,8 @@ function StageBadge({ stage }: { stage: string | null }) {
     s === 'info requested' ? 'bg-orange-100 text-orange-800' :
     s === 'info sent' ? 'bg-orange-50 text-orange-700' :
     s === 'appealed' ? 'bg-purple-100 text-purple-800' :
+    s === 'appeal needed' ? 'bg-fuchsia-100 text-fuchsia-800' :
+    s === 'check wait' ? 'bg-red-800 text-gray-100' :
     'bg-gray-900 text-gray-200'
   return <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${color}`}>{stage}</span>
 }
@@ -132,13 +135,51 @@ function groupClaims(claims: Claim[]): ClaimGroup[] {
   return groups
 }
 
-function ClaimRow({ primary: c, chain, eobDocs }: ClaimGroup & { eobDocs: { id: string; fileName: string }[] }) {
+function ClaimRow({ primary: c, chain, eobDocs, onClaimPaid }: ClaimGroup & { eobDocs: { id: string; fileName: string }[]; onClaimPaid: (claimId: string) => void }) {
   const [expanded, setExpanded] = useState(false)
   // Track which EOB is open: { doc, url, loading }
   const [activeEob, setActiveEob] = useState<{ id: string; fileName: string } | null>(null)
   const [eobUrlCache, setEobUrlCache] = useState<Record<string, string>>({})
   const [eobLoading, setEobLoading] = useState(false)
   const iframeRef = useRef<HTMLIFrameElement>(null)
+
+  // Check Received popup state
+  const [checkboxChecked, setCheckboxChecked] = useState(false)
+  const [showCheckPopup, setShowCheckPopup] = useState(false)
+  const [checkDate, setCheckDate] = useState('')
+  const [submittingCheck, setSubmittingCheck] = useState(false)
+
+  const isCheckWait = (c.claimStage || '').toLowerCase() === 'check wait'
+
+  function openCheckPopup(e: React.MouseEvent) {
+    e.stopPropagation()
+    setCheckboxChecked(true)
+    setShowCheckPopup(true)
+  }
+
+  function cancelCheckPopup() {
+    setShowCheckPopup(false)
+    setCheckboxChecked(false)
+    setCheckDate('')
+  }
+
+  async function submitCheckReceived() {
+    if (!checkDate) return
+    setSubmittingCheck(true)
+    const res = await fetch(`/api/nurse/claims/${c.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ checkReceivedDate: checkDate }),
+    })
+    setSubmittingCheck(false)
+    if (res.ok) {
+      setShowCheckPopup(false)
+      setCheckboxChecked(false)
+      setCheckDate('')
+      onClaimPaid(c.id)
+    }
+  }
 
   async function openEob(doc: { id: string; fileName: string }) {
     setActiveEob(doc)
@@ -207,7 +248,21 @@ function ClaimRow({ primary: c, chain, eobDocs }: ClaimGroup & { eobDocs: { id: 
           <p className="text-xs font-semibold text-[#2F3E4E] leading-tight">{fmt(c.totalBilled, '$')}</p>
           <p className="text-xs font-semibold text-[#7A8F79] leading-tight">{fmt(c.totalReimbursed, '$')}</p>
           <div className="flex items-center justify-end gap-1.5">
-            <span className={`text-[10px] leading-tight whitespace-nowrap ${isFinal ? 'text-green-700' : 'text-[#7A8F79]'}`}>{dateLabel}</span>
+            {isCheckWait ? (
+              <>
+                <input
+                  type="checkbox"
+                  checked={checkboxChecked}
+                  onChange={e => { if (e.target.checked) openCheckPopup(e as any) }}
+                  onClick={e => e.stopPropagation()}
+                  className="w-3 h-3 cursor-pointer accent-[#2F3E4E]"
+                  aria-label="Mark check as received"
+                />
+                <span className="text-[10px] text-[#7A8F79] leading-tight whitespace-nowrap">Check Received?</span>
+              </>
+            ) : (
+              <span className={`text-[10px] leading-tight whitespace-nowrap ${isFinal ? 'text-green-700' : 'text-[#7A8F79]'}`}>{dateLabel}</span>
+            )}
             <StageBadge stage={c.claimStage} />
             <span className="text-[#7A8F79] text-[10px]">{expanded ? '▲' : '▼'}</span>
           </div>
@@ -355,6 +410,37 @@ function ClaimRow({ primary: c, chain, eobDocs }: ClaimGroup & { eobDocs: { id: 
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Check Received Popup */}
+      {showCheckPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={cancelCheckPopup}>
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-72 mx-4" onClick={e => e.stopPropagation()}>
+            <p className="text-sm font-bold text-[#2F3E4E] mb-3">Received Date?</p>
+            <input
+              type="date"
+              value={checkDate}
+              onChange={e => setCheckDate(e.target.value)}
+              className="w-full border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] mb-4"
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={cancelCheckPopup}
+                className="flex-1 border border-[#D9E1E8] text-[#7A8F79] text-sm font-semibold py-2 rounded-xl hover:border-[#7A8F79] hover:text-[#2F3E4E] transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitCheckReceived}
+                disabled={!checkDate || submittingCheck}
+                className="flex-1 bg-[#2F3E4E] text-white text-sm font-semibold py-2 rounded-xl hover:bg-[#7A8F79] transition disabled:opacity-40"
+              >
+                {submittingCheck ? 'Saving…' : 'Submit'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -732,6 +818,10 @@ export default function NurseClaimsPage() {
   const [eobMap, setEobMap] = useState<Record<string, { id: string; fileName: string }[]>>({})
   const [effectiveTier, setEffectiveTier] = useState<'FREE' | 'BASIC' | 'PRO' | null>(null)
 
+  function handleClaimPaid(claimId: string) {
+    setClaims(prev => prev.map(c => c.id === claimId ? { ...c, claimStage: 'Paid' } : c))
+  }
+
   // Pay log state
   const [medicaidClaims, setMedicaidClaims] = useState<MedicaidClaim[]>([])
   const [paylogReceived, setPaylogReceived] = useState<Record<string, string | null>>({})
@@ -1089,7 +1179,7 @@ export default function NurseClaimsPage() {
         ) : (
           <div className="space-y-2">
             {groupClaims(yearFilteredClaims).map(group => (
-              <ClaimRow key={group.primary.id} {...group} eobDocs={eobMap[group.primary.id] ?? []} />
+              <ClaimRow key={group.primary.id} {...group} eobDocs={eobMap[group.primary.id] ?? []} onClaimPaid={handleClaimPaid} />
             ))}
           </div>
         )}

@@ -135,6 +135,7 @@ type CommercialClaim = {
   totalReimbursed: number | null
   remainingBalance: number | null
   dateFullyFinalized: string | null
+  checkReceivedDate: string | null
   resubmissionOf: string | null
   processingNotes: string | null
   nurse: { displayName: string; firstName?: string; lastName?: string; accountNumber: string | null; isDemo: boolean }
@@ -197,6 +198,7 @@ type CommercialFormState = {
   totalReimbursed: string
   remainingBalance: string
   dateFullyFinalized: string
+  checkReceivedDate: string
   resubmissionOf: string
   processingNotes: string
 }
@@ -266,6 +268,8 @@ function StageBadge({ stage }: { stage: string | null }) {
     s === 'info requested' ? 'bg-orange-100 text-orange-800' :
     s === 'info sent' ? 'bg-orange-50 text-orange-700' :
     s === 'appealed' ? 'bg-purple-100 text-purple-800' :
+    s === 'appeal needed' ? 'bg-fuchsia-100 text-fuchsia-800' :
+    s === 'check wait' ? 'bg-red-800 text-gray-100' :
     'bg-gray-900 text-gray-200'
   return <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${color}`}>{stage}</span>
 }
@@ -396,6 +400,7 @@ function initCommercialForm(c: CommercialClaim): CommercialFormState {
     totalReimbursed: c.totalReimbursed != null ? String(c.totalReimbursed) : '',
     remainingBalance: c.remainingBalance != null ? String(c.remainingBalance) : '',
     dateFullyFinalized: toDateStr(c.dateFullyFinalized),
+    checkReceivedDate: toDateStr(c.checkReceivedDate),
     resubmissionOf: c.resubmissionOf || '',
     processingNotes: c.processingNotes || '',
   }
@@ -500,6 +505,7 @@ function ClaimDetailModal({
               totalReimbursed: cForm.totalReimbursed || null,
               remainingBalance: cForm.remainingBalance || null,
               dateFullyFinalized: cForm.dateFullyFinalized || null,
+              checkReceivedDate: cForm.checkReceivedDate || null,
               resubmissionOf: cForm.resubmissionOf || null,
               processingNotes: cForm.processingNotes || null,
             }),
@@ -627,7 +633,7 @@ function ClaimDetailModal({
                 className="text-xs border border-[#D9E1E8] rounded-lg px-2 py-1.5 text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] bg-white"
               >
                 <option value="">— Stage —</option>
-                {['Draft','INS-1 Submitted','Resubmitted','Pending','Info Requested','Info Sent','INS-2 Submitted','Appealed','Paid','Denied','Rejected'].map(s => (
+                {['Draft','INS-1 Submitted','Resubmitted','Pending','Info Requested','Info Sent','INS-2 Submitted','Appealed','Appeal Needed','Paid','Denied','Rejected','Check Wait'].map(s => (
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>
@@ -795,6 +801,10 @@ function ClaimDetailModal({
                   <div>
                     <label className={lbl}>Finalized</label>
                     <input type="date" className={dateInp} value={cForm.dateFullyFinalized} onChange={e => setCForm(f => ({ ...f, dateFullyFinalized: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className={lbl}>Check Received</label>
+                    <input type="date" className={dateInp} value={cForm.checkReceivedDate} onChange={e => setCForm(f => ({ ...f, checkReceivedDate: e.target.value }))} />
                   </div>
                   <div>
                     <label className={lbl}>Resubmission Of</label>
@@ -2120,7 +2130,7 @@ export default function AdminClaimsPage() {
                 <div className="flex items-center gap-2">
                   <select value={addForm.claimStage || 'Draft'} onChange={e => setAddForm(f => ({ ...f, claimStage: e.target.value }))}
                     className="text-xs border border-[#D9E1E8] rounded-lg px-2 py-1.5 text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] bg-white">
-                    {['Draft','INS-1 Submitted','Resubmitted','Pending','Info Requested','Info Sent','INS-2 Submitted','Appealed','Paid','Denied','Rejected'].map(s => (
+                    {['Draft','INS-1 Submitted','Resubmitted','Pending','Info Requested','Info Sent','INS-2 Submitted','Appealed','Appeal Needed','Paid','Denied','Rejected','Check Wait'].map(s => (
                       <option key={s} value={s}>{s}</option>
                     ))}
                   </select>

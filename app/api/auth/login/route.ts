@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import * as bcrypt from 'bcrypt'
 import { prisma } from '../../../../lib/prisma'
 import { signToken, signPendingToken } from '../../../../lib/auth'
+import { logLogin, getIp } from '../../../../lib/logLogin'
 
 function maskPhone(phone: string) {
   const digits = phone.replace(/\D/g, '')
@@ -17,18 +18,30 @@ export async function POST(req: Request) {
   const { email: rawEmail, password } = await req.json()
   const email = rawEmail?.trim().toLowerCase()
 
+  const ip = getIp(req)
+
   const user = await prisma.user.findUnique({
     where: { email },
     include: { nurseProfile: true },
   })
 
   if (!user) {
+    logLogin({ accountType: 'unknown', email, result: 'Failed - Account not found', ip })
     return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
   }
 
   const valid = await bcrypt.compare(password, user.password)
 
   if (!valid) {
+    logLogin({
+      accountType: user.role,
+      email,
+      firstName: user.nurseProfile?.firstName ?? null,
+      lastName: user.nurseProfile?.lastName ?? null,
+      accountNumber: user.nurseProfile?.accountNumber ?? null,
+      result: 'Failed - Incorrect password',
+      ip,
+    })
     return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
   }
 
@@ -42,6 +55,17 @@ export async function POST(req: Request) {
 
   if (needsTwoFa) {
     const needsConsent = user.role !== 'admin' && !(user as any).twoFaConsentAt
+
+    // Log as pending — 2FA verify route logs the final result
+    logLogin({
+      accountType: user.role,
+      email,
+      firstName: user.nurseProfile?.firstName ?? null,
+      lastName: user.nurseProfile?.lastName ?? null,
+      accountNumber: user.nurseProfile?.accountNumber ?? null,
+      result: 'Pending - Awaiting 2FA',
+      ip,
+    })
 
     const pendingToken = signPendingToken(user.id)
     const res = NextResponse.json({
@@ -62,6 +86,16 @@ export async function POST(req: Request) {
   }
 
   await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } })
+
+  logLogin({
+    accountType: user.role,
+    email,
+    firstName: user.nurseProfile?.firstName ?? null,
+    lastName: user.nurseProfile?.lastName ?? null,
+    accountNumber: user.nurseProfile?.accountNumber ?? null,
+    result: 'Success',
+    ip,
+  })
 
   const nurseProfile = user.nurseProfile
   const portalAgreementSigned = !!nurseProfile?.portalAgreementSignedAt

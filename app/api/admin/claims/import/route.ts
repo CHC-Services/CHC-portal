@@ -15,6 +15,8 @@ const STAGE_PRIORITY: Record<string, number> = {
   'Info Requested': 3,
   'Info Sent': 3,
   'Appealed': 4,
+  'Appeal Needed': 4,
+  'Check Wait': 5,
   'Rejected': 5,
   'Paid': 10,
   'Denied': 10,

@@ -571,6 +571,7 @@ model Claim {
   totalReimbursed    Float?
   remainingBalance   Float?
   dateFullyFinalized DateTime?
+  checkReceivedDate  DateTime?
 
   // Notes
   processingNotes    String?
@@ -599,6 +600,22 @@ model EmailLog {
 
   @@index([sentAt])
   @@index([recipientEmail])
+}
+
+model LoginLog {
+  id            String   @id @default(uuid())
+  timestamp     DateTime @default(now())
+  accountType   String   // role: admin, nurse, biller, provider, guardian
+  email         String
+  firstName     String?
+  lastName      String?
+  accountNumber String?  // nurse account number or null for admin
+  result        String   // "Success" | "Failed - Invalid credentials" | "Failed - Account not found" | etc.
+  ip            String?
+
+  @@index([timestamp])
+  @@index([email])
+  @@index([result])
 }
 
 model ClaimBackup {

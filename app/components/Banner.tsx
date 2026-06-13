@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react'
 export default function Banner({ user }: BannerProps) {
     const [time, setTime] = useState('')
     const [menuOpen, setMenuOpen] = useState(false)
+    const [hasCookieClient, setHasCookieClient] = useState(false)
 
     useEffect(() => {
         const updateClock = () => {
@@ -23,14 +24,22 @@ export default function Banner({ user }: BannerProps) {
         return () => clearInterval(interval)
     }, [])
 
+    // Client-side fallback: if the auth cookie exists but the server-side
+    // JWT was expired (returns null user), still show Sign Out instead of Login.
+    useEffect(() => {
+        setHasCookieClient(document.cookie.includes('auth_token='))
+    }, [])
+
     const role = user?.role || null
+    // isLoggedIn is true if server confirms session OR if auth cookie is present (expired session)
+    const isLoggedIn = !!role || hasCookieClient
     const displayName = user?.displayName || null
     const pathname = usePathname()
 
     const homeHref = role === 'nurse' ? '/nurse' : role === 'admin' ? '/admin' : role === 'provider' ? '/portal' : '/'
 
     // Mobile auth button — pill style
-    const authButtonMobile = role ? (
+    const authButtonMobile = isLoggedIn ? (
         <button
             onClick={async () => {
                 await fetch('/api/logout', { method: 'POST', credentials: 'include' })
@@ -56,7 +65,7 @@ export default function Banner({ user }: BannerProps) {
     )
 
     // Desktop top-right area: clock + sign out (logged out shows nothing here)
-    const desktopTopRight = role ? (
+    const desktopTopRight = isLoggedIn ? (
         <button
             onClick={async () => {
                 await fetch('/api/logout', { method: 'POST', credentials: 'include' })
@@ -246,7 +255,17 @@ export default function Banner({ user }: BannerProps) {
                         {myRow}
                         <div className="border-t border-[#D9E1E8] pt-4 flex flex-col gap-4 text-[#2F3E4E]">
                             {generalRow}
-                            {!role && (
+                            {isLoggedIn ? (
+                                <button
+                                    onClick={async () => {
+                                        await fetch('/api/logout', { method: 'POST', credentials: 'include' })
+                                        window.location.href = '/login'
+                                    }}
+                                    className="text-left transition hover:text-[#7A8F79] font-semibold"
+                                >
+                                    Sign Out
+                                </button>
+                            ) : (
                                 <>
                                     <Link href="/login" onClick={() => setMenuOpen(false)} className="transition hover:text-[#7A8F79]">
                                         <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Provider Login
@@ -286,7 +305,7 @@ export default function Banner({ user }: BannerProps) {
                     </div>
 
                     {/* Right: welcome + nav */}
-                    {role ? (
+                    {isLoggedIn ? (
                         <div className="h-full flex flex-col justify-center items-end mt-6">
                             {displayName && (
                                 <div className="mt-1 text-lg font-bold">

@@ -717,7 +717,7 @@ function ClaimDetailModal({
                     </div>
                   </div>
                   <div>
-                    <label className={lbl}>Paid Date</label>
+                    <label className={lbl}>Processed Date</label>
                     <input type="date" className={dateInp} value={cForm.primaryPaidDate} onChange={e => setCForm(f => ({ ...f, primaryPaidDate: e.target.value }))} />
                   </div>
                   <div>
@@ -760,7 +760,7 @@ function ClaimDetailModal({
                     </div>
                   </div>
                   <div>
-                    <label className={lbl}>Paid Date</label>
+                    <label className={lbl}>Processed Date</label>
                     <input type="date" className={dateInp} value={cForm.secondaryPaidDate} onChange={e => setCForm(f => ({ ...f, secondaryPaidDate: e.target.value }))} />
                   </div>
                   <div>
@@ -803,7 +803,7 @@ function ClaimDetailModal({
                     <input type="date" className={dateInp} value={cForm.dateFullyFinalized} onChange={e => setCForm(f => ({ ...f, dateFullyFinalized: e.target.value }))} />
                   </div>
                   <div>
-                    <label className={lbl}>Check Received</label>
+                    <label className={lbl}>Paid Date</label>
                     <input type="date" className={dateInp} value={cForm.checkReceivedDate} onChange={e => setCForm(f => ({ ...f, checkReceivedDate: e.target.value }))} />
                   </div>
                   <div>
@@ -2144,39 +2144,59 @@ export default function AdminClaimsPage() {
                   <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-2">{addError}</div>
                 )}
 
-                {/* Provider autocomplete */}
+                {/* Claim Starters */}
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-widest text-[#7A8F79] mb-3">Provider</p>
-                  <div ref={providerRef} className="relative max-w-xs">
-                    <label className={lbl}>Provider Name <span className="text-red-500">*</span></label>
-                    <input
-                      type="text"
-                      placeholder="Type to search providers…"
-                      value={providerInput}
-                      onChange={e => handleProviderInput(e.target.value)}
-                      onKeyDown={handleProviderKeyDown}
-                      autoComplete="off"
-                      className={`w-full border rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] ${selectedNurseId ? 'border-[#7A8F79] bg-green-50' : 'border-[#D9E1E8]'}`}
-                    />
-                    {selectedNurseId && (
-                      <span className="absolute right-2 top-8 text-green-600 text-xs font-semibold">✓ matched</span>
-                    )}
-                    {providerSuggestions.length > 0 && (
-                      <div className="absolute z-10 mt-1 w-full bg-white border border-[#D9E1E8] rounded-xl shadow-lg overflow-hidden">
-                        {providerSuggestions.map((n, i) => (
-                          <button
-                            key={n.id}
-                            type="button"
-                            onMouseDown={() => selectNurse(n)}
-                            onMouseEnter={() => setActiveSuggestionIdx(i)}
-                            className={`w-full text-left px-4 py-2.5 text-sm transition ${i === activeSuggestionIdx ? 'bg-[#2F3E4E] text-white' : 'hover:bg-[#f4f6f8]'}`}
-                          >
-                            <span className="font-semibold">{formalName(n) || n.displayName}</span>
-                            {n.providerAliases.length > 0 && (
-                              <span className={`text-xs ml-2 ${i === activeSuggestionIdx ? 'text-[#D9E1E8]' : 'text-[#7A8F79]'}`}>{n.providerAliases.join(', ')}</span>
-                            )}
-                          </button>
-                        ))}
+                  <p className="text-xs font-bold uppercase tracking-widest text-[#7A8F79] mb-3">Claim Starters</p>
+                  <div className="grid grid-cols-3 gap-4 items-start">
+                    <div ref={providerRef} className="relative">
+                      <label className={lbl}>Provider Name <span className="text-red-500">*</span></label>
+                      <input
+                        type="text"
+                        placeholder="Type to search providers…"
+                        value={providerInput}
+                        onChange={e => handleProviderInput(e.target.value)}
+                        onKeyDown={handleProviderKeyDown}
+                        autoComplete="off"
+                        className={`w-full border rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] ${selectedNurseId ? 'border-[#7A8F79] bg-green-50' : 'border-[#D9E1E8]'}`}
+                      />
+                      {selectedNurseId && (
+                        <span className="absolute right-2 top-8 text-green-600 text-xs font-semibold">✓ matched</span>
+                      )}
+                      {providerSuggestions.length > 0 && (
+                        <div className="absolute z-10 mt-1 w-full bg-white border border-[#D9E1E8] rounded-xl shadow-lg overflow-hidden">
+                          {providerSuggestions.map((n, i) => (
+                            <button
+                              key={n.id}
+                              type="button"
+                              onMouseDown={() => selectNurse(n)}
+                              onMouseEnter={() => setActiveSuggestionIdx(i)}
+                              className={`w-full text-left px-4 py-2.5 text-sm transition ${i === activeSuggestionIdx ? 'bg-[#2F3E4E] text-white' : 'hover:bg-[#f4f6f8]'}`}
+                            >
+                              <span className="font-semibold">{formalName(n) || n.displayName}</span>
+                              {n.providerAliases.length > 0 && (
+                                <span className={`text-xs ml-2 ${i === activeSuggestionIdx ? 'text-[#D9E1E8]' : 'text-[#7A8F79]'}`}>{n.providerAliases.join(', ')}</span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <label className={lbl}>Primary Payer</label>
+                      <select
+                        value={addForm.primaryPayer || ''}
+                        onChange={e => setAddForm(f => ({ ...f, primaryPayer: e.target.value, secondaryPayer: e.target.value === 'Medicaid' ? '' : f.secondaryPayer }))}
+                        className={fi}
+                      >
+                        {PAYER_OPTIONS.map(p => <option key={p} value={p}>{p || '— Select —'}</option>)}
+                      </select>
+                    </div>
+                    {!primaryIsMedicaid && (
+                      <div>
+                        <label className={lbl}>Secondary Payer</label>
+                        <select value={addForm.secondaryPayer || ''} onChange={e => setAddForm(f => ({ ...f, secondaryPayer: e.target.value }))} className={fi}>
+                          {PAYER_OPTIONS.map(p => <option key={p} value={p}>{p || '— None —'}</option>)}
+                        </select>
                       </div>
                     )}
                   </div>
@@ -2221,32 +2241,22 @@ export default function AdminClaimsPage() {
                 <div>
                   <p className={sec}>Primary Insurance</p>
                   <div className="grid grid-cols-3 gap-4">
-                    <div className="col-start-1">
-                      <label className={lbl}>Payer</label>
-                      <select
-                        value={addForm.primaryPayer || ''}
-                        onChange={e => setAddForm(f => ({ ...f, primaryPayer: e.target.value, secondaryPayer: e.target.value === 'Medicaid' ? '' : f.secondaryPayer }))}
-                        className={fi}
-                      >
-                        {PAYER_OPTIONS.map(p => <option key={p} value={p}>{p || '— Select —'}</option>)}
-                      </select>
-                    </div>
-                    <div className="col-start-2">
+                    <div>
                       <label className={lbl}>Allowed Amt</label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
                         <input type="number" step="0.01" min="0" value={addForm.primaryAllowedAmt || ''} onChange={e => setAddForm(f => ({ ...f, primaryAllowedAmt: e.target.value }))} className={`${fi} pl-6`} />
                       </div>
                     </div>
-                    <div className="col-start-3">
+                    <div>
                       <label className={lbl}>Paid Amt</label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
                         <input type="number" step="0.01" min="0" value={addForm.primaryPaidAmt || ''} onChange={e => setAddForm(f => ({ ...f, primaryPaidAmt: e.target.value }))} className={`${fi} pl-6`} />
                       </div>
                     </div>
-                    <div className="col-start-1">
-                      <label className={lbl}>{primaryIsMedicaid ? 'Proc Date' : 'Paid Date'}</label>
+                    <div>
+                      <label className={lbl}>Processed Date</label>
                       <SmartDateInput key={`${modalResetKey}-primPaid`} ref={primPaidDateRef} nextRef={primaryIsMedicaid ? finalDateRef : secPaidDateRef} value={addForm.primaryPaidDate || ''} onChange={v => setAddForm(f => ({ ...f, primaryPaidDate: v }))} />
                       {primaryIsMedicaid && addForm.primaryPaidDate && (() => {
                         const info = calcMedicaidCycleInfo(addForm.primaryPaidDate)
@@ -2255,18 +2265,18 @@ export default function AdminClaimsPage() {
                         ) : null
                       })()}
                     </div>
-                    <div className="col-start-2">
+                    <div>
                       <label className={lbl}>Provider Writeoff</label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
                         <input type="number" step="0.01" min="0" value={addForm.primaryCO || ''} onChange={e => setAddForm(f => ({ ...f, primaryCO: e.target.value }))} className={`${fi} pl-6`} />
                       </div>
                     </div>
-                    <div className="col-start-2">
+                    <div>
                       <label className={lbl}>Paid To</label>
                       <input type="text" value={addForm.primaryPaidTo || ''} onChange={e => setAddForm(f => ({ ...f, primaryPaidTo: e.target.value }))} className={fi} />
                     </div>
-                    <div className="col-start-3">
+                    <div>
                       <label className={lbl}>{primaryIsMedicaid ? 'Payer Claim #' : 'Check #'}</label>
                       <input type="text" value={addForm.primaryCheckNum || ''} onChange={e => setAddForm(f => ({ ...f, primaryCheckNum: e.target.value }))} className={fi} />
                     </div>
@@ -2278,57 +2288,45 @@ export default function AdminClaimsPage() {
                   <div>
                     <p className={sec}>Secondary Insurance</p>
                     <div className="grid grid-cols-3 gap-4">
-                      <div className="col-start-1">
-                        <label className={lbl}>Payer</label>
-                        <select value={addForm.secondaryPayer || ''} onChange={e => setAddForm(f => ({ ...f, secondaryPayer: e.target.value }))} className={fi}>
-                          {PAYER_OPTIONS.map(p => <option key={p} value={p}>{p || '— None —'}</option>)}
-                        </select>
-                      </div>
-                      <div className="col-start-2">
+                      <div>
                         <label className={lbl}>Allowed Amt</label>
                         <div className="relative">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
                           <input type="number" step="0.01" min="0" value={addForm.secondaryAllowedAmt || ''} onChange={e => setAddForm(f => ({ ...f, secondaryAllowedAmt: e.target.value }))} className={`${fi} pl-6`} />
                         </div>
                       </div>
-                      <div className="col-start-3">
+                      <div>
                         <label className={lbl}>Paid Amt</label>
                         <div className="relative">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
                           <input type="number" step="0.01" min="0" value={addForm.secondaryPaidAmt || ''} onChange={e => setAddForm(f => ({ ...f, secondaryPaidAmt: e.target.value }))} className={`${fi} pl-6`} />
                         </div>
                       </div>
-                      <div className="col-start-1">
-                        <label className={lbl}>Paid Date</label>
+                      <div>
+                        <label className={lbl}>Processed Date</label>
                         <SmartDateInput key={`${modalResetKey}-secPaid`} ref={secPaidDateRef} nextRef={finalDateRef} value={addForm.secondaryPaidDate || ''} onChange={v => setAddForm(f => ({ ...f, secondaryPaidDate: v }))} />
+                        {secondaryIsMedicaid && addForm.secondaryPaidDate && (() => {
+                          const info = calcMedicaidCycleInfo(addForm.secondaryPaidDate)
+                          return info ? (
+                            <p className="text-xs text-[#7A8F79] mt-1">Cycle {info.cycle} · Deposits {new Date(info.depositDateStr + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</p>
+                          ) : null
+                        })()}
                       </div>
-                      <div className="col-start-2">
+                      <div>
                         <label className={lbl}>Provider Writeoff</label>
                         <div className="relative">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
                           <input type="number" step="0.01" min="0" value={addForm.secondaryCO || ''} onChange={e => setAddForm(f => ({ ...f, secondaryCO: e.target.value }))} className={`${fi} pl-6`} />
                         </div>
                       </div>
-                      <div className="col-start-2">
+                      <div>
                         <label className={lbl}>Paid To</label>
                         <input type="text" value={addForm.secondaryPaidTo || ''} onChange={e => setAddForm(f => ({ ...f, secondaryPaidTo: e.target.value }))} className={fi} />
                       </div>
-                      <div className="col-start-3">
+                      <div>
                         <label className={lbl}>{secondaryIsMedicaid ? 'Payer Claim #' : 'Check #'}</label>
                         <input type="text" value={addForm.secondaryCheckNum || ''} onChange={e => setAddForm(f => ({ ...f, secondaryCheckNum: e.target.value }))} className={fi} />
                       </div>
-                      {secondaryIsMedicaid && (
-                        <div>
-                          <label className={lbl}>Paid Date</label>
-                          <SmartDateInput key={`${modalResetKey}-secPaidMed`} value={addForm.secondaryPaidDate || ''} onChange={v => setAddForm(f => ({ ...f, secondaryPaidDate: v }))} />
-                          {addForm.secondaryPaidDate && (() => {
-                            const info = calcMedicaidCycleInfo(addForm.secondaryPaidDate)
-                            return info ? (
-                              <p className="text-xs text-[#7A8F79] mt-1">Cycle {info.cycle} · Deposits {new Date(info.depositDateStr + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</p>
-                            ) : null
-                          })()}
-                        </div>
-                      )}
                     </div>
                   </div>
                 )}
@@ -2354,6 +2352,10 @@ export default function AdminClaimsPage() {
                     <div>
                       <label className={lbl}>Date Fully Finalized{primaryIsMedicaid && <span className="text-[#7A8F79] font-normal normal-case text-[10px] ml-1">(auto from deposit)</span>}</label>
                       <input ref={finalDateRef} type="date" value={addForm.dateFullyFinalized || ''} onChange={e => setAddForm(f => ({ ...f, dateFullyFinalized: e.target.value }))} className={fi} />
+                    </div>
+                    <div>
+                      <label className={lbl}>Paid Date</label>
+                      <input type="date" value={addForm.checkReceivedDate || ''} onChange={e => setAddForm(f => ({ ...f, checkReceivedDate: e.target.value }))} className={fi} />
                     </div>
                     <div>
                       <label className={lbl}>Avg Hourly Rate</label>

@@ -314,7 +314,7 @@ function ClaimRow({ primary: c, chain, eobDocs, onClaimPaid }: ClaimGroup & { eo
                   <p className="font-semibold text-[#7A8F79]">{fmt(c.primaryPaidAmt, '$')}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-[#7A8F79]">Paid Date</p>
+                  <p className="text-xs text-[#7A8F79]">Processed Date</p>
                   <p className="font-semibold text-[#2F3E4E]">{fmtDate(c.primaryPaidDate)}</p>
                 </div>
                 <div>
@@ -341,7 +341,7 @@ function ClaimRow({ primary: c, chain, eobDocs, onClaimPaid }: ClaimGroup & { eo
                   <p className="font-semibold text-[#7A8F79]">{fmt(c.secondaryPaidAmt, '$')}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-[#7A8F79]">Paid Date</p>
+                  <p className="text-xs text-[#7A8F79]">Processed Date</p>
                   <p className="font-semibold text-[#2F3E4E]">{fmtDate(c.secondaryPaidDate)}</p>
                 </div>
                 <div>
@@ -368,6 +368,12 @@ function ClaimRow({ primary: c, chain, eobDocs, onClaimPaid }: ClaimGroup & { eo
                 {fmt(c.remainingBalance, '$')}
               </p>
             </div>
+            {c.checkReceivedDate && (
+              <div>
+                <p className="text-xs text-[#7A8F79]">Paid Date</p>
+                <p className="font-semibold text-[#2F3E4E]">{fmtDate(c.checkReceivedDate)}</p>
+              </div>
+            )}
             <div>
               <p className="text-xs text-[#7A8F79]">Provider</p>
               <p className="font-semibold text-[#2F3E4E] text-xs">{c.providerName || '—'}</p>

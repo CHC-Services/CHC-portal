@@ -61,6 +61,53 @@ const PLAN_OPTIONS = [
   { value: 'custom',  label: 'Custom' },
 ]
 
+// Mirrors RATES in app/nurse/onboarding/page.tsx — keep in sync
+const RATES: Record<string, { dos: string; weekMax?: string }> = {
+  'ST-COM':  { dos: '$4 per date of service' },
+  'ST-MED':  { dos: '$3 per date of service' },
+  'ST-DUAL': { dos: '$5 per date of service' },
+  'LT-COM':  { dos: '$3 per date of service', weekMax: 'max $10 / week' },
+  'LT-MED':  { dos: '$2 per date of service', weekMax: 'max $10 / week' },
+  'LT-DUAL': { dos: '$4 per date of service', weekMax: 'max $15 / week' },
+}
+
+function RateTable() {
+  const cell = (plan: string) => {
+    const r = RATES[plan]
+    return (
+      <div className="px-3 py-3 text-center border-r border-[#D9E1E8] last:border-r-0">
+        <p className="text-sm font-bold text-[#2F3E4E]">{r?.dos ?? '—'}</p>
+        {r?.weekMax && <p className="text-[10px] text-[#7A8F79] italic mt-0.5">{r.weekMax}</p>}
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-xl overflow-hidden border border-[#D9E1E8] text-xs">
+      <div className="grid grid-cols-4 bg-[#2F3E4E] text-white text-[10px] font-bold uppercase tracking-wide">
+        <div className="px-3 py-2">Term</div>
+        <div className="px-3 py-2 text-center">Commercial</div>
+        <div className="px-3 py-2 text-center">Medicaid</div>
+        <div className="px-3 py-2 text-center">Dual (Both)</div>
+      </div>
+      <div className="grid grid-cols-4 border-b border-[#D9E1E8]">
+        <div className="px-3 py-3 border-r border-[#D9E1E8]">
+          <p className="font-semibold text-[#2F3E4E]">Short-Term</p>
+          <p className="text-[10px] text-[#7A8F79]">≤ 30 days</p>
+        </div>
+        {cell('ST-COM')}{cell('ST-MED')}{cell('ST-DUAL')}
+      </div>
+      <div className="grid grid-cols-4">
+        <div className="px-3 py-3 border-r border-[#D9E1E8]">
+          <p className="font-semibold text-[#2F3E4E]">Long-Term</p>
+          <p className="text-[10px] text-[#7A8F79]">Ongoing</p>
+        </div>
+        {cell('LT-COM')}{cell('LT-MED')}{cell('LT-DUAL')}
+      </div>
+    </div>
+  )
+}
+
 function PlanCell({ nurse, onSave }: { nurse: Nurse; onSave: (plan: string | null) => void }) {
   const [open, setOpen] = useState(false)
   const [val, setVal] = useState(nurse.billingPlan ?? '')
@@ -214,6 +261,7 @@ export default function EnrollmentPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [editing, setEditing] = useState<EditingCell | null>(null)
   const [editVal, setEditVal] = useState('')
+  const [showRates, setShowRates] = useState(false)
   const [showManual, setShowManual] = useState(false)
   const [manualForm, setManualForm] = useState({ ...BLANK_MANUAL })
   const [manualSaving, setManualSaving] = useState(false)
@@ -429,6 +477,12 @@ export default function EnrollmentPage() {
               className="border border-[#D9E1E8] bg-white px-3 py-1.5 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] w-56"
             />
             <button
+              onClick={() => setShowRates(true)}
+              className="px-4 py-1.5 rounded-lg text-sm font-semibold border border-[#D9E1E8] text-[#2F3E4E] hover:border-[#7A8F79] transition whitespace-nowrap"
+            >
+              Plan Rates
+            </button>
+            <button
               onClick={() => { setManualForm({ ...BLANK_MANUAL }); setManualError(''); setShowManual(true) }}
               className="px-4 py-1.5 rounded-lg text-sm font-semibold bg-[#2F3E4E] text-white hover:bg-[#7A8F79] transition whitespace-nowrap"
             >
@@ -436,6 +490,22 @@ export default function EnrollmentPage() {
             </button>
           </div>
         </div>
+
+        {/* Plan Rates Modal */}
+        {showRates && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-bold text-[#2F3E4E]">Billing Plan Rates</h2>
+                <button onClick={() => setShowRates(false)} className="text-[#7A8F79] hover:text-[#2F3E4E] text-xl leading-none transition">✕</button>
+              </div>
+              <RateTable />
+              <p className="text-[10px] text-[#7A8F79] mt-3">
+                Rates billed per date of service. Use this to pick the correct plan when manually enrolling a provider.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Manual Enrollment Modal */}
         {showManual && (

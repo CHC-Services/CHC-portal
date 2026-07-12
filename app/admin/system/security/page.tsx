@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import AdminNav from '../../../components/AdminNav'
 import Link from 'next/link'
+import { fmtPhoneInput } from '../../../../lib/formatPhone'
 
 type SmsKeyEntry = { label: string; addedAt: string; masked: string; quotaRemaining: number | null }
 
@@ -22,6 +23,13 @@ export default function SecuritySettingsPage() {
   const [addKeyError, setAddKeyError] = useState('')
   const [deletingIndex, setDeletingIndex] = useState<number | null>(null)
 
+  // Admin's own 2FA phone number
+  const [phone, setPhone] = useState('')
+  const [phoneLoading, setPhoneLoading] = useState(true)
+  const [phoneSaving, setPhoneSaving] = useState(false)
+  const [phoneSaved, setPhoneSaved] = useState(false)
+  const [phoneError, setPhoneError] = useState('')
+
   useEffect(() => {
     fetch('/api/admin/system/security', { credentials: 'include' })
       .then(r => r.json())
@@ -30,6 +38,35 @@ export default function SecuritySettingsPage() {
         setLoading(false)
       })
   }, [])
+
+  useEffect(() => {
+    fetch('/api/admin/account', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => {
+        setPhone(data.phone ? fmtPhoneInput(data.phone) : '')
+        setPhoneLoading(false)
+      })
+  }, [])
+
+  async function savePhone() {
+    setPhoneSaving(true)
+    setPhoneSaved(false)
+    setPhoneError('')
+    const res = await fetch('/api/admin/account', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ phone }),
+    })
+    const data = await res.json()
+    setPhoneSaving(false)
+    if (res.ok) {
+      setPhoneSaved(true)
+      setTimeout(() => setPhoneSaved(false), 3000)
+    } else {
+      setPhoneError(data.error || 'Failed to save phone number')
+    }
+  }
 
   async function toggle() {
     setSaving(true)
@@ -141,6 +178,36 @@ export default function SecuritySettingsPage() {
             )}
             {saved && <span className="text-xs text-green-600 font-medium">Saved</span>}
           </div>
+        </div>
+
+        {/* Admin's own 2FA phone number */}
+        <div className="bg-white rounded-2xl shadow-sm p-6">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-lg">📞</span>
+            <p className="font-bold text-[#2F3E4E] text-sm">Your 2FA Phone Number</p>
+          </div>
+          <p className="text-xs text-[#7A8F79] leading-relaxed mb-4">
+            Used to send your one-time login codes via SMS. Updating this replaces the number on your admin account.
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="tel"
+              placeholder="(555) 555-5555"
+              value={phone}
+              disabled={phoneLoading}
+              onChange={e => setPhone(fmtPhoneInput(e.target.value))}
+              className="flex-1 border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] placeholder-[#7A8F79]/50 focus:outline-none focus:ring-2 focus:ring-[#7A8F79] disabled:opacity-50"
+            />
+            <button
+              onClick={savePhone}
+              disabled={phoneLoading || phoneSaving || !phone.trim()}
+              className="shrink-0 bg-[#2F3E4E] text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-[#7A8F79] transition disabled:opacity-50"
+            >
+              {phoneSaving ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+          {phoneError && <p className="text-xs text-red-500 mt-2">{phoneError}</p>}
+          {phoneSaved && <p className="text-xs text-green-600 font-medium mt-2">Saved</p>}
         </div>
 
         {/* TextBelt SMS Key Manager */}

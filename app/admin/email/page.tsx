@@ -592,7 +592,7 @@ Sign in and head to myDashboard to submit your hours for each day worked this we
 
 If you have any questions about your hours or billing, reply to this email and we'll get back to you.`
 
-  const [wr, setWr] = useState({ dayOfWeek: '5', subject: '', body: DEFAULT_REMINDER_BODY })
+  const [wr, setWr] = useState({ enabled: 'true', dayOfWeek: '5', subject: '', body: DEFAULT_REMINDER_BODY })
   const [wrSaving, setWrSaving] = useState(false)
   const [wrSaved, setWrSaved] = useState(false)
   const [wrError, setWrError] = useState('')
@@ -636,6 +636,7 @@ If you have any questions about your hours or billing, reply to this email and w
       .then(r => r.ok ? r.json() : {})
       .then((data: Record<string, string>) => {
         setWr(prev => ({
+          enabled:   data['weeklyReminder.enabled']   ?? prev.enabled,
           dayOfWeek: data['weeklyReminder.dayOfWeek'] ?? prev.dayOfWeek,
           subject:   data['weeklyReminder.subject']   ?? prev.subject,
           body:      data['weeklyReminder.body']      || prev.body,
@@ -717,6 +718,7 @@ If you have any questions about your hours or billing, reply to this email and w
     const res = await fetch('/api/admin/weekly-reminder-settings', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
       body: JSON.stringify({ settings: {
+        'weeklyReminder.enabled':   wr.enabled,
         'weeklyReminder.dayOfWeek': wr.dayOfWeek,
         'weeklyReminder.subject':   wr.subject,
         'weeklyReminder.body':      wr.body,
@@ -1147,9 +1149,18 @@ If you have any questions about your hours or billing, reply to this email and w
               {/* ── Weekly Hours Reminder Settings ─────────────────────────── */}
               <form onSubmit={saveWrSettings}>
                 <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                  <div className="bg-[#2F3E4E] px-6 py-4">
-                    <h2 className="text-base font-bold text-white">Weekly Hours Reminder</h2>
-                    <p className="text-xs text-[#D9E1E8] mt-0.5">Automated email sent to active providers on a chosen day each week</p>
+                  <div className="bg-[#2F3E4E] px-6 py-4 flex items-center justify-between">
+                    <div>
+                      <h2 className="text-base font-bold text-white">Weekly Hours Reminder</h2>
+                      <p className="text-xs text-[#D9E1E8] mt-0.5">Automated email sent to active providers on a chosen day each week</p>
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <span className="text-xs font-semibold text-[#D9E1E8]">{wr.enabled === 'true' ? 'Enabled' : 'Disabled'}</span>
+                      <div onClick={() => { setWr(prev => ({ ...prev, enabled: prev.enabled === 'true' ? 'false' : 'true' })); setWrSaved(false) }}
+                        className={`relative w-10 h-5 rounded-full transition-colors cursor-pointer ${wr.enabled === 'true' ? 'bg-[#7A8F79]' : 'bg-[#4a5568]'}`}>
+                        <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${wr.enabled === 'true' ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                      </div>
+                    </label>
                   </div>
                   <div className="p-6 space-y-5">
                     <div>

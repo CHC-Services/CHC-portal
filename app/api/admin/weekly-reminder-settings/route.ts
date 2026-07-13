@@ -3,6 +3,7 @@ import { prisma } from '../../../../lib/prisma'
 import { verifyToken } from '../../../../lib/auth'
 
 const KEYS = [
+  'weeklyReminder.enabled',
   'weeklyReminder.dayOfWeek',
   'weeklyReminder.subject',
   'weeklyReminder.body',

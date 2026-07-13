@@ -10,6 +10,12 @@ export async function GET(req: Request) {
     }
   }
 
+  // Check the on/off toggle first — default enabled if never set
+  const enabledSetting = await (prisma.systemSetting.findUnique as any)({ where: { key: 'weeklyReminder.enabled' } })
+  if (enabledSetting?.value === 'false') {
+    return NextResponse.json({ skipped: true, reason: 'Weekly reminder is disabled' })
+  }
+
   // Check configured day of week (0=Sun … 6=Sat). Default: 5 (Friday)
   const daySetting = await (prisma.systemSetting.findUnique as any)({ where: { key: 'weeklyReminder.dayOfWeek' } })
   const configuredDay = daySetting ? parseInt(daySetting.value, 10) : 5

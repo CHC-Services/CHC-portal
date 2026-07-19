@@ -7,7 +7,7 @@ import Image from 'next/image'
 function VerifyContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const via = searchParams.get('via') // 'sms' | 'email'
+  const via = searchParams.get('via') // 'sms' | 'email' | 'totp'
   const [code, setCode] = useState(['', '', '', '', '', ''])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -85,13 +85,19 @@ function VerifyContent() {
           </p>
         </div>
         <div>
-          <p className="text-2xl font-bold text-white leading-snug">Text Message<br />Authentication</p>
+          <p className="text-2xl font-bold text-white leading-snug">
+            {via === 'totp' ? <>Authenticator App<br />Verification</> : via === 'email' ? <>Email<br />Authentication</> : <>Text Message<br />Authentication</>}
+          </p>
           <p className="text-sm text-[#D9E1E8] mt-3 leading-relaxed">
-            We sent a one-time code to your phone. Enter the 6-digit number from that text message.
+            {via === 'totp'
+              ? 'Open your authenticator app and enter the current 6-digit code for this account.'
+              : 'We sent a one-time code to your phone. Enter the 6-digit number from that text message.'}
           </p>
         </div>
         <div className="border-t border-[#3d5166] pt-4 text-xs text-[#7A8F79] leading-relaxed">
-          The code expires in five minutes. If you don&apos;t receive it, try logging in again.
+          {via === 'totp'
+            ? "Codes refresh every 30 seconds. If one doesn't work, wait for the next one to generate."
+            : "The code expires in five minutes. If you don't receive it, try logging in again."}
         </div>
       </div>
 
@@ -104,7 +110,11 @@ function VerifyContent() {
           <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-1">Security Check</p>
           <h1 className="text-2xl font-bold text-[#2F3E4E] mb-1">Enter your 6-digit code</h1>
           <p className="text-sm text-[#7A8F79] mb-8">
-            {via === 'email' ? 'Enter the 6-digit code we sent to your email address.' : 'Enter the 6-digit code we sent to your phone.'}
+            {via === 'totp'
+              ? 'Enter the 6-digit code from your authenticator app.'
+              : via === 'email'
+              ? 'Enter the 6-digit code we sent to your email address.'
+              : 'Enter the 6-digit code we sent to your phone.'}
           </p>
 
           {/* 6 digit inputs */}

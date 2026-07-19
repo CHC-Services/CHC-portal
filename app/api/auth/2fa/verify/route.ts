@@ -41,18 +41,20 @@ export async function POST(req: Request) {
   const authUser = user as AuthUser
   let valid = false
 
-  if (authUser.smsOtp) {
-    const expiresAt = authUser.smsOtpExpiresAt ? new Date(authUser.smsOtpExpiresAt) : null
-    if (expiresAt && expiresAt.getTime() > Date.now() && code === authUser.smsOtp) {
-      valid = true
-    }
-  } else if (authUser.mfaSecret) {
+  if (authUser.mfaSecret) {
     valid = speakeasy.totp.verify({
       secret: authUser.mfaSecret,
       encoding: 'base32',
       token: code,
       window: 1,
     })
+  }
+
+  if (!valid && authUser.smsOtp) {
+    const expiresAt = authUser.smsOtpExpiresAt ? new Date(authUser.smsOtpExpiresAt) : null
+    if (expiresAt && expiresAt.getTime() > Date.now() && code === authUser.smsOtp) {
+      valid = true
+    }
   }
 
   if (!valid) {

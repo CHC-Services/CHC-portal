@@ -8,6 +8,7 @@ type Methods = {
   hasSms: boolean
   phoneLast4: string | null
   emailMasked: string
+  hasAuthenticator: boolean
 }
 
 export default function ChoosePage() {
@@ -50,6 +51,10 @@ export default function ChoosePage() {
       setError('Something went wrong. Please try again.')
       setLoading(false)
     }
+  }
+
+  function chooseAuthenticator() {
+    router.push('/login/verify?via=totp')
   }
 
   return (
@@ -111,6 +116,19 @@ export default function ChoosePage() {
                   <p className="text-xs text-[#7A8F79]">Send to {methods.emailMasked}</p>
                 </div>
               </button>
+              {methods.hasAuthenticator && (
+                <button
+                  onClick={chooseAuthenticator}
+                  disabled={loading}
+                  className="w-full flex items-center gap-4 bg-white border-2 border-[#D9E1E8] hover:border-[#7A8F79] rounded-xl px-5 py-4 text-left transition disabled:opacity-50"
+                >
+                  <span className="text-2xl">🔐</span>
+                  <div>
+                    <p className="font-semibold text-[#2F3E4E] text-sm">Authenticator app</p>
+                    <p className="text-xs text-[#7A8F79]">Use the code from your authenticator app</p>
+                  </div>
+                </button>
+              )}
             </div>
           )}
 

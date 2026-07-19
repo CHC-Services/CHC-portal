@@ -27,5 +27,6 @@ export async function GET(req: Request) {
     hasSms: !!effectivePhone,
     phoneLast4: effectivePhone ? maskPhone(effectivePhone) : null,
     emailMasked: maskEmail(user.email),
+    hasAuthenticator: !!(user.mfaEnabled && user.mfaSecret),
   })
 }

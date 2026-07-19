@@ -36,7 +36,7 @@ export default function LoginPage() {
       if (data.requires2FA) {
         if (data.needsConsent) {
           window.location.href = '/login/consent'
-        } else if (data.hasSms) {
+        } else if (data.hasSms || data.hasAuthenticator) {
           window.location.href = '/login/choose'
         } else {
           // No phone on file — auto-send to email and go straight to verify

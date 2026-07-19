@@ -26,7 +26,7 @@ export default function ConsentPage() {
         return
       }
 
-      if (useEmail || !consentData.hasSms) {
+      if (useEmail || !(consentData.hasSms || consentData.hasAuthenticator)) {
         // Send code to email and go directly to verify
         const sendRes = await fetch('/api/auth/2fa/send', {
           method: 'POST',

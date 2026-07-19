@@ -5,14 +5,14 @@ import { usePathname } from 'next/navigation'
 
 const links = [
   { href: '/nurse',           label: 'Dashboard' },
-  { href: '/nurse/patients',  label: 'Patients'  },
   { href: '/nurse/hours',     label: 'Hours'     },
   { href: '/nurse/claims',    label: 'Claims'    },
+  { href: '/nurse/patients',  label: 'Patients'  },
   { href: '/nurse/invoices',  label: 'Invoices'  },
   { href: '/nurse/documents', label: 'Documents' },
   { href: '/nurse/profile',    label: 'Profile'    },
-  { href: '/care',             label: 'Care'       },
-  { href: '/nurse/appearance', label: 'Appearance' },
+  { href: '/care',             label: 'Self Care'       },
+  { href: '/nurse/appearance', label: 'Settings' },
 ]
 
 const DIVIDERS_BEFORE = new Set(['Patients', 'Invoices', 'Profile', 'Appearance'])

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import PortalMessages from '../../components/PortalMessages'
-import { payCycleDateLabel } from '../../../lib/medicaidPayCycle'
+import { payCycleDateLabel, calcMedicaidCycleInfo } from '../../../lib/medicaidPayCycle'
 
 // ── Search helper — checks every string/number field on a claim ──────────────
 function claimMatchesSearch(c: Claim, q: string): boolean {
@@ -36,14 +36,18 @@ type Claim = {
   dosStart: string | null
   dosStop: string | null
   totalBilled: number | null
+  hours: number | null
   claimStage: string | null
+  submitDate: string | null
   primaryPayer: string | null
   primaryAllowedAmt: number | null
+  primaryCO: number | null
   primaryPaidAmt: number | null
   primaryPaidDate: string | null
   primaryPaidTo: string | null
   secondaryPayer: string | null
   secondaryAllowedAmt: number | null
+  secondaryCO: number | null
   secondaryPaidAmt: number | null
   secondaryPaidDate: string | null
   secondaryPaidTo: string | null
@@ -94,6 +98,111 @@ function fmtDOS(start: string | null, stop: string | null): string {
   if (s.getUTCFullYear() !== e.getUTCFullYear()) return `${full(s)}–${full(e)}`
   if (s.getUTCMonth() !== e.getUTCMonth()) return `${monDay(s)}–${monDay(e)}, ${yr(e)}`
   return `${mon(s)} ${day(s)}–${day(e)}, ${yr(s)}`
+}
+
+function maxAllowed(c: Claim): number | null {
+  const vals = [c.primaryAllowedAmt, c.secondaryAllowedAmt].filter((v): v is number => v != null)
+  if (vals.length === 0) return null
+  return Math.max(...vals)
+}
+
+function isMedicaidPayer(name: string | null): boolean {
+  return !!name && name.toLowerCase().includes('medicaid')
+}
+
+function payDateCycleLabel(paidDate: string | null, payerName: string | null): string {
+  if (!paidDate) return '—'
+  if (isMedicaidPayer(payerName)) {
+    const info = calcMedicaidCycleInfo(paidDate.slice(0, 10))
+    if (info) return `Cycle ${info.cycle} · ${fmtDate(paidDate)}`
+  }
+  return fmtDate(paidDate)
+}
+
+// ── Header (sage) / value (navy) cell used throughout the claim card grid ──
+function Cell({ label, value, valueClass = 'text-[#2F3E4E]' }: { label?: string; value: React.ReactNode; valueClass?: string }) {
+  return (
+    <div className="flex flex-col items-center text-center">
+      {label
+        ? <p className="text-[10px] uppercase tracking-wide text-[#7A8F79] font-semibold leading-tight">{label}</p>
+        : <p className="text-[10px] leading-tight invisible">&nbsp;</p>}
+      <p className={`text-xs font-semibold leading-tight mt-0.5 ${valueClass}`}>{value}</p>
+    </div>
+  )
+}
+
+// ── Single EOB entry point — "Awaiting EOB" when none uploaded, otherwise opens a picker ──
+function EobButton({ eobDocs, onOpen }: { eobDocs: { id: string; fileName: string }[]; onOpen: (doc: { id: string; fileName: string }) => void }) {
+  const [open, setOpen] = useState(false)
+  if (eobDocs.length === 0) {
+    return <span className="text-[10px] font-semibold text-[#7A8F79] bg-[#F4F6F5] border border-[#D9E1E8] px-2.5 py-1 rounded-lg whitespace-nowrap">Awaiting EOB</span>
+  }
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-1 text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] border border-[#D9E1E8] hover:border-[#7A8F79] px-2.5 py-1 rounded-lg transition whitespace-nowrap"
+      >
+        📎 View EOB{eobDocs.length > 1 ? ` (${eobDocs.length})` : ''}
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute z-20 mt-1 bg-white border border-[#D9E1E8] rounded-lg shadow-lg overflow-hidden min-w-[180px]">
+            {eobDocs.map((doc, i) => (
+              <button
+                key={doc.id}
+                onClick={() => { onOpen(doc); setOpen(false) }}
+                className="block w-full text-left px-3 py-2 text-xs text-[#2F3E4E] hover:bg-[#F4F6F5] truncate"
+              >
+                {eobDocs.length > 1 ? `EOB ${i + 1} — ` : ''}{doc.fileName}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+// ── Primary/Secondary payer detail block (Row 2 / Row 3 of the expanded card) ──
+function PayerSection({ label, payer, submitDate, allowedAmt, paidAmt, coAmt, balance, paidDate, claimId, eobDocs, onOpenEob }: {
+  label: 'PRIMARY' | 'SECONDARY'
+  payer: string | null
+  submitDate: string | null
+  allowedAmt: number | null
+  paidAmt: number | null
+  coAmt: number | null
+  balance: number | null
+  paidDate: string | null
+  claimId: string | null
+  eobDocs?: { id: string; fileName: string }[]
+  onOpenEob?: (doc: { id: string; fileName: string }) => void
+}) {
+  const short = label === 'PRIMARY' ? 'Primary' : 'Second.'
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold">{label} — {payer || '—'}</p>
+        <p className="text-[10px] uppercase tracking-wide text-[#7A8F79] font-semibold">Check Date/Pay Cycle</p>
+      </div>
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-y-2 gap-x-2 items-start">
+        <div className="flex justify-center">
+          {eobDocs && onOpenEob ? <EobButton eobDocs={eobDocs} onOpen={onOpenEob} /> : null}
+        </div>
+        <Cell label="Submitted" value={fmtDate(submitDate)} />
+        <Cell label={`${short} Allow`} value={fmt(allowedAmt, '$')} />
+        <Cell label={`${short} Paid`} value={fmt(paidAmt, '$')} valueClass="text-[#7A8F79]" />
+        <Cell label={`${short} WO`} value={fmt(coAmt, '$')} />
+        <Cell label="Balance" value={fmt(balance, '$')} valueClass={(balance || 0) > 0 ? 'text-red-600' : 'text-[#2F3E4E]'} />
+        <Cell value={payDateCycleLabel(paidDate, payer)} />
+      </div>
+      <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#D9E1E8]">
+        <p className="text-[10px] text-[#7A8F79]"><span className="font-semibold uppercase tracking-wide">Remark Codes:</span> —</p>
+        <p className="text-[10px] text-right"><span className="font-semibold uppercase tracking-wide text-[#7A8F79]">Payer Claim # </span><span className="text-[#2F3E4E] font-mono">{claimId || '—'}</span></p>
+      </div>
+    </div>
+  )
 }
 
 function StageBadge({ stage }: { stage: string | null }) {
@@ -208,48 +317,41 @@ function ClaimRow({ primary: c, chain, eobDocs, onClaimPaid }: ClaimGroup & { eo
     iframeRef.current?.contentWindow?.print()
   }
 
-  const isFinal = ['paid', 'denied', 'rejected', 'finalized'].includes((c.claimStage || '').toLowerCase())
-  const dateLabel = isFinal ? 'Finalized' : 'Last Updated'
-  const dateValue = isFinal
-    ? (c.dateFullyFinalized || c.primaryPaidDate || c.updatedAt)
-    : c.updatedAt
-  const firstNoteLine = c.processingNotes ? c.processingNotes.split('\n').find(l => l.trim()) || null : null
-
   return (
     <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-      {/* ── Compact summary row (always visible, click to expand) ── */}
-      <button
+      {/* ── Row 1 — always visible, click (or the arrow) to expand ── */}
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setExpanded(e => !e)}
-        className="w-full text-left px-4 pt-2 pb-2 hover:bg-[#F4F6F5] transition-colors"
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded(x => !x) } }}
+        className={`w-full text-left px-4 py-3 cursor-pointer transition-colors ${expanded ? 'bg-[#EEF2EC] hover:bg-[#E7EDE5]' : 'hover:bg-[#F4F6F5]'}`}
       >
         {/* Resubmit indicator — only rendered when present, no blank row otherwise */}
         {c.resubmissionOf && (
-          <div className="mb-0.5">
+          <div className="mb-1.5">
             <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full whitespace-nowrap">
               ↻ Resubmission
             </span>
           </div>
         )}
 
-        {/* Row 1: Claim ID label | Total Billed label | Total Reimb label | date value */}
-        <div className="grid grid-cols-4 gap-2 items-end">
-          <p className="text-[10px] text-[#7A8F79] leading-tight">Claim ID</p>
-          <p className="text-[10px] text-[#7A8F79] leading-tight">Total Billed</p>
-          <p className="text-[10px] text-[#7A8F79] leading-tight">Total Reimb.</p>
-          <p className="text-xs font-semibold text-[#2F3E4E] leading-tight text-right">{fmtDate(dateValue)}</p>
-        </div>
-
-        {/* Row 2: claimId + DOS | billed $$ | reimb $$ | date label + status + chevron */}
-        <div className="grid grid-cols-4 gap-2 items-center mt-0.5">
-          <div>
-            <p className="text-xs font-mono font-semibold text-[#2F3E4E] truncate leading-tight">{c.claimId || '—'}</p>
-            <p className="text-[10px] text-[#7A8F79] leading-tight mt-0.5">{fmtDOS(c.dosStart, c.dosStop)}</p>
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-y-2 gap-x-2 items-center">
+          <div className="flex justify-center">
+            <span className="text-[#7A8F79] text-xs">{expanded ? '▲' : '▼'}</span>
           </div>
-          <p className="text-xs font-semibold text-[#2F3E4E] leading-tight">{fmt(c.totalBilled, '$')}</p>
-          <p className="text-xs font-semibold text-[#7A8F79] leading-tight">{fmt(c.totalReimbursed, '$')}</p>
-          <div className="flex items-center justify-end gap-1.5">
-            {isCheckWait ? (
-              <>
+          <div className="flex flex-col items-center text-center">
+            <p className="text-xs font-semibold text-[#2F3E4E] leading-tight">{fmtDate(c.dosStart)}</p>
+            <p className="text-xs font-semibold text-[#2F3E4E] leading-tight">{fmtDate(c.dosStop)}</p>
+          </div>
+          <Cell label="Total Billed" value={fmt(c.totalBilled, '$')} />
+          <Cell label="Max Allowed" value={fmt(maxAllowed(c), '$')} />
+          <Cell label="Total Paid" value={fmt(c.totalReimbursed, '$')} valueClass="text-[#7A8F79]" />
+          <Cell label="Hour/Unit" value={c.hours != null ? c.hours.toLocaleString('en-US') : '—'} />
+          <div className="flex flex-col items-center text-center gap-1">
+            <p className="text-[10px] uppercase tracking-wide text-[#7A8F79] font-semibold leading-tight">Status</p>
+            {isCheckWait && (
+              <div className="flex items-center gap-1">
                 <input
                   type="checkbox"
                   checked={checkboxChecked}
@@ -258,135 +360,57 @@ function ClaimRow({ primary: c, chain, eobDocs, onClaimPaid }: ClaimGroup & { eo
                   className="w-3 h-3 cursor-pointer accent-[#2F3E4E]"
                   aria-label="Mark check as received"
                 />
-                <span className="text-[10px] text-[#7A8F79] leading-tight whitespace-nowrap">Check Received?</span>
-              </>
-            ) : (
-              <span className={`text-[10px] leading-tight whitespace-nowrap ${isFinal ? 'text-green-700' : 'text-[#7A8F79]'}`}>{dateLabel}</span>
+                <span className="text-[9px] text-[#7A8F79] whitespace-nowrap">Check Received?</span>
+              </div>
             )}
             <StageBadge stage={c.claimStage} />
-            <span className="text-[#7A8F79] text-[10px]">{expanded ? '▲' : '▼'}</span>
           </div>
         </div>
-
-        {/* Processing notes — 1 line preview, spans full width */}
-        {firstNoteLine && (
-          <div className="mt-1.5 pt-1.5 border-t border-[#D9E1E8]">
-            <p className="text-[11px] text-[#7A8F79] truncate leading-tight">
-              <span className="font-semibold text-[#7A8F79] uppercase tracking-wide text-[10px]">Note · </span>
-              {firstNoteLine}
-            </p>
-          </div>
-        )}
-      </button>
+      </div>
 
       {/* ── Expanded details ── */}
       {expanded && (
         <div className="border-t border-[#D9E1E8] px-4 py-4 space-y-4 bg-[#FAFBFC]">
 
-          {/* Primary insurance */}
+          {/* Row 2 — Primary payer */}
           {(c.primaryPayer || c.primaryPaidAmt != null) && (
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold">
-                  Primary — {c.primaryPayer || '—'}
-                </p>
-                {eobDocs.length > 0 && (
-                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                    {eobDocs.map((doc, i) => (
-                      <button
-                        key={doc.id}
-                        onClick={() => openEob(doc)}
-                        className="flex items-center gap-1 text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] border border-[#D9E1E8] hover:border-[#7A8F79] px-2.5 py-1 rounded-lg transition"
-                      >
-                        📎 {eobDocs.length > 1 ? `EOB ${i + 1}` : 'View EOB'}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                <div>
-                  <p className="text-xs text-[#7A8F79]">Allowed</p>
-                  <p className="font-semibold text-[#2F3E4E]">{fmt(c.primaryAllowedAmt, '$')}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#7A8F79]">Paid</p>
-                  <p className="font-semibold text-[#7A8F79]">{fmt(c.primaryPaidAmt, '$')}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#7A8F79]">Processed Date</p>
-                  <p className="font-semibold text-[#2F3E4E]">{fmtDate(c.primaryPaidDate)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#7A8F79]">Paid To</p>
-                  <p className="font-semibold text-[#2F3E4E]">{c.primaryPaidTo || '—'}</p>
-                </div>
-              </div>
-            </div>
+            <PayerSection
+              label="PRIMARY"
+              payer={c.primaryPayer}
+              submitDate={c.submitDate}
+              allowedAmt={c.primaryAllowedAmt}
+              paidAmt={c.primaryPaidAmt}
+              coAmt={c.primaryCO}
+              balance={c.remainingBalance}
+              paidDate={c.primaryPaidDate}
+              claimId={c.claimId}
+              eobDocs={eobDocs}
+              onOpenEob={openEob}
+            />
           )}
 
-          {/* Secondary insurance */}
+          {/* Row 3 — Secondary payer */}
           {(c.secondaryPayer || c.secondaryPaidAmt != null) && (
             <div className="pt-3 border-t border-[#D9E1E8]">
-              <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-2">
-                Secondary — {c.secondaryPayer || '—'}
-              </p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                <div>
-                  <p className="text-xs text-[#7A8F79]">Allowed</p>
-                  <p className="font-semibold text-[#2F3E4E]">{fmt(c.secondaryAllowedAmt, '$')}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#7A8F79]">Paid</p>
-                  <p className="font-semibold text-[#7A8F79]">{fmt(c.secondaryPaidAmt, '$')}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#7A8F79]">Processed Date</p>
-                  <p className="font-semibold text-[#2F3E4E]">{fmtDate(c.secondaryPaidDate)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#7A8F79]">Paid To</p>
-                  <p className="font-semibold text-[#2F3E4E]">{c.secondaryPaidTo || '—'}</p>
-                </div>
-              </div>
+              <PayerSection
+                label="SECONDARY"
+                payer={c.secondaryPayer}
+                submitDate={c.submitDate}
+                allowedAmt={c.secondaryAllowedAmt}
+                paidAmt={c.secondaryPaidAmt}
+                coAmt={c.secondaryCO}
+                balance={c.remainingBalance}
+                paidDate={c.secondaryPaidDate}
+                claimId={c.claimId}
+              />
             </div>
           )}
 
-          {/* Summary */}
-          <div className="pt-3 border-t border-[#D9E1E8] grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-            <div>
-              <p className="text-xs text-[#7A8F79]">Total Billed</p>
-              <p className="font-semibold text-[#2F3E4E]">{fmt(c.totalBilled, '$')}</p>
-            </div>
-            <div>
-              <p className="text-xs text-[#7A8F79]">Total Reimbursed</p>
-              <p className="font-semibold text-[#7A8F79]">{fmt(c.totalReimbursed, '$')}</p>
-            </div>
-            <div>
-              <p className="text-xs text-[#7A8F79]">Remaining Balance</p>
-              <p className={`font-semibold ${(c.remainingBalance || 0) > 0 ? 'text-red-600' : 'text-[#2F3E4E]'}`}>
-                {fmt(c.remainingBalance, '$')}
-              </p>
-            </div>
-            {c.checkReceivedDate && (
-              <div>
-                <p className="text-xs text-[#7A8F79]">Paid Date</p>
-                <p className="font-semibold text-[#2F3E4E]">{fmtDate(c.checkReceivedDate)}</p>
-              </div>
-            )}
-            <div>
-              <p className="text-xs text-[#7A8F79]">Provider</p>
-              <p className="font-semibold text-[#2F3E4E] text-xs">{c.providerName || '—'}</p>
-            </div>
+          {/* Row 4 — Comments (future: auto-populated CARC/RARC codes) */}
+          <div className="pt-3 border-t border-[#D9E1E8]">
+            <p className="text-[10px] text-[#7A8F79] font-semibold uppercase tracking-wide mb-1">Comments</p>
+            <p className="text-sm text-[#2F3E4E] whitespace-pre-line">{c.processingNotes || '—'}</p>
           </div>
-
-          {/* Full processing notes */}
-          {c.processingNotes && (
-            <div className="pt-3 border-t border-[#D9E1E8]">
-              <p className="text-xs text-[#7A8F79] font-semibold uppercase tracking-wide mb-1">Processing Notes</p>
-              <p className="text-sm text-[#2F3E4E] whitespace-pre-line">{c.processingNotes}</p>
-            </div>
-          )}
 
           {/* Prior submissions chain */}
           {chain.length > 0 && (

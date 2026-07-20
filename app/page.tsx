@@ -250,7 +250,7 @@ export default async function Home() {
                 <FeatureCard href="/login" icon="💳"  title="Online Enrollment"  description="Enroll in billing services and manage your plan online." />
                 <FeatureCard href="/login" icon="📅"  title="Renewal Reminders"   description="Never miss a license or insurance recertification with built-in reminders." />
                 <FeatureCard href="/resources" icon="📚"  title="Provider Resources" description="Step-by-step guides for NPI registration, Medicaid enrollment and more." />
-                <FeatureCard href="/care" icon="🧘" title="myCare" description="Tips for preventing burnout & links to help keep you running at your best." /> 
+                <FeatureCard href="/care" icon="🧘" title="myWellness" description="Tips for preventing burnout & links to help keep you running at your best." />
                 <FeatureCard href="/login" icon="🔒"  title="Secure &amp; Private"    description="Privacy-conscious from the start. Your & your patient's data are protected with HIPAA level privacy encryptions." />
               </div>
             </div>

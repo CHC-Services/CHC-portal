@@ -135,7 +135,7 @@ function AppCard({ r }: { r: ResourceLink }) {
 
 type Tab = 'escape' | 'support' | 'refresh'
 
-export default function MyCarePage() {
+export default function MyWellnessPage() {
   const [activeTab, setActiveTab] = useState<Tab>('escape')
 
   const tabs: { id: Tab; label: string; emoji: string }[] = [
@@ -159,10 +159,10 @@ export default function MyCarePage() {
           <LotusWatermark className="absolute -right-6 -top-6 w-52 h-52 text-[#7A8F79] opacity-[0.13]" />
           <div className="relative z-10">
             <h1 className="text-4xl font-bold text-[#2F3E4E]">
-              <span className="text-[#7A8F79] italic">my</span>Care
+              <span className="text-[#7A8F79] italic">my</span>Wellness
             </h1>
             <p className="font-cormorant text-xl text-[#5a7a62] italic mt-2 leading-snug">
-              Resources for your personal health, mental wellness,<br className="hidden sm:block" /> and longevity in the profession.
+              Wellness is more than meditation music and face masks — we&apos;re partly a product of our diet,<br className="hidden sm:block" /> environment, finances, and sense of safety, too. This section covers a little of each — poke around, relax, and enjoy.
             </p>
           </div>
         </div>

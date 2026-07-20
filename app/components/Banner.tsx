@@ -162,7 +162,7 @@ export default function Banner({ user }: BannerProps) {
                         Resources
                     </Link>
                     <Link href="/care" onClick={() => setMenuOpen(false)} className={`transition ${role === 'nurse' ? 'lg:hidden ' : ''}${pathname === "/care" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
-                        <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Care
+                        <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Wellness
                     </Link>
                 </>
             )}
@@ -174,7 +174,7 @@ export default function Banner({ user }: BannerProps) {
         { href: '/faq', label: 'FAQ', icon: '❓' },
         ...(role ? [
             { href: '/resources', label: 'Resources', icon: '📋' },
-            { href: '/care', label: 'myCare', icon: '🌿' },
+            { href: '/care', label: 'myWellness', icon: '🌿' },
         ] : []),
         ...(role === 'nurse' ? [
             { href: '/nurse/patients', label: 'Patients', icon: '🏥' },

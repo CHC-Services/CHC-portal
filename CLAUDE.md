@@ -41,7 +41,7 @@ if (!session || session.role !== 'admin') return NextResponse.json({ error: 'Una
 - Primary button: `bg-[#2F3E4E] text-white rounded-xl hover:bg-[#7A8F79]`
 
 ## Layout Architecture
-- **NurseSideNav** (`app/components/NurseSideNav.tsx`) — fixed floating panel, `lg:` only, mounted in root layout with `user?.role === 'nurse'` check. Links: myDashboard, myPatients, myHours, myClaims, myInvoices, myDocuments, myProfile, myCare.
+- **NurseSideNav** (`app/components/NurseSideNav.tsx`) — fixed floating panel, `lg:` only, mounted via `app/nurse/layout.tsx` (and `app/care/layout.tsx`). Links: myDashboard, myHours, myClaims, myPatients, myPayments (`/nurse/claims?tab=paylog`), myInvoices, myDocuments, myProfile, myWellness (`/care`), Settings.
 - Root layout adds `lg:pl-[calc(10vw+1.5rem)]` to page-wrap when role === nurse.
 - Nurse layout (`app/nurse/layout.tsx`) is a pass-through — just `<>{children}</>`.
 - Login redirects: nurse → `/nurse`, admin → `/admin`. `/portal` redirects all authenticated users.

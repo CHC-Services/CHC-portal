@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import PortalMessages from '../../components/PortalMessages'
 import { payCycleDateLabel, calcMedicaidCycleInfo } from '../../../lib/medicaidPayCycle'
 
@@ -149,7 +150,7 @@ function EobButton({ eobDocs, onOpen }: { eobDocs: { id: string; fileName: strin
     <div className="relative">
       <button
         onClick={() => setOpen(o => !o)}
-        className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] border border-[#D9E1E8] hover:border-[#7A8F79] px-1.5 py-1 rounded-lg transition whitespace-nowrap"
+        className="text-xs font-semibold text-white bg-[#2F3E4E] hover:bg-[#7A8F79] px-2 py-1 rounded-lg shadow-sm hover:shadow transition active:shadow-inner active:translate-y-px whitespace-nowrap"
       >
         View EOB{eobDocs.length > 1 ? ` (${eobDocs.length})` : ''}
       </button>
@@ -174,7 +175,7 @@ function EobButton({ eobDocs, onOpen }: { eobDocs: { id: string; fileName: strin
 }
 
 // ── Primary/Secondary payer detail block (Row 2 / Row 3 of the expanded card) ──
-function PayerSection({ label, payer, submitDate, allowedAmt, paidAmt, coAmt, balance, paidDate, checkNum, eobDocs, onOpenEob }: {
+function PayerSection({ label, payer, submitDate, allowedAmt, paidAmt, coAmt, balance, paidDate, checkNum, claimIdValue, eobDocs, onOpenEob }: {
   label: 'PRIMARY' | 'SECONDARY'
   payer: string | null
   submitDate: string | null
@@ -184,6 +185,7 @@ function PayerSection({ label, payer, submitDate, allowedAmt, paidAmt, coAmt, ba
   balance: number | null
   paidDate: string | null
   checkNum: string | null
+  claimIdValue?: string | null
   eobDocs?: { id: string; fileName: string }[]
   onOpenEob?: (doc: { id: string; fileName: string }) => void
 }) {
@@ -195,7 +197,8 @@ function PayerSection({ label, payer, submitDate, allowedAmt, paidAmt, coAmt, ba
         <p className="text-[10px] uppercase tracking-wide text-[#7A8F79] font-semibold">PayDate/Cycle</p>
       </div>
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-y-2 gap-x-1 items-start">
-        <div className="flex justify-center">
+        <div className="flex flex-col items-center gap-1">
+          {claimIdValue && <p className="text-xs font-semibold text-[#2F3E4E] leading-tight">{claimIdValue}</p>}
           {eobDocs && onOpenEob ? <EobButton eobDocs={eobDocs} onOpen={onOpenEob} /> : null}
         </div>
         <Cell label="Submitted" value={fmtDate(submitDate)} />
@@ -395,6 +398,7 @@ function ClaimRow({ primary: c, chain, eobDocs, onClaimPaid }: ClaimGroup & { eo
               balance={c.remainingBalance}
               paidDate={c.primaryPaidDate}
               checkNum={c.primaryCheckNum}
+              claimIdValue={c.claimId}
               eobDocs={eobDocs}
               onOpenEob={openEob}
             />
@@ -574,6 +578,73 @@ type WeekGroup = {
   totalPaid: number
 }
 
+// ── One row per Pay Cycle — click (or the arrow) to expand the claims that make it up ──
+function PayCycleRow({ group, isReceived, receivedDate, onToggleReceived }: {
+  group: WeekGroup
+  isReceived: boolean
+  receivedDate: string | null
+  onToggleReceived?: (checked: boolean) => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+  return (
+    <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setExpanded(e => !e)}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded(x => !x) } }}
+        className={`px-4 py-3 cursor-pointer transition-colors ${expanded ? 'bg-[#EEF2EC] hover:bg-[#E7EDE5]' : 'hover:bg-[#F4F6F5]'}`}
+      >
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-y-2 gap-x-2 items-center">
+          <div className="flex justify-center">
+            <span className="text-[#7A8F79] text-xs">{expanded ? '▲' : '▼'}</span>
+          </div>
+          <Cell label="Pay Cycle" value={group.cycle != null ? group.cycle : '—'} />
+          <Cell label="Pay Date" value={group.depositDate ? fmtDate(group.depositDate) : 'Pending'} />
+          <Cell label="Total" value={fmt(group.totalPaid, '$')} />
+          {onToggleReceived ? (
+            <div className="flex flex-col items-center text-center gap-1">
+              <p className={`text-[10px] uppercase tracking-wide font-semibold leading-tight ${isReceived ? 'text-[#7A8F79]' : 'text-red-700'}`}>
+                Payment Received?
+              </p>
+              <input
+                type="checkbox"
+                checked={isReceived}
+                onChange={e => onToggleReceived(e.target.checked)}
+                onClick={e => e.stopPropagation()}
+                className="w-4 h-4 cursor-pointer accent-[#2F3E4E]"
+                aria-label="Mark payment as received"
+              />
+              {isReceived && receivedDate && (
+                <p className="text-[9px] text-[#7A8F79] leading-tight">{fmtDate(receivedDate)}</p>
+              )}
+            </div>
+          ) : <Cell value="—" />}
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="border-t border-[#D9E1E8] px-4 py-4 bg-[#FAFBFC]">
+          <div className="grid grid-cols-3 gap-2 mb-1.5">
+            <p className="text-[10px] uppercase tracking-wide text-[#7A8F79] font-semibold text-center">Claim ID</p>
+            <p className="text-[10px] uppercase tracking-wide text-[#7A8F79] font-semibold text-center">Payer Claim #</p>
+            <p className="text-[10px] uppercase tracking-wide text-[#7A8F79] font-semibold text-center">Amount</p>
+          </div>
+          <div className="divide-y divide-[#D9E1E8]">
+            {group.claims.map(claim => (
+              <div key={claim.id} className="grid grid-cols-3 gap-2 py-2 items-center">
+                <p className="text-xs font-mono font-semibold text-[#2F3E4E] text-center truncate">{claim.patientCtrlNum}</p>
+                <p className="text-xs font-mono text-[#2F3E4E] text-center truncate">{claim.payerCtrlNum || '—'}</p>
+                <p className="text-xs font-semibold text-[#2F3E4E] text-center">{fmt(claim.paidAmount, '$')}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function MedicaidPayLogTab({ medicaidClaims, received, onToggleReceived }: {
   medicaidClaims: MedicaidClaim[]
   received: Record<string, string | null>   // depositDate → receivedAt ISO string or null
@@ -621,177 +692,20 @@ function MedicaidPayLogTab({ medicaidClaims, received, onToggleReceived }: {
         </div>
       </div>
 
-      {/* Column headers */}
-      <div className="hidden md:grid grid-cols-[2fr_2fr_1fr_1fr_auto] gap-x-3 px-4 text-[10px] font-bold uppercase tracking-widest text-[#7A8F79]">
-        <span>Patient Ctrl #</span>
-        <span>Payer Ctrl #</span>
-        <span>Charge</span>
-        <span>Paid</span>
-        <span className="w-24 text-right">Received</span>
-      </div>
+      {/* Pay cycle rows */}
+      {scheduledGroups.map(group => (
+        <PayCycleRow
+          key={group.depositDate}
+          group={group}
+          isReceived={received[group.depositDate] != null}
+          receivedDate={received[group.depositDate] ?? null}
+          onToggleReceived={checked => onToggleReceived(group.depositDate, checked)}
+        />
+      ))}
 
-      {/* Scheduled week groups */}
-      {scheduledGroups.map(group => {
-        const isReceived = received[group.depositDate] != null
-        const receivedDate = received[group.depositDate]
-        return (
-          <div
-            key={group.depositDate}
-            className={`bg-white rounded-xl shadow-sm overflow-hidden border-l-4 transition-colors ${
-              isReceived ? 'border-green-500' : 'border-[#D9E1E8]'
-            }`}
-          >
-            {/* Week header */}
-            <div className={`flex items-center justify-between px-4 py-3 border-b border-[#D9E1E8] ${isReceived ? 'bg-green-50' : 'bg-[#F4F6F5]'}`}>
-              <div className="flex items-center gap-3 flex-wrap">
-                {group.cycle != null && (
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] bg-white border border-[#D9E1E8] px-2 py-0.5 rounded-full">
-                    Cycle {group.cycle}
-                  </span>
-                )}
-                <span className="text-sm font-bold text-[#2F3E4E]">
-                  Pay Date: {new Date(group.depositDate + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
-                </span>
-                <span className="text-xs font-semibold text-[#7A8F79]">
-                  {group.claims.length} claim{group.claims.length !== 1 ? 's' : ''}
-                </span>
-              </div>
-              <div className="flex items-center gap-3 shrink-0 ml-2">
-                <div className="text-right">
-                  <p className="text-[10px] text-[#7A8F79] uppercase tracking-wide font-semibold">Expected</p>
-                  <p className="text-sm font-bold text-[#2F3E4E]">{fmt(group.totalPaid, '$')}</p>
-                </div>
-                <label className="flex items-center gap-2 cursor-pointer group/check select-none">
-                  <span className="text-xs font-semibold text-[#7A8F79] group-hover/check:text-[#2F3E4E] transition">
-                    {isReceived ? 'Received' : 'Mark received'}
-                  </span>
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      checked={isReceived}
-                      onChange={e => onToggleReceived(group.depositDate, e.target.checked)}
-                      className="sr-only"
-                    />
-                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                      isReceived
-                        ? 'bg-green-500 border-green-500'
-                        : 'bg-white border-[#D9E1E8] group-hover/check:border-[#7A8F79]'
-                    }`}>
-                      {isReceived && (
-                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </div>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            {/* Received timestamp */}
-            {isReceived && receivedDate && (
-              <div className="px-4 py-1.5 bg-green-50 border-b border-green-100">
-                <p className="text-[10px] text-green-700 font-semibold">
-                  ✓ Marked received {new Date(receivedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                </p>
-              </div>
-            )}
-
-            {/* Claim rows */}
-            <div className="divide-y divide-[#D9E1E8]">
-              {group.claims.map(claim => (
-                <div key={claim.id} className="px-4 py-2.5 md:grid md:grid-cols-[2fr_2fr_1fr_1fr_auto] md:gap-x-3 md:items-center">
-                  {/* Mobile layout */}
-                  <div className="md:hidden">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="text-[10px] text-[#7A8F79] font-semibold uppercase tracking-wide">Patient Ctrl #</p>
-                        <p className="text-xs font-mono font-bold text-[#2F3E4E]">{claim.patientCtrlNum}</p>
-                        {claim.payerCtrlNum && (
-                          <p className="text-[10px] text-[#7A8F79] mt-0.5 font-mono">{claim.payerCtrlNum}</p>
-                        )}
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-[10px] text-[#7A8F79] font-semibold uppercase tracking-wide">Paid</p>
-                        <p className="text-xs font-bold text-[#2F3E4E]">{fmt(claim.paidAmount, '$')}</p>
-                        <p className="text-[10px] text-[#7A8F79]">of {fmt(claim.totalCharge, '$')}</p>
-                      </div>
-                    </div>
-                    {claim.notes && (
-                      <p className="text-[10px] text-[#7A8F79] mt-1 italic line-clamp-2">{claim.notes}</p>
-                    )}
-                  </div>
-                  {/* Desktop layout */}
-                  <p className="hidden md:block text-xs font-mono font-semibold text-[#2F3E4E] truncate">{claim.patientCtrlNum}</p>
-                  <p className="hidden md:block text-xs font-mono text-[#7A8F79] truncate">{claim.payerCtrlNum || '—'}</p>
-                  <p className="hidden md:block text-xs text-[#2F3E4E]">{fmt(claim.totalCharge, '$')}</p>
-                  <p className="hidden md:block text-xs font-semibold text-[#2F3E4E]">{fmt(claim.paidAmount, '$')}</p>
-                  <div className="hidden md:block w-24">
-                    {claim.notes && (
-                      <p className="text-[10px] text-[#7A8F79] italic line-clamp-2 text-right">{claim.notes}</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Group totals footer */}
-            {group.claims.length > 1 && (
-              <div className="md:grid md:grid-cols-[2fr_2fr_1fr_1fr_auto] md:gap-x-3 px-4 py-2 border-t border-[#D9E1E8] bg-[#F4F6F5]">
-                <p className="hidden md:block text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] col-span-2">Week Total</p>
-                <p className="hidden md:block text-xs font-bold text-[#2F3E4E]">{fmt(group.totalCharge, '$')}</p>
-                <p className="hidden md:block text-xs font-bold text-[#2F3E4E]">{fmt(group.totalPaid, '$')}</p>
-                <div className="hidden md:block w-24" />
-                {/* Mobile footer */}
-                <div className="md:hidden flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-[#7A8F79]">Week Total</span>
-                  <div className="text-right">
-                    <span className="text-xs font-bold text-[#2F3E4E]">{fmt(group.totalPaid, '$')}</span>
-                    <span className="text-[10px] text-[#7A8F79] ml-1">paid / {fmt(group.totalCharge, '$')} charged</span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )
-      })}
-
-      {/* Unscheduled claims */}
+      {/* Unscheduled claims — no deposit date yet, so no received-tracking */}
       {unscheduled && unscheduled.claims.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden border-l-4 border-yellow-300">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[#D9E1E8] bg-yellow-50">
-            <div>
-              <span className="text-sm font-bold text-[#2F3E4E]">Pending / No Deposit Date</span>
-              <span className="ml-2 text-xs text-[#7A8F79]">{unscheduled.claims.length} claim{unscheduled.claims.length !== 1 ? 's' : ''}</span>
-            </div>
-            <span className="text-sm font-bold text-[#2F3E4E]">{fmt(unscheduled.totalPaid, '$')}</span>
-          </div>
-          <div className="divide-y divide-[#D9E1E8]">
-            {unscheduled.claims.map(claim => (
-              <div key={claim.id} className="px-4 py-2.5 md:grid md:grid-cols-[2fr_2fr_1fr_1fr_auto] md:gap-x-3 md:items-center">
-                <div className="md:hidden">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-[10px] text-[#7A8F79] font-semibold uppercase tracking-wide">Patient Ctrl #</p>
-                      <p className="text-xs font-mono font-bold text-[#2F3E4E]">{claim.patientCtrlNum}</p>
-                      {claim.payerCtrlNum && <p className="text-[10px] text-[#7A8F79] mt-0.5 font-mono">{claim.payerCtrlNum}</p>}
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-[10px] text-[#7A8F79] font-semibold uppercase tracking-wide">Paid</p>
-                      <p className="text-xs font-bold text-[#2F3E4E]">{fmt(claim.paidAmount, '$')}</p>
-                      <p className="text-[10px] text-[#7A8F79]">of {fmt(claim.totalCharge, '$')}</p>
-                    </div>
-                  </div>
-                </div>
-                <p className="hidden md:block text-xs font-mono font-semibold text-[#2F3E4E] truncate">{claim.patientCtrlNum}</p>
-                <p className="hidden md:block text-xs font-mono text-[#7A8F79] truncate">{claim.payerCtrlNum || '—'}</p>
-                <p className="hidden md:block text-xs text-[#2F3E4E]">{fmt(claim.totalCharge, '$')}</p>
-                <p className="hidden md:block text-xs font-semibold text-[#2F3E4E]">{fmt(claim.paidAmount, '$')}</p>
-                <div className="hidden md:block w-24" />
-              </div>
-            ))}
-          </div>
-        </div>
+        <PayCycleRow group={unscheduled} isReceived={false} receivedDate={null} />
       )}
 
       {/* Grand totals */}
@@ -848,7 +762,16 @@ const currentYear = new Date().getFullYear()
 const YEARS = ['', ...Array.from({ length: currentYear - 2023 }, (_, i) => String(2024 + i))]
 
 export default function NurseClaimsPage() {
-  const [activeTab, setActiveTab] = useState<'claims' | 'paylog'>('claims')
+  return (
+    <Suspense fallback={null}>
+      <NurseClaimsPageInner />
+    </Suspense>
+  )
+}
+
+function NurseClaimsPageInner() {
+  const searchParams = useSearchParams()
+  const [activeTab, setActiveTab] = useState<'claims' | 'paylog'>(() => searchParams.get('tab') === 'paylog' ? 'paylog' : 'claims')
   const [claims, setClaims] = useState<Claim[]>([])
   const [enrolledInBilling, setEnrolledInBilling] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(true)

@@ -1,24 +1,36 @@
 'use client'
 
+import { Suspense } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 
 const links = [
   { href: '/nurse',           label: 'Dashboard' },
   { href: '/nurse/hours',     label: 'Hours'     },
   { href: '/nurse/claims',    label: 'Claims'    },
   { href: '/nurse/patients',  label: 'Patients'  },
+  { href: '/nurse/claims?tab=paylog', label: 'Payments' },
   { href: '/nurse/invoices',  label: 'Invoices'  },
   { href: '/nurse/documents', label: 'Documents' },
   { href: '/nurse/profile',    label: 'Profile'    },
-  { href: '/care',             label: 'SelfCare'       },
+  { href: '/care',             label: ''       },
   { href: '/nurse/appearance', label: 'Settings' },
 ]
 
-const DIVIDERS_BEFORE = new Set(['Hours', 'Invoices', 'Profile', 'Settings'])
+const DIVIDERS_BEFORE = new Set(['Hours', 'Payments', 'Profile', 'Settings'])
 
 export default function NurseSideNav() {
+  return (
+    <Suspense fallback={null}>
+      <NurseSideNavInner />
+    </Suspense>
+  )
+}
+
+function NurseSideNavInner() {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const onPayLogTab = searchParams.get('tab') === 'paylog'
 
   return (
     <div
@@ -50,7 +62,10 @@ export default function NurseSideNav() {
       {/* Nav links */}
       <nav className="flex flex-col gap-0.5 p-1.5">
         {links.map((link) => {
-          const active = pathname === link.href
+          const onClaimsPath = pathname === '/nurse/claims'
+          const active = link.label === 'Payments' ? (onClaimsPath && onPayLogTab)
+            : link.label === 'Claims' ? (onClaimsPath && !onPayLogTab)
+            : pathname === link.href
           return (
             <div key={link.href}>
               {DIVIDERS_BEFORE.has(link.label) && (

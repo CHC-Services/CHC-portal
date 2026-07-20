@@ -188,10 +188,10 @@ export default function ProfilePage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-start">
 
         {/* ── Col 1+2: Personal Information + myLogin ── */}
-        <div className="lg:col-span-2 space-y-5">
+        <div className="lg:col-span-3 space-y-5">
 
           {/* Personal Information */}
           <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow p-6 space-y-4">
@@ -401,39 +401,30 @@ export default function ProfilePage() {
                     Current email: <span className="font-semibold text-[#2F3E4E]">{user?.email}</span>
                   </p>
                 </div>
-                <div className="space-y-1">
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">New Email</label>
-                  <input
-                    type="email"
-                    placeholder="new@email.com"
-                    value={newEmail}
-                    onChange={(e) => setNewEmail(e.target.value)}
-                    required
-                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79]/50"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Confirm New Email</label>
-                  <input
-                    type="email"
-                    placeholder="Confirm new email"
-                    value={confirmEmail}
-                    onChange={(e) => setConfirmEmail(e.target.value)}
-                    required
-                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79]/50"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Current Password</label>
-                  <input
-                    type="password"
-                    placeholder="Verify your identity"
-                    value={emailPassword}
-                    onChange={(e) => setEmailPassword(e.target.value)}
-                    required
-                    className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79]/50"
-                  />
-                </div>
+                <input
+                  type="email"
+                  placeholder="new@email.com"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  required
+                  className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-gray-500"
+                />
+                <input
+                  type="email"
+                  placeholder="Confirm new email"
+                  value={confirmEmail}
+                  onChange={(e) => setConfirmEmail(e.target.value)}
+                  required
+                  className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-gray-500"
+                />
+                <input
+                  type="password"
+                  placeholder="Enter Current Password"
+                  value={emailPassword}
+                  onChange={(e) => setEmailPassword(e.target.value)}
+                  required
+                  className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-gray-500"
+                />
                 <button type="submit" className="w-full bg-[#2F3E4E] text-white p-2 rounded-lg hover:bg-[#7A8F79] transition font-semibold text-sm">
                   Update Email
                 </button>
@@ -450,18 +441,9 @@ export default function ProfilePage() {
                   <p className="text-sm font-semibold uppercase tracking-widest text-[#2F3E4E] mb-0.5">Change Password</p>
                   <p className="text-xs text-[#7A8F79]">Choose a strong password you haven&apos;t used before.</p>
                 </div>
-                <div className="space-y-1">
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Current Password</label>
-                  <input type="password" placeholder="Current password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79]/50" />
-                </div>
-                <div className="space-y-1">
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">New Password</label>
-                  <input type="password" placeholder="New password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79]/50" />
-                </div>
-                <div className="space-y-1">
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Confirm New Password</label>
-                  <input type="password" placeholder="Confirm new password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79]/50" />
-                </div>
+                <input type="password" placeholder="Current password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-gray-500" />
+                <input type="password" placeholder="New password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-gray-500" />
+                <input type="password" placeholder="Confirm new password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-gray-500" />
                 <button type="submit" className="w-full bg-[#2F3E4E] text-white p-2 rounded-lg hover:bg-[#7A8F79] transition font-semibold text-sm">
                   Update Password
                 </button>
@@ -478,7 +460,7 @@ export default function ProfilePage() {
         </div>
 
         {/* ── Col 3: myBilling + myNotifications ── */}
-        <div className="space-y-5">
+        <div className="lg:col-span-2 space-y-5">
           <BillingSection profile={profile} onUnenroll={() => setProfile({ ...profile, enrolledInBilling: false })} />
           <NotifPrefsBlock profile={profile} setProfile={setProfile} />
         </div>

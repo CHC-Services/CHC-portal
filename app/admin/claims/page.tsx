@@ -466,88 +466,111 @@ function ClaimDetailModal({
       : JSON.stringify(initMedicaidForm(claim as MedicaidClaimRow))
   )
 
+  // Refs mirror the latest form state so an unmount cleanup (fired when the parent
+  // swaps to a different claim without going through handleClose) can still save
+  // whatever was typed, instead of silently discarding it.
+  const cFormRef = useRef(cForm)
+  cFormRef.current = cForm
+  const mFormRef = useRef(mForm)
+  mFormRef.current = mForm
+  const savedOnceRef = useRef(false)
+
+  async function performSave(): Promise<boolean> {
+    if (savedOnceRef.current) return true
+    savedOnceRef.current = true
+    const changed = claim._type === 'commercial'
+      ? JSON.stringify(cFormRef.current) !== originalJSON
+      : JSON.stringify(mFormRef.current) !== originalJSON
+    if (!changed) return true
+    try {
+      if (claim._type === 'commercial') {
+        const f = cFormRef.current
+        const res = await fetch(`/api/admin/claims/${claim.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            claimId: f.claimId || null,
+            providerName: f.providerName || null,
+            dosStart: f.dosStart || null,
+            dosStop: f.dosStop || null,
+            totalBilled: f.totalBilled || null,
+            hours: f.hours || null,
+            claimStage: f.claimStage || null,
+            submitDate: f.submitDate || null,
+            primaryPayer: f.primaryPayer || null,
+            primaryAllowedAmt: f.primaryAllowedAmt || null,
+            primaryCO: f.primaryCO || null,
+            primaryPaidAmt: f.primaryPaidAmt || null,
+            primaryPaidDate: f.primaryPaidDate || null,
+            primaryPaidTo: f.primaryPaidTo || null,
+            primaryCheckNum: f.primaryCheckNum || null,
+            secondaryPayer: f.secondaryPayer || null,
+            secondaryAllowedAmt: f.secondaryAllowedAmt || null,
+            secondaryCO: f.secondaryCO || null,
+            secondaryPaidAmt: f.secondaryPaidAmt || null,
+            secondaryPaidDate: f.secondaryPaidDate || null,
+            secondaryPaidTo: f.secondaryPaidTo || null,
+            secondaryCheckNum: f.secondaryCheckNum || null,
+            totalReimbursed: f.totalReimbursed || null,
+            remainingBalance: f.remainingBalance || null,
+            dateFullyFinalized: f.dateFullyFinalized || null,
+            checkReceivedDate: f.checkReceivedDate || null,
+            resubmissionOf: f.resubmissionOf || null,
+            processingNotes: f.processingNotes || null,
+          }),
+        })
+        if (res.ok) {
+          onSaved({ ...claim, ...f } as unknown as UnifiedClaim)
+          return true
+        }
+        return false
+      } else {
+        const f = mFormRef.current
+        const res = await fetch(`/api/admin/medicaid/claims/${claim.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            patientCtrlNum: f.patientCtrlNum,
+            payerCtrlNum: f.payerCtrlNum || null,
+            dosStart: f.dosStart || null,
+            dosStop: f.dosStop || null,
+            totalCharge: f.totalCharge,
+            paidAmount: f.paidAmount || null,
+            processedDate: f.processedDate || null,
+            estPayCycle: f.estPayCycle || null,
+            depositDate: f.depositDate || null,
+            statusCodes: f.statusCodes,
+            notes: f.notes || null,
+          }),
+        })
+        if (res.ok) {
+          onSaved({ ...claim, ...f, statusCodes: f.statusCodes } as unknown as UnifiedClaim)
+          return true
+        }
+        return false
+      }
+    } catch {
+      return false
+    }
+  }
+
   async function handleClose() {
     if (saveStatus === 'saving') return
-    const changed = claim._type === 'commercial'
-      ? JSON.stringify(cForm) !== originalJSON
-      : JSON.stringify(mForm) !== originalJSON
-    if (changed) {
-      setSaveStatus('saving')
-      try {
-        if (claim._type === 'commercial') {
-          const res = await fetch(`/api/admin/claims/${claim.id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({
-              claimId: cForm.claimId || null,
-              providerName: cForm.providerName || null,
-              dosStart: cForm.dosStart || null,
-              dosStop: cForm.dosStop || null,
-              totalBilled: cForm.totalBilled || null,
-              hours: cForm.hours || null,
-              claimStage: cForm.claimStage || null,
-              submitDate: cForm.submitDate || null,
-              primaryPayer: cForm.primaryPayer || null,
-              primaryAllowedAmt: cForm.primaryAllowedAmt || null,
-              primaryCO: cForm.primaryCO || null,
-              primaryPaidAmt: cForm.primaryPaidAmt || null,
-              primaryPaidDate: cForm.primaryPaidDate || null,
-              primaryPaidTo: cForm.primaryPaidTo || null,
-              primaryCheckNum: cForm.primaryCheckNum || null,
-              secondaryPayer: cForm.secondaryPayer || null,
-              secondaryAllowedAmt: cForm.secondaryAllowedAmt || null,
-              secondaryCO: cForm.secondaryCO || null,
-              secondaryPaidAmt: cForm.secondaryPaidAmt || null,
-              secondaryPaidDate: cForm.secondaryPaidDate || null,
-              secondaryPaidTo: cForm.secondaryPaidTo || null,
-              secondaryCheckNum: cForm.secondaryCheckNum || null,
-              totalReimbursed: cForm.totalReimbursed || null,
-              remainingBalance: cForm.remainingBalance || null,
-              dateFullyFinalized: cForm.dateFullyFinalized || null,
-              checkReceivedDate: cForm.checkReceivedDate || null,
-              resubmissionOf: cForm.resubmissionOf || null,
-              processingNotes: cForm.processingNotes || null,
-            }),
-          })
-          if (res.ok) {
-            setSaveStatus('saved')
-            onSaved({ ...claim, ...cForm } as unknown as UnifiedClaim)
-          } else {
-            setSaveStatus('error')
-          }
-        } else {
-          const res = await fetch(`/api/admin/medicaid/claims/${claim.id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({
-              patientCtrlNum: mForm.patientCtrlNum,
-              payerCtrlNum: mForm.payerCtrlNum || null,
-              dosStart: mForm.dosStart || null,
-              dosStop: mForm.dosStop || null,
-              totalCharge: mForm.totalCharge,
-              paidAmount: mForm.paidAmount || null,
-              processedDate: mForm.processedDate || null,
-              estPayCycle: mForm.estPayCycle || null,
-              depositDate: mForm.depositDate || null,
-              statusCodes: mForm.statusCodes,
-              notes: mForm.notes || null,
-            }),
-          })
-          if (res.ok) {
-            setSaveStatus('saved')
-            onSaved({ ...claim, ...mForm, statusCodes: mForm.statusCodes } as unknown as UnifiedClaim)
-          } else {
-            setSaveStatus('error')
-          }
-        }
-      } catch {
-        setSaveStatus('error')
-      }
-    }
+    setSaveStatus('saving')
+    const ok = await performSave()
+    setSaveStatus(ok ? 'saved' : 'error')
     onClose()
   }
+
+  // Safety net: if the parent swaps to a different claim (e.g. clicking a
+  // resubmission-chain link) without the ✕/Escape path ever firing, this still
+  // saves whatever was typed before the form state is torn down.
+  useEffect(() => {
+    return () => { performSave() }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === 'Escape') handleClose() }
@@ -2095,6 +2118,7 @@ export default function AdminClaimsPage() {
       {/* Claim Detail Modal */}
       {openedClaim && (
         <ClaimDetailModal
+          key={`${openedClaim._type}-${openedClaim.id}`}
           claim={openedClaim}
           eobDocs={openedClaim._type === 'commercial' ? (eobMap[openedClaim.id] || []) : []}
           uploading={eobUploading === selectedClaimId}

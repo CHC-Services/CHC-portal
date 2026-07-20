@@ -45,12 +45,14 @@ type Claim = {
   primaryPaidAmt: number | null
   primaryPaidDate: string | null
   primaryPaidTo: string | null
+  primaryCheckNum: string | null
   secondaryPayer: string | null
   secondaryAllowedAmt: number | null
   secondaryCO: number | null
   secondaryPaidAmt: number | null
   secondaryPaidDate: string | null
   secondaryPaidTo: string | null
+  secondaryCheckNum: string | null
   totalReimbursed: number | null
   remainingBalance: number | null
   dateFullyFinalized: string | null
@@ -166,7 +168,7 @@ function EobButton({ eobDocs, onOpen }: { eobDocs: { id: string; fileName: strin
 }
 
 // ── Primary/Secondary payer detail block (Row 2 / Row 3 of the expanded card) ──
-function PayerSection({ label, payer, submitDate, allowedAmt, paidAmt, coAmt, balance, paidDate, claimId, eobDocs, onOpenEob }: {
+function PayerSection({ label, payer, submitDate, allowedAmt, paidAmt, coAmt, balance, paidDate, checkNum, eobDocs, onOpenEob }: {
   label: 'PRIMARY' | 'SECONDARY'
   payer: string | null
   submitDate: string | null
@@ -175,7 +177,7 @@ function PayerSection({ label, payer, submitDate, allowedAmt, paidAmt, coAmt, ba
   coAmt: number | null
   balance: number | null
   paidDate: string | null
-  claimId: string | null
+  checkNum: string | null
   eobDocs?: { id: string; fileName: string }[]
   onOpenEob?: (doc: { id: string; fileName: string }) => void
 }) {
@@ -199,7 +201,7 @@ function PayerSection({ label, payer, submitDate, allowedAmt, paidAmt, coAmt, ba
       </div>
       <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#D9E1E8]">
         <p className="text-[10px] text-[#7A8F79]"><span className="font-semibold uppercase tracking-wide">Remark Codes:</span> —</p>
-        <p className="text-[10px] text-right"><span className="font-semibold uppercase tracking-wide text-[#7A8F79]">Payer Claim # </span><span className="text-[#2F3E4E] font-mono">{claimId || '—'}</span></p>
+        <p className="text-[10px] text-right"><span className="font-semibold uppercase tracking-wide text-[#7A8F79]">{isMedicaidPayer(payer) ? 'Payer Claim #' : 'Check #'} </span><span className="text-[#2F3E4E] font-mono">{checkNum || '—'}</span></p>
       </div>
     </div>
   )
@@ -346,7 +348,7 @@ function ClaimRow({ primary: c, chain, eobDocs, onClaimPaid }: ClaimGroup & { eo
           </div>
           <Cell label="Total Billed" value={fmt(c.totalBilled, '$')} />
           <Cell label="Max Allowed" value={fmt(maxAllowed(c), '$')} />
-          <Cell label="Total Paid" value={fmt(c.totalReimbursed, '$')} valueClass="text-[#7A8F79]" />
+          <Cell label="Total Paid" value={fmt(c.totalReimbursed, '$')} />
           <Cell label="Hour/Unit" value={c.hours != null ? c.hours.toLocaleString('en-US') : '—'} />
           <div className="flex flex-col items-center text-center gap-1">
             <p className="text-[10px] uppercase tracking-wide text-[#7A8F79] font-semibold leading-tight">Status</p>
@@ -383,7 +385,7 @@ function ClaimRow({ primary: c, chain, eobDocs, onClaimPaid }: ClaimGroup & { eo
               coAmt={c.primaryCO}
               balance={c.remainingBalance}
               paidDate={c.primaryPaidDate}
-              claimId={c.claimId}
+              checkNum={c.primaryCheckNum}
               eobDocs={eobDocs}
               onOpenEob={openEob}
             />
@@ -401,14 +403,14 @@ function ClaimRow({ primary: c, chain, eobDocs, onClaimPaid }: ClaimGroup & { eo
                 coAmt={c.secondaryCO}
                 balance={c.remainingBalance}
                 paidDate={c.secondaryPaidDate}
-                claimId={c.claimId}
+                checkNum={c.secondaryCheckNum}
               />
             </div>
           )}
 
           {/* Row 4 — Comments (future: auto-populated CARC/RARC codes) */}
-          <div className="pt-3 border-t border-[#D9E1E8]">
-            <p className="text-[10px] text-[#7A8F79] font-semibold uppercase tracking-wide mb-1">Comments</p>
+          <div className="pt-3 border-t border-[#D9E1E8] flex items-baseline gap-1.5">
+            <p className="text-[10px] text-[#7A8F79] font-semibold uppercase tracking-wide whitespace-nowrap">Comments:</p>
             <p className="text-sm text-[#2F3E4E] whitespace-pre-line">{c.processingNotes || '—'}</p>
           </div>
 

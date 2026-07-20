@@ -11,11 +11,11 @@ const links = [
   { href: '/nurse/invoices',  label: 'Invoices'  },
   { href: '/nurse/documents', label: 'Documents' },
   { href: '/nurse/profile',    label: 'Profile'    },
-  { href: '/care',             label: 'Self Care'       },
+  { href: '/care',             label: 'SelfCare'       },
   { href: '/nurse/appearance', label: 'Settings' },
 ]
 
-const DIVIDERS_BEFORE = new Set(['Patients', 'Invoices', 'Profile', 'Appearance'])
+const DIVIDERS_BEFORE = new Set(['Hours', 'Invoices', 'Profile', 'Settings'])
 
 export default function NurseSideNav() {
   const pathname = usePathname()

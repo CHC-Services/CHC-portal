@@ -112,13 +112,19 @@ function isMedicaidPayer(name: string | null): boolean {
   return !!name && name.toLowerCase().includes('medicaid')
 }
 
-function payDateCycleLabel(paidDate: string | null, payerName: string | null): string {
-  if (!paidDate) return '—'
+function fmtDateShort(val: string | null): string {
+  if (!val) return '—'
+  return new Date(val).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit', timeZone: 'UTC' })
+}
+
+function payDateCycleParts(paidDate: string | null, payerName: string | null): { date: string; cycle: string | null } {
+  if (!paidDate) return { date: '—', cycle: null }
+  const date = fmtDateShort(paidDate)
   if (isMedicaidPayer(payerName)) {
     const info = calcMedicaidCycleInfo(paidDate.slice(0, 10))
-    if (info) return `Cycle ${info.cycle} · ${fmtDate(paidDate)}`
+    if (info) return { date, cycle: `Cycle ${info.cycle}` }
   }
-  return fmtDate(paidDate)
+  return { date, cycle: null }
 }
 
 // ── Header (sage) / value (navy) cell used throughout the claim card grid ──
@@ -197,7 +203,10 @@ function PayerSection({ label, payer, submitDate, allowedAmt, paidAmt, coAmt, ba
         <Cell label={`${short} Paid`} value={fmt(paidAmt, '$')} valueClass="text-[#7A8F79]" />
         <Cell label={`${short} WO`} value={fmt(coAmt, '$')} />
         <Cell label="Balance" value={fmt(balance, '$')} valueClass={(balance || 0) > 0 ? 'text-red-600' : 'text-[#2F3E4E]'} />
-        <Cell value={payDateCycleLabel(paidDate, payer)} />
+        <Cell value={(() => {
+          const { date, cycle } = payDateCycleParts(paidDate, payer)
+          return <>{date}{cycle && <span className="block font-normal">{cycle}</span>}</>
+        })()} />
       </div>
       <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#D9E1E8]">
         <p className="text-[10px] text-[#7A8F79]"><span className="font-semibold uppercase tracking-wide">Remark Codes:</span> —</p>
@@ -408,11 +417,13 @@ function ClaimRow({ primary: c, chain, eobDocs, onClaimPaid }: ClaimGroup & { eo
             </div>
           )}
 
-          {/* Row 4 — Comments (future: auto-populated CARC/RARC codes) */}
-          <div className="pt-3 border-t border-[#D9E1E8] flex items-baseline gap-1.5">
-            <p className="text-[10px] text-[#7A8F79] font-semibold uppercase tracking-wide whitespace-nowrap">Comments:</p>
-            <p className="text-sm text-[#2F3E4E] whitespace-pre-line">{c.processingNotes || '—'}</p>
-          </div>
+          {/* Row 4 — Comments (future: auto-populated CARC/RARC codes) — hidden until populated */}
+          {c.processingNotes && (
+            <div className="pt-3 border-t border-[#D9E1E8] flex items-baseline gap-1.5">
+              <p className="text-[10px] text-[#7A8F79] font-semibold uppercase tracking-wide whitespace-nowrap">Comments:</p>
+              <p className="text-sm text-[#2F3E4E] whitespace-pre-line">{c.processingNotes}</p>
+            </div>
+          )}
 
           {/* Prior submissions chain */}
           {chain.length > 0 && (

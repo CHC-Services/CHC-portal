@@ -1210,6 +1210,7 @@ export default function AdminClaimsPage() {
 
   // Add Claim modal
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showBulkPrompt, setShowBulkPrompt] = useState(false)
   const [modalResetKey, setModalResetKey] = useState(0)
   const [addForm, setAddForm] = useState<Record<string, string>>({ claimStage: 'Draft' })
   const [adding, setAdding] = useState(false)
@@ -1736,7 +1737,7 @@ export default function AdminClaimsPage() {
               Availity
             </a>
             <button
-              onClick={openAddModal}
+              onClick={() => { if (bulkMode) openAddModal(); else setShowBulkPrompt(true) }}
               className="flex items-center gap-1.5 bg-[#7A8F79] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#2F3E4E] transition"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2136,6 +2137,32 @@ export default function AdminClaimsPage() {
           onEobDelete={deleteEob}
           onReloadClaims={loadClaims}
         />
+      )}
+
+      {/* Bulk Mode prompt — shown before Add Claim opens, only when Bulk Mode is currently off */}
+      {showBulkPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-80 mx-4">
+            <p className="text-sm font-bold text-[#2F3E4E] mb-2">Turn on Bulk Mode?</p>
+            <p className="text-xs text-[#7A8F79] mb-5 leading-relaxed">
+              Bulk Mode pauses individual provider alert emails while you add claims, so you can send one summary later instead.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setShowBulkPrompt(false); openAddModal() }}
+                className="flex-1 border border-[#D9E1E8] text-[#7A8F79] text-sm font-semibold py-2 rounded-xl hover:border-[#7A8F79] hover:text-[#2F3E4E] transition"
+              >
+                No
+              </button>
+              <button
+                onClick={() => { setShowBulkPrompt(false); toggleBulkMode(); openAddModal() }}
+                className="flex-1 bg-[#2F3E4E] text-white text-sm font-semibold py-2 rounded-xl hover:bg-[#7A8F79] transition"
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Add Claim Modal */}

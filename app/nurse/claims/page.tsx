@@ -137,15 +137,15 @@ function Cell({ label, value, valueClass = 'text-[#2F3E4E]' }: { label?: string;
 function EobButton({ eobDocs, onOpen }: { eobDocs: { id: string; fileName: string }[]; onOpen: (doc: { id: string; fileName: string }) => void }) {
   const [open, setOpen] = useState(false)
   if (eobDocs.length === 0) {
-    return <span className="text-[10px] font-semibold text-[#7A8F79] bg-[#F4F6F5] border border-[#D9E1E8] px-2.5 py-1 rounded-lg whitespace-nowrap">Awaiting EOB</span>
+    return <span className="text-[10px] font-semibold text-[#7A8F79] bg-[#F4F6F5] border border-[#D9E1E8] px-1.5 py-1 rounded-lg whitespace-nowrap">Awaiting EOB</span>
   }
   return (
     <div className="relative">
       <button
         onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-1 text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] border border-[#D9E1E8] hover:border-[#7A8F79] px-2.5 py-1 rounded-lg transition whitespace-nowrap"
+        className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] border border-[#D9E1E8] hover:border-[#7A8F79] px-1.5 py-1 rounded-lg transition whitespace-nowrap"
       >
-        📎 View EOB{eobDocs.length > 1 ? ` (${eobDocs.length})` : ''}
+        View EOB{eobDocs.length > 1 ? ` (${eobDocs.length})` : ''}
       </button>
       {open && (
         <>
@@ -181,14 +181,14 @@ function PayerSection({ label, payer, submitDate, allowedAmt, paidAmt, coAmt, ba
   eobDocs?: { id: string; fileName: string }[]
   onOpenEob?: (doc: { id: string; fileName: string }) => void
 }) {
-  const short = label === 'PRIMARY' ? 'Primary' : 'Second.'
+  const short = label === 'PRIMARY' ? 'Pri.' : 'Sec.'
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold">{label} — {payer || '—'}</p>
-        <p className="text-[10px] uppercase tracking-wide text-[#7A8F79] font-semibold">Check Date/Pay Cycle</p>
+        <p className="text-[10px] uppercase tracking-wide text-[#7A8F79] font-semibold">PayDate/Cycle</p>
       </div>
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-y-2 gap-x-2 items-start">
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-y-2 gap-x-1 items-start">
         <div className="flex justify-center">
           {eobDocs && onOpenEob ? <EobButton eobDocs={eobDocs} onOpen={onOpenEob} /> : null}
         </div>

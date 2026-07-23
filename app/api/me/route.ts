@@ -23,6 +23,7 @@ export async function GET(req: Request) {
     displayName: profile?.displayName ?? session.displayName ?? session.name,
     firstName: profile?.firstName ?? session.firstName,
     lastName: profile?.lastName ?? session.lastName,
+    isDemo: session.isDemo ?? false,
     email: (await prisma.user.findUnique({ where: { id: session.id }, select: { email: true } }))?.email,
   })
 }

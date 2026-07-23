@@ -9,10 +9,11 @@ import Image from 'next/image'
 import Link from "next/link";
 import { useEffect, useState } from 'react'
 
-export default function Banner({ user }: BannerProps) {
+export default function Banner({ user: initialUser }: BannerProps) {
     const [time, setTime] = useState('')
     const [menuOpen, setMenuOpen] = useState(false)
-    const [hasCookieClient, setHasCookieClient] = useState(false)
+    const [user, setUser] = useState(initialUser)
+    const pathname = usePathname()
 
     useEffect(() => {
         const updateClock = () => {
@@ -24,17 +25,21 @@ export default function Banner({ user }: BannerProps) {
         return () => clearInterval(interval)
     }, [])
 
-    // Client-side fallback: if the auth cookie exists but the server-side
-    // JWT was expired (returns null user), still show Sign Out instead of Login.
+    // Re-verify against the server on every navigation. The auth cookie is
+    // httpOnly (can't be read via document.cookie), and the server-rendered
+    // `user` prop can go stale across client-side navigations since the root
+    // layout doesn't always re-run — so /api/me is the only reliable source
+    // of truth for whether the session is actually still valid.
     useEffect(() => {
-        setHasCookieClient(document.cookie.includes('auth_token='))
-    }, [])
+        fetch('/api/me', { credentials: 'include' })
+            .then(r => r.ok ? r.json() : null)
+            .then(setUser)
+            .catch(() => {})
+    }, [pathname])
 
     const role = user?.role || null
-    // isLoggedIn is true if server confirms session OR if auth cookie is present (expired session)
-    const isLoggedIn = !!role || hasCookieClient
+    const isLoggedIn = !!role
     const displayName = user?.displayName || null
-    const pathname = usePathname()
 
     const homeHref = role === 'nurse' ? '/nurse' : role === 'admin' ? '/admin' : role === 'provider' ? '/portal' : '/'
 

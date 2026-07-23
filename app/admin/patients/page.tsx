@@ -13,6 +13,26 @@ type PatientPA = {
   createdAt: string
 }
 
+// Puts the PA whose window contains today first (marked active); everything else
+// newest-to-oldest by end date, regardless of the order they were entered.
+function prioritizePAs(pas: PatientPA[]): PatientPA[] {
+  const today = new Date().toISOString().slice(0, 10)
+  const withinWindow = (pa: PatientPA) =>
+    (!pa.paStartDate || pa.paStartDate <= today) && (!pa.paEndDate || pa.paEndDate >= today)
+
+  const active = pas.filter(withinWindow)
+  // If more than one happens to overlap today, prefer the most recently started
+  const current = active.length
+    ? active.reduce((a, b) => (b.paStartDate || '') > (a.paStartDate || '') ? b : a)
+    : null
+
+  const rest = pas
+    .filter(pa => pa !== current)
+    .sort((a, b) => (b.paEndDate || '9999-99-99').localeCompare(a.paEndDate || '9999-99-99'))
+
+  return current ? [current, ...rest] : rest
+}
+
 type NurseLink = {
   id: string
   isActive: boolean
@@ -639,18 +659,19 @@ export default function AdPatients() {
                       <p className="text-xs text-[#7A8F79] italic">No prior authorizations on file.</p>
                     ) : (
                       <div className="space-y-2">
-                        {(selected.priorAuths || []).map((pa, i) => {
+                        {prioritizePAs(selected.priorAuths || []).map((pa) => {
                           const today = new Date().toISOString().slice(0, 10)
-                          const isActive = !pa.paEndDate || pa.paEndDate >= today
+                          const isCurrent = (!pa.paStartDate || pa.paStartDate <= today) && (!pa.paEndDate || pa.paEndDate >= today)
+                          const isExpired = !isCurrent && !!pa.paEndDate && pa.paEndDate < today
                           return (
-                            <div key={pa.id} className={`rounded-xl border px-3 py-2.5 ${i === 0 ? 'border-[#7A8F79] bg-[#f4f9f4]' : 'border-[#D9E1E8]'}`}>
+                            <div key={pa.id} className={`rounded-xl border px-3 py-2.5 ${isCurrent ? 'border-[#7A8F79] bg-[#f4f9f4]' : 'border-[#D9E1E8]'}`}>
                               <div className="flex items-start justify-between gap-2">
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-1.5 flex-wrap">
                                     <span className="text-xs font-bold text-[#2F3E4E] font-mono uppercase">{pa.paNumber}</span>
-                                    {i === 0 && <span className="text-[9px] font-bold uppercase bg-[#7A8F79] text-white px-1.5 py-0.5 rounded-full">Current</span>}
+                                    {isCurrent && <span className="text-[9px] font-bold uppercase bg-[#7A8F79] text-white px-1.5 py-0.5 rounded-full">Active</span>}
                                     {pa.highTech && <span className="text-[9px] font-bold uppercase bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">Hi-Tech</span>}
-                                    {!isActive && i !== 0 && <span className="text-[9px] font-bold uppercase bg-[#F4F6F5] text-[#7A8F79] px-1.5 py-0.5 rounded-full">Expired</span>}
+                                    {isExpired && <span className="text-[9px] font-bold uppercase bg-[#F4F6F5] text-[#7A8F79] px-1.5 py-0.5 rounded-full">Expired</span>}
                                   </div>
                                   <p className="text-[10px] text-[#7A8F79] mt-0.5">
                                     {pa.paStartDate || '?'} — {pa.paEndDate || 'Present'}

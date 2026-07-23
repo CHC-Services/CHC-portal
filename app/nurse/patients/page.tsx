@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import MedicationList, { MedicationDTO, MedicationInput } from '../../components/MedicationList'
 
 type PatientPA = {
   id: string
@@ -18,6 +19,7 @@ type Patient = {
   overrides: Record<string, any> | null
   merged: PatientFields
   priorAuths: PatientPA[]
+  medications: MedicationDTO[]
 }
 
 // Puts the PA whose window contains today first (marked active); everything else
@@ -327,6 +329,58 @@ export default function MyPatients() {
     const pas: PatientPA[] = data.priorAuths || []
     setSelectedPatient(prev => prev ? { ...prev, priorAuths: pas } : prev)
     setPatients(prev => prev.map(p => p.patientId === patientId ? { ...p, priorAuths: pas } : p))
+  }
+
+  async function refreshMedications(patientId: string) {
+    const res = await fetch(`/api/nurse/patients/${patientId}/medications`, { credentials: 'include' })
+    const data = await res.json()
+    const meds: MedicationDTO[] = data.medications || []
+    setSelectedPatient(prev => prev ? { ...prev, medications: meds } : prev)
+    setPatients(prev => prev.map(p => p.patientId === patientId ? { ...p, medications: meds } : p))
+  }
+
+  async function handleAddMedication(data: MedicationInput) {
+    if (!selectedPatient) return
+    await fetch(`/api/nurse/patients/${selectedPatient.patientId}/medications`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(data),
+    })
+    await refreshMedications(selectedPatient.patientId)
+  }
+
+  async function handleEditMedication(medId: string, data: MedicationInput) {
+    if (!selectedPatient) return
+    await fetch(`/api/nurse/patients/${selectedPatient.patientId}/medications`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ medId, ...data }),
+    })
+    await refreshMedications(selectedPatient.patientId)
+  }
+
+  async function handleConfirmRefill(medId: string, refillDate: string) {
+    if (!selectedPatient) return
+    await fetch(`/api/nurse/patients/${selectedPatient.patientId}/medications/refill`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ medId, refillDate }),
+    })
+    await refreshMedications(selectedPatient.patientId)
+  }
+
+  async function handleDeleteMedication(medId: string) {
+    if (!selectedPatient) return
+    await fetch(`/api/nurse/patients/${selectedPatient.patientId}/medications`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ medId }),
+    })
+    await refreshMedications(selectedPatient.patientId)
   }
 
   async function handleAddPA(e: React.FormEvent) {
@@ -646,6 +700,19 @@ export default function MyPatients() {
                     })}
                   </div>
                 )}
+              </section>
+
+              {/* Medications */}
+              <section>
+                <MedicationList
+                  patientName={`${selectedPatient.merged.firstName} ${selectedPatient.merged.lastName}`}
+                  medications={selectedPatient.medications || []}
+                  onAdd={handleAddMedication}
+                  onEdit={handleEditMedication}
+                  onConfirmRefill={handleConfirmRefill}
+                  onDelete={handleDeleteMedication}
+                  readOnly={selectedPatient.merged.isLocked}
+                />
               </section>
 
             </div>

@@ -30,7 +30,8 @@ export function middleware(req: NextRequest) {
     pathname.startsWith("/nurse") ||
     pathname.startsWith("/portal") ||
     pathname.startsWith("/resources") ||
-    pathname.startsWith("/care")
+    pathname.startsWith("/care") ||
+    pathname.startsWith("/family")
   ) {
 
     if (!token) {
@@ -66,6 +67,11 @@ export function middleware(req: NextRequest) {
       }
     }
 
+    // /family — guardian accounts only
+    if (pathname.startsWith("/family") && decoded.role !== "guardian") {
+      return NextResponse.redirect(new URL("/login", req.url));
+    }
+
     // /portal, /resources, /care — any authenticated role is fine
     if (
       (pathname.startsWith("/portal") ||
@@ -92,6 +98,6 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/nurse/:path*", "/portal/:path*", "/resources/:path*", "/resources", "/care/:path*", "/care", "/api/nurse/:path*", "/api/time-entry/:path*"],
+  matcher: ["/admin/:path*", "/nurse/:path*", "/portal/:path*", "/resources/:path*", "/resources", "/care/:path*", "/care", "/family/:path*", "/family", "/api/nurse/:path*", "/api/time-entry/:path*"],
   runtime: 'nodejs',
 };

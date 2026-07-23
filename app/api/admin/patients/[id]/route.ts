@@ -22,6 +22,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         },
       },
       priorAuths: { orderBy: [{ paStartDate: 'desc' }, { createdAt: 'desc' }] },
+      medications: { orderBy: { createdAt: 'desc' } },
       timeEntries: {
         orderBy: { workDate: 'desc' },
         take: 50,

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import AdminNav from '../../components/AdminNav'
 import { formalName } from '../../../lib/formatName'
+import MedicationList, { MedicationDTO, MedicationInput } from '../../components/MedicationList'
 
 type PatientPA = {
   id: string
@@ -86,6 +87,7 @@ type Patient = {
   lockedBy: string | null
   nurseLinks: NurseLink[]
   priorAuths: PatientPA[]
+  medications: MedicationDTO[]
   _count: { timeEntries: number }
 }
 
@@ -286,6 +288,58 @@ export default function AdPatients() {
       setSelected(refreshed.patient)
       setPatients(prev => prev.map(p => p.id === patientId ? { ...p, priorAuths: refreshed.patient.priorAuths } : p))
     }
+  }
+
+  async function refreshMedications(patientId: string) {
+    const refreshed = await fetch(`/api/admin/patients/${patientId}`, { credentials: 'include' }).then(r => r.json())
+    if (refreshed.patient) {
+      setSelected(refreshed.patient)
+      setPatients(prev => prev.map(p => p.id === patientId ? { ...p, medications: refreshed.patient.medications } : p))
+    }
+  }
+
+  async function handleAddMedication(data: MedicationInput) {
+    if (!selected) return
+    await fetch(`/api/admin/patients/${selected.id}/medications`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(data),
+    })
+    await refreshMedications(selected.id)
+  }
+
+  async function handleEditMedication(medId: string, data: MedicationInput) {
+    if (!selected) return
+    await fetch(`/api/admin/patients/${selected.id}/medications`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ medId, ...data }),
+    })
+    await refreshMedications(selected.id)
+  }
+
+  async function handleConfirmRefill(medId: string, refillDate: string) {
+    if (!selected) return
+    await fetch(`/api/admin/patients/${selected.id}/medications/refill`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ medId, refillDate }),
+    })
+    await refreshMedications(selected.id)
+  }
+
+  async function handleDeleteMedication(medId: string) {
+    if (!selected) return
+    await fetch(`/api/admin/patients/${selected.id}/medications`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ medId }),
+    })
+    await refreshMedications(selected.id)
   }
 
   async function handleAddPA(e: React.FormEvent) {
@@ -687,6 +741,18 @@ export default function AdPatients() {
                         })}
                       </div>
                     )}
+                  </div>
+
+                  {/* Medications */}
+                  <div className="pt-2 border-t border-[#D9E1E8]">
+                    <MedicationList
+                      patientName={`${selected.firstName} ${selected.lastName}`}
+                      medications={selected.medications || []}
+                      onAdd={handleAddMedication}
+                      onEdit={handleEditMedication}
+                      onConfirmRefill={handleConfirmRefill}
+                      onDelete={handleDeleteMedication}
+                    />
                   </div>
                 </>
               ) : (

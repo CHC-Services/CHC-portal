@@ -63,6 +63,8 @@ function VerifyContent() {
       }
       if (data.role === 'admin') {
         router.push('/admin')
+      } else if (data.role === 'guardian') {
+        router.push('/family')
       } else if ((data.role === 'nurse' || data.role === 'provider') && !data.portalAgreementSigned) {
         router.push('/nurse/agreement')
       } else {

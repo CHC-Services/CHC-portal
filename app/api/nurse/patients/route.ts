@@ -23,20 +23,24 @@ export async function GET(req: Request) {
     where: { nurseId: session.nurseProfileId, isActive: true },
     include: {
       patient: {
-        include: { priorAuths: { orderBy: [{ paStartDate: 'desc' }, { createdAt: 'desc' }] } },
+        include: {
+          priorAuths: { orderBy: [{ paStartDate: 'desc' }, { createdAt: 'desc' }] },
+          medications: { orderBy: { createdAt: 'desc' } },
+        },
       },
     },
     orderBy: { createdAt: 'asc' },
   })
 
   const patients = links.map((link: any) => {
-    const { priorAuths, ...patientFields } = link.patient
+    const { priorAuths, medications, ...patientFields } = link.patient
     return {
       linkId: link.id,
       patientId: link.patientId,
       overrides: link.overrides,
       merged: { ...patientFields, ...(link.overrides || {}) },
       priorAuths: priorAuths || [],
+      medications: medications || [],
     }
   })
 

@@ -15,21 +15,20 @@ datasource db {
 }
 
 enum Role {
-  nurse      // Healthcare caregiver
-  admin      // Full portal access
-  biller     // Third-party billing access
-  provider   // Other medical provider (non-nurse)
-  guardian   // Parent / family member of patient
+  nurse // Healthcare caregiver
+  admin // Full portal access
+  biller // Third-party billing access
+  provider // Other medical provider (non-nurse)
+  guardian // Parent / family member of patient
 }
 
-
 model User {
-  id         String   @id @default(uuid())
-  email      String   @unique
-  password   String
+  id       String @id @default(uuid())
+  email    String @unique
+  password String
   // internal name shown to admin; set during account creation
-  name       String
-  role       Role     @default(nurse)
+  name     String
+  role     Role   @default(nurse)
 
   // MFA / 2FA
   phone           String?
@@ -37,23 +36,23 @@ model User {
   smsOtpExpiresAt DateTime?
   mfaSecret       String?
   mfaEnabled      Boolean   @default(false)
-  twoFaConsentAt  DateTime?  // when non-admin user acknowledged 2FA enrollment
+  twoFaConsentAt  DateTime? // when non-admin user acknowledged 2FA enrollment
 
   passwordResetToken  String?
   passwordResetExpiry DateTime?
   lastLoginAt         DateTime?
 
-  nurseProfile NurseProfile?
-  createdAt    DateTime @default(now())
-}    
-
+  nurseProfile  NurseProfile?
+  guardianLinks GuardianPatient[]
+  createdAt     DateTime          @default(now())
+}
 
 model NurseProfile {
-  id         String   @id @default(uuid())
-  userId     String   @unique
-  displayName String  // name the nurse chooses for themselves
+  id          String @id @default(uuid())
+  userId      String @unique
+  displayName String // name the nurse chooses for themselves
 
-  accountNumber  String?  @unique
+  accountNumber String? @unique
 
   // Individual provider — nurse-editable
   firstName      String?
@@ -64,61 +63,61 @@ model NurseProfile {
   city           String?
   state          String?
   zip            String?
-  dob            String?   // stored as plain text date string
-  ssnEncrypted   String?   // AES-256-GCM encrypted
+  dob            String? // stored as plain text date string
+  ssnEncrypted   String? // AES-256-GCM encrypted
   npiNumber      String?
   medicaidNumber String?
-  etin           String?   // Electronic Transmitter Identification Number (3-4 chars)
-  epacesUserId   String?   // ePaces system user ID
+  etin           String? // Electronic Transmitter Identification Number (3-4 chars)
+  epacesUserId   String? // ePaces system user ID
 
   // Business provider — admin-managed, conditional
-  hasBusinessProvider  Boolean @default(false)
-  bizServiceAddress    String?
-  bizEntityName        String?
-  bizPhone             String?
-  bizEmail             String?
-  einEncrypted         String?   // AES-256-GCM encrypted
-  feinEncrypted        String?   // AES-256-GCM encrypted
-  bizNpiType           String?   // 'Type1' | 'Type2'
-  bizNpi               String?
-  bizMedicaidId        String?
-  bizCity              String?
-  bizState             String?
-  bizZip               String?
+  hasBusinessProvider Boolean @default(false)
+  bizServiceAddress   String?
+  bizEntityName       String?
+  bizPhone            String?
+  bizEmail            String?
+  einEncrypted        String? // AES-256-GCM encrypted
+  feinEncrypted       String? // AES-256-GCM encrypted
+  bizNpiType          String? // 'Type1' | 'Type2'
+  bizNpi              String?
+  bizMedicaidId       String?
+  bizCity             String?
+  bizState            String?
+  bizZip              String?
 
   // Payment — admin-managed
   bankName             String?
-  bankRoutingEncrypted String?   // AES-256-GCM encrypted
-  bankAccountEncrypted String?   // AES-256-GCM encrypted
+  bankRoutingEncrypted String? // AES-256-GCM encrypted
+  bankAccountEncrypted String? // AES-256-GCM encrypted
 
   // Onboarding & agreement
   onboardingComplete  Boolean   @default(false)
   enrolledInBilling   Boolean?
   carrierCount        Int?
-  billingDurationType String?   // 'full_year' | 'policy_specific'
+  billingDurationType String? // 'full_year' | 'policy_specific'
   billingDurationNote String?
-  billingPlan         String?   // 'A1' | 'A2' | 'B' | 'custom'
+  billingPlan         String? // 'A1' | 'A2' | 'B' | 'custom'
   planStartDate       String?
   agreementSignedAt   DateTime?
   agreementSignature  String?
   agreementIp         String?
 
   // Legacy
-  billingInfo  String?
+  billingInfo String?
 
   // Provider aliases for claim matching (e.g. ["Janine", "JCST"])
   providerAliases String[] @default([])
 
   // Notification preferences — reminders
-  receiveNotifications    Boolean @default(true)  // weekly hour submission reminder (legacy)
-  notifyBillingReminder   Boolean @default(true)  // billing-related reminders
-  notifyDocExpiring       Boolean @default(true)  // document/license expiration reminders
+  receiveNotifications  Boolean @default(true) // weekly hour submission reminder (legacy)
+  notifyBillingReminder Boolean @default(true) // billing-related reminders
+  notifyDocExpiring     Boolean @default(true) // document/license expiration reminders
   // Notification preferences — alerts
-  notifyNewDocument       Boolean @default(true)  // alert when admin uploads a document
-  notifyNewClaim          Boolean @default(true)  // alert when a new claim is added
+  notifyNewDocument     Boolean @default(true) // alert when admin uploads a document
+  notifyNewClaim        Boolean @default(true) // alert when a new claim is added
 
   // Self-reported type from public signup form
-  signupRole   String?   // 'Nurse' | 'Patient' | 'Billing Service' | 'Other'
+  signupRole String? // 'Nurse' | 'Patient' | 'Billing Service' | 'Other'
 
   // Portal user agreement — required on first login
   portalAgreementSignedAt DateTime?
@@ -126,10 +125,10 @@ model NurseProfile {
 
   // Billing service agreement — signed during onboarding when enrolling in billing
   billingAgreementSignedAt DateTime?
-  billingAgreementInitials  String?
+  billingAgreementInitials String?
 
   // Demo/test account — excluded from metrics, all writes blocked
-  isDemo       Boolean   @default(false)
+  isDemo Boolean @default(false)
 
   // Billing enrollment status — admin-managed
   // 'Active' | 'Termed' | 'Seasonal' | 'Pending' | null (never enrolled)
@@ -138,24 +137,24 @@ model NurseProfile {
   serviceEndDate   String?
 
   // Portal subscription tier
-  planTier       String    @default("FREE")  // FREE | BASIC | PRO
-  trialExpiresAt DateTime?                   // if set, nurse gets BASIC access until this date
+  planTier       String    @default("FREE") // FREE | BASIC | PRO
+  trialExpiresAt DateTime? // if set, nurse gets BASIC access until this date
 
   // Directory opt-in
   dirOptIn     Boolean @default(true)
   dirShowEmail Boolean @default(true)
   dirShowPhone Boolean @default(true)
 
-  user             User               @relation(fields: [userId], references: [id])
-  timeEntries      TimeEntry[]
-  claims           Claim[]
-  enrollmentLogs   EnrollmentLog[]
-  invoices         Invoice[]
-  reminders        NurseReminder[]
-  documents        NurseDocument[]
-  invoiceActivities InvoiceActivity[]
-  caseAssignments  CaseAssignment[]
-  medicaidClaims   MedicaidClaim[]
+  user                User                 @relation(fields: [userId], references: [id])
+  timeEntries         TimeEntry[]
+  claims              Claim[]
+  enrollmentLogs      EnrollmentLog[]
+  invoices            Invoice[]
+  reminders           NurseReminder[]
+  documents           NurseDocument[]
+  invoiceActivities   InvoiceActivity[]
+  caseAssignments     CaseAssignment[]
+  medicaidClaims      MedicaidClaim[]
   campaignEnrollments CampaignEnrollment[]
   providerCredits     ProviderCredit[]
   nursePatients       NursePatient[]
@@ -164,22 +163,22 @@ model NurseProfile {
 }
 
 model RoutedForm {
-  id          String    @id @default(uuid())
-  nurseId     String
-  nurse       NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
-  title       String
-  category    String    @default("Form")
-  storageKey  String?               // S3 key for the blank/pre-filled form
-  fileName    String?
-  urgent      Boolean   @default(false)
-  routedBy    String                // admin display name
-  status      String    @default("pending")  // pending | signed
-  notes       String?
-  signedKey   String?               // S3 key for the returned signed form
+  id             String       @id @default(uuid())
+  nurseId        String
+  nurse          NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
+  title          String
+  category       String       @default("Form")
+  storageKey     String? // S3 key for the blank/pre-filled form
+  fileName       String?
+  urgent         Boolean      @default(false)
+  routedBy       String // admin display name
+  status         String       @default("pending") // pending | signed
+  notes          String?
+  signedKey      String? // S3 key for the returned signed form
   signedFileName String?
-  signedAt    DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  signedAt       DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   @@index([nurseId])
   @@index([status])
@@ -203,9 +202,9 @@ model GlobalEvent {
   description String?
   eventDate   DateTime
   category    String   @default("general") // 'tax' | 'renewal' | 'compliance' | 'general'
-  targetRoles String[] @default([])        // empty = visible to all; otherwise ['nurse','biller',...]
-  recurrence  String?                      // 'quarterly' | 'annual' | null (one-time)
-  createdBy   String?                      // admin user id
+  targetRoles String[] @default([]) // empty = visible to all; otherwise ['nurse','biller',...]
+  recurrence  String? // 'quarterly' | 'annual' | null (one-time)
+  createdBy   String? // admin user id
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -231,7 +230,7 @@ model EnrollmentLog {
   id               String   @id @default(uuid())
   nurseId          String
   nurseDisplayName String
-  action           String   // 'opted_out' | 'opted_in' | 're_enrolled'
+  action           String // 'opted_out' | 'opted_in' | 're_enrolled'
   note             String?
   sentTo           String?
   emailSent        Boolean  @default(false)
@@ -241,46 +240,46 @@ model EnrollmentLog {
 }
 
 model TimeEntry {
-  id        String   @id @default(uuid())
-  nurseId   String
-  workDate  DateTime
-  hours     Float
-  notes     String?
-  billed    Boolean  @default(false)
+  id       String   @id @default(uuid())
+  nurseId  String
+  workDate DateTime
+  hours    Float
+  notes    String?
+  billed   Boolean  @default(false)
 
   // Invoice flagging
-  readyToInvoice Boolean @default(false)
+  readyToInvoice Boolean  @default(false)
   invoiceFeePlan String? // 'A1' | 'A2' | 'B' | 'C'
   invoiceFeeAmt  Float?
   invoiceId      String?
   invoice        Invoice? @relation(fields: [invoiceId], references: [id])
-  claimRef       String?  // optional claim reference number for billing lookup
-  patientId      String?  // optional patient this entry is billed against
+  claimRef       String? // optional claim reference number for billing lookup
+  patientId      String? // optional patient this entry is billed against
   patient        Patient? @relation(fields: [patientId], references: [id])
 
   createdAt DateTime @default(now())
 
-  nurse     NurseProfile @relation(fields: [nurseId], references: [id])
+  nurse NurseProfile @relation(fields: [nurseId], references: [id])
 
   @@unique([nurseId, workDate])
 }
 
 model Invoice {
-  id            String   @id @default(uuid())
+  id            String    @id @default(uuid())
   nurseId       String
-  invoiceNumber String   @unique
-  grossAmount   Float    // sum of entry fees before discount
-  discountAmt   Float    @default(0)
-  discountNote  String?  // e.g. "Campaign: FB Spring 2026" or "Manual courtesy"
-  totalAmount   Float    // grossAmount - discountAmt (what nurse owes)
-  paidAmount    Float    @default(0)
-  dueTerm       String   // '30' | '60' | '90' | 'ASAP'
+  invoiceNumber String    @unique
+  grossAmount   Float // sum of entry fees before discount
+  discountAmt   Float     @default(0)
+  discountNote  String? // e.g. "Campaign: FB Spring 2026" or "Manual courtesy"
+  totalAmount   Float // grossAmount - discountAmt (what nurse owes)
+  paidAmount    Float     @default(0)
+  dueTerm       String // '30' | '60' | '90' | 'ASAP'
   dueDate       DateTime
-  status        String   @default("Sent") // Sent | Partial | Paid | Disputed | WrittenOff | Overdue
+  status        String    @default("Sent") // Sent | Partial | Paid | Disputed | WrittenOff | Overdue
   notes         String?
   nurseEmail    String
   nurseName     String
-  sentAt        DateTime @default(now())
+  sentAt        DateTime  @default(now())
   paidAt        DateTime?
   s3Key         String?
 
@@ -288,49 +287,49 @@ model Invoice {
   campaignEnrollment   CampaignEnrollment? @relation(fields: [campaignEnrollmentId], references: [id], onDelete: SetNull)
 
   // Late fee policy (set per invoice at creation time)
-  lateFeePlan      String?   // 'none' | 'flat' | 'percent'
-  lateFeeAmt       Float?    // flat: dollars per month overdue
-  lateFeePercent   Float?    // percent: % per month overdue (e.g. 1.5 = 1.5%)
+  lateFeePlan    String? // 'none' | 'flat' | 'percent'
+  lateFeeAmt     Float? // flat: dollars per month overdue
+  lateFeePercent Float? // percent: % per month overdue (e.g. 1.5 = 1.5%)
 
   // Prompt-pay bonus: credit applied to next invoice if paid within window
-  promptPayCredit  Float?    // dollar credit (e.g. 5.00)
-  promptPayDays    Int?      // days from invoice date to qualify (e.g. 14)
+  promptPayCredit Float? // dollar credit (e.g. 5.00)
+  promptPayDays   Int? // days from invoice date to qualify (e.g. 14)
 
-  entries           TimeEntry[]
-  payments          Payment[]
-  activities        InvoiceActivity[]
-  providerCredits   ProviderCredit[]
-  nurse             NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
+  entries         TimeEntry[]
+  payments        Payment[]
+  activities      InvoiceActivity[]
+  providerCredits ProviderCredit[]
+  nurse           NurseProfile      @relation(fields: [nurseId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model Campaign {
-  id           String   @id @default(uuid())
-  name         String
-  description  String?
-  type         String   // 'flat_per_dos' | 'percent_off'
+  id          String  @id @default(uuid())
+  name        String
+  description String?
+  type        String // 'flat_per_dos' | 'percent_off'
 
   // flat_per_dos: charge $X per date of service, capped at $Y per Mon-Sun week
-  flatAmtPerDos  Float?
-  weeklyMaxAmt   Float?
+  flatAmtPerDos Float?
+  weeklyMaxAmt  Float?
 
   // percent_off: discount X% off the gross invoice total
-  percentOff     Float?
+  percentOff Float?
 
   // Time bounds
-  startDate    DateTime?  // when the campaign begins (null = immediate)
-  weekCount    Int?       // how many Mon-Sun weeks it applies (null = indefinite)
+  startDate DateTime? // when the campaign begins (null = immediate)
+  weekCount Int? // how many Mon-Sun weeks it applies (null = indefinite)
 
   // Promo link hook — unique slug for future /join?ref= flow
-  promoSlug    String?  @unique
+  promoSlug String? @unique
 
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  enrollments  CampaignEnrollment[]
+  enrollments CampaignEnrollment[]
 
   @@index([active])
   @@index([promoSlug])
@@ -355,8 +354,8 @@ model CampaignEnrollment {
 model ProviderCredit {
   id          String   @id @default(uuid())
   nurseId     String
-  amount      Float    // positive = credit, negative = charge/late fee
-  type        String   // 'prompt_pay' | 'late_fee' | 'manual'
+  amount      Float // positive = credit, negative = charge/late fee
+  type        String // 'prompt_pay' | 'late_fee' | 'manual'
   description String?
   invoiceId   String?
   appliedAt   DateTime @default(now())
@@ -374,7 +373,7 @@ model Payment {
   invoiceId     String
   receiptNumber String   @unique
   amount        Float
-  method        String?  // Venmo | Zelle | CashApp | ApplePay | Check | ACH | Other
+  method        String? // Venmo | Zelle | CashApp | ApplePay | Check | ACH | Other
   note          String?
   s3Key         String?
   appliedAt     DateTime @default(now())
@@ -385,9 +384,9 @@ model InvoiceActivity {
   id           String   @id @default(uuid())
   nurseId      String
   invoiceId    String?
-  action       String   // 'Email' | 'Print'
-  documentType String   // 'Invoice' | 'Statement' | 'Receipt'
-  reference    String?  // e.g. invoice number, receipt number, or "Full Statement"
+  action       String // 'Email' | 'Print'
+  documentType String // 'Invoice' | 'Statement' | 'Receipt'
+  reference    String? // e.g. invoice number, receipt number, or "Full Statement"
   note         String?
   createdAt    DateTime @default(now())
 
@@ -400,8 +399,8 @@ model PortalMessage {
   title     String?
   body      String
   category  String   @default("General") // Claims | Invoices | Events | General
-  audiences String[] @default([])        // 'All Users' | 'All Nurses' | 'Active Billing' | 'Non-Provider' | 'Admins' | 'user:{nurseProfileId}'
-  createdBy String?                      // admin user id
+  audiences String[] @default([]) // 'All Users' | 'All Nurses' | 'Active Billing' | 'Non-Provider' | 'Admins' | 'user:{nurseProfileId}'
+  createdBy String? // admin user id
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -426,26 +425,26 @@ model DocumentCategory {
 }
 
 model NurseDocument {
-  id              String    @id @default(uuid())
-  nurseId         String
-  nurse           NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
-  title           String
-  fileName        String
-  storageKey      String       // S3 object key — never a public URL
-  category        String       @default("General") // EOB | License | Contract | Tax | Other | General
-  fileSize        Int?
-  mimeType        String?
-  uploadedBy      String
-  nurseUploaded   Boolean   @default(false)  // true when nurse uploaded it themselves
-  visibleToNurse  Boolean   @default(false)  // admin must explicitly share with nurse
-  sharedWithAdmin Boolean   @default(false)  // nurse chose to share with admin
-  adminReviewed   Boolean   @default(false)  // admin has acknowledged the shared doc
-  claimId         String?   // links to Claim.id for EOB documents
-  expiresAt       DateTime?
-  reminderDays    Int[]        @default([])
-  remindersSentDays Int[]      @default([])
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id                String       @id @default(uuid())
+  nurseId           String
+  nurse             NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
+  title             String
+  fileName          String
+  storageKey        String // S3 object key — never a public URL
+  category          String       @default("General") // EOB | License | Contract | Tax | Other | General
+  fileSize          Int?
+  mimeType          String?
+  uploadedBy        String
+  nurseUploaded     Boolean      @default(false) // true when nurse uploaded it themselves
+  visibleToNurse    Boolean      @default(false) // admin must explicitly share with nurse
+  sharedWithAdmin   Boolean      @default(false) // nurse chose to share with admin
+  adminReviewed     Boolean      @default(false) // admin has acknowledged the shared doc
+  claimId           String? // links to Claim.id for EOB documents
+  expiresAt         DateTime?
+  reminderDays      Int[]        @default([])
+  remindersSentDays Int[]        @default([])
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 
   @@index([nurseId])
   @@index([expiresAt])
@@ -461,8 +460,8 @@ model SystemSetting {
 model PendingNotification {
   id        String   @id @default(uuid())
   nurseId   String
-  type      String   // 'claim' | 'document'
-  payload   Json     // { claimId?, documentTitle?, category?, dosStart?, dosStop?, totalBilled? }
+  type      String // 'claim' | 'document'
+  payload   Json // { claimId?, documentTitle?, category?, dosStart?, dosStop?, totalBilled? }
   createdAt DateTime @default(now())
 
   @@index([nurseId])
@@ -485,8 +484,8 @@ model NotificationBatchEntry {
   nurseId    String
   nurseName  String
   nurseEmail String
-  claims     Json              // [{claimId, dosStart, dosStop, totalBilled}]
-  documents  Json              // [{documentTitle, category}]
+  claims     Json // [{claimId, dosStart, dosStop, totalBilled}]
+  documents  Json // [{documentTitle, category}]
   sentOk     Boolean           @default(true)
   batch      NotificationBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
 
@@ -508,8 +507,8 @@ model FaqItem {
 
 model PromptPayDocument {
   id        String   @id @default(uuid())
-  claimRef  String   // claimId text e.g. "CLM-0042"
-  claimDbId String?  // Claim.id DB UUID (optional)
+  claimRef  String // claimId text e.g. "CLM-0042"
+  claimDbId String? // Claim.id DB UUID (optional)
   s3Key     String
   fileName  String
   version   Int
@@ -519,22 +518,22 @@ model PromptPayDocument {
 }
 
 model ClaimReminder {
-  id         String   @id @default(uuid())
-  claimDbId  String   // Claim.id (DB UUID)
-  claimRef   String?  // Claim.claimId (display ID e.g. "CLM-0042")
-  nurseId    String?  // which provider the claim belongs to
-  dueDate    DateTime
-  reason     String
-  completed  Boolean  @default(false)
-  createdAt  DateTime @default(now())
+  id        String   @id @default(uuid())
+  claimDbId String // Claim.id (DB UUID)
+  claimRef  String? // Claim.claimId (display ID e.g. "CLM-0042")
+  nurseId   String? // which provider the claim belongs to
+  dueDate   DateTime
+  reason    String
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now())
 
   @@index([claimDbId])
   @@index([dueDate])
 }
 
 model Claim {
-  id           String @id @default(uuid())
-  nurseId      String
+  id      String @id @default(uuid())
+  nurseId String
 
   // Claim Submission Details
   claimId      String?
@@ -544,24 +543,24 @@ model Claim {
   totalBilled  Float?
   hours        Float?
   claimStage   String?
-  submitDate   DateTime?  // date the claim was submitted to insurance
+  submitDate   DateTime? // date the claim was submitted to insurance
 
   // Prompt Pay tracking
-  submitDateReminderSentAt DateTime?  // set when the 28-day alert email fires
+  submitDateReminderSentAt DateTime? // set when the 28-day alert email fires
 
   // Primary Insurance
-  primaryPayer        String?
-  primaryAllowedAmt   Float?
-  primaryCO           Float?   // provider obligation / write-off (p-co)
-  primaryPaidAmt      Float?
-  primaryPaidDate     DateTime?
-  primaryPaidTo       String?
-  primaryCheckNum     String?
+  primaryPayer      String?
+  primaryAllowedAmt Float?
+  primaryCO         Float? // provider obligation / write-off (p-co)
+  primaryPaidAmt    Float?
+  primaryPaidDate   DateTime?
+  primaryPaidTo     String?
+  primaryCheckNum   String?
 
   // Secondary Insurance
   secondaryPayer      String?
   secondaryAllowedAmt Float?
-  secondaryCO         Float?   // provider obligation / write-off (s-co)
+  secondaryCO         Float? // provider obligation / write-off (s-co)
   secondaryPaidAmt    Float?
   secondaryPaidDate   DateTime?
   secondaryPaidTo     String?
@@ -574,10 +573,10 @@ model Claim {
   checkReceivedDate  DateTime?
 
   // Notes
-  processingNotes    String?
+  processingNotes String?
 
   // Resubmission tracking
-  resubmissionOf     String?  // claimId of the original rejected claim
+  resubmissionOf String? // claimId of the original rejected claim
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -593,9 +592,9 @@ model EmailLog {
   sentAt         DateTime @default(now())
   recipientName  String?
   recipientEmail String
-  category       String   // 'invoice' | 'receipt' | 'reminder' | 'alert' | 'broadcast' | 'misc'
+  category       String // 'invoice' | 'receipt' | 'reminder' | 'alert' | 'broadcast' | 'misc'
   subject        String
-  bodyS3Key      String?  // email-logs/YYYY/MM/[id].html
+  bodyS3Key      String? // email-logs/YYYY/MM/[id].html
   status         String   @default("sent") // 'sent' | 'failed'
 
   @@index([sentAt])
@@ -605,12 +604,12 @@ model EmailLog {
 model LoginLog {
   id            String   @id @default(uuid())
   timestamp     DateTime @default(now())
-  accountType   String   // role: admin, nurse, biller, provider, guardian
+  accountType   String // role: admin, nurse, biller, provider, guardian
   email         String
   firstName     String?
   lastName      String?
-  accountNumber String?  // nurse account number or null for admin
-  result        String   // "Success" | "Failed - Invalid credentials" | "Failed - Account not found" | etc.
+  accountNumber String? // nurse account number or null for admin
+  result        String // "Success" | "Failed - Invalid credentials" | "Failed - Account not found" | etc.
   ip            String?
 
   @@index([timestamp])
@@ -620,9 +619,9 @@ model LoginLog {
 
 model ClaimBackup {
   id         String   @id @default(uuid())
-  label      String   @default("auto")   // 'auto' | 'manual'
+  label      String   @default("auto") // 'auto' | 'manual'
   claimCount Int
-  snapshot   Json                         // serialized Claim[] array
+  snapshot   Json // serialized Claim[] array
   createdAt  DateTime @default(now())
 
   @@index([createdAt])
@@ -641,10 +640,10 @@ model HomeCase {
 }
 
 model CaseAssignment {
-  id       String      @id @default(uuid())
+  id       String   @id @default(uuid())
   caseId   String
   nurseId  String
-  joinedAt DateTime    @default(now())
+  joinedAt DateTime @default(now())
 
   homeCase HomeCase     @relation(fields: [caseId], references: [id], onDelete: Cascade)
   nurse    NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
@@ -684,13 +683,13 @@ model MedicaidStatusCode {
 }
 
 model ClaimAuditLog {
-  id              String   @id @default(uuid())
-  claimType       String   // 'commercial' | 'medicaid'
-  commercialId    String?  // Claim.id when claimType = 'commercial'
-  medicaidId      String?  // MedicaidClaim.id when claimType = 'medicaid'
-  snapshot        Json     // full field values at time of save
-  savedAt         DateTime @default(now())
-  savedBy         String   // admin user id
+  id           String   @id @default(uuid())
+  claimType    String // 'commercial' | 'medicaid'
+  commercialId String? // Claim.id when claimType = 'commercial'
+  medicaidId   String? // MedicaidClaim.id when claimType = 'medicaid'
+  snapshot     Json // full field values at time of save
+  savedAt      DateTime @default(now())
+  savedBy      String // admin user id
 
   @@index([commercialId])
   @@index([medicaidId])
@@ -700,67 +699,69 @@ model ClaimAuditLog {
 // ── Patient records ────────────────────────────────────────────────────────
 
 model Patient {
-  id            String   @id @default(uuid())
-  accountNumber String   @unique              // e.g. "PT-001"
-  lastName      String
-  firstName     String
-  dob           String                        // plain text, e.g. "1980-01-15"
-  gender        String?                       // 'Male' | 'Female' | 'Other'
-  insuranceType String                        // 'Medicaid' | 'Commercial' | 'Medicare' | 'Other'
-  insuranceId   String                        // primary member / Medicaid ID
-  insuranceName  String?                      // commercial: carrier name
-  insuranceGroup String?                      // commercial: group number
-  insurancePlan  String?                      // commercial: plan name
-  address       String?
-  city          String?
-  state         String?
-  zip           String?
-  phone         String?
+  id             String  @id @default(uuid())
+  accountNumber  String  @unique // e.g. "PT-001"
+  lastName       String
+  firstName      String
+  dob            String // plain text, e.g. "1980-01-15"
+  gender         String? // 'Male' | 'Female' | 'Other'
+  insuranceType  String // 'Medicaid' | 'Commercial' | 'Medicare' | 'Other'
+  insuranceId    String // primary member / Medicaid ID
+  insuranceName  String? // commercial: carrier name
+  insuranceGroup String? // commercial: group number
+  insurancePlan  String? // commercial: plan name
+  address        String?
+  city           String?
+  state          String?
+  zip            String?
+  phone          String?
 
   // Clinical / billing
-  highTech      Boolean  @default(false)      // High-Tech designation (yes/no)
-  dxCode1       String?                       // ICD-10 diagnosis code 1
-  dxCode2       String?
-  dxCode3       String?
-  dxCode4       String?
-  paNumber      String?                       // Prior Authorization number
-  paStartDate   String?                       // PA effective start date
-  paEndDate     String?                       // PA effective end date
+  highTech    Boolean @default(false) // High-Tech designation (yes/no)
+  dxCode1     String? // ICD-10 diagnosis code 1
+  dxCode2     String?
+  dxCode3     String?
+  dxCode4     String?
+  paNumber    String? // Prior Authorization number
+  paStartDate String? // PA effective start date
+  paEndDate   String? // PA effective end date
 
   // Commercial-only demographics
-  subscriberName      String?                 // name of insurance subscriber
-  subscriberRelation  String?                 // patient's relation to subscriber
+  subscriberName     String? // name of insurance subscriber
+  subscriberRelation String? // patient's relation to subscriber
 
   // Commercial-only policy details
-  networkStatus   String?                     // 'IN' | 'OON'
-  hasCaseRate     Boolean  @default(false)    // agreed case rate exists
-  caseRateAmount  String?                     // dollar amount of case rate
-  policyNotes     String?                     // free-text policy rules (e.g. "100-day limit")
+  networkStatus  String? // 'IN' | 'OON'
+  hasCaseRate    Boolean @default(false) // agreed case rate exists
+  caseRateAmount String? // dollar amount of case rate
+  policyNotes    String? // free-text policy rules (e.g. "100-day limit")
 
   // Secondary / additional insurance
-  ins2Type              String?               // 'Medicaid' | 'Commercial' | 'Medicare' | 'Other'
-  ins2Id                String?               // secondary member ID
-  ins2Name              String?               // secondary carrier name
-  ins2Group             String?               // secondary group number
-  ins2Plan              String?               // secondary plan name
-  ins2SubscriberName    String?
+  ins2Type               String? // 'Medicaid' | 'Commercial' | 'Medicare' | 'Other'
+  ins2Id                 String? // secondary member ID
+  ins2Name               String? // secondary carrier name
+  ins2Group              String? // secondary group number
+  ins2Plan               String? // secondary plan name
+  ins2SubscriberName     String?
   ins2SubscriberRelation String?
-  ins2NetworkStatus     String?               // 'IN' | 'OON'
-  ins2HasCaseRate       Boolean  @default(false)
-  ins2CaseRateAmount    String?
-  ins2PolicyNotes       String?
+  ins2NetworkStatus      String? // 'IN' | 'OON'
+  ins2HasCaseRate        Boolean @default(false)
+  ins2CaseRateAmount     String?
+  ins2PolicyNotes        String?
 
   // Admin record lock — prevents nurses from editing overrides
-  isLocked   Boolean   @default(false)
-  lockedAt   DateTime?
-  lockedBy   String?                       // admin display name
+  isLocked Boolean   @default(false)
+  lockedAt DateTime?
+  lockedBy String? // admin display name
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  nurseLinks  NursePatient[]
-  timeEntries TimeEntry[]
-  priorAuths  PatientPA[]
+  nurseLinks    NursePatient[]
+  timeEntries   TimeEntry[]
+  priorAuths    PatientPA[]
+  medications   PatientMedication[]
+  guardianLinks GuardianPatient[]
 }
 
 model PatientPA {
@@ -777,26 +778,72 @@ model PatientPA {
 }
 
 model NursePatient {
-  id        String   @id @default(uuid())
-  nurseId   String                            // NurseProfile.id
-  patientId String
-  overrides Json?                             // nurse-level field corrections (merged on read)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                       String   @id @default(uuid())
+  nurseId                  String // NurseProfile.id
+  patientId                String
+  overrides                Json? // nurse-level field corrections (merged on read)
+  isActive                 Boolean  @default(true)
+  medicationRemindersOptIn Boolean  @default(false)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
 
-  nurse     NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
-  patient   Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  nurse   NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
+  patient Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
   @@unique([nurseId, patientId])
   @@index([nurseId])
   @@index([patientId])
 }
 
+// Optional per-patient medication list — nurses, admins, or a linked guardian can
+// maintain it; refill reminders are computed from lastFillDate/daySupply/refillsRemaining.
+model PatientMedication {
+  id        String  @id @default(cuid())
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  medicationName   String
+  dose             String?
+  frequency        String?
+  daySupply        Int      @default(30)
+  lastFillDate     DateTime
+  rxNumber         String?
+  refillsRemaining Int?
+  pharmacyName     String?
+  pharmacyPhone    String?
+
+  active Boolean @default(true)
+
+  createdByUserId String // primary reminder recipient
+  createdByRole   String // 'nurse' | 'guardian' | 'admin' — display attribution only
+
+  reminderSentAt DateTime? // cleared on each refill confirm; set once a reminder fires this cycle
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([patientId])
+}
+
+// Family/guardian login scoped to exactly the patient(s) they're linked to.
+model GuardianPatient {
+  id                       String   @id @default(uuid())
+  userId                   String
+  user                     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  patientId                String
+  patient                  Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  medicationRemindersOptIn Boolean  @default(false)
+  createdAt                DateTime @default(now())
+
+  @@unique([userId, patientId])
+  @@index([userId])
+  @@index([patientId])
+}
+
 model MedicaidPayWeekLog {
   id          String    @id @default(uuid())
   nurseId     String
-  depositDate String    // YYYY-MM-DD — key for the pay week
+  depositDate String // YYYY-MM-DD — key for the pay week
   receivedAt  DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

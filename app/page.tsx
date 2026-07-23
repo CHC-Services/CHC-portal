@@ -173,15 +173,14 @@ export default async function Home() {
                 </p>
               </div>
 
-              {/* Founder photo — anchored near the top of the hero content so the head stays clear
-                  of the fixed header above; the photo is taller than the hero, so the legs
-                  naturally spill past its bottom edge into the section below. */}
-              <div className="hidden lg:block absolute right-0 xl:right-4 top-0 w-[220px] xl:w-[260px] z-20 pointer-events-none select-none">
+              {/* Founder photo — bottom-anchored + nudged down by the hero's own bottom
+                  padding so it sits flush with the hero's bottom edge, contained within it. */}
+              <div className="hidden lg:block absolute right-0 xl:right-4 bottom-0 translate-y-16 w-[190px] xl:w-[210px] z-10 pointer-events-none select-none">
                 <Image
-                  src="/GreenScrubs-NoBackground.png"
+                  src="/GreenScrubsShort-NoBackground.png"
                   alt="Alex, founder of Coming Home Care"
-                  width={260}
-                  height={539}
+                  width={210}
+                  height={333}
                   priority
                   className="w-full h-auto drop-shadow-2xl"
                 />
@@ -263,8 +262,7 @@ export default async function Home() {
         {/* ── Logged-out: what the portal does ── */}
         {!user && (
           <>
-            {/* lg:pt clears the founder photo, which breaks past the hero's bottom edge on large screens */}
-            <div className="lg:pt-36 xl:pt-40">
+            <div>
               <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-3">Everything in One Place</p>
               <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
                 <FeatureCard href="/login" icon="⏱"  title="Time Tracking"       description="Log billable hours in seconds from any device." />

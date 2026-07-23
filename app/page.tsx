@@ -2,6 +2,7 @@ import { cookies } from 'next/headers'
 import { verifyToken } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
+import Image from 'next/image'
 import RotatingQuote from './components/RotatingQuote'
 // import HomeDefinition from './components/HomeDefinition'
 
@@ -122,8 +123,8 @@ export default async function Home() {
     <div className="min-h-screen bg-[#D9E1E8]">
 
       {/* ── Hero ── */}
-      <div className="bg-[#2F3E4E] px-6 md:px-10 py-8 md:py-16">
-        <div className="max-w-4xl mx-auto">
+      <div className="relative bg-[#2F3E4E] px-6 md:px-10 pt-8 md:pt-16 pb-8 md:pb-16">
+        <div className="max-w-5xl mx-auto relative">
           {user ? (
             <>
               <p className="text-[#7A8F79] text-xs font-semibold uppercase tracking-widest mb-2">
@@ -141,29 +142,49 @@ export default async function Home() {
             </>
           ) : (
             <>
-              <p className="text-[#7A8F79] text-xs font-semibold uppercase tracking-widest mb-2">
-                Administrative Resources
-              </p>
-              <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight">
-                Your practice,{' '}
-                <span className="italic text-[#7A8F79]">streamlined.</span>
-              </h1>
-              <p className="mt-4 text-[#D9E1E8] text-sm max-w-xl">
-                Coming Home Care's secure provider portal puts time tracking, claims management, billing services, and yearly renewal reminders all in one place — so your focus can stay on you and your patients.
-              </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Link
-                  href="/signup"
-                  className="bg-[#7A8F79] text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-white hover:text-[#2F3E4E] transition"
-                >
-                  Enroll in <i>my</i>Provider →
-                </Link>
-                <Link
-                  href="/login"
-                  className="border border-[#7A8F79] text-[#D9E1E8] px-6 py-3 rounded-xl font-semibold text-sm hover:bg-[#7A8F79] hover:text-white transition"
-                >
-                  Provider Login
-                </Link>
+              <div className="max-w-xl relative z-10">
+                <p className="text-[#7A8F79] text-xs font-semibold uppercase tracking-widest mb-2">
+                  Administrative Resources
+                </p>
+                <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight">
+                  Your practice,{' '}
+                  <span className="italic text-[#7A8F79]">streamlined.</span>
+                </h1>
+                <p className="mt-4 text-[#D9E1E8] text-sm max-w-xl">
+                  Coming Home Care's secure provider portal puts time tracking, claims management, billing services, and yearly renewal reminders all in one place — so your focus can stay on you and your patients.
+                </p>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <Link
+                    href="/signup"
+                    className="bg-[#7A8F79] text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-white hover:text-[#2F3E4E] transition"
+                  >
+                    Enroll in <i>my</i>Provider →
+                  </Link>
+                  <Link
+                    href="/login"
+                    className="border border-[#7A8F79] text-[#D9E1E8] px-6 py-3 rounded-xl font-semibold text-sm hover:bg-[#7A8F79] hover:text-white transition"
+                  >
+                    Provider Login
+                  </Link>
+                </div>
+                <p className="mt-8 font-cormorant italic text-lg text-[#D9E1E8] max-w-sm border-l-2 border-[#7A8F79] pl-4">
+                  &ldquo;I built this so nurses spend less time on paperwork and more time with patients.&rdquo;
+                  <span className="block not-italic text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mt-2">— Alex, Founder</span>
+                </p>
+              </div>
+
+              {/* Founder photo — anchored near the top of the hero content so the head stays clear
+                  of the fixed header above; the photo is taller than the hero, so the legs
+                  naturally spill past its bottom edge into the section below. */}
+              <div className="hidden lg:block absolute right-0 xl:right-4 top-0 w-[220px] xl:w-[260px] z-20 pointer-events-none select-none">
+                <Image
+                  src="/GreenScrubs-NoBackground.png"
+                  alt="Alex, founder of Coming Home Care"
+                  width={260}
+                  height={539}
+                  priority
+                  className="w-full h-auto drop-shadow-2xl"
+                />
               </div>
             </>
           )}
@@ -242,7 +263,8 @@ export default async function Home() {
         {/* ── Logged-out: what the portal does ── */}
         {!user && (
           <>
-            <div>
+            {/* lg:pt clears the founder photo, which breaks past the hero's bottom edge on large screens */}
+            <div className="lg:pt-36 xl:pt-40">
               <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-3">Everything in One Place</p>
               <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
                 <FeatureCard href="/login" icon="⏱"  title="Time Tracking"       description="Log billable hours in seconds from any device." />

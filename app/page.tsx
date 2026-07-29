@@ -123,7 +123,7 @@ export default async function Home() {
     <div className="min-h-screen bg-[#D9E1E8]">
 
       {/* ── Hero ── */}
-      <div className="relative bg-[#2F3E4E] px-6 md:px-10 pt-8 md:pt-16 pb-8 md:pb-16">
+      <div className="relative bg-[#2F3E4E] px-6 md:px-10 pt-8 md:pt-16 pb-8 md:pb-10">
         <div className="max-w-5xl mx-auto relative">
           {user ? (
             <>
@@ -141,8 +141,8 @@ export default async function Home() {
               </p>
             </>
           ) : (
-            <>
-              <div className="max-w-xl relative z-10">
+            <div className="flex flex-col lg:flex-row lg:items-center gap-8">
+              <div className="relative z-10 lg:flex-1 lg:min-w-0">
                 <p className="text-[#7A8F79] text-xs font-semibold uppercase tracking-widest mb-2">
                   Administrative Resources
                 </p>
@@ -173,19 +173,18 @@ export default async function Home() {
                 </p>
               </div>
 
-              {/* Founder photo — bottom-anchored + nudged down by the hero's own bottom
-                  padding so it sits flush with the hero's bottom edge, contained within it. */}
-              <div className="hidden lg:block absolute right-0 xl:right-4 bottom-0 translate-y-16 w-[190px] xl:w-[210px] z-10 pointer-events-none select-none">
+              {/* Team photo — same row as the text on large screens, stacked below on mobile */}
+              <div className="hidden lg:block lg:w-[500px] lg:shrink-0">
                 <Image
-                  src="/GreenScrubsShort-NoBackground.png"
-                  alt="Alex, founder of Coming Home Care"
-                  width={210}
-                  height={333}
+                  src="/NurseGroup_NoBkgd.png"
+                  alt="Group of nurses in scrubs."
+                  width={500}
+                  height={320}
                   priority
-                  className="w-full h-auto drop-shadow-2xl"
+                  className="max-w-full h-auto drop-shadow-2xl"
                 />
               </div>
-            </>
+            </div>
           )}
         </div>
       </div>

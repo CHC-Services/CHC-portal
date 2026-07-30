@@ -41,6 +41,7 @@ export default function MyHours() {
   const [showAddPatient, setShowAddPatient] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [filterPatient, setFilterPatient] = useState('')
+  const [confirmOverwrite, setConfirmOverwrite] = useState<{ existingHours: number } | null>(null)
 
   function loadEntries() {
     return fetch('/api/time-entry', { credentials: 'include' })
@@ -120,14 +121,19 @@ export default function MyHours() {
 
   async function submitTime(e: React.FormEvent) {
     e.preventDefault()
+    await doSubmit(false)
+  }
+
+  async function doSubmit(confirmed: boolean) {
     const res = await fetch('/api/time-entry', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ workDate, hours, notes, patientId: selectedPatient || undefined }),
+      body: JSON.stringify({ workDate, hours, notes, patientId: selectedPatient || undefined, confirmOverwrite: confirmed }),
     })
     const data = await res.json()
     if (res.ok) {
+      setConfirmOverwrite(null)
       setMessage(data.corrected ? 'Entry corrected — existing record updated.' : 'Hours submitted successfully.')
       setWorkDate('')
       setHours('')
@@ -136,9 +142,16 @@ export default function MyHours() {
       loadEntries().finally(() => {
         requestAnimationFrame(() => dateInputRef.current?.focus())
       })
+    } else if (data.needsConfirmation) {
+      setConfirmOverwrite({ existingHours: data.existingHours })
     } else {
+      setConfirmOverwrite(null)
       setMessage(data.error || 'Error submitting hours.')
     }
+  }
+
+  function cancelOverwrite() {
+    setConfirmOverwrite(null)
   }
 
   const now = new Date()
@@ -381,10 +394,32 @@ export default function MyHours() {
           <div className="mt-5 pt-4 border-t border-[#D9E1E8] text-xs text-[#7A8F79] space-y-1">
             <p>• Total the hours worked for each date - <i>one entry per calendar day.</i></p>
             <p>• Enter in 1 hour increments — <i>no partial hours.</i></p>
-            <p>• <strong className="font-semibold text-[#2F3E4E]">To correct an entry</strong> — resubmit the full details with the correction/note. The existing record will be replaced automatically.</p>
+            <p>• <strong className="font-semibold text-[#2F3E4E]">To correct an entry</strong> — resubmit the full details for that same date and patient. You'll be asked to confirm before it overwrites the existing record.</p>
+            <p>• A date can have <strong className="font-semibold text-[#2F3E4E]">one entry per patient</strong> — different patients on the same date are separate entries.</p>
             <p>• 🔒 indicates that date has been billed and can no longer be edited or deleted.</p>
           </div>
         </div>
+
+        {/* Confirm overwrite modal */}
+        {confirmOverwrite && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
+              <h3 className="text-lg font-bold text-[#2F3E4E]">Update existing entry?</h3>
+              <p className="text-sm text-[#7A8F79] leading-relaxed">
+                You already have an entry of <strong className="text-[#2F3E4E]">{confirmOverwrite.existingHours} hour{confirmOverwrite.existingHours === 1 ? '' : 's'}</strong> for this patient on this date.
+                Do you want to replace it with <strong className="text-[#2F3E4E]">{hours} hour{hours === '1' ? '' : 's'}</strong>?
+              </p>
+              <div className="flex gap-3 pt-2">
+                <button onClick={cancelOverwrite} className="flex-1 border border-[#D9E1E8] text-[#2F3E4E] py-2.5 rounded-xl text-sm font-semibold hover:bg-[#F4F6F5] transition">
+                  No, cancel
+                </button>
+                <button onClick={() => doSubmit(true)} className="flex-1 bg-[#2F3E4E] text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-[#7A8F79] transition">
+                  Yes, update it
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Submission History */}
         <div className="bg-white rounded-xl shadow-sm p-5">

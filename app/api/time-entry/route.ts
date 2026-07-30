@@ -65,13 +65,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { workDate, hours, notes, patientId } = await req.json()
+  const { workDate, hours, notes, patientId, confirmOverwrite } = await req.json()
 
   const nurseId = session.nurseProfileId!
   const parsedDate = new Date(workDate)
+  const normalizedPatientId = patientId || null
 
+  // Same nurse + same date + same patient (or same "no patient") is a duplicate.
+  // Same date but a DIFFERENT patient is a separate, valid entry.
   const existing = await (prisma.timeEntry.findFirst as any)({
-    where: { nurseId, workDate: parsedDate },
+    where: { nurseId, workDate: parsedDate, patientId: normalizedPatientId },
+    include: {
+      patient: { select: { id: true, accountNumber: true, firstName: true, lastName: true } },
+    },
   })
 
   if (existing) {
@@ -81,12 +87,25 @@ export async function POST(req: Request) {
         { status: 409 }
       )
     }
+
+    // Not yet confirmed — ask the client to check with the nurse before overwriting.
+    if (!confirmOverwrite) {
+      return NextResponse.json(
+        {
+          needsConfirmation: true,
+          error: `You already have an entry of ${existing.hours} hour${existing.hours === 1 ? '' : 's'} for this patient on this date.`,
+          existingHours: existing.hours,
+        },
+        { status: 409 }
+      )
+    }
+
     const entry = await (prisma.timeEntry.update as any)({
       where: { id: existing.id },
       data: {
         hours: parseInt(hours, 10),
         notes,
-        ...(patientId ? { patientId } : { patientId: null }),
+        patientId: normalizedPatientId,
       },
       include: {
         patient: { select: { id: true, accountNumber: true, firstName: true, lastName: true } },
@@ -101,7 +120,7 @@ export async function POST(req: Request) {
       workDate: parsedDate,
       hours: parseInt(hours, 10),
       notes,
-      ...(patientId ? { patientId } : {}),
+      patientId: normalizedPatientId,
     },
     include: {
       patient: { select: { id: true, accountNumber: true, firstName: true, lastName: true } },

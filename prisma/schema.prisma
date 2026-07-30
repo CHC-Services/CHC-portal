@@ -261,7 +261,7 @@ model TimeEntry {
 
   nurse NurseProfile @relation(fields: [nurseId], references: [id])
 
-  @@unique([nurseId, workDate])
+  @@unique([nurseId, workDate, patientId])
 }
 
 model Invoice {

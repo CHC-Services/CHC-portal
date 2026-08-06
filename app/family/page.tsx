@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import RotatingQuote from '../components/RotatingQuote'
 import { CARE_QUOTES } from '../../lib/careQuotes'
 import { calculateAge } from '../../lib/patientAge'
@@ -67,7 +68,10 @@ function PatientCard({ p }: { p: FamilyPatient }) {
   const reasons = urgentReasons(p, new Date())
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-4">
+    <Link
+      href={`/family/patients/${p.id}`}
+      className="block bg-white rounded-xl shadow-sm p-4 hover:shadow-md hover:ring-1 hover:ring-[#7A8F79] transition"
+    >
       <div className="grid grid-cols-1 sm:grid-cols-[1.1fr_1.3fr_1fr_auto] gap-2 sm:gap-4 sm:items-start">
 
         {/* Name / age / account number */}
@@ -108,7 +112,7 @@ function PatientCard({ p }: { p: FamilyPatient }) {
         </div>
 
       </div>
-    </div>
+    </Link>
   )
 }
 

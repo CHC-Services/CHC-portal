@@ -1,83 +1,138 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import MedicationList, { MedicationDTO, MedicationInput, PharmacyOption } from '../components/MedicationList'
+import RotatingQuote from '../components/RotatingQuote'
+import { CARE_QUOTES } from '../../lib/careQuotes'
+import { calculateAge } from '../../lib/patientAge'
+import { medicationReminderDate } from '../../lib/medicationReminders'
+
+type FamilyMedication = {
+  id: string
+  medicationName: string
+  lastFillDate: string
+  daySupply: number
+  refillsRemaining: number | null
+  active: boolean
+}
 
 type FamilyPatient = {
   id: string
+  accountNumber: string
   firstName: string
   lastName: string
-  medications: MedicationDTO[]
+  dob: string
+  address: string | null
+  insuranceType: string
+  insuranceId: string
+  insuranceName: string | null
+  medications: FamilyMedication[]
 }
 
-export default function FamilyPage() {
+type ReminderRow = {
+  medId: string
+  medicationName: string
+  reminderDate: Date
+  patient: FamilyPatient
+}
+
+function fmtDate(d: Date): string {
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+}
+
+function PatientCard({ p }: { p: FamilyPatient }) {
+  const age = calculateAge(p.dob)
+  return (
+    <div className="bg-white rounded-xl shadow-sm p-4">
+      <p className="font-bold text-base text-[#2F3E4E]">
+        {p.firstName} {p.lastName[0]}.
+        {age != null && <span className="ml-2 text-sm font-normal text-[#7A8F79]">Age {age}</span>}
+      </p>
+      <p className="text-xs text-[#7A8F79] font-mono mt-0.5">{p.accountNumber}</p>
+      {p.address && <p className="text-sm text-[#2F3E4E] mt-2">{p.address}</p>}
+      <div className="mt-2 flex items-center gap-2">
+        <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${p.insuranceType === 'Medicaid' ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700'}`}>
+          {p.insuranceType}
+        </span>
+        <span className="text-xs text-[#7A8F79]">{p.insuranceName || p.insuranceId}</span>
+      </div>
+    </div>
+  )
+}
+
+function ReminderLine({ r }: { r: ReminderRow }) {
+  return (
+    <div className="flex items-center justify-between text-sm py-1.5 border-t border-[#D9E1E8] first:border-0">
+      <span className="text-[#2F3E4E]">{r.medicationName}</span>
+      <span className="text-xs text-[#7A8F79]">{fmtDate(r.reminderDate)}</span>
+    </div>
+  )
+}
+
+function PatientReminderGroup({ patient, reminders }: { patient: FamilyPatient; reminders: ReminderRow[] }) {
+  const [open, setOpen] = useState(true)
+  return (
+    <div className="border border-[#D9E1E8] rounded-lg overflow-hidden">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-3 py-2 bg-[#F4F6F5] text-left"
+      >
+        <span className="text-sm font-semibold text-[#2F3E4E]">
+          {patient.accountNumber} {patient.firstName} {patient.lastName[0]}.
+        </span>
+        <span className="text-sm font-bold text-[#7A8F79]">{reminders.length}</span>
+      </button>
+      {open && (
+        <div className="px-3 pb-2">
+          {reminders.map(r => <ReminderLine key={r.medId} r={r} />)}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function FamilyDashboardPage() {
   const [patients, setPatients] = useState<FamilyPatient[]>([])
   const [loading, setLoading] = useState(true)
-  const [pharmacies, setPharmacies] = useState<PharmacyOption[]>([])
 
-  function load() {
+  useEffect(() => {
     fetch('/api/family/medications', { credentials: 'include' })
       .then(r => r.json())
       .then(data => {
         setPatients(data.patients || [])
         setLoading(false)
       })
-  }
-
-  useEffect(() => {
-    load()
-    fetch('/api/pharmacies', { credentials: 'include' })
-      .then(r => r.json())
-      .then(data => { if (Array.isArray(data)) setPharmacies(data) })
   }, [])
 
-  async function handleAdd(patientId: string, data: MedicationInput) {
-    await fetch('/api/family/medications', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ patientId, ...data }),
-    })
-    load()
-  }
+  const reminders: ReminderRow[] = patients
+    .flatMap(p => p.medications
+      .filter(m => m.active)
+      .map(m => ({
+        medId: m.id,
+        medicationName: m.medicationName,
+        reminderDate: medicationReminderDate(new Date(m.lastFillDate), m.daySupply, m.refillsRemaining),
+        patient: p,
+      })))
+    .sort((a, b) => a.reminderDate.getTime() - b.reminderDate.getTime())
 
-  async function handleEdit(medId: string, data: MedicationInput) {
-    await fetch('/api/family/medications', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ medId, ...data }),
-    })
-    load()
-  }
-
-  async function handleConfirmRefill(medId: string, refillDate: string) {
-    await fetch('/api/family/medications/refill', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ medId, refillDate }),
-    })
-    load()
-  }
-
-  async function handleDelete(medId: string) {
-    await fetch('/api/family/medications', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ medId }),
-    })
-    load()
+  const remindersByPatient = new Map<string, ReminderRow[]>()
+  for (const r of reminders) {
+    const list = remindersByPatient.get(r.patient.id) || []
+    list.push(r)
+    remindersByPatient.set(r.patient.id, list)
   }
 
   return (
-    <div className="min-h-screen bg-[#D9E1E8] p-4 sm:p-8">
-      <div className="max-w-lg mx-auto">
-        <h1 className="text-2xl font-bold text-[#2F3E4E] mb-1">
-          <span className="text-[#7A8F79] italic">my</span>Family
-        </h1>
-        <p className="text-sm text-[#7A8F79] mb-6">Manage medications and refill reminders.</p>
+    <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6 pl-0 md:pl-0">
+      <div className="max-w-5xl mx-auto">
+        <div className="flex items-start justify-between gap-6 mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-[#2F3E4E] mb-1">
+              <span className="text-[#7A8F79] italic">my</span>Dashboard
+            </h1>
+            <p className="text-sm text-[#7A8F79]">Your linked patients and upcoming reminders.</p>
+          </div>
+          <RotatingQuote quotes={CARE_QUOTES} variant="header" className="flex-1 max-w-md hidden sm:flex" />
+        </div>
 
         {loading ? (
           <p className="text-sm text-[#7A8F79] text-center py-12">Loading…</p>
@@ -87,19 +142,36 @@ export default function FamilyPage() {
             <p className="text-[#7A8F79] text-sm mt-1">Contact the care team if this doesn&apos;t look right.</p>
           </div>
         ) : (
-          <div className="space-y-8">
-            {patients.map(p => (
-              <MedicationList
-                key={p.id}
-                patientName={`${p.firstName} ${p.lastName}`}
-                medications={p.medications}
-                onAdd={data => handleAdd(p.id, data)}
-                onEdit={handleEdit}
-                onConfirmRefill={handleConfirmRefill}
-                onDelete={handleDelete}
-                pharmacies={pharmacies}
-              />
-            ))}
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Column 1 — Active Patients */}
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-[#7A8F79] mb-2">Active Patients</p>
+              <div className="space-y-3">
+                {patients.map(p => <PatientCard key={p.id} p={p} />)}
+              </div>
+            </div>
+
+            {/* Column 2 — Upcoming Reminders */}
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-[#7A8F79] mb-2">Upcoming Reminders</p>
+              {reminders.length === 0 ? (
+                <div className="bg-white rounded-xl shadow-sm p-4">
+                  <p className="text-sm text-[#7A8F79] italic">No upcoming reminders.</p>
+                </div>
+              ) : patients.length === 1 ? (
+                <div className="bg-white rounded-xl shadow-sm p-4">
+                  {reminders.map(r => <ReminderLine key={r.medId} r={r} />)}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {patients
+                    .filter(p => remindersByPatient.has(p.id))
+                    .map(p => (
+                      <PatientReminderGroup key={p.id} patient={p} reminders={remindersByPatient.get(p.id)!} />
+                    ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

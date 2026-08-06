@@ -50,8 +50,10 @@ export async function POST(req: Request) {
 
   const globalSetting = await (prisma.systemSetting.findUnique as any)({ where: { key: 'twofa_enabled' } })
   const globalTwoFa = globalSetting?.value === 'true'
-  const adminMfa = user.role === 'admin' && (user as any).mfaEnabled
-  const needsTwoFa = globalTwoFa || adminMfa
+  // Any role's own opt-in (authenticator app enabled) enforces 2FA for that account,
+  // independent of the site-wide toggle — not just admins.
+  const userMfa = !!(user as any).mfaEnabled
+  const needsTwoFa = globalTwoFa || userMfa
 
   if (needsTwoFa) {
     const needsConsent = user.role !== 'admin' && !(user as any).twoFaConsentAt

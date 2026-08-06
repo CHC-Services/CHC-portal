@@ -1,0 +1,31 @@
+import type { Quote } from '../app/components/RotatingQuote'
+
+// Encouragement quotes for the family/guardian side of the portal — unattributed,
+// so RotatingQuote omits the "— author" line for all of these.
+export const CARE_QUOTES: Quote[] = [
+  { text: 'Tomorrow brings a new page, and you do not have to write it all today.', author: '' },
+  { text: 'Even the longest night eventually makes room for morning.', author: '' },
+  { text: 'Hope does not promise an easy road. It reminds us that the road continues.', author: '' },
+  { text: 'Miracles are not always loud. Sometimes they arrive as one more breath, one more smile, or one more good day.', author: '' },
+  { text: 'You may not know what the future holds, but you do not have to face it all at once.', author: '' },
+  { text: 'Some days, strength means moving forward. Other days, it simply means holding on.', author: '' },
+  { text: 'There is still goodness ahead that you have not had the chance to meet.', author: '' },
+  { text: 'Rest is not giving up. It is gathering strength for what comes next.', author: '' },
+  { text: 'A difficult chapter does not determine how the whole story will end.', author: '' },
+  { text: 'Hope is the quiet medicine that helps the heart keep going.', author: '' },
+  { text: 'Every sunrise is proof that darkness does not get the final word.', author: '' },
+  { text: 'You have survived every uncertain day that brought you to this moment.', author: '' },
+  { text: 'Healing is rarely a straight path, but every small step still matters.', author: '' },
+  { text: 'When today feels too heavy, carry only the next moment.', author: '' },
+  { text: 'There are people who care, hands ready to help, and reasons to keep believing.', author: '' },
+  { text: 'Sometimes the miracle is not that the storm disappeared, but that you discovered you could endure it.', author: '' },
+  { text: 'Your presence may be the comfort someone remembers for the rest of their life.', author: '' },
+  { text: 'Love often shows itself through the smallest acts of care.', author: '' },
+  { text: 'You do not need all the answers today. You only need enough hope for the next step.', author: '' },
+  { text: 'Better days may be closer than they appear.', author: '' },
+  { text: 'A single moment of kindness can soften an entire day.', author: '' },
+  { text: 'Progress can be quiet, slow, and nearly invisible—and still be progress.', author: '' },
+  { text: 'The future is unwritten, which means there is still room for something beautiful.', author: '' },
+  { text: 'Courage is not the absence of fear. It is choosing to continue while fear is present.', author: '' },
+  { text: 'Never underestimate the healing power of feeling seen, heard, and cared for.', author: '' },
+]

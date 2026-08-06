@@ -41,7 +41,7 @@ export default function Banner({ user: initialUser }: BannerProps) {
     const isLoggedIn = !!role
     const displayName = user?.displayName || null
 
-    const homeHref = role === 'nurse' ? '/nurse' : role === 'admin' ? '/admin' : role === 'provider' ? '/portal' : '/'
+    const homeHref = role === 'nurse' ? '/nurse' : role === 'admin' ? '/admin' : role === 'provider' ? '/portal' : role === 'guardian' ? '/family' : '/'
 
     // Mobile auth button — pill style
     const authButtonMobile = isLoggedIn ? (
@@ -157,6 +157,9 @@ export default function Banner({ user: initialUser }: BannerProps) {
             </Link>
             <Link href="/services" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/services" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 Services
+            </Link>
+            <Link href="/about" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/about" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                About
             </Link>
             <Link href="/faq" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/faq" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 FAQ

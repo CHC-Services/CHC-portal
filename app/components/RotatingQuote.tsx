@@ -64,20 +64,31 @@ function quoteStyle(phase: Phase, dir: Direction): React.CSSProperties {
   }
 }
 
+export type Quote = { text: string; author: string }
+
 export default function RotatingQuote({
   interval = 90000,
   compact = false,
   variant,
   className = '',
+  quotes = QUOTES,
 }: {
   interval?: number
   compact?: boolean
   variant?: 'header' | 'mobileBanner'
   className?: string
+  quotes?: Quote[]
 }) {
-  const [index, setIndex] = useState(() => Math.floor(Math.random() * QUOTES.length))
+  // Start at a fixed index so server and client render the same markup on
+  // first paint, then randomize client-side only (avoids a hydration mismatch).
+  const [index, setIndex] = useState(0)
   const [phase, setPhase] = useState<Phase>('show')
   const [dir, setDir] = useState<Direction>('up')
+
+  useEffect(() => {
+    setIndex(Math.floor(Math.random() * quotes.length))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -85,7 +96,7 @@ export default function RotatingQuote({
       setDir(d)
       setPhase('exit')
       const swap = setTimeout(() => {
-        setIndex(i => (i + 1) % QUOTES.length)
+        setIndex(i => (i + 1) % quotes.length)
         setPhase('enter')
         const show = setTimeout(() => setPhase('show'), 40)
         return () => clearTimeout(show)
@@ -93,9 +104,9 @@ export default function RotatingQuote({
       return () => clearTimeout(swap)
     }, interval)
     return () => clearInterval(timer)
-  }, [interval])
+  }, [interval, quotes.length])
 
-  const quote = QUOTES[index]
+  const quote = quotes[index]
   const style = quoteStyle(phase, dir)
 
   if (variant === 'mobileBanner') {
@@ -105,9 +116,11 @@ export default function RotatingQuote({
           <p className="font-cormorant font-semibold text-white text-base italic leading-snug">
             &ldquo;{quote.text}&rdquo;
           </p>
-          <p className="font-cormorant text-[#7A8F79] text-sm mt-1 self-end pr-4">
-            &mdash; {quote.author}
-          </p>
+          {quote.author && (
+            <p className="font-cormorant text-[#7A8F79] text-sm mt-1 self-end pr-4">
+              &mdash; {quote.author}
+            </p>
+          )}
         </div>
       </div>
     )
@@ -120,9 +133,11 @@ export default function RotatingQuote({
           <p className="font-cormorant font-semibold text-[#2F3E4E] text-lg leading-snug">
             &ldquo;{quote.text}&rdquo;
           </p>
-          <p className="font-cormorant text-[#7A8F79] text-sm uppercase tracking-widest mt-1 text-right">
-            &mdash; {quote.author}
-          </p>
+          {quote.author && (
+            <p className="font-cormorant text-[#7A8F79] text-sm uppercase tracking-widest mt-1 text-right">
+              &mdash; {quote.author}
+            </p>
+          )}
         </div>
       </div>
     )
@@ -135,9 +150,11 @@ export default function RotatingQuote({
           <p className="font-cormorant font-semibold text-[#D9E1E8] text-lg italic leading-snug">
             &ldquo;{quote.text}&rdquo;
           </p>
-          <p className="font-cormorant text-[#7A8F79] text-base mt-2 self-end pr-4">
-            &mdash; {quote.author}
-          </p>
+          {quote.author && (
+            <p className="font-cormorant text-[#7A8F79] text-base mt-2 self-end pr-4">
+              &mdash; {quote.author}
+            </p>
+          )}
         </div>
       </div>
     )
@@ -149,9 +166,11 @@ export default function RotatingQuote({
         <p className="font-cormorant font-semibold text-[#D9E1E8] text-xl italic leading-snug max-w-xl mx-auto">
           &ldquo;{quote.text}&rdquo;
         </p>
-        <p className="font-cormorant text-[#7A8F79] ml-48 text-lg mt-4 self-end pr-4">
-          &mdash; {quote.author}
-        </p>
+        {quote.author && (
+          <p className="font-cormorant text-[#7A8F79] ml-48 text-lg mt-4 self-end pr-4">
+            &mdash; {quote.author}
+          </p>
+        )}
       </div>
     </div>
   )

@@ -3,6 +3,17 @@
 import { useEffect, useState, use } from 'react'
 import Link from 'next/link'
 import { fmtPhoneInput } from '../../../../lib/formatPhone'
+import Tabs from '../../../components/Tabs'
+import PatientDocumentsPanel from '../../../components/PatientDocumentsPanel'
+import MedicationList, { MedicationDTO, MedicationInput, PharmacyOption } from '../../../components/MedicationList'
+
+type DetailTab = 'demographics' | 'insurance' | 'medications' | 'documents'
+const DETAIL_TABS: { key: DetailTab; label: string }[] = [
+  { key: 'demographics', label: 'Demographics' },
+  { key: 'insurance', label: 'Insurance' },
+  { key: 'medications', label: 'Medications' },
+  { key: 'documents', label: 'Documents' },
+]
 
 type Patient = {
   id: string
@@ -139,6 +150,10 @@ export default function FamilyPatientDetailPage({ params }: { params: Promise<{ 
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
+  const [detailTab, setDetailTab] = useState<DetailTab>('demographics')
+  const [guardianUserId, setGuardianUserId] = useState('')
+  const [medications, setMedications] = useState<MedicationDTO[]>([])
+  const [pharmacies, setPharmacies] = useState<PharmacyOption[]>([])
 
   useEffect(() => {
     fetch(`/api/family/patients/${id}`, { credentials: 'include' })
@@ -148,7 +163,65 @@ export default function FamilyPatientDetailPage({ params }: { params: Promise<{ 
         setData(body.patient)
         setLoading(false)
       })
+    fetch('/api/me', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.id) setGuardianUserId(d.id) })
+      .catch(() => {})
+    fetch('/api/pharmacies', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d)) setPharmacies(d) })
   }, [id])
+
+  function loadMedications() {
+    fetch('/api/family/medications', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => {
+        const patient = (d.patients || []).find((p: any) => p.id === id)
+        setMedications(patient?.medications || [])
+      })
+  }
+
+  useEffect(() => { loadMedications() }, [id])
+
+  async function handleAddMedication(medData: MedicationInput) {
+    await fetch('/api/family/medications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ patientId: id, ...medData }),
+    })
+    loadMedications()
+  }
+
+  async function handleEditMedication(medId: string, medData: MedicationInput) {
+    await fetch('/api/family/medications', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ medId, ...medData }),
+    })
+    loadMedications()
+  }
+
+  async function handleConfirmRefill(medId: string, refillDate: string) {
+    await fetch('/api/family/medications/refill', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ medId, refillDate }),
+    })
+    loadMedications()
+  }
+
+  async function handleDeleteMedication(medId: string) {
+    await fetch('/api/family/medications', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ medId }),
+    })
+    loadMedications()
+  }
 
   function setField(k: string, v: any) {
     setData(d => ({ ...d, [k]: v }))
@@ -200,12 +273,21 @@ export default function FamilyPatientDetailPage({ params }: { params: Promise<{ 
           <h1 className="text-2xl font-bold text-[#2F3E4E]">
             {data.firstName} {data.lastName}
           </h1>
-          <span className="text-xs text-[#7A8F79] font-mono">{data.accountNumber}</span>
+          <span className="text-right">
+            <span className="block text-[10px] font-bold uppercase tracking-widest text-[#7A8F79]">Account #</span>
+            <span className="text-xl font-bold text-[#7A8F79] font-mono">{data.accountNumber}</span>
+          </span>
         </div>
         <p className="text-sm text-[#7A8F79] mb-6">View and update this patient&apos;s information.</p>
 
+        <div className="mb-4">
+          <Tabs tabs={DETAIL_TABS} active={detailTab} onChange={k => setDetailTab(k as DetailTab)} />
+        </div>
+
+        {(detailTab === 'demographics' || detailTab === 'insurance') && (
         <form onSubmit={handleSave} className="bg-white rounded-2xl shadow-sm p-6 space-y-5">
 
+          {detailTab === 'demographics' && (<>
           {/* Demographics */}
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-3 pb-1 border-b border-[#D9E1E8]">Demographics</p>
@@ -232,6 +314,27 @@ export default function FamilyPatientDetailPage({ params }: { params: Promise<{ 
             </div>
           </div>
 
+          {/* Address */}
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-3 pb-1 border-b border-[#D9E1E8]">Address</p>
+            <div className="space-y-3">
+              <div><label className={lbl}>Street</label><input value={data.address || ''} onChange={e => setField('address', e.target.value)} className={inp} /></div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-1"><label className={lbl}>City</label><input value={data.city || ''} onChange={e => setField('city', e.target.value)} className={inp} /></div>
+                <div>
+                  <label className={lbl}>State</label>
+                  <select value={data.state || ''} onChange={e => setField('state', e.target.value)} className={inp}>
+                    <option value="">ST</option>
+                    {US_STATES.map(s => <option key={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div><label className={lbl}>ZIP</label><input value={data.zip || ''} onChange={e => setField('zip', e.target.value)} className={inp} /></div>
+              </div>
+            </div>
+          </div>
+          </>)}
+
+          {detailTab === 'insurance' && (<>
           {/* Primary Insurance */}
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-3 pb-1 border-b border-[#D9E1E8]">Primary Insurance</p>
@@ -263,25 +366,6 @@ export default function FamilyPatientDetailPage({ params }: { params: Promise<{ 
 
           {/* Additional Coverage */}
           <AdditionalCoverage data={data} setField={setField} />
-
-          {/* Address */}
-          <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-3 pb-1 border-b border-[#D9E1E8]">Address</p>
-            <div className="space-y-3">
-              <div><label className={lbl}>Street</label><input value={data.address || ''} onChange={e => setField('address', e.target.value)} className={inp} /></div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="col-span-1"><label className={lbl}>City</label><input value={data.city || ''} onChange={e => setField('city', e.target.value)} className={inp} /></div>
-                <div>
-                  <label className={lbl}>State</label>
-                  <select value={data.state || ''} onChange={e => setField('state', e.target.value)} className={inp}>
-                    <option value="">ST</option>
-                    {US_STATES.map(s => <option key={s}>{s}</option>)}
-                  </select>
-                </div>
-                <div><label className={lbl}>ZIP</label><input value={data.zip || ''} onChange={e => setField('zip', e.target.value)} className={inp} /></div>
-              </div>
-            </div>
-          </div>
 
           {/* Clinical / Billing */}
           <div>
@@ -329,6 +413,7 @@ export default function FamilyPatientDetailPage({ params }: { params: Promise<{ 
               </div>
             </div>
           </div>
+          </>)}
 
           {error && <p className="text-red-500 text-sm bg-red-50 rounded-lg px-3 py-2">{error}</p>}
 
@@ -339,6 +424,32 @@ export default function FamilyPatientDetailPage({ params }: { params: Promise<{ 
             {saved && <span className="text-sm font-medium text-green-600">✓ Saved</span>}
           </div>
         </form>
+        )}
+
+        {detailTab === 'medications' && (
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <MedicationList
+              patientName={`${data.firstName} ${data.lastName}`}
+              medications={medications}
+              onAdd={handleAddMedication}
+              onEdit={handleEditMedication}
+              onConfirmRefill={handleConfirmRefill}
+              onDelete={handleDeleteMedication}
+              pharmacies={pharmacies}
+            />
+          </div>
+        )}
+
+        {detailTab === 'documents' && (
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <PatientDocumentsPanel
+              patientId={id}
+              basePath={`/api/family/patients/${id}/documents`}
+              canDeleteAny={false}
+              uploaderId={guardianUserId}
+            />
+          </div>
+        )}
       </div>
     </div>
   )

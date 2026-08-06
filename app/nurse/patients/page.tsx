@@ -4,7 +4,17 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import MedicationList, { MedicationDTO, MedicationInput, PharmacyOption } from '../../components/MedicationList'
 import GuardianInviteModal from '../../components/GuardianInviteModal'
+import Tabs from '../../components/Tabs'
+import PatientDocumentsPanel from '../../components/PatientDocumentsPanel'
 import { fmtPhoneInput } from '../../../lib/formatPhone'
+
+type DetailTab = 'demographics' | 'insurance' | 'medications' | 'documents'
+const DETAIL_TABS: { key: DetailTab; label: string }[] = [
+  { key: 'demographics', label: 'Demographics' },
+  { key: 'insurance', label: 'Insurance' },
+  { key: 'medications', label: 'Medications' },
+  { key: 'documents', label: 'Documents' },
+]
 
 type PatientPA = {
   id: string
@@ -227,6 +237,8 @@ export default function MyPatients() {
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null)
+  const [detailTab, setDetailTab] = useState<DetailTab>('demographics')
+  const [nurseUserId, setNurseUserId] = useState('')
 
   // PA history state
   const [showAddPA, setShowAddPA] = useState(false)
@@ -262,6 +274,7 @@ export default function MyPatients() {
     fetch('/api/nurse/profile', { credentials: 'include' })
       .then(r => r.json())
       .then(data => {
+        if (data.user?.id) setNurseUserId(data.user.id)
         if (!data.profile?.portalAgreementSignedAt && !data.profile?.isDemo) { router.replace('/nurse/agreement'); return }
         if (!data.onboardingComplete) { router.replace('/nurse/onboarding'); return }
         loadPatients()
@@ -485,7 +498,7 @@ export default function MyPatients() {
             {filtered.map(p => (
               <div
                 key={p.patientId}
-                onClick={() => { setSelectedPatient(p); setShowAddPA(false); setNewPA({ paNumber: '', paStartDate: '', paEndDate: '', highTech: false }); setPaError('') }}
+                onClick={() => { setSelectedPatient(p); setDetailTab('demographics'); setShowAddPA(false); setNewPA({ paNumber: '', paStartDate: '', paEndDate: '', highTech: false }); setPaError('') }}
                 className="grid grid-cols-[2fr_1fr_1fr_1fr_2fr_1.5fr] hover:bg-[#F4F6F5] cursor-pointer transition-colors"
               >
                 <div className="px-4 py-3">
@@ -550,9 +563,39 @@ export default function MyPatients() {
               </div>
             )}
 
+            {/* Care Team / Guardian Invite — always visible, not part of the tabs */}
+            <div className="flex items-center justify-between px-5 pt-4">
+              <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">Care Team</p>
+              <button onClick={() => setInvitingGuardian(true)} className="text-xs font-semibold text-[#7A8F79]">
+                + Invite Guardian
+              </button>
+            </div>
+            {invitingGuardian && (
+              <div className="px-5">
+                <GuardianInviteModal
+                  patientName={`${selectedPatient.merged.firstName} ${selectedPatient.merged.lastName}`}
+                  onClose={() => setInvitingGuardian(false)}
+                  onInvite={async data => {
+                    const res = await fetch(`/api/nurse/patients/${selectedPatient.patientId}/guardians`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      credentials: 'include',
+                      body: JSON.stringify(data),
+                    })
+                    const body = await res.json()
+                    return res.ok ? { ok: true } : { ok: false, error: body.error }
+                  }}
+                />
+              </div>
+            )}
+
+            <div className="px-5 pt-4">
+              <Tabs tabs={DETAIL_TABS} active={detailTab} onChange={k => setDetailTab(k as DetailTab)} />
+            </div>
+
             <div className="p-5 space-y-5 text-[#2F3E4E]">
 
-              {/* Demographics */}
+              {detailTab === 'demographics' && (
               <section>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] mb-2">Demographics</p>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
@@ -560,7 +603,9 @@ export default function MyPatients() {
                   <Field label="Address" value={[selectedPatient.merged.address, selectedPatient.merged.city, selectedPatient.merged.state, selectedPatient.merged.zip].filter(Boolean).join(', ')} />
                 </div>
               </section>
+              )}
 
+              {detailTab === 'insurance' && (<>
               {/* Primary Insurance */}
               <section>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] mb-2">Primary Insurance</p>
@@ -709,8 +754,9 @@ export default function MyPatients() {
                   </div>
                 )}
               </section>
+              </>)}
 
-              {/* Medications */}
+              {detailTab === 'medications' && (
               <section>
                 <MedicationList
                   patientName={`${selectedPatient.merged.firstName} ${selectedPatient.merged.lastName}`}
@@ -723,29 +769,17 @@ export default function MyPatients() {
                   pharmacies={pharmacies}
                 />
               </section>
+              )}
 
-              {/* Care Team / Guardian Invite */}
-              <section className="flex items-center justify-between pt-2 border-t border-[#D9E1E8]">
-                <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">Care Team</p>
-                <button onClick={() => setInvitingGuardian(true)} className="text-xs font-semibold text-[#7A8F79]">
-                  + Invite Guardian
-                </button>
-              </section>
-              {invitingGuardian && (
-                <GuardianInviteModal
-                  patientName={`${selectedPatient.merged.firstName} ${selectedPatient.merged.lastName}`}
-                  onClose={() => setInvitingGuardian(false)}
-                  onInvite={async data => {
-                    const res = await fetch(`/api/nurse/patients/${selectedPatient.patientId}/guardians`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      credentials: 'include',
-                      body: JSON.stringify(data),
-                    })
-                    const body = await res.json()
-                    return res.ok ? { ok: true } : { ok: false, error: body.error }
-                  }}
+              {detailTab === 'documents' && (
+              <section>
+                <PatientDocumentsPanel
+                  patientId={selectedPatient.patientId}
+                  basePath={`/api/nurse/patients/${selectedPatient.patientId}/documents`}
+                  canDeleteAny
+                  uploaderId={nurseUserId}
                 />
+              </section>
               )}
 
             </div>

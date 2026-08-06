@@ -2,11 +2,22 @@
 
 import { useState, useEffect } from 'react'
 import { fmtPhoneInput } from '../../../lib/formatPhone'
+import Tabs from '../../components/Tabs'
+import AppearanceControls from '../../components/AppearanceControls'
+import GuardianInviteModal from '../../components/GuardianInviteModal'
+
+type LinkedPatient = {
+  id: string
+  firstName: string
+  lastName: string
+  medicationRemindersOptIn: boolean
+}
 
 export default function FamilyProfilePage() {
   const [loading, setLoading] = useState(true)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [profileTab, setProfileTab] = useState<'profile' | 'settings'>('profile')
 
   // SMS phone number
   const [phone, setPhone] = useState('')
@@ -23,6 +34,38 @@ export default function FamilyProfilePage() {
   const [mfaMessage, setMfaMessage] = useState('')
   const [mfaLoading, setMfaLoading] = useState(false)
 
+  // Notification preferences
+  const [patients, setPatients] = useState<LinkedPatient[]>([])
+  const [notifSavingId, setNotifSavingId] = useState<string | null>(null)
+
+  // Change email
+  const [newEmail, setNewEmail] = useState('')
+  const [emailCurrentPassword, setEmailCurrentPassword] = useState('')
+  const [emailSaving, setEmailSaving] = useState(false)
+  const [emailMessage, setEmailMessage] = useState('')
+  const [emailMessageIsError, setEmailMessageIsError] = useState(false)
+
+  // Change password
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [passwordSaving, setPasswordSaving] = useState(false)
+  const [passwordMessage, setPasswordMessage] = useState('')
+  const [passwordMessageIsError, setPasswordMessageIsError] = useState(false)
+
+  // Settings tab — invite another guardian
+  const [invitingGuardian, setInvitingGuardian] = useState(false)
+  const [invitePatientId, setInvitePatientId] = useState('')
+
+  function loadPatients() {
+    fetch('/api/family/patients', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => {
+        const list = data.patients || []
+        setPatients(list)
+        if (list.length === 1) setInvitePatientId(list[0].id)
+      })
+  }
+
   useEffect(() => {
     fetch('/api/family/account', { credentials: 'include' })
       .then(r => r.json())
@@ -33,7 +76,61 @@ export default function FamilyProfilePage() {
         setMfaEnabled(data.mfaEnabled ?? false)
         setLoading(false)
       })
+    loadPatients()
   }, [])
+
+  async function toggleMedReminders(patientId: string, value: boolean) {
+    setNotifSavingId(patientId)
+    await fetch(`/api/family/patients/${patientId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ medicationRemindersOptIn: value }),
+    })
+    setPatients(ps => ps.map(p => p.id === patientId ? { ...p, medicationRemindersOptIn: value } : p))
+    setNotifSavingId(null)
+  }
+
+  async function saveEmail(e: React.FormEvent) {
+    e.preventDefault()
+    setEmailSaving(true); setEmailMessage(''); setEmailMessageIsError(false)
+    const res = await fetch('/api/family/update-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ newEmail, currentPassword: emailCurrentPassword }),
+    })
+    const data = await res.json()
+    setEmailSaving(false)
+    if (res.ok) {
+      setEmail(data.email)
+      setNewEmail(''); setEmailCurrentPassword('')
+      setEmailMessage('Email updated.')
+    } else {
+      setEmailMessage(data.error || 'Failed to update email.')
+      setEmailMessageIsError(true)
+    }
+  }
+
+  async function savePassword(e: React.FormEvent) {
+    e.preventDefault()
+    setPasswordSaving(true); setPasswordMessage(''); setPasswordMessageIsError(false)
+    const res = await fetch('/api/family/account', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    })
+    const data = await res.json()
+    setPasswordSaving(false)
+    if (res.ok) {
+      setCurrentPassword(''); setNewPassword('')
+      setPasswordMessage('Password updated.')
+    } else {
+      setPasswordMessage(data.error || 'Failed to update password.')
+      setPasswordMessageIsError(true)
+    }
+  }
 
   async function savePhone() {
     setPhoneSaving(true)
@@ -125,6 +222,15 @@ export default function FamilyProfilePage() {
         </h1>
         <p className="text-sm text-[#7A8F79] mb-6">Your account and security settings.</p>
 
+        <div className="mb-4">
+          <Tabs
+            tabs={[{ key: 'profile', label: 'Profile' }, { key: 'settings', label: 'Settings' }]}
+            active={profileTab}
+            onChange={k => setProfileTab(k as 'profile' | 'settings')}
+          />
+        </div>
+
+        {profileTab === 'profile' && (
         <div className="space-y-4">
 
           {/* Account info */}
@@ -289,7 +395,158 @@ export default function FamilyProfilePage() {
             gives you a backup if one service is temporarily unavailable.
           </p>
 
+          {/* Notification preferences */}
+          {patients.length > 0 && (
+            <div className="bg-white rounded-2xl shadow-sm p-6">
+              <p className="font-bold text-[#2F3E4E] text-sm mb-1">Notifications</p>
+              <p className="text-xs text-[#7A8F79] leading-relaxed mb-4">
+                Medication refill text reminders for your linked patients.
+              </p>
+              <div className="space-y-3">
+                {patients.map(p => (
+                  <label key={p.id} className="flex items-center justify-between cursor-pointer">
+                    <span className="text-sm text-[#2F3E4E]">{p.firstName} {p.lastName} — refill reminders</span>
+                    <input
+                      type="checkbox"
+                      checked={p.medicationRemindersOptIn}
+                      disabled={notifSavingId === p.id}
+                      onChange={e => toggleMedReminders(p.id, e.target.checked)}
+                      className="accent-[#7A8F79] w-4 h-4"
+                    />
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Change email */}
+          <form onSubmit={saveEmail} className="bg-white rounded-2xl shadow-sm p-6">
+            <p className="font-bold text-[#2F3E4E] text-sm mb-1">Change Email</p>
+            <p className="text-xs text-[#7A8F79] leading-relaxed mb-4">Update the email address you sign in with.</p>
+            <div className="space-y-2">
+              <input
+                type="email"
+                placeholder="New email address"
+                value={newEmail}
+                onChange={e => setNewEmail(e.target.value)}
+                required
+                className="w-full border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] placeholder-[#7A8F79]/50 focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+              />
+              <input
+                type="password"
+                placeholder="Current password"
+                value={emailCurrentPassword}
+                onChange={e => setEmailCurrentPassword(e.target.value)}
+                required
+                className="w-full border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] placeholder-[#7A8F79]/50 focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+              />
+              <button
+                type="submit"
+                disabled={emailSaving}
+                className="w-full bg-[#2F3E4E] text-white text-sm font-semibold py-2 rounded-xl hover:bg-[#7A8F79] transition disabled:opacity-50"
+              >
+                {emailSaving ? 'Saving…' : 'Update Email'}
+              </button>
+            </div>
+            {emailMessage && (
+              <p className={`text-xs mt-2 ${emailMessageIsError ? 'text-red-500' : 'text-green-600'}`}>{emailMessage}</p>
+            )}
+          </form>
+
+          {/* Change password */}
+          <form onSubmit={savePassword} className="bg-white rounded-2xl shadow-sm p-6">
+            <p className="font-bold text-[#2F3E4E] text-sm mb-1">Change Password</p>
+            <p className="text-xs text-[#7A8F79] leading-relaxed mb-4">Update your sign-in password.</p>
+            <div className="space-y-2">
+              <input
+                type="password"
+                placeholder="Current password"
+                value={currentPassword}
+                onChange={e => setCurrentPassword(e.target.value)}
+                required
+                className="w-full border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] placeholder-[#7A8F79]/50 focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+              />
+              <input
+                type="password"
+                placeholder="New password (min. 8 characters)"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                required
+                minLength={8}
+                className="w-full border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] placeholder-[#7A8F79]/50 focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+              />
+              <button
+                type="submit"
+                disabled={passwordSaving}
+                className="w-full bg-[#2F3E4E] text-white text-sm font-semibold py-2 rounded-xl hover:bg-[#7A8F79] transition disabled:opacity-50"
+              >
+                {passwordSaving ? 'Saving…' : 'Update Password'}
+              </button>
+            </div>
+            {passwordMessage && (
+              <p className={`text-xs mt-2 ${passwordMessageIsError ? 'text-red-500' : 'text-green-600'}`}>{passwordMessage}</p>
+            )}
+          </form>
+
         </div>
+        )}
+
+        {profileTab === 'settings' && (
+          <div className="space-y-6">
+
+            {/* Care Team — invite another guardian */}
+            <div className="bg-white rounded-2xl shadow-sm p-6">
+              <div className="flex items-center justify-between mb-1">
+                <p className="font-bold text-[#2F3E4E] text-sm">Care Team</p>
+              </div>
+              <p className="text-xs text-[#7A8F79] leading-relaxed mb-4">
+                Invite another family member to view and manage a linked patient&apos;s care.
+              </p>
+              {patients.length > 1 && (
+                <select
+                  value={invitePatientId}
+                  onChange={e => setInvitePatientId(e.target.value)}
+                  className="w-full border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] mb-3 focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                >
+                  <option value="">Select a patient…</option>
+                  {patients.map(p => (
+                    <option key={p.id} value={p.id}>{p.firstName} {p.lastName}</option>
+                  ))}
+                </select>
+              )}
+              <button
+                onClick={() => setInvitingGuardian(true)}
+                disabled={!invitePatientId}
+                className="w-full bg-[#2F3E4E] text-white text-sm font-semibold py-2 rounded-xl hover:bg-[#7A8F79] transition disabled:opacity-50"
+              >
+                + Invite Family Member
+              </button>
+              {invitingGuardian && invitePatientId && (
+                <GuardianInviteModal
+                  patientName={(() => {
+                    const p = patients.find(p => p.id === invitePatientId)
+                    return p ? `${p.firstName} ${p.lastName}` : ''
+                  })()}
+                  onClose={() => setInvitingGuardian(false)}
+                  onInvite={async data => {
+                    const res = await fetch(`/api/family/patients/${invitePatientId}/guardians`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      credentials: 'include',
+                      body: JSON.stringify(data),
+                    })
+                    const body = await res.json()
+                    return res.ok ? { ok: true } : { ok: false, error: body.error }
+                  }}
+                />
+              )}
+            </div>
+
+            {/* Visual customization — same controls nurse/admin have */}
+            <AppearanceControls />
+
+          </div>
+        )}
       </div>
     </div>
   )

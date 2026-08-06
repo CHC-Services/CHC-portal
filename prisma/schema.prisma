@@ -451,6 +451,26 @@ model NurseDocument {
   @@index([claimId])
 }
 
+model PatientDocument {
+  id               String   @id @default(uuid())
+  patientId        String
+  patient          Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  title            String
+  fileName         String
+  storageKey       String // S3 object key — never a public URL
+  category         String   @default("General")
+  fileSize         Int?
+  mimeType         String?
+  uploadedByUserId String
+  uploadedByRole   String // 'nurse' | 'admin' | 'guardian'
+  expiresAt        DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([patientId])
+  @@index([expiresAt])
+}
+
 model SystemSetting {
   key       String   @id
   value     String
@@ -772,6 +792,7 @@ model Patient {
   priorAuths    PatientPA[]
   medications   PatientMedication[]
   guardianLinks GuardianPatient[]
+  documents     PatientDocument[]
 }
 
 model PatientPA {

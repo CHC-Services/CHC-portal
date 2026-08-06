@@ -36,17 +36,19 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await params
 
-  if (!await verifyLinked(session.id, id)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const link = await (prisma.guardianPatient.findUnique as any)({
+    where: { userId_patientId: { userId: session.id, patientId: id } },
+  })
+  if (!link) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const patient = await (prisma.patient.findUnique as any)({ where: { id } })
   if (!patient) return NextResponse.json({ error: 'Patient not found' }, { status: 404 })
 
-  return NextResponse.json({ patient })
+  return NextResponse.json({ patient: { ...patient, medicationRemindersOptIn: link.medicationRemindersOptIn } })
 }
 
-// PATCH — update demographics/insurance/clinical fields
+// PATCH — update demographics/insurance/clinical fields, or this guardian's
+// own medicationRemindersOptIn flag (lives on GuardianPatient, not Patient)
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = auth(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -57,11 +59,22 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   const body = await req.json()
+
+  if ('medicationRemindersOptIn' in body) {
+    await (prisma.guardianPatient.update as any)({
+      where: { userId_patientId: { userId: session.id, patientId: id } },
+      data: { medicationRemindersOptIn: !!body.medicationRemindersOptIn },
+    })
+  }
+
   const data: Record<string, any> = {}
   for (const key of EDITABLE_FIELDS) {
     if (key in body) data[key] = body[key]
   }
 
-  const patient = await (prisma.patient.update as any)({ where: { id }, data })
+  const patient = Object.keys(data).length
+    ? await (prisma.patient.update as any)({ where: { id }, data })
+    : await (prisma.patient.findUnique as any)({ where: { id } })
+
   return NextResponse.json({ ok: true, patient })
 }

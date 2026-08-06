@@ -6,6 +6,16 @@ import { formalName } from '../../../lib/formatName'
 import { fmtPhoneInput } from '../../../lib/formatPhone'
 import MedicationList, { MedicationDTO, MedicationInput, PharmacyOption } from '../../components/MedicationList'
 import GuardianInviteModal from '../../components/GuardianInviteModal'
+import Tabs from '../../components/Tabs'
+import PatientDocumentsPanel from '../../components/PatientDocumentsPanel'
+
+type DetailTab = 'demographics' | 'insurance' | 'medications' | 'documents'
+const DETAIL_TABS: { key: DetailTab; label: string }[] = [
+  { key: 'demographics', label: 'Demographics' },
+  { key: 'insurance', label: 'Insurance' },
+  { key: 'medications', label: 'Medications' },
+  { key: 'documents', label: 'Documents' },
+]
 
 type PatientPA = {
   id: string
@@ -131,6 +141,8 @@ export default function AdPatients() {
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Patient | null>(null)
   const [editing, setEditing] = useState(false)
+  const [detailTab, setDetailTab] = useState<DetailTab>('demographics')
+  const [adminUserId, setAdminUserId] = useState('')
   const [editData, setEditData] = useState<Partial<Patient>>({})
   const [saving, setSaving] = useState(false)
   const [assignNurseId, setAssignNurseId] = useState('')
@@ -173,6 +185,10 @@ export default function AdPatients() {
 
   useEffect(() => {
     loadPatients()
+    fetch('/api/me', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.id) setAdminUserId(data.id) })
+      .catch(() => {})
     fetch('/api/admin/nurses', { credentials: 'include' })
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setNurses(data) })
@@ -184,6 +200,7 @@ export default function AdPatients() {
   function openPatient(p: Patient) {
     setSelected(p)
     setEditing(false)
+    setDetailTab('demographics')
     setEditData({ ...p })
     setMsg('')
     setAssignNurseId('')
@@ -632,9 +649,36 @@ export default function AdPatients() {
                 </div>
               </div>
 
+              {/* Care Team / Guardian Invite — always visible, not part of the tabs */}
+              <div className="flex items-center justify-between pt-2 border-t border-[#D9E1E8]">
+                <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">Care Team</p>
+                <button onClick={() => setInvitingGuardian(true)} className="text-xs font-semibold text-[#7A8F79]">
+                  + Invite Guardian
+                </button>
+              </div>
+              {invitingGuardian && (
+                <GuardianInviteModal
+                  patientName={`${selected.firstName} ${selected.lastName}`}
+                  onClose={() => setInvitingGuardian(false)}
+                  onInvite={async data => {
+                    const res = await fetch(`/api/admin/patients/${selected.id}/guardians`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      credentials: 'include',
+                      body: JSON.stringify(data),
+                    })
+                    const body = await res.json()
+                    return res.ok ? { ok: true } : { ok: false, error: body.error }
+                  }}
+                />
+              )}
+
+              <Tabs tabs={DETAIL_TABS} active={detailTab} onChange={k => setDetailTab(k as DetailTab)} />
+
               {/* ── Canonical data view / edit ── */}
-              {!editing ? (
+              {(detailTab === 'demographics' || detailTab === 'insurance') && (!editing ? (
                 <>
+                  {detailTab === 'demographics' && (<>
                   <Section title="Demographics">
                     <Row label="Name" value={`${selected.firstName} ${selected.lastName}`.toUpperCase()} />
                     <Row label="DOB" value={selected.dob} />
@@ -642,6 +686,14 @@ export default function AdPatients() {
                     <Row label="Phone" value={selected.phone} />
                     <Row label="High-Tech" value={selected.highTech ? 'Yes' : 'No'} />
                   </Section>
+                  {selected.address && (
+                    <Section title="Address">
+                      <Row label="Street" value={selected.address} />
+                      <Row label="City" value={`${selected.city || ''}, ${selected.state || ''} ${selected.zip || ''}`.trim()} />
+                    </Section>
+                  )}
+                  </>)}
+                  {detailTab === 'insurance' && (<>
                   <Section title="Primary Insurance">
                     <Row label="Type" value={selected.insuranceType} />
                     <Row label="Member ID" value={selected.insuranceId} />
@@ -663,12 +715,6 @@ export default function AdPatients() {
                       {selected.ins2NetworkStatus && <Row label="Network" value={selected.ins2NetworkStatus} />}
                       {selected.ins2HasCaseRate && <Row label="Case Rate" value={selected.ins2CaseRateAmount || 'Yes'} />}
                       {selected.ins2PolicyNotes && <Row label="Policy Notes" value={selected.ins2PolicyNotes} />}
-                    </Section>
-                  )}
-                  {selected.address && (
-                    <Section title="Address">
-                      <Row label="Street" value={selected.address} />
-                      <Row label="City" value={`${selected.city || ''}, ${selected.state || ''} ${selected.zip || ''}`.trim()} />
                     </Section>
                   )}
                   <Section title="Clinical">
@@ -750,46 +796,11 @@ export default function AdPatients() {
                       </div>
                     )}
                   </div>
-
-                  {/* Medications */}
-                  <div className="pt-2 border-t border-[#D9E1E8]">
-                    <MedicationList
-                      patientName={`${selected.firstName} ${selected.lastName}`}
-                      medications={selected.medications || []}
-                      onAdd={handleAddMedication}
-                      onEdit={handleEditMedication}
-                      onConfirmRefill={handleConfirmRefill}
-                      onDelete={handleDeleteMedication}
-                      pharmacies={pharmacies}
-                    />
-                  </div>
-
-                  {/* Care Team / Guardian Invite */}
-                  <div className="flex items-center justify-between pt-2 border-t border-[#D9E1E8]">
-                    <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">Care Team</p>
-                    <button onClick={() => setInvitingGuardian(true)} className="text-xs font-semibold text-[#7A8F79]">
-                      + Invite Guardian
-                    </button>
-                  </div>
-                  {invitingGuardian && (
-                    <GuardianInviteModal
-                      patientName={`${selected.firstName} ${selected.lastName}`}
-                      onClose={() => setInvitingGuardian(false)}
-                      onInvite={async data => {
-                        const res = await fetch(`/api/admin/patients/${selected.id}/guardians`, {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          credentials: 'include',
-                          body: JSON.stringify(data),
-                        })
-                        const body = await res.json()
-                        return res.ok ? { ok: true } : { ok: false, error: body.error }
-                      }}
-                    />
-                  )}
+                  </>)}
                 </>
               ) : (
                 <form onSubmit={handleSave} className="space-y-5">
+                  {detailTab === 'demographics' && (<>
                   <div>
                     <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-3 pb-1 border-b border-[#D9E1E8]">Demographics</p>
                     <div className="space-y-3">
@@ -815,6 +826,26 @@ export default function AdPatients() {
                     </div>
                   </div>
 
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-3 pb-1 border-b border-[#D9E1E8]">Address</p>
+                    <div className="space-y-3">
+                      <div><label className={lbl}>Street</label><input value={editData.address || ''} onChange={e => setField('address', e.target.value)} className={inp} /></div>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="col-span-1"><label className={lbl}>City</label><input value={editData.city || ''} onChange={e => setField('city', e.target.value)} className={inp} /></div>
+                        <div>
+                          <label className={lbl}>State</label>
+                          <select value={editData.state || ''} onChange={e => setField('state', e.target.value)} className={inp}>
+                            <option value="">ST</option>
+                            {US_STATES.map(s => <option key={s}>{s}</option>)}
+                          </select>
+                        </div>
+                        <div><label className={lbl}>ZIP</label><input value={editData.zip || ''} onChange={e => setField('zip', e.target.value)} className={inp} /></div>
+                      </div>
+                    </div>
+                  </div>
+                  </>)}
+
+                  {detailTab === 'insurance' && (<>
                   <div>
                     <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-3 pb-1 border-b border-[#D9E1E8]">Primary Insurance</p>
                     <div className="space-y-3">
@@ -845,24 +876,6 @@ export default function AdPatients() {
 
                   {/* ── Additional Coverage ── */}
                   <AdditionalInsuranceEdit editData={editData} setField={setField} inp={inp} lbl={lbl} />
-
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-3 pb-1 border-b border-[#D9E1E8]">Address</p>
-                    <div className="space-y-3">
-                      <div><label className={lbl}>Street</label><input value={editData.address || ''} onChange={e => setField('address', e.target.value)} className={inp} /></div>
-                      <div className="grid grid-cols-3 gap-3">
-                        <div className="col-span-1"><label className={lbl}>City</label><input value={editData.city || ''} onChange={e => setField('city', e.target.value)} className={inp} /></div>
-                        <div>
-                          <label className={lbl}>State</label>
-                          <select value={editData.state || ''} onChange={e => setField('state', e.target.value)} className={inp}>
-                            <option value="">ST</option>
-                            {US_STATES.map(s => <option key={s}>{s}</option>)}
-                          </select>
-                        </div>
-                        <div><label className={lbl}>ZIP</label><input value={editData.zip || ''} onChange={e => setField('zip', e.target.value)} className={inp} /></div>
-                      </div>
-                    </div>
-                  </div>
 
                   <div>
                     <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-3 pb-1 border-b border-[#D9E1E8]">Clinical</p>
@@ -902,6 +915,7 @@ export default function AdPatients() {
                       </div>
                     </div>
                   </div>
+                  </>)}
 
                   <div className="flex gap-2">
                     <button type="submit" disabled={saving} className="flex-1 bg-[#2F3E4E] text-white py-2 rounded-xl font-semibold hover:bg-[#7A8F79] transition disabled:opacity-50">
@@ -912,6 +926,31 @@ export default function AdPatients() {
                     </button>
                   </div>
                 </form>
+              ))}
+
+              {detailTab === 'medications' && (
+                <div>
+                  <MedicationList
+                    patientName={`${selected.firstName} ${selected.lastName}`}
+                    medications={selected.medications || []}
+                    onAdd={handleAddMedication}
+                    onEdit={handleEditMedication}
+                    onConfirmRefill={handleConfirmRefill}
+                    onDelete={handleDeleteMedication}
+                    pharmacies={pharmacies}
+                  />
+                </div>
+              )}
+
+              {detailTab === 'documents' && (
+                <div>
+                  <PatientDocumentsPanel
+                    patientId={selected.id}
+                    basePath={`/api/admin/patients/${selected.id}/documents`}
+                    canDeleteAny
+                    uploaderId={adminUserId}
+                  />
+                </div>
               )}
             </div>
           </div>

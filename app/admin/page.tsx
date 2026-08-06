@@ -3,7 +3,18 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import AdminNav from '../components/AdminNav'
+import Tabs from '../components/Tabs'
+import AccountsTable, { Account } from '../components/AccountsTable'
 import { fmtPhoneInput } from '../../lib/formatPhone'
+
+type AccountsTab = 'all' | 'providers' | 'guardians' | 'admin' | 'test'
+const ACCOUNTS_TABS: { key: AccountsTab; label: string }[] = [
+  { key: 'all', label: 'All Accounts' },
+  { key: 'providers', label: 'Providers' },
+  { key: 'guardians', label: 'Guardians/Family' },
+  { key: 'admin', label: 'Admin' },
+  { key: 'test', label: 'Test Users' },
+]
 
 type TimeEntry = {
   id: string
@@ -357,6 +368,9 @@ export default function AdminDashboard() {
   const [nurses, setNurses] = useState<Nurse[]>([])
   const [loadingNurses, setLoadingNurses] = useState(true)
   const [formOpen, setFormOpen] = useState(false)
+  const [accountsTab, setAccountsTab] = useState<AccountsTab>('providers')
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [loadingAccounts, setLoadingAccounts] = useState(true)
 
   function loadNurses() {
     fetch('/api/admin/nurses', { credentials: 'include' })
@@ -366,6 +380,13 @@ export default function AdminDashboard() {
   }
 
   useEffect(() => { loadNurses() }, [])
+
+  useEffect(() => {
+    fetch('/api/admin/accounts', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data.accounts)) setAccounts(data.accounts) })
+      .finally(() => setLoadingAccounts(false))
+  }, [])
 
   async function createNurse(e: React.FormEvent) {
     e.preventDefault()
@@ -461,7 +482,7 @@ export default function AdminDashboard() {
       {/* Header */}
       <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-3xl font-bold text-[#2F3E4E]"><span className="text-[#7A8F79] italic">ad</span>Roster</h1>
+          <h1 className="text-3xl font-bold text-[#2F3E4E]"><span className="text-[#7A8F79] italic">ad</span>Accounts</h1>
           <p className="text-sm text-[#7A8F79] mt-1">
             {now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
@@ -501,7 +522,7 @@ export default function AdminDashboard() {
           <span className="text-xs text-[#7A8F79]">Events, deadlines & reminders</span>
         </Link>
         <button
-          onClick={() => { setFormOpen(!formOpen); setMessage('') }}
+          onClick={() => { setFormOpen(!formOpen); setMessage(''); setAccountsTab('providers') }}
           className="bg-[#2F3E4E] text-white rounded-xl shadow-sm p-5 flex flex-col gap-2 hover:bg-[#3d5166] transition text-left"
         >
           <span className="text-2xl">➕</span>
@@ -534,6 +555,16 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      <div className="mb-6">
+        <Tabs tabs={ACCOUNTS_TABS} active={accountsTab} onChange={k => setAccountsTab(k as AccountsTab)} />
+      </div>
+
+      {accountsTab === 'all' && <AccountsTable accounts={accounts} loading={loadingAccounts} />}
+      {accountsTab === 'guardians' && <AccountsTable accounts={accounts.filter(a => a.role === 'guardian')} loading={loadingAccounts} />}
+      {accountsTab === 'admin' && <AccountsTable accounts={accounts.filter(a => a.role === 'admin')} loading={loadingAccounts} />}
+      {accountsTab === 'test' && <AccountsTable accounts={accounts.filter(a => a.isDemo)} loading={loadingAccounts} />}
+
+      {accountsTab === 'providers' && (<>
       {/* Create nurse form (collapsible) */}
       {formOpen && (
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6 max-w-lg">
@@ -648,6 +679,7 @@ export default function AdminDashboard() {
           </details>
         )}
       </div>
+      </>)}
 
     </div>
   )

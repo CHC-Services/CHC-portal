@@ -20,6 +20,6 @@ export async function GET(req: Request) {
     include: { patient: true },
   })
 
-  const patients = links.map((l: any) => l.patient)
+  const patients = links.map((l: any) => ({ ...l.patient, medicationRemindersOptIn: l.medicationRemindersOptIn }))
   return NextResponse.json({ patients })
 }

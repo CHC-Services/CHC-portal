@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import bcrypt from 'bcrypt'
 import { prisma } from '../../../../../../lib/prisma'
 import { verifyToken } from '../../../../../../lib/auth'
-import { sendWelcomeEmail } from '../../../../../../lib/sendEmail'
+import { sendGuardianWelcomeEmail } from '../../../../../../lib/sendEmail'
 import { GUARDIAN_RELATIONSHIPS } from '../../../../../../lib/guardianRelationship'
 
 function adminAuth(req: Request) {
@@ -67,7 +67,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     data: { userId: user.id, patientId: id, relationship, invitedByUserId: session.id, hipaaAcknowledgedAt },
   })
 
-  const sent = await sendWelcomeEmail({
+  const sent = await sendGuardianWelcomeEmail({
     to: user.email,
     displayName: name.trim(),
     email: user.email,

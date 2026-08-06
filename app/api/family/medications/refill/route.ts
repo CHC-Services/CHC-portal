@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../lib/prisma'
 import { verifyToken } from '../../../../../lib/auth'
+import { flattenMedication } from '../../../../../lib/pharmacyLookup'
 
 function auth(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -40,7 +41,8 @@ export async function PATCH(req: Request) {
       reminderSentAt: null,
       refillsRemaining: existing.refillsRemaining != null ? Math.max(0, existing.refillsRemaining - 1) : null,
     },
+    include: { pharmacy: true },
   })
 
-  return NextResponse.json({ ok: true, medication })
+  return NextResponse.json({ ok: true, medication: flattenMedication(medication) })
 }

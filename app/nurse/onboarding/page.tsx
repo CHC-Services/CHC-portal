@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { fmtPhoneInput } from '../../../lib/formatPhone'
 
 type TermType = 'short_term' | 'long_term'
 type CarrierType = 'commercial' | 'medicaid' | 'dual'
@@ -701,7 +702,7 @@ export default function OnboardingPage() {
                   <input
                     type="tel"
                     value={enrollInfo.phone}
-                    onChange={e => setInfo({ phone: e.target.value })}
+                    onChange={e => setInfo({ phone: fmtPhoneInput(e.target.value) })}
                     className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
                   />
                 </div>

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { fmtPhoneInput } from '../../lib/formatPhone'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -158,7 +159,7 @@ export default function SignupPage() {
               type="tel"
               placeholder="Phone number"
               value={phone}
-              onChange={e => setPhone(e.target.value)}
+              onChange={e => setPhone(fmtPhoneInput(e.target.value))}
               required
               className="w-full border border-[#D9E1E8] p-3 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79] bg-white focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
             />

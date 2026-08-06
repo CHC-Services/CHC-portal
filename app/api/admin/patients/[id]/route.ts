@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../lib/prisma'
 import { verifyToken } from '../../../../../lib/auth'
+import { flattenMedication } from '../../../../../lib/pharmacyLookup'
 
 function adminAuth(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -22,7 +23,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         },
       },
       priorAuths: { orderBy: [{ paStartDate: 'desc' }, { createdAt: 'desc' }] },
-      medications: { orderBy: { createdAt: 'desc' } },
+      medications: { orderBy: { createdAt: 'desc' }, include: { pharmacy: true } },
       timeEntries: {
         orderBy: { workDate: 'desc' },
         take: 50,
@@ -35,7 +36,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   if (!patient) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  return NextResponse.json({ patient })
+  return NextResponse.json({ patient: { ...patient, medications: (patient.medications || []).map(flattenMedication) } })
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../../lib/prisma'
 import { verifyToken } from '../../../../../../lib/auth'
+import { resolvePharmacy, flattenMedication } from '../../../../../../lib/pharmacyLookup'
 
 function adminAuth(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -16,9 +17,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params
 
   const body = await req.json()
-  const { medicationName, dose, frequency, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyPhone } = body
+  const { medicationName, dose, frequency, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone } = body
   if (!medicationName?.trim()) return NextResponse.json({ error: 'Medication name required' }, { status: 400 })
   if (!lastFillDate) return NextResponse.json({ error: 'Last fill date required' }, { status: 400 })
+
+  const pharmacyId = await resolvePharmacy({ name: pharmacyName, address: pharmacyAddress, phone: pharmacyPhone })
 
   const medication = await (prisma.patientMedication.create as any)({
     data: {
@@ -30,14 +33,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       lastFillDate: new Date(lastFillDate),
       rxNumber: rxNumber || null,
       refillsRemaining: refillsRemaining != null && refillsRemaining !== '' ? parseInt(refillsRemaining, 10) : null,
-      pharmacyName: pharmacyName || null,
-      pharmacyPhone: pharmacyPhone || null,
+      pharmacyId,
       createdByUserId: session.id,
       createdByRole: session.role,
     },
+    include: { pharmacy: true },
   })
 
-  return NextResponse.json({ ok: true, medication })
+  return NextResponse.json({ ok: true, medication: flattenMedication(medication) })
 }
 
 // PATCH — edit an existing medication (body: { medId, ...fields })
@@ -45,7 +48,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!adminAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await params
 
-  const { medId, medicationName, dose, frequency, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyPhone, active } = await req.json()
+  const { medId, medicationName, dose, frequency, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone, active } = await req.json()
   if (!medId) return NextResponse.json({ error: 'medId required' }, { status: 400 })
 
   const data: Record<string, any> = {}
@@ -56,8 +59,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (lastFillDate !== undefined) data.lastFillDate = new Date(lastFillDate)
   if (rxNumber !== undefined) data.rxNumber = rxNumber || null
   if (refillsRemaining !== undefined) data.refillsRemaining = refillsRemaining != null && refillsRemaining !== '' ? parseInt(refillsRemaining, 10) : null
-  if (pharmacyName !== undefined) data.pharmacyName = pharmacyName || null
-  if (pharmacyPhone !== undefined) data.pharmacyPhone = pharmacyPhone || null
+  if (pharmacyName !== undefined) data.pharmacyId = await resolvePharmacy({ name: pharmacyName, address: pharmacyAddress, phone: pharmacyPhone })
   if (active !== undefined) data.active = !!active
 
   const { count } = await (prisma.patientMedication.updateMany as any)({
@@ -66,8 +68,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   })
   if (count === 0) return NextResponse.json({ error: 'Medication not found' }, { status: 404 })
 
-  const medication = await (prisma.patientMedication.findUnique as any)({ where: { id: medId } })
-  return NextResponse.json({ ok: true, medication })
+  const medication = await (prisma.patientMedication.findUnique as any)({ where: { id: medId }, include: { pharmacy: true } })
+  return NextResponse.json({ ok: true, medication: flattenMedication(medication) })
 }
 
 // DELETE — remove a medication (body: { medId })

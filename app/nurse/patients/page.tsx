@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import MedicationList, { MedicationDTO, MedicationInput } from '../../components/MedicationList'
+import MedicationList, { MedicationDTO, MedicationInput, PharmacyOption } from '../../components/MedicationList'
+import GuardianInviteModal from '../../components/GuardianInviteModal'
+import { fmtPhoneInput } from '../../../lib/formatPhone'
 
 type PatientPA = {
   id: string
@@ -246,6 +248,9 @@ export default function MyPatients() {
     setNewPt(p => ({ ...p, [field]: value }))
   }
 
+  const [pharmacies, setPharmacies] = useState<PharmacyOption[]>([])
+  const [invitingGuardian, setInvitingGuardian] = useState(false)
+
   function loadPatients() {
     return fetch('/api/nurse/patients', { credentials: 'include' })
       .then(r => r.json())
@@ -261,6 +266,9 @@ export default function MyPatients() {
         if (!data.onboardingComplete) { router.replace('/nurse/onboarding'); return }
         loadPatients()
       })
+    fetch('/api/pharmacies', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setPharmacies(data) })
   }, [router])
 
   function openModal() {
@@ -712,8 +720,33 @@ export default function MyPatients() {
                   onConfirmRefill={handleConfirmRefill}
                   onDelete={handleDeleteMedication}
                   readOnly={selectedPatient.merged.isLocked}
+                  pharmacies={pharmacies}
                 />
               </section>
+
+              {/* Care Team / Guardian Invite */}
+              <section className="flex items-center justify-between pt-2 border-t border-[#D9E1E8]">
+                <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">Care Team</p>
+                <button onClick={() => setInvitingGuardian(true)} className="text-xs font-semibold text-[#7A8F79]">
+                  + Invite Guardian
+                </button>
+              </section>
+              {invitingGuardian && (
+                <GuardianInviteModal
+                  patientName={`${selectedPatient.merged.firstName} ${selectedPatient.merged.lastName}`}
+                  onClose={() => setInvitingGuardian(false)}
+                  onInvite={async data => {
+                    const res = await fetch(`/api/nurse/patients/${selectedPatient.patientId}/guardians`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      credentials: 'include',
+                      body: JSON.stringify(data),
+                    })
+                    const body = await res.json()
+                    return res.ok ? { ok: true } : { ok: false, error: body.error }
+                  }}
+                />
+              )}
 
             </div>
           </div>
@@ -848,7 +881,7 @@ export default function MyPatients() {
                       </div>
                       <div>
                         <label className={lbl}>Phone <span className="normal-case font-normal text-[#aab]">(optional)</span></label>
-                        <input value={newPt.phone} onChange={e => setPt('phone', e.target.value)} placeholder="(555) 000-0000" className={inp} />
+                        <input value={newPt.phone} onChange={e => setPt('phone', fmtPhoneInput(e.target.value))} placeholder="(555) 000-0000" className={inp} />
                       </div>
                     </div>
                   </div>

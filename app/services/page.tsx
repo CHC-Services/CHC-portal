@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { fmtPhoneInput } from '../../lib/formatPhone'
 
 export default function BillingPage() {
   const [form, setForm] = useState({
@@ -146,7 +147,7 @@ export default function BillingPage() {
                   <input
                     type="tel"
                     value={form.phone}
-                    onChange={e => setForm({ ...form, phone: e.target.value })}
+                    onChange={e => setForm({ ...form, phone: fmtPhoneInput(e.target.value) })}
                     className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#7A8F79]"
                   />
                 </div>

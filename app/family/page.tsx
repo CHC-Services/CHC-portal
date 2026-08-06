@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import MedicationList, { MedicationDTO, MedicationInput } from '../components/MedicationList'
+import MedicationList, { MedicationDTO, MedicationInput, PharmacyOption } from '../components/MedicationList'
 
 type FamilyPatient = {
   id: string
@@ -13,6 +13,7 @@ type FamilyPatient = {
 export default function FamilyPage() {
   const [patients, setPatients] = useState<FamilyPatient[]>([])
   const [loading, setLoading] = useState(true)
+  const [pharmacies, setPharmacies] = useState<PharmacyOption[]>([])
 
   function load() {
     fetch('/api/family/medications', { credentials: 'include' })
@@ -23,7 +24,12 @@ export default function FamilyPage() {
       })
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+    fetch('/api/pharmacies', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setPharmacies(data) })
+  }, [])
 
   async function handleAdd(patientId: string, data: MedicationInput) {
     await fetch('/api/family/medications', {
@@ -91,6 +97,7 @@ export default function FamilyPage() {
                 onEdit={handleEdit}
                 onConfirmRefill={handleConfirmRefill}
                 onDelete={handleDelete}
+                pharmacies={pharmacies}
               />
             ))}
           </div>

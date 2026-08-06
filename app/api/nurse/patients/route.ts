@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../../lib/prisma'
 import { verifyToken } from '../../../../lib/auth'
+import { flattenMedication } from '../../../../lib/pharmacyLookup'
 
 function auth(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -25,7 +26,7 @@ export async function GET(req: Request) {
       patient: {
         include: {
           priorAuths: { orderBy: [{ paStartDate: 'desc' }, { createdAt: 'desc' }] },
-          medications: { orderBy: { createdAt: 'desc' } },
+          medications: { orderBy: { createdAt: 'desc' }, include: { pharmacy: true } },
         },
       },
     },
@@ -40,7 +41,7 @@ export async function GET(req: Request) {
       overrides: link.overrides,
       merged: { ...patientFields, ...(link.overrides || {}) },
       priorAuths: priorAuths || [],
-      medications: medications || [],
+      medications: (medications || []).map(flattenMedication),
     }
   })
 

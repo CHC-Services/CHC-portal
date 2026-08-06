@@ -24,6 +24,7 @@ export type MedicationDTO = {
   rxNumber: string | null
   refillsRemaining: number | null
   pharmacyName: string | null
+  pharmacyAddress: string | null
   pharmacyPhone: string | null
   active: boolean
 }
@@ -37,7 +38,15 @@ export type MedicationInput = {
   rxNumber: string
   refillsRemaining: string
   pharmacyName: string
+  pharmacyAddress: string
   pharmacyPhone: string
+}
+
+export type PharmacyOption = {
+  id: string
+  name: string
+  address: string | null
+  phone: string | null
 }
 
 type MedicationListProps = {
@@ -48,11 +57,12 @@ type MedicationListProps = {
   onConfirmRefill: (id: string, refillDate: string) => Promise<void>
   onDelete: (id: string) => Promise<void>
   readOnly?: boolean
+  pharmacies?: PharmacyOption[]
 }
 
 const emptyForm: MedicationInput = {
   medicationName: '', dose: '', frequency: '', daySupply: '30',
-  lastFillDate: '', rxNumber: '', refillsRemaining: '', pharmacyName: '', pharmacyPhone: '',
+  lastFillDate: '', rxNumber: '', refillsRemaining: '', pharmacyName: '', pharmacyAddress: '', pharmacyPhone: '',
 }
 
 function todayStr(): string {
@@ -69,6 +79,17 @@ function fmtDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
 }
 
+// Formats any phone input as (XXX) XXX-XXXX, live, regardless of how it's typed.
+// Inlined (rather than imported) to keep this component's no-site-imports rule intact.
+function fmtPhoneInput(val: string): string {
+  const d = val.replace(/\D/g, '')
+  const digits = d.length === 11 && d[0] === '1' ? d.slice(1) : d
+  if (digits.length === 0) return ''
+  if (digits.length <= 3) return `(${digits}`
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`
+}
+
 function toFormValues(m: MedicationDTO): MedicationInput {
   return {
     medicationName: m.medicationName,
@@ -79,23 +100,57 @@ function toFormValues(m: MedicationDTO): MedicationInput {
     rxNumber: m.rxNumber || '',
     refillsRemaining: m.refillsRemaining != null ? String(m.refillsRemaining) : '',
     pharmacyName: m.pharmacyName || '',
+    pharmacyAddress: m.pharmacyAddress || '',
     pharmacyPhone: m.pharmacyPhone || '',
   }
 }
 
-function MedicationForm({ initial, onSubmit, onCancel, submitLabel }: {
+function MedicationForm({ initial, onSubmit, onCancel, submitLabel, pharmacies = [] }: {
   initial: MedicationInput
   onSubmit: (data: MedicationInput) => Promise<void>
   onCancel: () => void
   submitLabel: string
+  pharmacies?: PharmacyOption[]
 }) {
   const [form, setForm] = useState(initial)
   const [saving, setSaving] = useState(false)
+  const [pharmacySuggestions, setPharmacySuggestions] = useState<PharmacyOption[]>([])
+  const [activeSuggestionIdx, setActiveSuggestionIdx] = useState(0)
   const set = (k: keyof MedicationInput) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }))
 
   const inputCls = 'w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2'
   const inputStyle = { borderColor: theme.bg, color: theme.navy } as React.CSSProperties
+
+  function handlePharmacyNameChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const value = e.target.value
+    setForm(f => ({ ...f, pharmacyName: value }))
+    const q = value.trim().toLowerCase()
+    if (!q) { setPharmacySuggestions([]); return }
+    setPharmacySuggestions(pharmacies.filter(p => p.name.toLowerCase().includes(q)).slice(0, 6))
+    setActiveSuggestionIdx(0)
+  }
+
+  function selectPharmacy(p: PharmacyOption) {
+    setForm(f => ({ ...f, pharmacyName: p.name, pharmacyAddress: p.address || '', pharmacyPhone: p.phone ? fmtPhoneInput(p.phone) : '' }))
+    setPharmacySuggestions([])
+  }
+
+  function handlePharmacyKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (pharmacySuggestions.length === 0) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setActiveSuggestionIdx(i => Math.min(i + 1, pharmacySuggestions.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveSuggestionIdx(i => Math.max(i - 1, 0))
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      selectPharmacy(pharmacySuggestions[activeSuggestionIdx] || pharmacySuggestions[0])
+    } else if (e.key === 'Escape') {
+      setPharmacySuggestions([])
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -126,10 +181,37 @@ function MedicationForm({ initial, onSubmit, onCancel, submitLabel }: {
         <input placeholder="RX #" value={form.rxNumber} onChange={set('rxNumber')} className={inputCls} style={inputStyle} />
         <input type="number" min="0" placeholder="Refills remaining" value={form.refillsRemaining} onChange={set('refillsRemaining')} className={inputCls} style={inputStyle} />
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <input placeholder="Pharmacy name" value={form.pharmacyName} onChange={set('pharmacyName')} className={inputCls} style={inputStyle} />
-        <input placeholder="Pharmacy phone" value={form.pharmacyPhone} onChange={set('pharmacyPhone')} className={inputCls} style={inputStyle} />
+      <div className="relative">
+        <input
+          placeholder="Pharmacy name"
+          value={form.pharmacyName}
+          onChange={handlePharmacyNameChange}
+          onKeyDown={handlePharmacyKeyDown}
+          onBlur={() => setTimeout(() => setPharmacySuggestions([]), 100)}
+          autoComplete="off"
+          className={inputCls}
+          style={inputStyle}
+        />
+        {pharmacySuggestions.length > 0 && (
+          <div className="absolute z-10 mt-1 w-full bg-white border rounded-xl shadow-lg overflow-hidden" style={{ borderColor: theme.bg }}>
+            {pharmacySuggestions.map((p, i) => (
+              <button
+                key={p.id}
+                type="button"
+                onMouseDown={() => selectPharmacy(p)}
+                onMouseEnter={() => setActiveSuggestionIdx(i)}
+                className="block w-full text-left px-3 py-2 text-sm"
+                style={i === activeSuggestionIdx ? { background: theme.navy, color: 'white' } : { color: theme.navy }}
+              >
+                <span className="font-semibold">{p.name}</span>
+                {p.address && <span className="block text-xs opacity-80">{p.address}</span>}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
+      <input placeholder="Pharmacy address" value={form.pharmacyAddress} onChange={set('pharmacyAddress')} className={inputCls} style={inputStyle} />
+      <input placeholder="Pharmacy phone" value={form.pharmacyPhone} onChange={e => setForm(f => ({ ...f, pharmacyPhone: fmtPhoneInput(e.target.value) }))} className={inputCls} style={inputStyle} />
       <div className="flex gap-2 pt-1">
         <button type="button" onClick={onCancel} className="flex-1 border rounded-lg py-2 text-sm font-semibold" style={{ borderColor: theme.bg, color: theme.sage }}>
           Cancel
@@ -183,12 +265,13 @@ function RefillButton({ med, onConfirm, style }: { med: MedicationDTO; onConfirm
   )
 }
 
-function MedicationCard({ med, onEdit, onConfirmRefill, onDelete, readOnly }: {
+function MedicationCard({ med, onEdit, onConfirmRefill, onDelete, readOnly, pharmacies }: {
   med: MedicationDTO
   onEdit: (id: string, data: MedicationInput) => Promise<void>
   onConfirmRefill: (id: string, refillDate: string) => Promise<void>
   onDelete: (id: string) => Promise<void>
   readOnly?: boolean
+  pharmacies?: PharmacyOption[]
 }) {
   const [editing, setEditing] = useState(false)
   const dueDate = addDaysStr(med.lastFillDate.slice(0, 10), med.daySupply)
@@ -200,6 +283,7 @@ function MedicationCard({ med, onEdit, onConfirmRefill, onDelete, readOnly }: {
         submitLabel="Save Changes"
         onCancel={() => setEditing(false)}
         onSubmit={async data => { await onEdit(med.id, data); setEditing(false) }}
+        pharmacies={pharmacies}
       />
     )
   }
@@ -242,10 +326,11 @@ function MedicationCard({ med, onEdit, onConfirmRefill, onDelete, readOnly }: {
             <p className="font-semibold">{med.refillsRemaining}</p>
           </div>
         )}
-        {(med.pharmacyName || med.pharmacyPhone) && (
+        {(med.pharmacyName || med.pharmacyAddress || med.pharmacyPhone) && (
           <div className="col-span-2">
             <p className="uppercase tracking-wide text-[10px]" style={{ color: theme.sage }}>Pharmacy</p>
             <p className="font-semibold">{[med.pharmacyName, med.pharmacyPhone].filter(Boolean).join(' · ')}</p>
+            {med.pharmacyAddress && <p className="opacity-80">{med.pharmacyAddress}</p>}
           </div>
         )}
       </div>
@@ -257,7 +342,7 @@ function MedicationCard({ med, onEdit, onConfirmRefill, onDelete, readOnly }: {
   )
 }
 
-export default function MedicationList({ patientName, medications, onAdd, onEdit, onConfirmRefill, onDelete, readOnly }: MedicationListProps) {
+export default function MedicationList({ patientName, medications, onAdd, onEdit, onConfirmRefill, onDelete, readOnly, pharmacies }: MedicationListProps) {
   const [adding, setAdding] = useState(false)
 
   return (
@@ -279,6 +364,7 @@ export default function MedicationList({ patientName, medications, onAdd, onEdit
           submitLabel="Add Medication"
           onCancel={() => setAdding(false)}
           onSubmit={async data => { await onAdd(data); setAdding(false) }}
+          pharmacies={pharmacies}
         />
       )}
 
@@ -294,6 +380,7 @@ export default function MedicationList({ patientName, medications, onAdd, onEdit
               onConfirmRefill={onConfirmRefill}
               onDelete={onDelete}
               readOnly={readOnly}
+              pharmacies={pharmacies}
             />
           ))}
         </div>

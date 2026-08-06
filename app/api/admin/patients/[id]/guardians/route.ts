@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt'
 import { prisma } from '../../../../../../lib/prisma'
 import { verifyToken } from '../../../../../../lib/auth'
 import { sendWelcomeEmail } from '../../../../../../lib/sendEmail'
+import { GUARDIAN_RELATIONSHIPS } from '../../../../../../lib/guardianRelationship'
 
 function adminAuth(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -11,18 +12,28 @@ function adminAuth(req: Request) {
   return session?.role === 'admin' ? session : null
 }
 
-// POST — invite a family member as a guardian for this patient (body: { name, email, phone })
+// POST — invite a family member as a guardian for this patient
+// (body: { name, email, phone, relationship, hipaaAcknowledged })
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!adminAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const session = adminAuth(req)
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await params
 
-  const { name, email, phone } = await req.json()
+  const { name, email, phone, relationship, hipaaAcknowledged } = await req.json()
   if (!name?.trim() || !email?.trim()) {
     return NextResponse.json({ error: 'Name and email required' }, { status: 400 })
+  }
+  if (!GUARDIAN_RELATIONSHIPS.includes(relationship)) {
+    return NextResponse.json({ error: 'A valid relationship type is required' }, { status: 400 })
+  }
+  if (!hipaaAcknowledged) {
+    return NextResponse.json({ error: 'HIPAA notice must be acknowledged before inviting a guardian' }, { status: 400 })
   }
 
   const patient = await (prisma.patient.findUnique as any)({ where: { id }, select: { id: true } })
   if (!patient) return NextResponse.json({ error: 'Patient not found' }, { status: 404 })
+
+  const hipaaAcknowledgedAt = new Date()
 
   const existing = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } })
   if (existing) {
@@ -32,8 +43,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
     await (prisma.guardianPatient.upsert as any)({
       where: { userId_patientId: { userId: existing.id, patientId: id } },
-      create: { userId: existing.id, patientId: id },
-      update: {},
+      create: { userId: existing.id, patientId: id, relationship, invitedByUserId: session.id, hipaaAcknowledgedAt },
+      update: { relationship, invitedByUserId: session.id, hipaaAcknowledgedAt },
     })
     return NextResponse.json({ ok: true, email: existing.email, linkedExisting: true })
   }
@@ -53,7 +64,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   })
 
   await (prisma.guardianPatient.create as any)({
-    data: { userId: user.id, patientId: id },
+    data: { userId: user.id, patientId: id, relationship, invitedByUserId: session.id, hipaaAcknowledgedAt },
   })
 
   const sent = await sendWelcomeEmail({

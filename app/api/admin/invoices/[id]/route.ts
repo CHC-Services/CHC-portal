@@ -40,7 +40,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
   }
 
-  const data: Record<string, unknown> = { status }
+  const data: Record<string, unknown> = { status, s3Key: null }
   if (status === 'Paid') data.paidAt = new Date()
 
   const invoice = await (prisma.invoice.update as any)({ where: { id }, data })

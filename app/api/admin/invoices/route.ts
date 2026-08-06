@@ -3,6 +3,7 @@ import { prisma } from '../../../../lib/prisma'
 import { verifyToken } from '../../../../lib/auth'
 import { sendInvoiceEmail } from '../../../../lib/sendEmail'
 import { calcCampaignDiscount, campaignRuleLabel } from '../../../../lib/campaignDiscount'
+import { getOrCreateInvoicePdf } from '../../../../lib/invoicePdf'
 
 function adminOnly(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -112,28 +113,48 @@ export async function POST(req: Request) {
     include: { entries: true },
   })
 
-  // Send email
+  // Render the canonical PDF and store it in S3 — this is the one artifact
+  // every later print/email/view reuses instead of re-rendering its own copy.
+  const { url: pdfUrl } = await getOrCreateInvoicePdf(invoice.id)
+
+  // Send email with the stored PDF attached
   await sendInvoiceEmail({
     to: nurse.user.email,
-    nurseName: nurse.displayName,
-    nurseFirstName: nurse.firstName  ?? undefined,
-    nurseLastName:  nurse.lastName   ?? undefined,
-    nurseAddress:   nurse.address    ?? undefined,
-    nurseCity:      nurse.city       ?? undefined,
-    nurseState:     nurse.state      ?? undefined,
-    nurseZip:       nurse.zip        ?? undefined,
+    pdfUrl,
     invoiceNumber,
+    status: invoice.status,
+    nurseName: nurse.displayName,
+    nurseEmail: nurse.user.email,
+    nurse: {
+      displayName: nurse.displayName,
+      accountNumber: nurse.accountNumber,
+      firstName: nurse.firstName,
+      lastName: nurse.lastName,
+      address: nurse.address,
+      city: nurse.city,
+      state: nurse.state,
+      zip: nurse.zip,
+      phone: nurse.phone,
+      hasBusinessProvider: nurse.hasBusinessProvider,
+      bizEntityName: nurse.bizEntityName,
+      bizServiceAddress: nurse.bizServiceAddress,
+      bizPhone: nurse.bizPhone,
+      bizEmail: nurse.bizEmail,
+      user: nurse.user,
+    },
     grossAmount,
     discountAmt,
-    discountNote:    discountNote     ?? undefined,
+    discountNote,
     totalAmount,
+    paidAmount: 0,
     dueTerm,
     dueDate,
-    lateFeePlan:     lateFeePlan     ?? undefined,
-    lateFeeAmt:      lateFeePlan === 'flat'    ? (lateFeeAmt    ?? undefined) : undefined,
-    lateFeePercent:  lateFeePlan === 'percent' ? (lateFeePercent ?? undefined) : undefined,
-    promptPayDays:   promptPayDays   ?? undefined,
-    promptPayCredit: promptPayCredit ?? undefined,
+    sentAt: invoice.sentAt,
+    lateFeePlan,
+    lateFeeAmt: lateFeePlan === 'flat'    ? lateFeeAmt    : null,
+    lateFeePercent: lateFeePlan === 'percent' ? lateFeePercent : null,
+    promptPayDays,
+    promptPayCredit,
     entries: entries.map(e => ({
       workDate: e.workDate,
       invoiceFeePlan: e.invoiceFeePlan ?? '',

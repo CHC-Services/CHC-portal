@@ -3,6 +3,12 @@
     "allow": [
       "Bash(cd \"/Users/mymini/Websites/Coming Home Care /chc-portal\" && npx tsc --noEmit*)",
       "Bash(npx tsc --noEmit*)",
+      "Bash(npm run lint *)",
+      "Bash(/opt/homebrew/bin/npx tsc --noEmit *)",
+      "Bash(curl -s -o /dev/null -w *)",
+      "Bash(curl -sf *)",
+      "Bash(git check-ignore *)",
+      "Bash(npm view *)",
       "mcp__claude_ai_Supabase__list_tables",
       "mcp__claude_ai_Supabase__list_projects",
       "mcp__claude_ai_Supabase__get_project",

@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react'
 import AdminNav from '../../components/AdminNav'
 import { formalName } from '../../../lib/formatName'
-import MedicationList, { MedicationDTO, MedicationInput } from '../../components/MedicationList'
+import { fmtPhoneInput } from '../../../lib/formatPhone'
+import MedicationList, { MedicationDTO, MedicationInput, PharmacyOption } from '../../components/MedicationList'
+import GuardianInviteModal from '../../components/GuardianInviteModal'
 
 type PatientPA = {
   id: string
@@ -166,11 +168,17 @@ export default function AdPatients() {
       .finally(() => setLoading(false))
   }
 
+  const [pharmacies, setPharmacies] = useState<PharmacyOption[]>([])
+  const [invitingGuardian, setInvitingGuardian] = useState(false)
+
   useEffect(() => {
     loadPatients()
     fetch('/api/admin/nurses', { credentials: 'include' })
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setNurses(data) })
+    fetch('/api/pharmacies', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setPharmacies(data) })
   }, [])
 
   function openPatient(p: Patient) {
@@ -752,8 +760,33 @@ export default function AdPatients() {
                       onEdit={handleEditMedication}
                       onConfirmRefill={handleConfirmRefill}
                       onDelete={handleDeleteMedication}
+                      pharmacies={pharmacies}
                     />
                   </div>
+
+                  {/* Care Team / Guardian Invite */}
+                  <div className="flex items-center justify-between pt-2 border-t border-[#D9E1E8]">
+                    <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">Care Team</p>
+                    <button onClick={() => setInvitingGuardian(true)} className="text-xs font-semibold text-[#7A8F79]">
+                      + Invite Guardian
+                    </button>
+                  </div>
+                  {invitingGuardian && (
+                    <GuardianInviteModal
+                      patientName={`${selected.firstName} ${selected.lastName}`}
+                      onClose={() => setInvitingGuardian(false)}
+                      onInvite={async data => {
+                        const res = await fetch(`/api/admin/patients/${selected.id}/guardians`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          credentials: 'include',
+                          body: JSON.stringify(data),
+                        })
+                        const body = await res.json()
+                        return res.ok ? { ok: true } : { ok: false, error: body.error }
+                      }}
+                    />
+                  )}
                 </>
               ) : (
                 <form onSubmit={handleSave} className="space-y-5">
@@ -774,7 +807,7 @@ export default function AdPatients() {
                           </select>
                         </div>
                       </div>
-                      <div><label className={lbl}>Phone</label><input value={editData.phone || ''} onChange={e => setField('phone', e.target.value)} className={inp} /></div>
+                      <div><label className={lbl}>Phone</label><input value={editData.phone || ''} onChange={e => setField('phone', fmtPhoneInput(e.target.value))} className={inp} /></div>
                       <div className="flex items-center gap-2">
                         <input type="checkbox" id="htEdit" checked={!!editData.highTech} onChange={e => setField('highTech', e.target.checked)} className="accent-[#7A8F79] w-4 h-4" />
                         <label htmlFor="htEdit" className="text-sm text-[#2F3E4E] font-semibold cursor-pointer">High-Tech</label>
@@ -941,7 +974,7 @@ export default function AdPatients() {
                     </div>
                     <div>
                       <label className={lbl}>Phone <span className="normal-case font-normal text-[#aab]">(optional)</span></label>
-                      <input value={createData.phone} onChange={e => setCreateField('phone', e.target.value)} placeholder="(555) 000-0000" className={inp} />
+                      <input value={createData.phone} onChange={e => setCreateField('phone', fmtPhoneInput(e.target.value))} placeholder="(555) 000-0000" className={inp} />
                     </div>
                   </div>
                 </div>

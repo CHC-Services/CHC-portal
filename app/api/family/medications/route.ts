@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../../lib/prisma'
 import { verifyToken } from '../../../../lib/auth'
+import { resolvePharmacy, flattenMedication } from '../../../../lib/pharmacyLookup'
 
 function auth(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -26,12 +27,15 @@ export async function GET(req: Request) {
     where: { userId: session.id },
     include: {
       patient: {
-        include: { medications: { orderBy: { createdAt: 'desc' } } },
+        include: { medications: { orderBy: { createdAt: 'desc' }, include: { pharmacy: true } } },
       },
     },
   })
 
-  const patients = links.map((l: any) => l.patient)
+  const patients = links.map((l: any) => ({
+    ...l.patient,
+    medications: l.patient.medications.map(flattenMedication),
+  }))
   return NextResponse.json({ patients })
 }
 
@@ -41,13 +45,15 @@ export async function POST(req: Request) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { patientId, medicationName, dose, frequency, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyPhone } = body
+  const { patientId, medicationName, dose, frequency, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone } = body
   if (!patientId) return NextResponse.json({ error: 'patientId required' }, { status: 400 })
   if (!await verifyGuardianLinked(session.id, patientId)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   if (!medicationName?.trim()) return NextResponse.json({ error: 'Medication name required' }, { status: 400 })
   if (!lastFillDate) return NextResponse.json({ error: 'Last fill date required' }, { status: 400 })
+
+  const pharmacyId = await resolvePharmacy({ name: pharmacyName, address: pharmacyAddress, phone: pharmacyPhone })
 
   const medication = await (prisma.patientMedication.create as any)({
     data: {
@@ -59,14 +65,14 @@ export async function POST(req: Request) {
       lastFillDate: new Date(lastFillDate),
       rxNumber: rxNumber || null,
       refillsRemaining: refillsRemaining != null && refillsRemaining !== '' ? parseInt(refillsRemaining, 10) : null,
-      pharmacyName: pharmacyName || null,
-      pharmacyPhone: pharmacyPhone || null,
+      pharmacyId,
       createdByUserId: session.id,
       createdByRole: session.role,
     },
+    include: { pharmacy: true },
   })
 
-  return NextResponse.json({ ok: true, medication })
+  return NextResponse.json({ ok: true, medication: flattenMedication(medication) })
 }
 
 // PATCH — edit an existing medication (body: { medId, ...fields })
@@ -74,7 +80,7 @@ export async function PATCH(req: Request) {
   const session = auth(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { medId, medicationName, dose, frequency, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyPhone, active } = await req.json()
+  const { medId, medicationName, dose, frequency, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone, active } = await req.json()
   if (!medId) return NextResponse.json({ error: 'medId required' }, { status: 400 })
 
   const existing = await (prisma.patientMedication.findUnique as any)({ where: { id: medId }, select: { patientId: true } })
@@ -90,12 +96,11 @@ export async function PATCH(req: Request) {
   if (lastFillDate !== undefined) data.lastFillDate = new Date(lastFillDate)
   if (rxNumber !== undefined) data.rxNumber = rxNumber || null
   if (refillsRemaining !== undefined) data.refillsRemaining = refillsRemaining != null && refillsRemaining !== '' ? parseInt(refillsRemaining, 10) : null
-  if (pharmacyName !== undefined) data.pharmacyName = pharmacyName || null
-  if (pharmacyPhone !== undefined) data.pharmacyPhone = pharmacyPhone || null
+  if (pharmacyName !== undefined) data.pharmacyId = await resolvePharmacy({ name: pharmacyName, address: pharmacyAddress, phone: pharmacyPhone })
   if (active !== undefined) data.active = !!active
 
-  const medication = await (prisma.patientMedication.update as any)({ where: { id: medId }, data })
-  return NextResponse.json({ ok: true, medication })
+  const medication = await (prisma.patientMedication.update as any)({ where: { id: medId }, data, include: { pharmacy: true } })
+  return NextResponse.json({ ok: true, medication: flattenMedication(medication) })
 }
 
 // DELETE — remove a medication (body: { medId })

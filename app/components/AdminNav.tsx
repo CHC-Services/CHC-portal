@@ -34,6 +34,10 @@ const links: NavLink[] = [
     activePaths: ['/admin/patients'],
   },
   {
+    prefix: 'ad', label: 'Pharmacies', href: '/admin/pharmacies',
+    activePaths: ['/admin/pharmacies'],
+  },
+  {
     prefix: 'ad', label: 'Documents', href: '/admin/documents',
     activePaths: ['/admin/documents'],
   },

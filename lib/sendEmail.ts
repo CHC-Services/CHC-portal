@@ -1,7 +1,7 @@
 import { Resend } from 'resend'
 import { shortInvoiceNumber } from './formatInvoice'
 import { logEmail, type EmailCategory } from './logEmail'
-import { buildInvoiceHtml } from './invoiceHtml'
+import { buildInvoiceHtml, type InvoiceHtmlData } from './invoiceHtml'
 
 // Returns a Resend client whose send() method auto-logs every outgoing email.
 function createLoggedResend(category: EmailCategory, recipientName: string | null): Resend {
@@ -86,84 +86,23 @@ export async function sendWelcomeEmail({
 
 export async function sendInvoiceEmail({
   to,
-  nurseName,
-  nurseFirstName,
-  nurseLastName,
-  nurseAddress,
-  nurseCity,
-  nurseState,
-  nurseZip,
-  invoiceNumber,
-  grossAmount,
-  discountAmt = 0,
-  discountNote,
-  totalAmount,
-  dueTerm,
-  dueDate,
-  entries,
-  notes,
-  lateFeePlan,
-  lateFeeAmt,
-  lateFeePercent,
-  promptPayCredit,
-  promptPayDays = 14,
-}: {
-  to: string
-  nurseName: string
-  nurseFirstName?: string
-  nurseLastName?: string
-  nurseAddress?: string
-  nurseCity?: string
-  nurseState?: string
-  nurseZip?: string
-  invoiceNumber: string
-  grossAmount?: number
-  discountAmt?: number
-  discountNote?: string
-  totalAmount: number
-  dueTerm: string
-  dueDate: Date
-  entries: { workDate: Date; invoiceFeePlan: string; invoiceFeeAmt: number }[]
-  notes?: string
-  lateFeePlan?: string | null
-  lateFeeAmt?: number | null
-  lateFeePercent?: number | null
-  promptPayCredit?: number | null
-  promptPayDays?: number | null
-}): Promise<boolean> {
+  pdfUrl,
+  ...invoiceData
+}: { to: string; pdfUrl?: string } & InvoiceHtmlData): Promise<boolean> {
   if (!process.env.RESEND_API_KEY) return false
-  const resend = createLoggedResend('invoice', nurseName)
+  const resend = createLoggedResend('invoice', invoiceData.nurseName)
 
-  const html = buildInvoiceHtml({
-    nurseName,
-    nurseFirstName,
-    nurseLastName,
-    nurseAddress,
-    nurseCity,
-    nurseState,
-    nurseZip,
-    invoiceNumber,
-    grossAmount,
-    discountAmt,
-    discountNote,
-    totalAmount,
-    dueTerm,
-    dueDate,
-    entries,
-    notes,
-    lateFeePlan,
-    lateFeeAmt,
-    lateFeePercent,
-    promptPayCredit,
-    promptPayDays,
-  })
+  const html = buildInvoiceHtml(invoiceData)
+  const { invoiceNumber, totalAmount, nurseName, nurse } = invoiceData
+  const lastName = nurse?.lastName || nurseName.split(' ').pop() || nurseName
 
   try {
     const { error } = await resend.emails.send({
       from: BILLING_FROM,
       to,
-      subject: `INV #${last4(invoiceNumber)}: ${nurseLastName || nurseName.split(' ').pop() || nurseName} - $${totalAmount.toFixed(2)}`,
+      subject: `INV #${last4(invoiceNumber)}: ${lastName} - $${totalAmount.toFixed(2)}`,
       html,
+      ...(pdfUrl ? { attachments: [{ filename: `${invoiceNumber}.pdf`, path: pdfUrl }] } : {}),
     })
     return !error
   } catch {

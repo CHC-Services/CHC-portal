@@ -809,8 +809,8 @@ model PatientMedication {
   lastFillDate     DateTime
   rxNumber         String?
   refillsRemaining Int?
-  pharmacyName     String?
-  pharmacyPhone    String?
+  pharmacyId       String?
+  pharmacy         Pharmacy? @relation(fields: [pharmacyId], references: [id], onDelete: SetNull)
 
   active Boolean @default(true)
 
@@ -823,6 +823,22 @@ model PatientMedication {
   updatedAt DateTime @updatedAt
 
   @@index([patientId])
+  @@index([pharmacyId])
+}
+
+// Shared pharmacy directory — grows as medications are entered. Referenced by
+// PatientMedication.pharmacyId; name/address/phone are looked up live (not
+// snapshotted), so editing a pharmacy here updates every medication that uses it.
+model Pharmacy {
+  id          String              @id @default(uuid())
+  name        String
+  address     String?
+  phone       String?
+  medications PatientMedication[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([name])
 }
 
 // Family/guardian login scoped to exactly the patient(s) they're linked to.
@@ -833,6 +849,9 @@ model GuardianPatient {
   patientId                String
   patient                  Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
   medicationRemindersOptIn Boolean  @default(false)
+  relationship             String? // 'Parent' | 'Guardian' | 'Caregiver' — descriptive title chosen by the inviter
+  invitedByUserId          String? // who sent the invite — accountability trail for the HIPAA acknowledgment
+  hipaaAcknowledgedAt      DateTime? // when the inviter acknowledged the HIPAA access-responsibility notice
   createdAt                DateTime @default(now())
 
   @@unique([userId, patientId])

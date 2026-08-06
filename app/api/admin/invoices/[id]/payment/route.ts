@@ -148,6 +148,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       data: {
         paidAmount: newPaid,
         status: newStatus,
+        s3Key: null,
         ...(isNowFullyPaid ? { paidAt: appliedAt } : {}),
       },
     }),
@@ -263,7 +264,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     (prisma.payment as any).delete({ where: { id: paymentId } }),
     (prisma.invoice as any).update({
       where: { id: invoiceId },
-      data: { paidAmount: newPaid, status: newStatus, ...(newStatus !== 'Paid' ? { paidAt: null } : {}) },
+      data: { paidAmount: newPaid, status: newStatus, s3Key: null, ...(newStatus !== 'Paid' ? { paidAt: null } : {}) },
     }),
   ])
 

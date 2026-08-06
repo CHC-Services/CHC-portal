@@ -72,20 +72,15 @@ function PatientCard({ p }: { p: FamilyPatient }) {
       href={`/family/patients/${p.id}`}
       className="block bg-white rounded-xl shadow-sm p-4 hover:shadow-md hover:ring-1 hover:ring-[#7A8F79] transition"
     >
-      <div className="grid grid-cols-1 sm:grid-cols-[1.1fr_1.3fr_1fr_auto] gap-2 sm:gap-4 sm:items-start">
+      <div className="grid grid-cols-1 sm:grid-cols-[1.6fr_1fr_auto] gap-2 sm:gap-4 sm:items-start">
 
         {/* Name / age / account number */}
         <div>
-          <p className="font-bold text-base text-[#2F3E4E]">
+          <p className="font-bold text-base text-[#2F3E4E] whitespace-nowrap">
             {p.firstName} {p.lastName[0]}.
             {age != null && <span className="ml-2 text-sm font-normal text-[#7A8F79]">Age {age}</span>}
           </p>
           <p className="text-xs text-[#7A8F79] font-mono mt-0.5">{p.accountNumber}</p>
-        </div>
-
-        {/* Street address */}
-        <div>
-          {p.address && <p className="text-sm text-[#2F3E4E]">{p.address}</p>}
         </div>
 
         {/* Member ID / insurance */}
@@ -106,7 +101,7 @@ function PatientCard({ p }: { p: FamilyPatient }) {
               title={reasons.join(' · ')}
               className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full bg-red-50 text-red-600 uppercase tracking-wide whitespace-nowrap"
             >
-              ⚠ Renewal Due
+              ⚠ {reasons.length} Due
             </span>
           )}
         </div>

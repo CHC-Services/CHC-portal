@@ -578,6 +578,11 @@ model Claim {
   // Resubmission tracking
   resubmissionOf String? // claimId of the original rejected claim
 
+  // Void tracking — a voided claim keeps all its original fields untouched;
+  // the offsetting reversal is a separate row linked only for display purposes.
+  voidedAt       DateTime? // set on the ORIGINAL when voided
+  voidReversalOf String?   // set on the REVERSAL row — original claim's id
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -667,6 +672,11 @@ model MedicaidClaim {
   depositDate    DateTime?
   statusCodes    String[]  @default([])
   notes          String?
+
+  // Void tracking — see Claim.voidedAt/voidReversalOf for the same pattern.
+  voidedAt       DateTime?
+  voidReversalOf String?
+
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 

@@ -34,7 +34,9 @@ export default function LoginPage() {
       }
 
       if (data.requires2FA) {
-        if (data.needsConsent) {
+        if (data.needsProfileInfo) {
+          window.location.href = `/login/complete-profile?needsConsent=${data.needsConsent}`
+        } else if (data.needsConsent) {
           window.location.href = '/login/consent'
         } else if (data.hasSms || data.hasAuthenticator) {
           window.location.href = '/login/choose'

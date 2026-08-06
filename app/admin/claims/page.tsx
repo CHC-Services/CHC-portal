@@ -138,6 +138,8 @@ type CommercialClaim = {
   checkReceivedDate: string | null
   resubmissionOf: string | null
   processingNotes: string | null
+  voidedAt: string | null
+  voidReversalOf: string | null
   nurse: { displayName: string; firstName?: string; lastName?: string; accountNumber: string | null; isDemo: boolean }
 }
 
@@ -155,6 +157,8 @@ type MedicaidClaimRow = {
   depositDate: string | null
   statusCodes: string[]
   notes: string | null
+  voidedAt: string | null
+  voidReversalOf: string | null
   nurse?: { displayName: string; firstName?: string; lastName?: string; accountNumber?: string | null; isDemo?: boolean }
 }
 
@@ -261,6 +265,7 @@ function StageBadge({ stage }: { stage: string | null }) {
   if (!stage) return <span className="text-[#7A8F79] text-xs">—</span>
   const s = stage.toLowerCase()
   const color =
+    s === 'voided' ? 'bg-gray-200 text-gray-600' :
     s === 'paid' || s === 'finalized' ? 'bg-green-100 text-green-800' :
     s === 'denied' || s === 'rejected' ? 'bg-red-100 text-red-800' :
     s === 'pending' ? 'bg-yellow-100 text-yellow-800' :
@@ -451,6 +456,9 @@ function ClaimDetailModal({
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
   const [auditLoading, setAuditLoading] = useState(false)
+  const [showVoidConfirm, setShowVoidConfirm] = useState(false)
+  const [voiding, setVoiding] = useState(false)
+  const [voidError, setVoidError] = useState('')
   const [mCodeInput, setMCodeInput] = useState('')
   const [mCodeSuggestions, setMCodeSuggestions] = useState<{ code: string; description: string }[]>([])
 
@@ -564,6 +572,26 @@ function ClaimDetailModal({
     onClose()
   }
 
+  async function voidClaim() {
+    setVoiding(true)
+    setVoidError('')
+    // Flush any unsaved edits to the original before voiding it.
+    await performSave()
+    const url = claim._type === 'commercial'
+      ? `/api/admin/claims/${claim.id}/void`
+      : `/api/admin/medicaid/claims/${claim.id}/void`
+    const res = await fetch(url, { method: 'POST', credentials: 'include' })
+    const data = await res.json()
+    setVoiding(false)
+    if (!res.ok) {
+      setVoidError(data.error || 'Failed to void this claim.')
+      return
+    }
+    setShowVoidConfirm(false)
+    onReloadClaims()
+    onClose()
+  }
+
   // Safety net: if the parent swaps to a different claim (e.g. clicking a
   // resubmission-chain link) without the ✕/Escape path ever firing, this still
   // saves whatever was typed before the form state is torn down.
@@ -644,6 +672,12 @@ function ClaimDetailModal({
             {claim._type === 'medicaid' && (
               <span className="text-xs font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">Medicaid</span>
             )}
+            {claim.voidedAt && (
+              <span className="text-xs font-semibold text-gray-600 bg-gray-200 px-2 py-0.5 rounded-full">VOIDED</span>
+            )}
+            {claim.voidReversalOf && (
+              <span className="text-xs font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full">REVERSAL</span>
+            )}
             {saveStatus === 'saving' && <span className="text-xs text-[#7A8F79] animate-pulse">Saving…</span>}
             {saveStatus === 'saved' && <span className="text-xs text-green-600">✓ Saved</span>}
             {saveStatus === 'error' && <span className="text-xs text-red-500">Error saving</span>}
@@ -656,14 +690,57 @@ function ClaimDetailModal({
                 className="text-xs border border-[#D9E1E8] rounded-lg px-2 py-1.5 text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] bg-white"
               >
                 <option value="">— Stage —</option>
-                {['Draft','INS-1 Submitted','Resubmitted','Pending','Info Requested','Info Sent','INS-2 Submitted','Appealed','Appeal Needed','Paid','Denied','Rejected','Check Wait'].map(s => (
+                {['Draft','INS-1 Submitted','Resubmitted','Pending','Info Requested','Info Sent','INS-2 Submitted','Appealed','Appeal Needed','Paid','Denied','Rejected','Check Wait','Voided'].map(s => (
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>
             )}
+            {!claim.voidedAt && !claim.voidReversalOf && (
+              <button
+                onClick={() => setShowVoidConfirm(true)}
+                className="text-xs font-semibold text-red-500 border border-red-300 px-2 py-1.5 rounded-lg hover:bg-red-50 transition"
+              >
+                Void
+              </button>
+            )}
             <button onClick={handleClose} className="text-[#7A8F79] hover:text-[#2F3E4E] text-xl leading-none">✕</button>
           </div>
         </div>
+
+        {/* Void confirmation */}
+        {showVoidConfirm && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
+              <p className="text-sm font-bold text-[#2F3E4E] mb-2">Void this claim?</p>
+              <p className="text-xs text-[#7A8F79] leading-relaxed mb-3">
+                This creates a new offsetting entry for{' '}
+                <span className="font-semibold text-[#2F3E4E]">
+                  {claim._type === 'commercial' ? fmt(-(cForm.totalBilled ? parseFloat(cForm.totalBilled) : 0), '$') : fmt(-(mForm.totalCharge ? parseFloat(mForm.totalCharge) : 0), '$')}
+                </span>{' '}
+                that cancels this claim&rsquo;s total out of reimbursement/submission calculations.
+              </p>
+              <p className="text-xs text-[#7A8F79] leading-relaxed mb-4">
+                The original claim record and its figures are kept exactly as-is, just marked Voided. You can then enter a new, corrected claim separately.
+              </p>
+              {voidError && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-3">{voidError}</p>}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setShowVoidConfirm(false); setVoidError('') }}
+                  className="flex-1 border border-[#D9E1E8] text-[#7A8F79] py-2 rounded-lg text-sm font-semibold hover:border-[#7A8F79] transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={voidClaim}
+                  disabled={voiding}
+                  className="flex-1 bg-red-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-red-700 transition disabled:opacity-50"
+                >
+                  {voiding ? 'Voiding…' : 'Void Claim'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="flex border-b border-[#D9E1E8]">
@@ -1099,6 +1176,12 @@ function AdminClaimCard({
             )}
             {isMedicaid && (
               <span className="text-[10px] font-semibold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded-full shrink-0">Medicaid</span>
+            )}
+            {uc.voidedAt && (
+              <span className="text-[10px] font-semibold text-gray-600 bg-gray-200 px-1.5 py-0.5 rounded-full shrink-0">VOIDED</span>
+            )}
+            {uc.voidReversalOf && (
+              <span className="text-[10px] font-semibold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded-full shrink-0">REVERSAL</span>
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0 ml-2">
@@ -2181,7 +2264,7 @@ export default function AdminClaimsPage() {
                 <div className="flex items-center gap-2">
                   <select value={addForm.claimStage || 'Draft'} onChange={e => setAddForm(f => ({ ...f, claimStage: e.target.value }))}
                     className="text-xs border border-[#D9E1E8] rounded-lg px-2 py-1.5 text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] bg-white">
-                    {['Draft','INS-1 Submitted','Resubmitted','Pending','Info Requested','Info Sent','INS-2 Submitted','Appealed','Appeal Needed','Paid','Denied','Rejected','Check Wait'].map(s => (
+                    {['Draft','INS-1 Submitted','Resubmitted','Pending','Info Requested','Info Sent','INS-2 Submitted','Appealed','Appeal Needed','Paid','Denied','Rejected','Check Wait','Voided'].map(s => (
                       <option key={s} value={s}>{s}</option>
                     ))}
                   </select>

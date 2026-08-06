@@ -57,6 +57,11 @@ export async function POST(req: Request) {
 
   if (needsTwoFa) {
     const needsConsent = user.role !== 'admin' && !(user as any).twoFaConsentAt
+    // Guardians are invited by an admin/nurse who may not have had the guardian's
+    // phone number on hand — without one, SMS 2FA silently isn't offered. Capture
+    // it (plus name) before the 2FA method screens instead of leaving them stuck
+    // with email-only and no way to add a phone mid-flow.
+    const needsProfileInfo = user.role === 'guardian' && !effectivePhone
 
     // Log as pending — 2FA verify route logs the final result
     logLogin({
@@ -72,6 +77,7 @@ export async function POST(req: Request) {
     const pendingToken = signPendingToken(user.id)
     const res = NextResponse.json({
       requires2FA: true,
+      needsProfileInfo,
       needsConsent,
       hasSms: !!effectivePhone,
       phoneLast4: effectivePhone ? maskPhone(effectivePhone) : null,

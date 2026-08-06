@@ -198,7 +198,6 @@ export default function Banner({ user: initialUser }: BannerProps) {
             { href: '/nurse/onboarding', label: 'Billing', icon: '💳' },
         ] : []),
         ...(role === 'admin' ? [
-            { href: '/admin', label: 'Admin', icon: '⚙️' },
             { href: '/admin/patients', label: 'Patients', icon: '🏥' },
         ] : []),
     ]

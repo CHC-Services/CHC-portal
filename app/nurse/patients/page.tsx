@@ -638,12 +638,12 @@ export default function MyPatients() {
                 {showAddPA && (
                   <form onSubmit={handleAddPA} className="bg-[#F4F6F5] rounded-xl p-3 mb-3 space-y-2">
                     <div>
-                      <label className="block text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">PA Number</label>
+                      <label className="block text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Prior Authorization</label>
                       <input
                         required
                         value={newPA.paNumber}
                         onChange={e => setNewPA(p => ({ ...p, paNumber: e.target.value }))}
-                        placeholder="Authorization number"
+                        placeholder="PA #"
                         className="w-full border border-[#D9E1E8] px-2 py-1.5 rounded-lg text-xs text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] uppercase"
                       />
                     </div>
@@ -661,7 +661,7 @@ export default function MyPatients() {
                     </div>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input type="checkbox" checked={newPA.highTech} onChange={e => setNewPA(p => ({ ...p, highTech: e.target.checked }))} className="accent-[#7A8F79] w-3.5 h-3.5" />
-                      <span className="text-xs text-[#2F3E4E] font-semibold">High-Tech designation</span>
+                      <span className="text-xs text-[#2F3E4E] font-semibold">High-Tech? <i>(check if YES)</i></span>
                     </label>
                     {paError && <p className="text-[10px] text-red-500">{paError}</p>}
                     <button type="submit" disabled={savingPA}
@@ -891,7 +891,7 @@ export default function MyPatients() {
                     <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-3 pb-1 border-b border-[#D9E1E8]">Primary Insurance</p>
                     <div className="space-y-3">
                       <div>
-                        <label className={lbl}>{insType === 'Medicaid' ? 'Medicaid Member ID' : 'Insurance Member ID'}</label>
+                        <label className={lbl}>{insType === 'Medicaid' ? 'Medicaid ID' : 'Member ID'}</label>
                         <input required value={newPt.insuranceId} onChange={e => setPt('insuranceId', e.target.value)} className={inp} />
                       </div>
 

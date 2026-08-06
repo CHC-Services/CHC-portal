@@ -25,7 +25,30 @@ type FamilyPatient = {
   insuranceType: string
   insuranceId: string
   insuranceName: string | null
+  paEndDate: string | null
   medications: FamilyMedication[]
+}
+
+// How far ahead of a due date the renewal indicator lights up.
+const URGENCY_WINDOW_DAYS = 14
+
+// Everything a guardian would need to act on soon — refills and PA renewals —
+// collapsed into a single "is anything coming due" signal for the dashboard card.
+function urgentReasons(p: FamilyPatient, today: Date): string[] {
+  const horizon = today.getTime() + URGENCY_WINDOW_DAYS * 24 * 60 * 60 * 1000
+  const reasons: string[] = []
+
+  for (const m of p.medications) {
+    if (!m.active) continue
+    const reminderDate = medicationReminderDate(new Date(m.lastFillDate), m.daySupply, m.refillsRemaining)
+    if (reminderDate.getTime() <= horizon) reasons.push(`${m.medicationName} refill due`)
+  }
+
+  if (p.paEndDate && new Date(p.paEndDate).getTime() <= horizon) {
+    reasons.push('Prior authorization renewal due')
+  }
+
+  return reasons
 }
 
 type ReminderRow = {
@@ -41,19 +64,49 @@ function fmtDate(d: Date): string {
 
 function PatientCard({ p }: { p: FamilyPatient }) {
   const age = calculateAge(p.dob)
+  const reasons = urgentReasons(p, new Date())
+
   return (
     <div className="bg-white rounded-xl shadow-sm p-4">
-      <p className="font-bold text-base text-[#2F3E4E]">
-        {p.firstName} {p.lastName[0]}.
-        {age != null && <span className="ml-2 text-sm font-normal text-[#7A8F79]">Age {age}</span>}
-      </p>
-      <p className="text-xs text-[#7A8F79] font-mono mt-0.5">{p.accountNumber}</p>
-      {p.address && <p className="text-sm text-[#2F3E4E] mt-2">{p.address}</p>}
-      <div className="mt-2 flex items-center gap-2">
-        <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${p.insuranceType === 'Medicaid' ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700'}`}>
-          {p.insuranceType}
-        </span>
-        <span className="text-xs text-[#7A8F79]">{p.insuranceName || p.insuranceId}</span>
+      <div className="grid grid-cols-1 sm:grid-cols-[1.1fr_1.3fr_1fr_auto] gap-2 sm:gap-4 sm:items-start">
+
+        {/* Name / age / account number */}
+        <div>
+          <p className="font-bold text-base text-[#2F3E4E]">
+            {p.firstName} {p.lastName[0]}.
+            {age != null && <span className="ml-2 text-sm font-normal text-[#7A8F79]">Age {age}</span>}
+          </p>
+          <p className="text-xs text-[#7A8F79] font-mono mt-0.5">{p.accountNumber}</p>
+        </div>
+
+        {/* Street address */}
+        <div>
+          {p.address && <p className="text-sm text-[#2F3E4E]">{p.address}</p>}
+        </div>
+
+        {/* Member ID / insurance */}
+        <div>
+          <p className="text-sm text-[#2F3E4E] font-semibold">{p.insuranceId}</p>
+          <div className="mt-1 flex items-center gap-2">
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${p.insuranceType === 'Medicaid' ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700'}`}>
+              {p.insuranceType}
+            </span>
+            {p.insuranceName && <span className="text-xs text-[#7A8F79]">{p.insuranceName}</span>}
+          </div>
+        </div>
+
+        {/* Renewal urgency — only ever shows when something is coming due */}
+        <div className="flex sm:justify-end">
+          {reasons.length > 0 && (
+            <span
+              title={reasons.join(' · ')}
+              className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full bg-red-50 text-red-600 uppercase tracking-wide whitespace-nowrap"
+            >
+              ⚠ Renewal Due
+            </span>
+          )}
+        </div>
+
       </div>
     </div>
   )

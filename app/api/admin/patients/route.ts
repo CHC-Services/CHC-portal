@@ -45,6 +45,9 @@ export async function POST(req: Request) {
       dxCode2: p.dxCode2 || null,
       dxCode3: p.dxCode3 || null,
       dxCode4: p.dxCode4 || null,
+      paNumber: initialPA?.paNumber || null,
+      paStartDate: initialPA?.paStartDate || null,
+      paEndDate: initialPA?.paEndDate || null,
       subscriberName: p.subscriberName || null,
       subscriberRelation: p.subscriberRelation || null,
       networkStatus: p.networkStatus || null,
@@ -62,12 +65,9 @@ export async function POST(req: Request) {
         paNumber: initialPA.paNumber.trim(),
         paStartDate: initialPA.paStartDate || null,
         paEndDate: initialPA.paEndDate || null,
-        highTech: initialPA.highTech ?? false,
+        highTech: p.highTech ?? false,
       },
     })
-    if (initialPA.highTech) {
-      await (prisma.patient.update as any)({ where: { id: patient.id }, data: { highTech: true } })
-    }
   }
 
   return NextResponse.json({ ok: true, patient })

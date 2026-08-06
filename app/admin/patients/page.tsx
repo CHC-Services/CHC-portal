@@ -147,7 +147,7 @@ export default function AdPatients() {
   const [showCreate, setShowCreate] = useState(false)
   const [createInsType, setCreateInsType] = useState<'Medicaid' | 'Commercial'>('Medicaid')
   const [createData, setCreateData] = useState(blankCreate())
-  const [createPA, setCreatePA] = useState({ paNumber: '', paStartDate: '', paEndDate: '', highTech: false })
+  const [createPA, setCreatePA] = useState({ paNumber: '', paStartDate: '', paEndDate: '' })
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState('')
 
@@ -202,7 +202,7 @@ export default function AdPatients() {
 
   function openCreate() {
     setCreateData(blankCreate())
-    setCreatePA({ paNumber: '', paStartDate: '', paEndDate: '', highTech: false })
+    setCreatePA({ paNumber: '', paStartDate: '', paEndDate: '' })
     setCreateInsType('Medicaid')
     setCreateError('')
     setShowCreate(true)
@@ -1099,34 +1099,19 @@ export default function AdPatients() {
                   </div>
                 </div>
 
-                {/* Initial PA (optional) */}
+                {/* Prior Authorization */}
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-3 pb-1 border-b border-[#D9E1E8]">
-                    Prior Authorization <span className="normal-case font-normal text-[#aab]">(optional)</span>
-                  </p>
-                  <div className="space-y-3">
-                    <div>
-                      <label className={lbl}>PA Number</label>
-                      <input value={createPA.paNumber} onChange={e => setCreatePA(p => ({ ...p, paNumber: e.target.value }))} placeholder="Authorization number" className={inp} />
-                    </div>
-                    {createPA.paNumber.trim() && (
-                      <>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className={lbl}>Start Date</label>
-                            <input type="date" value={createPA.paStartDate} onChange={e => setCreatePA(p => ({ ...p, paStartDate: e.target.value }))} className={inp} />
-                          </div>
-                          <div>
-                            <label className={lbl}>End Date</label>
-                            <input type="date" value={createPA.paEndDate} onChange={e => setCreatePA(p => ({ ...p, paEndDate: e.target.value }))} className={inp} />
-                          </div>
-                        </div>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input type="checkbox" checked={createPA.highTech} onChange={e => setCreatePA(p => ({ ...p, highTech: e.target.checked }))} className="accent-[#7A8F79] w-4 h-4" />
-                          <span className="text-sm text-[#2F3E4E] font-semibold">High-Tech designation</span>
-                        </label>
-                      </>
-                    )}
+                  <label className={lbl}>Prior Authorization # <span className="normal-case font-normal text-[#aab]">(optional)</span></label>
+                  <input value={createPA.paNumber} onChange={e => setCreatePA(p => ({ ...p, paNumber: e.target.value }))} className={inp} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={lbl}>PA Start Date</label>
+                    <input type="date" value={createPA.paStartDate} onChange={e => setCreatePA(p => ({ ...p, paStartDate: e.target.value }))} className={inp} />
+                  </div>
+                  <div>
+                    <label className={lbl}>PA End Date</label>
+                    <input type="date" value={createPA.paEndDate} onChange={e => setCreatePA(p => ({ ...p, paEndDate: e.target.value }))} className={inp} />
                   </div>
                 </div>
 

@@ -1017,12 +1017,12 @@ export default function MyPatients() {
 
                           <div className="flex items-center gap-3">
                             <input type="checkbox" id="hasCaseRate" checked={newPt.hasCaseRate} onChange={e => setPt('hasCaseRate', e.target.checked)} className="accent-[#7A8F79] w-4 h-4" />
-                            <label htmlFor="hasCaseRate" className="text-sm text-[#2F3E4E] font-semibold cursor-pointer">Agreed case rate exists</label>
+                            <label htmlFor="hasCaseRate" className="text-sm text-[#2F3E4E] font-semibold cursor-pointer">Pay rate agreement exists?</label>
                           </div>
 
                           {newPt.hasCaseRate && (
                             <div>
-                              <label className={lbl}>Case Rate Amount</label>
+                              <label className={lbl}>Rate Amount</label>
                               <input value={newPt.caseRateAmount} onChange={e => setPt('caseRateAmount', e.target.value)} placeholder="e.g. $125.00 / day" className={inp} />
                             </div>
                           )}

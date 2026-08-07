@@ -19,6 +19,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
+  const body = await req.json().catch(() => ({}))
+  const voidDate: Date = body.voidDate ? new Date(body.voidDate + 'T00:00:00Z') : new Date()
 
   const original = await prisma.claim.findUnique({ where: { id } })
   if (!original) return NextResponse.json({ error: 'Claim not found' }, { status: 404 })
@@ -57,7 +59,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }),
     prisma.claim.update({
       where: { id },
-      data: { voidedAt: new Date() },
+      data: { voidedAt: voidDate },
     }),
   ])
 

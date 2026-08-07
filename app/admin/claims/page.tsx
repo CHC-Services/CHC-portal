@@ -466,6 +466,7 @@ function ClaimDetailModal({
   const [showVoidConfirm, setShowVoidConfirm] = useState(false)
   const [voiding, setVoiding] = useState(false)
   const [voidError, setVoidError] = useState('')
+  const [voidDate, setVoidDate] = useState('')
   const [mCodeInput, setMCodeInput] = useState('')
   const [mCodeSuggestions, setMCodeSuggestions] = useState<{ code: string; description: string }[]>([])
 
@@ -580,6 +581,7 @@ function ClaimDetailModal({
   }
 
   async function voidClaim() {
+    if (!voidDate) { setVoidError('Enter the date this claim was voided.'); return }
     setVoiding(true)
     setVoidError('')
     // Flush any unsaved edits to the original before voiding it.
@@ -587,7 +589,12 @@ function ClaimDetailModal({
     const url = claim._type === 'commercial'
       ? `/api/admin/claims/${claim.id}/void`
       : `/api/admin/medicaid/claims/${claim.id}/void`
-    const res = await fetch(url, { method: 'POST', credentials: 'include' })
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ voidDate }),
+    })
     const data = await res.json()
     setVoiding(false)
     if (!res.ok) {
@@ -704,7 +711,7 @@ function ClaimDetailModal({
             )}
             {!claim.voidedAt && !claim.voidReversalOf && (
               <button
-                onClick={() => setShowVoidConfirm(true)}
+                onClick={() => { setVoidDate(new Date().toISOString().slice(0, 10)); setShowVoidConfirm(true) }}
                 className="text-xs font-semibold text-red-500 border border-red-300 px-2 py-1.5 rounded-lg hover:bg-red-50 transition"
               >
                 Void
@@ -729,6 +736,17 @@ function ClaimDetailModal({
               <p className="text-xs text-[#7A8F79] leading-relaxed mb-4">
                 The original claim record and its figures are kept exactly as-is, just marked Voided. You can then enter a new, corrected claim separately.
               </p>
+              <div className="mb-4">
+                <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">
+                  Void Date {claim._type === 'medicaid' && <span className="text-[#7A8F79] font-normal">(determines which pay cycle the reversal lands in)</span>}
+                </label>
+                <input
+                  type="date"
+                  value={voidDate}
+                  onChange={e => setVoidDate(e.target.value)}
+                  className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                />
+              </div>
               {voidError && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-3">{voidError}</p>}
               <div className="flex gap-2">
                 <button

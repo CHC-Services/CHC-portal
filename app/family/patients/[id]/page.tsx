@@ -6,6 +6,7 @@ import { fmtPhoneInput } from '../../../../lib/formatPhone'
 import Tabs from '../../../components/Tabs'
 import PatientDocumentsPanel from '../../../components/PatientDocumentsPanel'
 import MedicationList, { MedicationDTO, MedicationInput, PharmacyOption } from '../../../components/MedicationList'
+import { Row } from '../../../components/ReadOnlyField'
 
 type DetailTab = 'demographics' | 'insurance' | 'medications' | 'documents'
 const DETAIL_TABS: { key: DetailTab; label: string }[] = [
@@ -151,6 +152,7 @@ export default function FamilyPatientDetailPage({ params }: { params: Promise<{ 
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
   const [detailTab, setDetailTab] = useState<DetailTab>('demographics')
+  const [editing, setEditing] = useState(false)
   const [guardianUserId, setGuardianUserId] = useState('')
   const [medications, setMedications] = useState<MedicationDTO[]>([])
   const [pharmacies, setPharmacies] = useState<PharmacyOption[]>([])
@@ -242,6 +244,7 @@ export default function FamilyPatientDetailPage({ params }: { params: Promise<{ 
     if (res.ok) {
       setData(body.patient)
       setSaved(true)
+      setEditing(false)
       setTimeout(() => setSaved(false), 3000)
     } else {
       setError(body.error || 'Failed to save changes.')
@@ -280,11 +283,69 @@ export default function FamilyPatientDetailPage({ params }: { params: Promise<{ 
         </div>
         <p className="text-sm text-[#7A8F79] mb-6">View and update this patient&apos;s information.</p>
 
-        <div className="mb-4">
+        <div className="mb-4 flex items-center justify-between gap-3">
           <Tabs tabs={DETAIL_TABS} active={detailTab} onChange={k => setDetailTab(k as DetailTab)} />
+          {(detailTab === 'demographics' || detailTab === 'insurance') && !editing && (
+            <button onClick={() => setEditing(true)} className="shrink-0 text-xs font-semibold text-[#7A8F79] border border-[#D9E1E8] bg-white px-3 py-1.5 rounded-lg hover:border-[#7A8F79] hover:text-[#2F3E4E] transition">
+              Edit
+            </button>
+          )}
         </div>
 
-        {(detailTab === 'demographics' || detailTab === 'insurance') && (
+        {(detailTab === 'demographics' || detailTab === 'insurance') && !editing && (
+          <div className="bg-white rounded-2xl shadow-sm p-6 space-y-5">
+            {detailTab === 'demographics' && (<>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-2 pb-1 border-b border-[#D9E1E8]">Demographics</p>
+                <Row label="Date of Birth" value={data.dob} />
+                <Row label="Sex" value={data.gender} />
+                <Row label="Phone" value={data.phone} />
+                <Row label="High-Tech" value={data.highTech ? 'Yes' : null} />
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-2 pb-1 border-b border-[#D9E1E8]">Address</p>
+                <Row label="Street" value={data.address} />
+                <Row label="City/State/ZIP" value={[data.city, data.state, data.zip].filter(Boolean).join(', ')} />
+              </div>
+            </>)}
+            {detailTab === 'insurance' && (<>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-2 pb-1 border-b border-[#D9E1E8]">Primary Insurance</p>
+                <Row label="Type" value={data.insuranceType} />
+                <Row label="Member ID" value={data.insuranceId} />
+                <Row label="Carrier" value={data.insuranceName} />
+                <Row label="Group #" value={data.insuranceGroup} />
+                <Row label="Plan" value={data.insurancePlan} />
+                <Row label="Subscriber" value={data.subscriberName} />
+                <Row label="Relation" value={data.subscriberRelation} />
+              </div>
+              {(data.ins2Type || data.ins2Id) && (
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-2 pb-1 border-b border-[#D9E1E8]">Additional Coverage</p>
+                  <Row label="Type" value={data.ins2Type} />
+                  <Row label="Member ID" value={data.ins2Id} />
+                  <Row label="Carrier" value={data.ins2Name} />
+                  <Row label="Group #" value={data.ins2Group} />
+                  <Row label="Plan" value={data.ins2Plan} />
+                  <Row label="Network" value={data.ins2NetworkStatus} />
+                  <Row label="Case Rate" value={data.ins2HasCaseRate ? (data.ins2CaseRateAmount || 'Yes') : null} />
+                  <Row label="Policy Notes" value={data.ins2PolicyNotes} />
+                </div>
+              )}
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-2 pb-1 border-b border-[#D9E1E8]">Clinical / Billing</p>
+                <Row label="Dx Codes" value={[data.dxCode1, data.dxCode2, data.dxCode3, data.dxCode4].filter(Boolean).join(', ')} />
+                <Row label="Prior Auth #" value={data.paNumber} />
+                <Row label="PA Dates" value={data.paStartDate || data.paEndDate ? `${data.paStartDate || '?'} — ${data.paEndDate || 'Present'}` : null} />
+                <Row label="Network" value={data.networkStatus} />
+                <Row label="Case Rate" value={data.hasCaseRate ? (data.caseRateAmount || 'Yes') : null} />
+                <Row label="Policy Notes" value={data.policyNotes} />
+              </div>
+            </>)}
+          </div>
+        )}
+
+        {(detailTab === 'demographics' || detailTab === 'insurance') && editing && (
         <form onSubmit={handleSave} className="bg-white rounded-2xl shadow-sm p-6 space-y-5">
 
           {detailTab === 'demographics' && (<>
@@ -420,6 +481,9 @@ export default function FamilyPatientDetailPage({ params }: { params: Promise<{ 
           <div className="flex items-center gap-3">
             <button type="submit" disabled={saving} className="bg-[#2F3E4E] text-white px-6 py-2 rounded-xl font-semibold hover:bg-[#7A8F79] transition disabled:opacity-50">
               {saving ? 'Saving…' : 'Save Changes'}
+            </button>
+            <button type="button" onClick={() => setEditing(false)} className="border border-[#D9E1E8] text-[#7A8F79] px-6 py-2 rounded-xl text-sm font-semibold hover:bg-[#F4F6F5] transition">
+              Cancel
             </button>
             {saved && <span className="text-sm font-medium text-green-600">✓ Saved</span>}
           </div>

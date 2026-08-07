@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { fmtPhoneInput } from '../../../lib/formatPhone'
 import Tabs from '../../components/Tabs'
 import AppearanceControls from '../../components/AppearanceControls'
+import { Row } from '../../components/ReadOnlyField'
 import GuardianInviteModal from '../../components/GuardianInviteModal'
 
 type LinkedPatient = {
@@ -21,6 +22,7 @@ export default function FamilyProfilePage() {
 
   // SMS phone number
   const [phone, setPhone] = useState('')
+  const [editingPhone, setEditingPhone] = useState(false)
   const [phoneSaving, setPhoneSaving] = useState(false)
   const [phoneSaved, setPhoneSaved] = useState(false)
   const [phoneError, setPhoneError] = useState('')
@@ -146,6 +148,7 @@ export default function FamilyProfilePage() {
     setPhoneSaving(false)
     if (res.ok) {
       setPhoneSaved(true)
+      setEditingPhone(false)
       setTimeout(() => setPhoneSaved(false), 3000)
     } else {
       setPhoneError(data.error || 'Failed to save phone number')
@@ -244,29 +247,40 @@ export default function FamilyProfilePage() {
 
           {/* SMS phone number */}
           <div className="bg-white rounded-2xl shadow-sm p-6">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-lg">📞</span>
-              <p className="font-bold text-[#2F3E4E] text-sm">Text (SMS) Verification</p>
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">📞</span>
+                <p className="font-bold text-[#2F3E4E] text-sm">Text (SMS) Verification</p>
+              </div>
+              {!editingPhone && phone.trim() && (
+                <button onClick={() => setEditingPhone(true)} className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">
+                  Edit
+                </button>
+              )}
             </div>
             <p className="text-xs text-[#7A8F79] leading-relaxed mb-4">
               Used to send one-time login codes via text message.
             </p>
-            <div className="flex gap-2">
-              <input
-                type="tel"
-                placeholder="(555) 555-5555"
-                value={phone}
-                onChange={e => setPhone(fmtPhoneInput(e.target.value))}
-                className="flex-1 border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] placeholder-[#7A8F79]/50 focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-              />
-              <button
-                onClick={savePhone}
-                disabled={phoneSaving || !phone.trim()}
-                className="shrink-0 bg-[#2F3E4E] text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-[#7A8F79] transition disabled:opacity-50"
-              >
-                {phoneSaving ? 'Saving…' : 'Save'}
-              </button>
-            </div>
+            {!editingPhone && phone.trim() ? (
+              <Row label="Phone" value={phone} />
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  type="tel"
+                  placeholder="(555) 555-5555"
+                  value={phone}
+                  onChange={e => setPhone(fmtPhoneInput(e.target.value))}
+                  className="flex-1 border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] placeholder-[#7A8F79]/50 focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                />
+                <button
+                  onClick={savePhone}
+                  disabled={phoneSaving || !phone.trim()}
+                  className="shrink-0 bg-[#2F3E4E] text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-[#7A8F79] transition disabled:opacity-50"
+                >
+                  {phoneSaving ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+            )}
             {phoneError && <p className="text-xs text-red-500 mt-2">{phoneError}</p>}
             {phoneSaved && <p className="text-xs text-green-600 font-medium mt-2">Saved</p>}
           </div>

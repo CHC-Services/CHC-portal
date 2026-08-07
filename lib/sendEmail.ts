@@ -381,6 +381,47 @@ export async function sendBillingInquiry({
   }
 }
 
+export async function sendContactQuestion({
+  name,
+  email,
+  question,
+}: {
+  name: string
+  email: string
+  question: string
+}): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) return false
+  const resend = createLoggedResend('misc', name)
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to: SUPPORT_TO,
+      replyTo: email,
+      subject: `HELP: Website Question — ${name}`,
+      html: `
+        <div style="font-family:sans-serif;max-width:520px;padding:32px;color:#2F3E4E">
+          <h2 style="margin:0 0 8px;color:#2F3E4E">New Contact Question</h2>
+          <p style="margin:0 0 20px;color:#7A8F79;font-size:14px">Submitted via the CHC Services page.</p>
+
+          <div style="background:#f4f6f8;border-radius:10px;padding:20px 24px;margin-bottom:24px">
+            <p style="margin:0 0 8px;font-size:14px"><strong>Name:</strong> ${name}</p>
+            <p style="margin:0 0 8px;font-size:14px"><strong>Email:</strong> ${email}</p>
+            <p style="margin:0 4px 4px;font-size:14px"><strong>Question:</strong></p>
+            <p style="margin:0;font-size:14px;white-space:pre-line">${question}</p>
+          </div>
+
+          <hr style="border:none;border-top:1px solid #D9E1E8;margin:24px 0"/>
+          <p style="font-size:11px;color:#aab">Submitted from cominghomecare.com/services</p>
+        </div>
+      `,
+    })
+    return !error
+  } catch {
+    return false
+  }
+}
+
 export async function sendEnrollmentAlert({
   nurseName,
   action,

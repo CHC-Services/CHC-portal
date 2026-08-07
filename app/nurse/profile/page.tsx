@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import PortalMessages from '../../components/PortalMessages'
+import { Row, SectionHeader } from '../../components/ReadOnlyField'
 import { fmtPhoneInput } from '../../../lib/formatPhone'
 
 export default function ProfilePage() {
@@ -11,6 +12,7 @@ export default function ProfilePage() {
   const [user, setUser] = useState<{ email: string; name: string } | null>(null)
   const [profile, setProfile] = useState<any>({})
   const [message, setMessage] = useState('')
+  const [editingProfile, setEditingProfile] = useState(false)
 
   // 2FA state
   const [mfaEnabled, setMfaEnabled] = useState(false)
@@ -59,7 +61,7 @@ export default function ProfilePage() {
       body: JSON.stringify(profile),
     })
     const data = await res.json()
-    if (res.ok) { setMessage('Profile updated successfully.'); router.refresh() }
+    if (res.ok) { setMessage('Profile updated successfully.'); setEditingProfile(false); router.refresh() }
     else setMessage(data.error || 'Update failed.')
   }
 
@@ -194,8 +196,29 @@ export default function ProfilePage() {
         <div className="lg:col-span-3 space-y-5">
 
           {/* Personal Information */}
+          {!editingProfile ? (
+            <div className="bg-white rounded-xl shadow p-6">
+              <SectionHeader title="Personal Information" editing={false} onEdit={() => setEditingProfile(true)} />
+              <div className="space-y-0.5">
+                <Row label="Name" value={[profile.firstName, profile.middleInitial, profile.lastName].filter(Boolean).join(' ')} />
+                <Row label="Preferred Name" value={profile.displayName} />
+                <Row label="Phone" value={profile.phone} />
+                <Row label="Address" value={profile.address} />
+                <Row label="City/State/ZIP" value={[profile.city, profile.state, profile.zip].filter(Boolean).join(', ')} />
+                <Row label="Date of Birth" value={profile.dob ? 'On file' : null} />
+                <Row label="SSN" value={profile.ssn ? 'On file' : null} />
+                <Row label="NPI Number" value={profile.npiNumber ? 'On file' : null} />
+                <Row label="Medicaid ID" value={profile.medicaidNumber ? 'On file' : null} />
+              </div>
+            </div>
+          ) : (
           <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow p-6 space-y-4">
-            <h2 className="text-xl font-semibold text-[#2F3E4E]">Personal Information</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-[#2F3E4E]">Personal Information</h2>
+              <button type="button" onClick={() => setEditingProfile(false)} className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">
+                Cancel
+              </button>
+            </div>
 
             {/* Name row */}
             <div className="grid grid-cols-6 gap-3">
@@ -260,6 +283,7 @@ export default function ProfilePage() {
             </button>
             {message && <p className="text-sm text-center text-[#2F3E4E]">{message}</p>}
           </form>
+          )}
 
           {/* 2FA */}
           <div className="bg-white rounded-xl shadow p-6">

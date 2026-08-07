@@ -2,34 +2,19 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { fmtPhoneInput } from '../../lib/formatPhone'
 
-export default function BillingPage() {
-  const [form, setForm] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    patientCount: '1',
-    insuranceCount: '1',
-    insuranceNames: [''],
-  })
+export default function ServicesPage() {
+  const [form, setForm] = useState({ name: '', email: '', question: '' })
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-
-  function handleCountChange(count: string) {
-    const n = Math.max(1, Math.min(10, parseInt(count) || 1))
-    const names = Array.from({ length: n }, (_, i) => form.insuranceNames[i] || '')
-    setForm({ ...form, insuranceCount: String(n), insuranceNames: names })
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/billing-inquiry', {
+      const res = await fetch('/api/contact-question', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
@@ -37,10 +22,10 @@ export default function BillingPage() {
       if (res.ok) {
         setSubmitted(true)
       } else {
-        setError('Something went wrong. Please try again or email us directly at enroll@cominghomecare.com.')
+        setError('Something went wrong. Please try again or email us directly at support@cominghomecare.com.')
       }
     } catch {
-      setError('Something went wrong. Please try again or email us directly at enroll@cominghomecare.com.')
+      setError('Something went wrong. Please try again or email us directly at support@cominghomecare.com.')
     } finally {
       setLoading(false)
     }
@@ -53,14 +38,16 @@ export default function BillingPage() {
       <div className="bg-[#2F3E4E] px-6 md:px-10 py-12 md:py-16">
         <div className="max-w-3xl">
           <p className="text-[#7A8F79] text-sm font-semibold uppercase tracking-widest mb-2">
-            Billing Services
+            Billing & Care Coordination
           </p>
           <h1 className="text-3xl md:text-4xl font-bold text-white leading-tight">
-            Let Us Handle Your Billing
+            More Than Billing — A Connected Care Platform
           </h1>
           <p className="mt-3 text-[#D9E1E8] text-sm max-w-xl leading-relaxed">
-            Coming Home Care offers medical billing services for home care providers.
-            Once enrolled, we manage claim submission, monitor for follow-up responses, and track reimbursements — so you can focus
+            Coming Home Care started as a medical billing service for home care providers, and has grown into a
+            full care-coordination platform. Once enrolled, we manage claim submission, monitor for follow-up
+            responses, track reimbursements, and give your whole care team — providers, families, and
+            patients — a secure, connected place to stay on top of it all, so you can focus
             on what matters most: <span className="font-bold italic text-lg text-[#7A8F79]">care</span>.
           </p>
         </div>
@@ -68,11 +55,17 @@ export default function BillingPage() {
 
       {/* What we offer */}
       <div className="px-6 md:px-10 py-10 max-w-3xl">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
+        <p className="text-xs font-semibold uppercase tracking-widest text-[#7A8F79] mb-3">What&rsquo;s Included</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-10">
           {[
-            { icon: '📤', title: 'Claim Submission', body: 'We submit claims to primary & secondary payers on your behalf, accurately and on time.' },
+            { icon: '📤', title: 'Claim Billing', body: 'We submit claims to primary & secondary payers on your behalf, accurately and on time.' },
             { icon: '💰', title: 'Reimbursement Tracking', body: 'Full visibility into what was billed, what was paid, and what is still outstanding.' },
             { icon: '🗂️', title: 'Secure EOB Storage', body: 'Related EOBs are securely uploaded and available to be printed or downloaded.' },
+            { icon: '👨‍👩‍👧', title: 'Family Portal Access', body: 'Family members and guardians get their own secure login to stay connected to a loved one’s care.' },
+            { icon: '💊', title: 'Medication Order Reminders', body: 'Automatic refill and reorder reminders so medications never lapse.' },
+            { icon: '🔗', title: 'Team Document Coordination', body: 'Providers, office staff, and families can share and review documents from one connected record.' },
+            { icon: '📅', title: 'Prior Authorization Reminders', body: 'Advance alerts before a PA is set to expire, so renewals happen before care is interrupted.' },
+            { icon: '🔒', title: 'HIPAA-Level Secure Storage', body: 'Documents are encrypted at rest and in transit, meeting HIPAA-level security standards.' },
           ].map(card => (
             <div key={card.title} className="bg-white rounded-2xl shadow-sm p-5">
               <div className="text-3xl mb-3">{card.icon}</div>
@@ -82,51 +75,49 @@ export default function BillingPage() {
           ))}
         </div>
 
-        {/* Contact Form */}
+        {/* Billing enrollment callout */}
+        <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <p className="font-bold text-[#2F3E4E] text-sm mb-1">Ready to enroll in billing services?</p>
+            <p className="text-xs text-[#7A8F79]">Tell us about your patients and insurances so we can get you set up.</p>
+          </div>
+          <Link
+            href="/inquiry"
+            className="shrink-0 bg-[#2F3E4E] hover:bg-[#7A8F79] text-white font-semibold px-5 py-2.5 rounded-lg transition text-sm whitespace-nowrap"
+          >
+            Start Billing Inquiry →
+          </Link>
+        </div>
+
+        {/* Simple contact form */}
         <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
           {submitted ? (
             <div className="text-center py-10">
               <div className="text-5xl mb-4">✅</div>
-              <h2 className="text-xl font-bold text-[#2F3E4E] mb-2">Inquiry Received!</h2>
+              <h2 className="text-xl font-bold text-[#2F3E4E] mb-2">Question Received!</h2>
               <p className="text-sm text-[#7A8F79] max-w-sm mx-auto">
-                Thank you for reaching out. Please allow <strong className="text-[#2F3E4E]">24–48 hours</strong> for
-                our team to review your inquiry and get back to you.
+                Thanks for reaching out. Please allow <strong className="text-[#2F3E4E]">24–48 hours</strong> for
+                our team to review and reply.
               </p>
             </div>
           ) : (
             <>
-              <h2 className="text-xl font-bold text-[#2F3E4E] mb-1">Request More Information</h2>
+              <h2 className="text-xl font-bold text-[#2F3E4E] mb-1">Have a Question?</h2>
               <p className="text-sm text-[#7A8F79] mb-6">
-                Fill out the form below and we&apos;ll be in touch within 24–48 hours. Or <Link href="/signup" className="font-semibold text-[#2F3E4E] underline underline-offset-2 hover:text-[#7A8F79] transition">
-              register as a new user
-            </Link> to enroll in billing services. 
+                Send us a quick note and we&apos;ll get back to you within 24–48 hours.
               </p>
 
               <form onSubmit={handleSubmit} className="space-y-4">
-
-                {/* Name row */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">First Name *</label>
-                    <input
-                      required
-                      value={form.firstName}
-                      onChange={e => setForm({ ...form, firstName: e.target.value })}
-                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#7A8F79]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Last Name *</label>
-                    <input
-                      required
-                      value={form.lastName}
-                      onChange={e => setForm({ ...form, lastName: e.target.value })}
-                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#7A8F79]"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Name *</label>
+                  <input
+                    required
+                    value={form.name}
+                    onChange={e => setForm({ ...form, name: e.target.value })}
+                    className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#7A8F79]"
+                  />
                 </div>
 
-                {/* Email */}
                 <div>
                   <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Email Address *</label>
                   <input
@@ -138,69 +129,15 @@ export default function BillingPage() {
                   />
                 </div>
 
-                {/* Phone */}
                 <div>
-                  <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">
-                    Phone Number{' '}
-                    <span className="text-[#7A8F79] font-normal">(optional)</span>
-                  </label>
-                  <input
-                    type="tel"
-                    value={form.phone}
-                    onChange={e => setForm({ ...form, phone: fmtPhoneInput(e.target.value) })}
-                    className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#7A8F79]"
+                  <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Question *</label>
+                  <textarea
+                    required
+                    rows={5}
+                    value={form.question}
+                    onChange={e => setForm({ ...form, question: e.target.value })}
+                    className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#7A8F79] resize-none"
                   />
-                </div>
-
-                {/* Patient count */}
-                <div>
-                  <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">
-                    How many patients do you submit claims for currently? *
-                  </label>
-                  <select
-                    value={form.patientCount}
-                    onChange={e => setForm({ ...form, patientCount: e.target.value })}
-                    className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#7A8F79]"
-                  >
-                    {['1', '2', '3', '4', '5+'].map(n => (
-                      <option key={n} value={n}>{n}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Insurance count */}
-                <div>
-                  <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">
-                    How many insurances do you bill? *
-                  </label>
-                  <select
-                    value={form.insuranceCount}
-                    onChange={e => handleCountChange(e.target.value)}
-                    className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#7A8F79]"
-                  >
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
-                      <option key={n} value={n}>{n}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Insurance names */}
-                <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-[#2F3E4E]">Insurance Name(s) *</label>
-                  {form.insuranceNames.map((name, i) => (
-                    <input
-                      key={i}
-                      required
-                      placeholder={`Insurance ${i + 1}`}
-                      value={name}
-                      onChange={e => {
-                        const updated = [...form.insuranceNames]
-                        updated[i] = e.target.value
-                        setForm({ ...form, insuranceNames: updated })
-                      }}
-                      className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#7A8F79]"
-                    />
-                  ))}
                 </div>
 
                 {error && <p className="text-red-600 text-sm">{error}</p>}
@@ -210,14 +147,13 @@ export default function BillingPage() {
                   disabled={loading}
                   className="w-full bg-[#2F3E4E] hover:bg-[#7A8F79] text-white font-semibold py-3 rounded-lg transition text-sm disabled:opacity-50"
                 >
-                  {loading ? 'Submitting…' : 'Submit Inquiry'}
+                  {loading ? 'Submitting…' : 'Submit Question'}
                 </button>
 
                 <p className="text-xs text-center text-[#7A8F79]">
                   Please allow 24–48 hours for our team to review and reply.
                   <br/><br/>* indicates a required field
                 </p>
-
               </form>
             </>
           )}

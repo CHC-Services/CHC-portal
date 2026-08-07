@@ -29,6 +29,8 @@ const session = token ? verifyToken(token) : null
 if (!session || session.role !== 'admin') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 ```
 
+**Filled-out data renders read-only, with an Edit button** — any field/section that already has a value (profile pages, patient records, medication details, etc.) must render as read-only display, not an open input, until the user clicks "Edit." Only fields with no existing value (e.g. "add a phone number" when none is on file) or brand-new-entry forms (e.g. "Add PA," "Add Medication") show inputs by default. Reuse `app/components/ReadOnlyField.tsx` (`Row` for a label/value line, `SectionHeader` for a card header with the Edit button baked in) — see `app/nurse/profile/page.tsx`, `app/family/patients/[id]/page.tsx`, and `app/admin/patients/page.tsx`'s `Section`/`Row` pattern for reference implementations. `app/components/MedicationList.tsx` already follows this natively (card view + "Edit" swaps to the form).
+
 **Migrations** — applied manually:
 1. `execute_sql` via Supabase MCP (project: `rfhewykretdmldfwpnbw`, region: us-east-1)
 2. `npx prisma migrate resolve --applied <migration_name>`

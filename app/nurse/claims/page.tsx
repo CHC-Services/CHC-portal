@@ -226,6 +226,7 @@ function StageBadge({ stage }: { stage: string | null }) {
     s === 'paid' || s === 'finalized' ? 'bg-green-100 text-green-800' :
     s === 'denied' || s === 'rejected' ? 'bg-red-100 text-red-800' :
     s === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+    s === 'adjusted' ? 'bg-teal-100 text-teal-800' :
     s.includes('submitted') || s === 'resubmitted' ? 'bg-blue-100 text-blue-800' :
     s === 'info requested' ? 'bg-orange-100 text-orange-800' :
     s === 'info sent' ? 'bg-orange-50 text-orange-700' :

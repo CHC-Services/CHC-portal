@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../lib/prisma'
 import { verifyToken } from '../../../../../lib/auth'
+import { calcMedicaidCycleInfo } from '../../../../../lib/medicaidPayCycle'
 
 function adminOnly(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -28,11 +29,16 @@ export async function POST(req: Request) {
   if (!adminOnly(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { nurseId, patientCtrlNum, payerCtrlNum, dosStart, dosStop, totalCharge, paidAmount, processedDate, statusCodes, estPayCycle, depositDate, notes } = body
+  const { nurseId, patientCtrlNum, payerCtrlNum, dosStart, dosStop, totalCharge, paidAmount, processedDate, statusCodes, notes } = body
 
   if (!nurseId || !patientCtrlNum || !dosStart || !dosStop || totalCharge == null) {
     return NextResponse.json({ error: 'nurseId, patientCtrlNum, dosStart, dosStop, and totalCharge are required.' }, { status: 400 })
   }
+
+  // The pay cycle and deposit date are always derived from the processed date
+  // via the pay-cycle schedule — never trusted from the client — so a claim
+  // always lands in the cycle it actually belongs to, with no manual drift.
+  const cycleInfo = processedDate ? calcMedicaidCycleInfo(processedDate) : null
 
   const claim = await (prisma.medicaidClaim.create as any)({
     data: {
@@ -44,8 +50,8 @@ export async function POST(req: Request) {
       totalCharge:    parseFloat(totalCharge),
       paidAmount:     paidAmount != null ? parseFloat(paidAmount) : null,
       processedDate:  processedDate ? new Date(processedDate) : null,
-      estPayCycle:    estPayCycle ? parseInt(estPayCycle) : null,
-      depositDate:    depositDate ? new Date(depositDate) : null,
+      estPayCycle:    cycleInfo?.cycle ?? null,
+      depositDate:    cycleInfo ? new Date(cycleInfo.depositDateStr) : null,
       statusCodes:    Array.isArray(statusCodes) ? statusCodes : [],
       notes:          notes?.trim() || null,
     },

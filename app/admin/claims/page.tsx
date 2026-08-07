@@ -2,8 +2,14 @@
 
 import React, { useState, useEffect, useRef, Fragment, useMemo } from 'react'
 import AdminNav from '../../components/AdminNav'
-import { payCycleDateLabel, calcMedicaidCycleInfo } from '../../../lib/medicaidPayCycle'
+import { calcMedicaidCycleInfo } from '../../../lib/medicaidPayCycle'
 import { formalName } from '../../../lib/formatName'
+
+const CLAIM_STAGES = [
+  'Draft', 'INS-1 Submitted', 'Resubmitted', 'Adjusted', 'Pending', 'Info Requested',
+  'Info Sent', 'INS-2 Submitted', 'Appealed', 'Appeal Needed', 'Paid', 'Denied',
+  'Rejected', 'Check Wait', 'Voided',
+]
 
 // 3-segment MM / DD / YYYY date input.
 // Auto-advances: MM→DD on 2 digits, DD→YYYY on 2 digits, YYYY→nextRef on 4 digits.
@@ -269,6 +275,7 @@ function StageBadge({ stage }: { stage: string | null }) {
     s === 'paid' || s === 'finalized' ? 'bg-green-100 text-green-800' :
     s === 'denied' || s === 'rejected' ? 'bg-red-100 text-red-800' :
     s === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+    s === 'adjusted' ? 'bg-teal-100 text-teal-800' :
     s.includes('submitted') || s === 'resubmitted' ? 'bg-blue-100 text-blue-800' :
     s === 'info requested' ? 'bg-orange-100 text-orange-800' :
     s === 'info sent' ? 'bg-orange-50 text-orange-700' :
@@ -690,7 +697,7 @@ function ClaimDetailModal({
                 className="text-xs border border-[#D9E1E8] rounded-lg px-2 py-1.5 text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] bg-white"
               >
                 <option value="">— Stage —</option>
-                {['Draft','INS-1 Submitted','Resubmitted','Pending','Info Requested','Info Sent','INS-2 Submitted','Appealed','Appeal Needed','Paid','Denied','Rejected','Check Wait','Voided'].map(s => (
+                {CLAIM_STAGES.map(s => (
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>
@@ -777,7 +784,7 @@ function ClaimDetailModal({
                     <label className={lbl}>Total Billed</label>
                     <div className="relative">
                       <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
-                      <input type="number" step="0.01" className={`${inp} pl-5`} value={cForm.totalBilled} onChange={e => setCForm(f => ({ ...f, totalBilled: e.target.value }))} />
+                      <input type="number" step="0.01" className={`${inp} pl-5 ${claim.voidReversalOf ? 'text-red-800 font-semibold' : ''}`} value={cForm.totalBilled} onChange={e => setCForm(f => ({ ...f, totalBilled: e.target.value }))} />
                     </div>
                   </div>
                   <div>
@@ -888,7 +895,7 @@ function ClaimDetailModal({
                     <label className={lbl}>Total Reimb.</label>
                     <div className="relative">
                       <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-[#2F3E4E] pointer-events-none select-none">$</span>
-                      <input type="number" step="0.01" className={`${inp} pl-5`} value={cForm.totalReimbursed} onChange={e => setCForm(f => ({ ...f, totalReimbursed: e.target.value }))} />
+                      <input type="number" step="0.01" className={`${inp} pl-5 ${claim.voidReversalOf ? 'text-red-800 font-semibold' : ''}`} value={cForm.totalReimbursed} onChange={e => setCForm(f => ({ ...f, totalReimbursed: e.target.value }))} />
                     </div>
                   </div>
                   <div>
@@ -959,18 +966,18 @@ function ClaimDetailModal({
                     <input type="date" className={dateInp} value={mForm.processedDate} onChange={e => setMForm(f => ({ ...f, processedDate: e.target.value }))} />
                   </div>
                   <div>
-                    <label className={lbl}>Pay Cycle #</label>
-                    <input type="number" step="1" className={`${inp} bg-[#f8faf8]`} value={mForm.estPayCycle} onChange={e => setMForm(f => ({ ...f, estPayCycle: e.target.value }))} placeholder="Auto" />
-                    {mForm.estPayCycle && !isNaN(parseInt(mForm.estPayCycle)) && (
-                      <p className="text-xs text-[#7A8F79] mt-0.5">Deposits {payCycleDateLabel(parseInt(mForm.estPayCycle))}</p>
-                    )}
+                    <label className={lbl}>Pay Cycle # <span className="text-[#7A8F79] font-normal normal-case text-[10px]">(derived, not editable)</span></label>
+                    <p className="text-sm font-semibold text-[#2F3E4E] py-1.5">
+                      {mForm.estPayCycle || (mForm.processedDate ? '—' : 'Set Proc Date to calculate')}
+                    </p>
                   </div>
                   <div>
-                    <label className={lbl}>Deposit Date</label>
-                    <input type="date" className={`${dateInp} bg-[#f8faf8]`} value={mForm.depositDate} onChange={e => setMForm(f => ({ ...f, depositDate: e.target.value }))} />
-                    {mForm.depositDate && (
-                      <p className="text-xs text-[#7A8F79] mt-0.5">Thu · {new Date(mForm.depositDate + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</p>
-                    )}
+                    <label className={lbl}>Deposit Date <span className="text-[#7A8F79] font-normal normal-case text-[10px]">(derived, not editable)</span></label>
+                    <p className="text-sm font-semibold text-[#2F3E4E] py-1.5">
+                      {mForm.depositDate
+                        ? `Thu · ${new Date(mForm.depositDate + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}`
+                        : (mForm.processedDate ? '—' : 'Set Proc Date to calculate')}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -1236,8 +1243,8 @@ function AdminClaimCard({
             <p className="text-xs font-mono font-semibold text-[#2F3E4E] truncate leading-tight">{claimId || '—'}</p>
             <p className="text-[10px] text-[#7A8F79] leading-tight mt-0.5">{fmtDOS(dosStart, dosStop)}</p>
           </div>
-          <div><p className="text-xs font-semibold text-[#2F3E4E] leading-tight">{fmt(billed, '$')}</p></div>
-          <div><p className="text-xs font-semibold text-[#7A8F79] leading-tight">{fmt(reimb, '$')}</p></div>
+          <div><p className={`text-xs font-semibold leading-tight ${uc.voidReversalOf ? 'text-red-800' : 'text-[#2F3E4E]'}`}>{fmt(billed, '$')}</p></div>
+          <div><p className={`text-xs font-semibold leading-tight ${uc.voidReversalOf ? 'text-red-800' : 'text-[#7A8F79]'}`}>{fmt(reimb, '$')}</p></div>
           <div className="text-right"><p className={`text-[10px] leading-tight ${isFinal ? 'text-green-700' : 'text-[#7A8F79]'}`}>{dateLabel}</p></div>
         </div>
 
@@ -1306,6 +1313,19 @@ export default function AdminClaimsPage() {
   const [selectedNurseId, setSelectedNurseId] = useState<string | null>(null)
   const providerRef = useRef<HTMLDivElement>(null)
   const [activeSuggestionIdx, setActiveSuggestionIdx] = useState(0)
+
+  // Add Medicaid Claim modal — separate from the commercial Add Claim modal
+  // above because MedicaidClaim is a differently-shaped model (single
+  // charge/paid amount, patient/payer control numbers, status codes) rather
+  // than the primary/secondary-payer commercial Claim shape.
+  const [showAddMedicaidModal, setShowAddMedicaidModal] = useState(false)
+  const [addMedicaidForm, setAddMedicaidForm] = useState<MedicaidFormState & { nurseId: string }>({
+    nurseId: '', patientCtrlNum: '', payerCtrlNum: '', dosStart: '', dosStop: '',
+    totalCharge: '', paidAmount: '', processedDate: '', estPayCycle: '', depositDate: '',
+    statusCodes: [], notes: '',
+  })
+  const [addingMedicaid, setAddingMedicaid] = useState(false)
+  const [addMedicaidError, setAddMedicaidError] = useState<string | null>(null)
 
   // Status codes (used by ClaimDetailModal only)
   const [medicaidStatusCodes, setMedicaidStatusCodes] = useState<{ code: string; description: string }[]>([])
@@ -1553,6 +1573,63 @@ export default function AdminClaimsPage() {
       setAddForm(f => ({ ...f, dateFullyFinalized: info.depositDateStr }))
     }
   }, [addForm.primaryPaidDate, addForm.primaryPayer, showAddModal])
+
+  // Add Medicaid Claim modal — live preview of the pay cycle/deposit date the
+  // server will derive from Proc Date (server is authoritative; this is just
+  // instant feedback so the admin isn't submitting blind).
+  useEffect(() => {
+    if (!showAddMedicaidModal || !addMedicaidForm.processedDate) {
+      if (showAddMedicaidModal) setAddMedicaidForm(f => ({ ...f, estPayCycle: '', depositDate: '' }))
+      return
+    }
+    const info = calcMedicaidCycleInfo(addMedicaidForm.processedDate)
+    if (info) setAddMedicaidForm(f => ({ ...f, estPayCycle: String(info.cycle), depositDate: info.depositDateStr }))
+  }, [addMedicaidForm.processedDate, showAddMedicaidModal])
+
+  function openAddMedicaidModal() {
+    setAddMedicaidForm({
+      nurseId: '', patientCtrlNum: '', payerCtrlNum: '', dosStart: '', dosStop: '',
+      totalCharge: '', paidAmount: '', processedDate: '', estPayCycle: '', depositDate: '',
+      statusCodes: [], notes: '',
+    })
+    setAddMedicaidError(null)
+    setShowAddMedicaidModal(true)
+  }
+
+  async function submitMedicaidClaim(e: React.FormEvent) {
+    e.preventDefault()
+    setAddingMedicaid(true)
+    setAddMedicaidError(null)
+
+    const f = addMedicaidForm
+    if (!f.nurseId) { setAddMedicaidError('Select a provider.'); setAddingMedicaid(false); return }
+    if (!f.patientCtrlNum.trim()) { setAddMedicaidError('Patient Ctrl # is required.'); setAddingMedicaid(false); return }
+    if (!f.dosStart || !f.dosStop) { setAddMedicaidError('DOS Start and DOS Stop are required.'); setAddingMedicaid(false); return }
+    if (!f.totalCharge) { setAddMedicaidError('Total Charge is required.'); setAddingMedicaid(false); return }
+
+    const res = await fetch('/api/admin/medicaid/claims', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        nurseId: f.nurseId,
+        patientCtrlNum: f.patientCtrlNum,
+        payerCtrlNum: f.payerCtrlNum || null,
+        dosStart: f.dosStart,
+        dosStop: f.dosStop,
+        totalCharge: f.totalCharge,
+        paidAmount: f.paidAmount || null,
+        processedDate: f.processedDate || null,
+        statusCodes: f.statusCodes,
+        notes: f.notes || null,
+      }),
+    })
+    const data = await res.json()
+    if (!res.ok) { setAddMedicaidError(data.error || 'Failed to create claim.'); setAddingMedicaid(false); return }
+    await loadMedicaidClaims()
+    setShowAddMedicaidModal(false)
+    setAddingMedicaid(false)
+  }
 
   async function toggleBulkMode() {
     const next = !bulkMode
@@ -1827,6 +1904,15 @@ export default function AdminClaimsPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
               Add Claim
+            </button>
+            <button
+              onClick={openAddMedicaidModal}
+              className="flex items-center gap-1.5 border border-[#D9E1E8] bg-white text-[#2F3E4E] px-4 py-2 rounded-lg text-sm font-semibold hover:border-[#7A8F79] hover:text-[#7A8F79] transition"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add Medicaid Claim
             </button>
             <input ref={fileRef} type="file" accept=".csv" onChange={handleFileImport} className="hidden" id="csv-upload" />
             <label htmlFor="csv-upload" className="cursor-pointer bg-[#2F3E4E] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition">
@@ -2264,7 +2350,7 @@ export default function AdminClaimsPage() {
                 <div className="flex items-center gap-2">
                   <select value={addForm.claimStage || 'Draft'} onChange={e => setAddForm(f => ({ ...f, claimStage: e.target.value }))}
                     className="text-xs border border-[#D9E1E8] rounded-lg px-2 py-1.5 text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] bg-white">
-                    {['Draft','INS-1 Submitted','Resubmitted','Pending','Info Requested','Info Sent','INS-2 Submitted','Appealed','Appeal Needed','Paid','Denied','Rejected','Check Wait','Voided'].map(s => (
+                    {CLAIM_STAGES.map(s => (
                       <option key={s} value={s}>{s}</option>
                     ))}
                   </select>
@@ -2515,6 +2601,127 @@ export default function AdminClaimsPage() {
                   <button type="submit" disabled={adding}
                     className="px-5 py-2 rounded-lg bg-[#2F3E4E] text-white text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-60">
                     {adding ? 'Saving…' : 'Add Claim'}
+                  </button>
+                </div>
+
+              </form>
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* Add Medicaid Claim Modal */}
+      {showAddMedicaidModal && (() => {
+        const fi = 'w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]'
+        const lbl = 'block text-xs font-semibold text-[#2F3E4E] mb-1'
+        const f = addMedicaidForm
+        const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+          setAddMedicaidForm(prev => ({ ...prev, [k]: e.target.value }))
+        return (
+          <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 overflow-y-auto py-8 px-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-[#D9E1E8]">
+                <h2 className="text-lg font-bold text-[#2F3E4E]">Add Medicaid Claim</h2>
+                <button onClick={() => setShowAddMedicaidModal(false)} className="text-[#7A8F79] hover:text-[#2F3E4E] text-xl leading-none">✕</button>
+              </div>
+
+              <form onSubmit={submitMedicaidClaim} className="px-6 py-5 space-y-4">
+
+                {addMedicaidError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-2">{addMedicaidError}</div>
+                )}
+
+                <div>
+                  <label className={lbl}>Provider <span className="text-red-500">*</span></label>
+                  <select value={f.nurseId} onChange={e => setAddMedicaidForm(prev => ({ ...prev, nurseId: e.target.value }))} className={fi}>
+                    <option value="">Select a provider…</option>
+                    {nurses.map(n => (
+                      <option key={n.id} value={n.id}>{formalName(n) || n.displayName}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={lbl}>Patient Ctrl # <span className="text-red-500">*</span></label>
+                    <input className={fi} value={f.patientCtrlNum} onChange={set('patientCtrlNum')} />
+                  </div>
+                  <div>
+                    <label className={lbl}>Payer Ctrl #</label>
+                    <input className={fi} value={f.payerCtrlNum} onChange={set('payerCtrlNum')} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={lbl}>DOS Start <span className="text-red-500">*</span></label>
+                    <input type="date" className={fi} value={f.dosStart} onChange={set('dosStart')} />
+                  </div>
+                  <div>
+                    <label className={lbl}>DOS Stop <span className="text-red-500">*</span></label>
+                    <input type="date" className={fi} value={f.dosStop} onChange={set('dosStop')} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={lbl}>Total Charge <span className="text-red-500">*</span></label>
+                    <input type="number" step="0.01" min="0" className={fi} value={f.totalCharge} onChange={set('totalCharge')} />
+                  </div>
+                  <div>
+                    <label className={lbl}>Paid Amount</label>
+                    <input type="number" step="0.01" min="0" className={fi} value={f.paidAmount} onChange={set('paidAmount')} />
+                  </div>
+                </div>
+
+                <div>
+                  <label className={lbl}>Proc Date <span className="text-[#7A8F79] font-normal text-[10px]">(auto-calcs pay cycle when the claim is finalized)</span></label>
+                  <input type="date" className={fi} value={f.processedDate} onChange={set('processedDate')} />
+                  {f.processedDate && f.depositDate && (
+                    <p className="text-xs text-[#7A8F79] mt-1">
+                      Pay Cycle {f.estPayCycle} · Deposits {new Date(f.depositDate + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className={lbl}>Status Codes</label>
+                  <div className="flex flex-wrap gap-2">
+                    {medicaidStatusCodes.map(sc => {
+                      const active = f.statusCodes.includes(sc.code)
+                      return (
+                        <button
+                          key={sc.code}
+                          type="button"
+                          title={sc.description}
+                          onClick={() => setAddMedicaidForm(prev => ({
+                            ...prev,
+                            statusCodes: active ? prev.statusCodes.filter(c => c !== sc.code) : [...prev.statusCodes, sc.code],
+                          }))}
+                          className={`text-xs font-semibold px-2.5 py-1 rounded-full border transition ${
+                            active ? 'bg-[#2F3E4E] text-white border-[#2F3E4E]' : 'bg-white text-[#7A8F79] border-[#D9E1E8] hover:border-[#7A8F79]'
+                          }`}
+                        >
+                          {sc.code}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <label className={lbl}>Notes</label>
+                  <textarea rows={2} className={`${fi} resize-none`} value={f.notes} onChange={set('notes')} />
+                </div>
+
+                <div className="flex justify-end gap-3 border-t border-[#D9E1E8] pt-5">
+                  <button type="button" onClick={() => setShowAddMedicaidModal(false)}
+                    className="px-5 py-2 rounded-lg border border-[#D9E1E8] text-sm font-semibold text-[#7A8F79] hover:text-[#2F3E4E] hover:border-[#7A8F79] transition">
+                    Cancel
+                  </button>
+                  <button type="submit" disabled={addingMedicaid}
+                    className="px-5 py-2 rounded-lg bg-[#2F3E4E] text-white text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-60">
+                    {addingMedicaid ? 'Saving…' : 'Add Medicaid Claim'}
                   </button>
                 </div>
 

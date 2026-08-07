@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../../../lib/prisma'
 import { verifyToken } from '../../../../../../../lib/auth'
+import { calcMedicaidCycleInfo } from '../../../../../../../lib/medicaidPayCycle'
 
 function adminOnly(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -25,6 +26,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (original.voidedAt) return NextResponse.json({ error: 'This claim has already been voided' }, { status: 400 })
   if (original.voidReversalOf) return NextResponse.json({ error: 'A reversal entry cannot itself be voided' }, { status: 400 })
 
+  // The reversal inherits the original's processed date so it nets out against
+  // the same pay cycle it's offsetting, instead of falling into "unscheduled."
+  const procDateStr = original.processedDate ? new Date(original.processedDate).toISOString().slice(0, 10) : null
+  const cycleInfo = procDateStr ? calcMedicaidCycleInfo(procDateStr) : null
+
   const [reversal, updatedOriginal] = await (prisma.$transaction as any)([
     (prisma.medicaidClaim.create as any)({
       data: {
@@ -34,6 +40,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         dosStop: original.dosStop,
         totalCharge: neg(original.totalCharge),
         paidAmount: neg(original.paidAmount),
+        processedDate: original.processedDate,
+        estPayCycle: cycleInfo?.cycle ?? null,
+        depositDate: cycleInfo ? new Date(cycleInfo.depositDateStr) : null,
         voidReversalOf: original.id,
         notes: `Reversal of claim ${original.patientCtrlNum}`,
       },

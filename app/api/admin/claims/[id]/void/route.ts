@@ -48,6 +48,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         totalReimbursed: neg(original.totalReimbursed),
         remainingBalance: neg(original.remainingBalance),
         voidReversalOf: original.id,
+        // Points back at the original's claimId so groupClaims() collapses
+        // the original underneath this reversal in the claims list, the same
+        // way a resubmission collapses the claim it supersedes.
+        resubmissionOf: original.claimId || null,
         processingNotes: `Reversal of claim ${original.claimId || original.id}`,
       },
     }),

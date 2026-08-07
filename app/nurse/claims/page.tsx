@@ -608,17 +608,19 @@ function PayCycleRow({ group, isReceived, receivedDate, onToggleReceived }: {
               <p className={`text-[10px] uppercase tracking-wide font-semibold leading-tight ${isReceived ? 'text-[#7A8F79]' : 'text-red-700'}`}>
                 Payment Received?
               </p>
-              <input
-                type="checkbox"
-                checked={isReceived}
-                onChange={e => onToggleReceived(e.target.checked)}
-                onClick={e => e.stopPropagation()}
-                className="w-4 h-4 cursor-pointer accent-[#2F3E4E]"
-                aria-label="Mark payment as received"
-              />
-              {isReceived && receivedDate && (
-                <p className="text-[9px] text-[#7A8F79] leading-tight">{fmtDate(receivedDate)}</p>
-              )}
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="checkbox"
+                  checked={isReceived}
+                  onChange={e => onToggleReceived(e.target.checked)}
+                  onClick={e => e.stopPropagation()}
+                  className="w-4 h-4 cursor-pointer accent-[#2F3E4E]"
+                  aria-label="Mark payment as received"
+                />
+                {isReceived && receivedDate && (
+                  <p className="text-[9px] text-[#7A8F79] leading-tight">{fmtDate(receivedDate)}</p>
+                )}
+              </div>
             </div>
           ) : <Cell value="—" />}
         </div>

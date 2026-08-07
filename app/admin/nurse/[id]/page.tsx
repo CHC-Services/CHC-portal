@@ -11,17 +11,35 @@ import { formalName } from '../../../../lib/formatName'
 
 type Profile = Record<string, any>
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title, children, editing, onEdit,
+}: {
+  title: string
+  children: React.ReactNode
+  editing?: boolean
+  onEdit?: () => void
+}) {
   return (
     <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
-      <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8]">
-        {title}
-      </h2>
+      <div className="flex items-center justify-between pb-2 border-b border-[#D9E1E8]">
+        <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79]">
+          {title}
+        </h2>
+        {onEdit && !editing && (
+          <button type="button" onClick={onEdit} className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">
+            Edit
+          </button>
+        )}
+      </div>
       {children}
     </div>
   )
 }
 
+// Renders a field as static text when `editing` is false (or omitted-but-defaulted
+// true for any caller that hasn't opted into the read-only pattern yet) — data that's
+// already been filled out shouldn't sit in an open input someone can type over by
+// accident. Sensitive fields show "On file" rather than the decrypted value at rest.
 function Field({
   label,
   field,
@@ -29,6 +47,7 @@ function Field({
   setProfile,
   type = 'text',
   sensitive = false,
+  editing = true,
 }: {
   label: string
   field: string
@@ -36,8 +55,21 @@ function Field({
   setProfile: (p: Profile) => void
   type?: string
   sensitive?: boolean
+  editing?: boolean
 }) {
   const [show, setShow] = useState(false)
+  const value = profile[field] || ''
+
+  if (!editing) {
+    return (
+      <div className="space-y-1">
+        <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">{label}</label>
+        <p className="text-sm text-[#2F3E4E] font-medium py-1">
+          {sensitive ? (value ? 'On file' : '—') : (value || '—')}
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-1">
@@ -52,7 +84,7 @@ function Field({
       <div className="relative">
         <input
           type={sensitive && !show ? 'password' : type}
-          value={profile[field] || ''}
+          value={value}
           onChange={(e) => {
             const val = type === 'tel' ? fmtPhoneInput(e.target.value) : e.target.value
             setProfile({ ...profile, [field]: val })
@@ -167,6 +199,8 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   const { id } = use(params)
   const router = useRouter()
   const [profile, setProfile] = useState<Profile>({})
+  const [profileSnapshot, setProfileSnapshot] = useState<Profile>({})
+  const [editingProfile, setEditingProfile] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
@@ -586,7 +620,9 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
       })
       .then(data => {
         if (data) {
-          setProfile({ ...data, 'user.email': data.user?.email || '' })
+          const withEmail = { ...data, 'user.email': data.user?.email || '' }
+          setProfile(withEmail)
+          setProfileSnapshot(withEmail)
           setUserRole(data.user?.role || 'nurse')
           setIsDemo(data.isDemo ?? false)
           setNotifEnabled(data.receiveNotifications !== false)
@@ -907,9 +943,17 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
     setSaving(false)
     if (res.ok) {
       setMessage('Saved successfully.')
+      setProfileSnapshot(profile)
+      setEditingProfile(false)
     } else {
       setMessage(data.error || 'Error saving profile.')
     }
+  }
+
+  function cancelEditProfile() {
+    setProfile(profileSnapshot)
+    setEditingProfile(false)
+    setMessage('')
   }
 
   async function submitTimeEntry(e: React.FormEvent) {
@@ -1104,43 +1148,44 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
           <div className="space-y-6">
 
             {/* Individual Provider Information */}
-            <Section title="Individual Provider Information">
+            <Section title="Individual Provider Information" editing={editingProfile} onEdit={() => setEditingProfile(true)}>
               <div className="grid grid-cols-3 gap-3">
-                <Field label="First Name"     field="firstName"     profile={profile} setProfile={setProfile} />
-                <Field label="MI"             field="middleInitial" profile={profile} setProfile={setProfile} />
-                <Field label="Last Name"      field="lastName"      profile={profile} setProfile={setProfile} />
+                <Field label="First Name"     field="firstName"     profile={profile} setProfile={setProfile} editing={editingProfile} />
+                <Field label="MI"             field="middleInitial" profile={profile} setProfile={setProfile} editing={editingProfile} />
+                <Field label="Last Name"      field="lastName"      profile={profile} setProfile={setProfile} editing={editingProfile} />
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Phone"          field="phone"         profile={profile} setProfile={setProfile} type="tel" />
-                <Field label="Email"          field="user.email"    profile={profile} setProfile={setProfile} type="email" />
+                <Field label="Phone"          field="phone"         profile={profile} setProfile={setProfile} editing={editingProfile} type="tel" />
+                <Field label="Email"          field="user.email"    profile={profile} setProfile={setProfile} editing={editingProfile} type="email" />
               </div>
-              <Field label="Home Address"     field="address"       profile={profile} setProfile={setProfile} />
+              <Field label="Home Address"     field="address"       profile={profile} setProfile={setProfile} editing={editingProfile} />
               <div className="grid grid-cols-3 gap-3">
-                <Field label="City"           field="city"          profile={profile} setProfile={setProfile} />
-                <Field label="State"          field="state"         profile={profile} setProfile={setProfile} />
-                <Field label="ZIP"            field="zip"           profile={profile} setProfile={setProfile} />
+                <Field label="City"           field="city"          profile={profile} setProfile={setProfile} editing={editingProfile} />
+                <Field label="State"          field="state"         profile={profile} setProfile={setProfile} editing={editingProfile} />
+                <Field label="ZIP"            field="zip"           profile={profile} setProfile={setProfile} editing={editingProfile} />
               </div>
-              <Field label="Preferred Name (optional)" field="displayName" profile={profile} setProfile={setProfile} />
+              <Field label="Preferred Name (optional)" field="displayName" profile={profile} setProfile={setProfile} editing={editingProfile} />
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Date of Birth"  field="dob"           profile={profile} setProfile={setProfile} type="date" sensitive />
-                <Field label="SSN"            field="ssn"           profile={profile} setProfile={setProfile} sensitive />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="NPI (Individual)" field="npiNumber"   profile={profile} setProfile={setProfile} sensitive />
-                <Field label="Medicaid ID"    field="medicaidNumber" profile={profile} setProfile={setProfile} sensitive />
+                <Field label="Date of Birth"  field="dob"           profile={profile} setProfile={setProfile} editing={editingProfile} type="date" sensitive />
+                <Field label="SSN"            field="ssn"           profile={profile} setProfile={setProfile} editing={editingProfile} sensitive />
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="ETIN (Electronic Transmitter ID)" field="etin"        profile={profile} setProfile={setProfile} />
-                <Field label="ePaces User ID"                   field="epacesUserId" profile={profile} setProfile={setProfile} />
+                <Field label="NPI (Individual)" field="npiNumber"   profile={profile} setProfile={setProfile} editing={editingProfile} sensitive />
+                <Field label="Medicaid ID"    field="medicaidNumber" profile={profile} setProfile={setProfile} editing={editingProfile} sensitive />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="ETIN (Electronic Transmitter ID)" field="etin"        profile={profile} setProfile={setProfile} editing={editingProfile} />
+                <Field label="ePaces User ID"                   field="epacesUserId" profile={profile} setProfile={setProfile} editing={editingProfile} />
               </div>
             </Section>
 
             {/* Business Provider Information */}
             <div className="bg-white rounded-xl shadow-sm p-6">
-              <label className="flex items-center gap-3 cursor-pointer">
+              <label className={`flex items-center gap-3 ${editingProfile ? 'cursor-pointer' : 'cursor-default opacity-70'}`}>
                 <input
                   type="checkbox"
                   checked={!!profile.hasBusinessProvider}
+                  disabled={!editingProfile}
                   onChange={(e) => setProfile({ ...profile, hasBusinessProvider: e.target.checked })}
                   className="w-4 h-4 accent-[#7A8F79]"
                 />
@@ -1154,6 +1199,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
 
                   {/* NPI Type + NPI + Medicaid ID — top row */}
                   <div className="grid grid-cols-2 gap-3 items-end">
+                    {editingProfile ? (
                     <div className="space-y-2">
                       <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Business NPI</label>
                       <div className="flex gap-2">
@@ -1186,7 +1232,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                           }}
                           className="shrink-0 px-3 py-2 rounded-lg bg-[#F4F6F5] border border-[#D9E1E8] text-[#7A8F79] text-xs font-semibold hover:border-[#7A8F79] hover:text-[#2F3E4E] transition"
                         >
-                          🔍 
+                          🔍
                         </button>
                       </div>
                       {/* NPI Type checkboxes */}
@@ -1207,36 +1253,59 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                         </label>
                       </div>
                     </div>
-                    <Field label="Business Medicaid ID" field="bizMedicaidId" profile={profile} setProfile={setProfile} />
+                    ) : (
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Business NPI</label>
+                      <p className="text-sm text-[#2F3E4E] font-medium py-1">{profile.bizNpi || '—'}</p>
+                      {profile.bizNpiType && (
+                        <p className="text-xs text-[#7A8F79]">{profile.bizNpiType === 'Type1' ? 'Type 1 — Individual' : 'Type 2 — Organizational'}</p>
+                      )}
+                    </div>
+                    )}
+                    <Field label="Business Medicaid ID" field="bizMedicaidId" profile={profile} setProfile={setProfile} editing={editingProfile} />
                   </div>
 
-                  <Field label="Entity Name"       field="bizEntityName"     profile={profile} setProfile={setProfile} />
-                  <Field label="Service Address"   field="bizServiceAddress" profile={profile} setProfile={setProfile} />
+                  <Field label="Entity Name"       field="bizEntityName"     profile={profile} setProfile={setProfile} editing={editingProfile} />
+                  <Field label="Service Address"   field="bizServiceAddress" profile={profile} setProfile={setProfile} editing={editingProfile} />
                   <div className="grid grid-cols-3 gap-3">
-                    <Field label="City"  field="bizCity"  profile={profile} setProfile={setProfile} />
-                    <Field label="State" field="bizState" profile={profile} setProfile={setProfile} />
-                    <Field label="Zip"   field="bizZip"   profile={profile} setProfile={setProfile} />
+                    <Field label="City"  field="bizCity"  profile={profile} setProfile={setProfile} editing={editingProfile} />
+                    <Field label="State" field="bizState" profile={profile} setProfile={setProfile} editing={editingProfile} />
+                    <Field label="Zip"   field="bizZip"   profile={profile} setProfile={setProfile} editing={editingProfile} />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <Field label="Business Phone"  field="bizPhone" profile={profile} setProfile={setProfile} type="tel" />
-                    <Field label="Business Email"  field="bizEmail" profile={profile} setProfile={setProfile} type="email" />
+                    <Field label="Business Phone"  field="bizPhone" profile={profile} setProfile={setProfile} editing={editingProfile} type="tel" />
+                    <Field label="Business Email"  field="bizEmail" profile={profile} setProfile={setProfile} editing={editingProfile} type="email" />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <Field label="EIN"  field="ein"  profile={profile} setProfile={setProfile} sensitive />
-                    <Field label="FEIN" field="fein" profile={profile} setProfile={setProfile} sensitive />
+                    <Field label="EIN"  field="ein"  profile={profile} setProfile={setProfile} editing={editingProfile} sensitive />
+                    <Field label="FEIN" field="fein" profile={profile} setProfile={setProfile} editing={editingProfile} sensitive />
                   </div>
                 </div>
               )}
             </div>
 
-            <button
-              type="button"
-              onClick={save}
-              disabled={saving}
-              className="w-full bg-[#2F3E4E] text-white py-3 rounded-xl hover:bg-[#7A8F79] transition font-semibold disabled:opacity-50"
-            >
-              {saving ? 'Saving…' : 'Save Profile'}
-            </button>
+            {/* Save Profile persists the whole `profile` object, including changes
+                made elsewhere that share this same state (e.g. Claims tab aliases) —
+                so it always stays available, not just while editingProfile is true. */}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={save}
+                disabled={saving}
+                className="flex-1 bg-[#2F3E4E] text-white py-3 rounded-xl hover:bg-[#7A8F79] transition font-semibold disabled:opacity-50"
+              >
+                {saving ? 'Saving…' : 'Save Profile'}
+              </button>
+              {editingProfile && (
+                <button
+                  type="button"
+                  onClick={cancelEditProfile}
+                  className="border border-[#D9E1E8] text-[#7A8F79] px-6 rounded-xl font-semibold hover:bg-[#F4F6F5] transition"
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
             {message && (
               <p className={`text-sm text-center font-medium ${message.includes('Error') ? 'text-red-500' : 'text-[#7A8F79]'}`}>
                 {message}
@@ -1536,11 +1605,11 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
             </div>
 
             {/* Payment Information */}
-            <Section title="Payment Information">
-              <Field label="Bank Name"         field="bankName"       profile={profile} setProfile={setProfile} />
+            <Section title="Payment Information" editing={editingProfile} onEdit={() => setEditingProfile(true)}>
+              <Field label="Bank Name"         field="bankName"       profile={profile} setProfile={setProfile} editing={editingProfile} />
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Routing #"       field="bankRouting"    profile={profile} setProfile={setProfile} sensitive />
-                <Field label="Account #"       field="bankAccount"    profile={profile} setProfile={setProfile} sensitive />
+                <Field label="Routing #"       field="bankRouting"    profile={profile} setProfile={setProfile} editing={editingProfile} sensitive />
+                <Field label="Account #"       field="bankAccount"    profile={profile} setProfile={setProfile} editing={editingProfile} sensitive />
               </div>
             </Section>
 

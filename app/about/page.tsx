@@ -2,9 +2,9 @@ export default function AboutPage() {
   return (
     <div className="min-h-screen bg-[#D9E1E8] px-4 py-12 sm:py-16">
       <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-sm p-8 sm:p-12">
-        <h1 className="text-3xl font-bold text-[#2F3E4E] mb-6">
-          About <span className="italic">Coming Home</span><span className="text-[#7A8F79]">care</span>
-        </h1>
+        <h1 className="text-3xl text-[#2F3E4E] mb-6 text-center">
+        <span style={{ fontFamily: '"Cormorant Upright", serif', fontStyle: 'italic', fontWeight: '500', fontSize: '2.5rem' }}>Coming Home<span className="text-[#7A8F79]" style={{ fontStyle: 'normal' }}>care</span></span>
+        <br /> About Us...</h1>
 
         <div className="space-y-5 text-[#2F3E4E] text-[15px] leading-relaxed">
           <p>
@@ -15,10 +15,11 @@ export default function AboutPage() {
 
           <p>
             At the heart of this platform is a simple belief:<br />
-            <span className="font-semibold">Everyone deserves to feel loved, cared for, supported, and reminded that they matter.</span>
+          
+            <span className="block text-center text-md font-semibold text-[#7A8F79] pt-3">Everyone deserves to feel loved, cared for, <br />supported, and reminded that they matter.</span>
           </p>
 
-          <h2 className="text-xl font-bold text-[#2F3E4E] pt-2">Created by a Caregiver, for Caregivers</h2>
+          <h2 className="text-xl font-bold text-[#2F3E4E] pt-2 text-center">Created by a Caregiver, for Caregivers</h2>
           <p>
             Nurses and caregivers are often the people pouring from their own cups to support everyone around
             them. That instinct does not end when the workday is over. It follows us into our families, our
@@ -33,7 +34,7 @@ export default function AboutPage() {
           </p>
           <p>Coming Homecare was built with that reality in mind.</p>
 
-          <h2 className="text-xl font-bold text-[#2F3E4E] pt-2">Making Life a Little Easier</h2>
+          <h2 className="text-xl font-bold text-[#2F3E4E] pt-2 text-center">Making Life a Little Easier</h2>
           <p>
             Coming Homecare is a growing platform designed to reduce the administrative and emotional burden
             carried by healthcare providers, caregivers, patients, and families.
@@ -48,30 +49,31 @@ export default function AboutPage() {
             background, giving people more time and energy for what matters most.
           </p>
 
-          <h2 className="text-xl font-bold text-[#2F3E4E] pt-2">Built Around What You Need</h2>
+          <h2 className="text-xl font-bold text-[#2F3E4E] pt-2 text-center">Built Around What <span className="text-[#7A8F79]">You</span> Need</h2>
           <p>
-            This platform is not intended to remain static. Feedback, ideas, and suggestions for future
-            enhancements are welcomed and genuinely appreciated.
+            This platform is <b><em>not</em></b> intended to remain static. Feedback, ideas, and suggestions for future
+            enhancements are welcomed &amp; genuinely appreciated.
           </p>
           <p>The goal is to create tools tailored to:</p>
 
           <div className="space-y-4 pl-1">
             <div>
-              <p className="font-semibold">You, the provider.</p>
-              <p>So you can spend less time managing paperwork and more time practicing your profession and living your life.</p>
+              <p className="font-semibold">You, the <span className="text-[#7A8F79]">Provider</span>.</p>
+              <p className="pl-6">So you can spend less time managing paperwork and more time practicing your profession and living your life.
+              </p>
             </div>
             <div>
-              <p className="font-semibold">You, the family.</p>
-              <p>So important information, responsibilities, and care needs feel more organized and manageable.</p>
+              <p className="font-semibold">You, the <span className="text-[#7A8F79]">Family</span>.</p>
+              <p className="pl-6">So important information, responsibilities, and care needs feel more organized and manageable.</p>
             </div>
             <div>
-              <p className="font-semibold">You, the patient.</p>
-              <p>So you feel supported, informed, respected, and actively included in your own care.</p>
+              <p className="font-semibold">You, the <span className="text-[#7A8F79]">Patient</span>.</p>
+              <p className="pl-6">So you feel supported, informed, respected, and actively included in your own care.</p>
             </div>
           </div>
 
           <p>
-            If you have ever thought, &ldquo;I wish someone would create something that could take care of this
+            If you have ever thought, &ldquo;I wish someone would create something to take care of this
             tedious, repetitive process for me,&rdquo; this platform exists to explore whether that idea can
             become a reality.
           </p>
@@ -83,7 +85,7 @@ export default function AboutPage() {
 
           <p>Thank you for your interest, your support, and your time.</p>
 
-          <p className="text-lg font-semibold text-[#7A8F79] italic pt-2">Welcome home.</p>
+          <p className="text-xl font-semibold text-[#7A8F79] pt-2 text-center">Welcome home.</p>
         </div>
       </div>
     </div>

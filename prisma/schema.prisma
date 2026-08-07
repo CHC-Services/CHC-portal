@@ -592,6 +592,13 @@ model Claim {
   dateFullyFinalized DateTime?
   checkReceivedDate  DateTime?
 
+  // Medicaid pay cycle — only populated when primaryPayer/secondaryPayer is
+  // Medicaid. Derived server-side from whichever side's paid date applies via
+  // lib/medicaidPayCycle.ts — never trusted from the client. Null for claims
+  // billed to non-Medicaid payers.
+  estPayCycle Int?
+  depositDate DateTime?
+
   // Notes
   processingNotes String?
 

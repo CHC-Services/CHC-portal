@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '../../../../lib/prisma'
 import { verifyToken } from '../../../../lib/auth'
 import { runClaimReminders } from '../../../../lib/runClaimReminders'
+import { deriveCommercialClaimCycle } from '../../../../lib/medicaidPayCycle'
 
 function adminOnly(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -59,6 +60,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: `No provider matched "${body.providerName}". Check the name or set up a provider alias.` }, { status: 422 })
   }
 
+  const primaryPayer = parseStr(body.primaryPayer)
+  const primaryPaidDate = parseDate(body.primaryPaidDate)
+  const secondaryPayer = parseStr(body.secondaryPayer)
+  const secondaryPaidDate = parseDate(body.secondaryPaidDate)
+
+  // Pay cycle / deposit date are always derived server-side from whichever
+  // side is Medicaid — never trusted from the client — same as the dedicated
+  // Medicaid claims flow, so a claim always lands in its real pay cycle.
+  const { estPayCycle, depositDate } = deriveCommercialClaimCycle({ primaryPayer, primaryPaidDate, secondaryPayer, secondaryPaidDate })
+
   const claim = await prisma.claim.create({
     data: {
       nurseId,
@@ -70,24 +81,26 @@ export async function POST(req: Request) {
       hours:               parseNum(body.hours),
       claimStage:          parseStr(body.claimStage),
       submitDate:          parseDate(body.submitDate),
-      primaryPayer:        parseStr(body.primaryPayer),
+      primaryPayer,
       primaryAllowedAmt:   parseNum(body.primaryAllowedAmt),
       primaryCO:           parseNum(body.primaryCO),
       primaryPaidAmt:      parseNum(body.primaryPaidAmt),
-      primaryPaidDate:     parseDate(body.primaryPaidDate),
+      primaryPaidDate,
       primaryPaidTo:       parseStr(body.primaryPaidTo),
       primaryCheckNum:     parseStr(body.primaryCheckNum),
-      secondaryPayer:      parseStr(body.secondaryPayer),
+      secondaryPayer,
       secondaryAllowedAmt: parseNum(body.secondaryAllowedAmt),
       secondaryCO:         parseNum(body.secondaryCO),
       secondaryPaidAmt:    parseNum(body.secondaryPaidAmt),
-      secondaryPaidDate:   parseDate(body.secondaryPaidDate),
+      secondaryPaidDate,
       secondaryPaidTo:     parseStr(body.secondaryPaidTo),
       secondaryCheckNum:   parseStr(body.secondaryCheckNum),
       totalReimbursed:     parseNum(body.totalReimbursed),
       remainingBalance:    parseNum(body.remainingBalance),
       dateFullyFinalized:  parseDate(body.dateFullyFinalized),
       checkReceivedDate:   parseDate(body.checkReceivedDate),
+      estPayCycle,
+      depositDate,
       resubmissionOf:      parseStr(body.resubmissionOf),
       processingNotes:     parseStr(body.processingNotes),
     },

@@ -52,3 +52,36 @@ export function calcMedicaidCycleInfo(procDateStr: string): { cycle: number; dep
 
   return { cycle, depositDateStr }
 }
+
+export function isMedicaidPayerName(payer: string | null | undefined): boolean {
+  return !!payer && payer.toLowerCase().includes('medicaid')
+}
+
+/**
+ * Derives the pay cycle for a unified commercial Claim record — Medicaid is
+ * just one of several payer choices on that model (primary or secondary), so
+ * this picks whichever side is Medicaid and drives the cycle off that side's
+ * paid date. Primary wins if both sides are somehow Medicaid. Returns nulls
+ * (not an error) when neither side is Medicaid or the driving date is unset —
+ * that's the normal, expected state for a non-Medicaid claim.
+ */
+export function deriveCommercialClaimCycle(claim: {
+  primaryPayer?: string | null
+  primaryPaidDate?: Date | string | null
+  secondaryPayer?: string | null
+  secondaryPaidDate?: Date | string | null
+}): { estPayCycle: number | null; depositDate: Date | null } {
+  const toDateStr = (v: Date | string | null | undefined) =>
+    v ? (typeof v === 'string' ? v : v.toISOString()).slice(0, 10) : null
+
+  let driverDateStr: string | null = null
+  if (isMedicaidPayerName(claim.primaryPayer)) {
+    driverDateStr = toDateStr(claim.primaryPaidDate)
+  } else if (isMedicaidPayerName(claim.secondaryPayer)) {
+    driverDateStr = toDateStr(claim.secondaryPaidDate)
+  }
+
+  if (!driverDateStr) return { estPayCycle: null, depositDate: null }
+  const info = calcMedicaidCycleInfo(driverDateStr)
+  return { estPayCycle: info?.cycle ?? null, depositDate: info ? new Date(info.depositDateStr) : null }
+}

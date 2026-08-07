@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../../lib/prisma'
 import { verifyToken } from '../../../../../../lib/auth'
+import { deriveCommercialClaimCycle, isMedicaidPayerName } from '../../../../../../lib/medicaidPayCycle'
 
 function adminOnly(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -27,6 +28,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (original.voidedAt) return NextResponse.json({ error: 'This claim has already been voided' }, { status: 400 })
   if (original.voidReversalOf) return NextResponse.json({ error: 'A reversal entry cannot itself be voided' }, { status: 400 })
 
+  // The reversal is filed under whichever pay cycle the void date falls in —
+  // that's when the payout actually shrinks by this amount — not whatever
+  // cycle the original claim was paid under. Only meaningful when this claim
+  // is billed to Medicaid on one side or the other; null/no-op otherwise.
+  const primaryIsMedicaid = isMedicaidPayerName(original.primaryPayer)
+  const secondaryIsMedicaid = !primaryIsMedicaid && isMedicaidPayerName(original.secondaryPayer)
+  const reversalPrimaryPaidDate = primaryIsMedicaid ? voidDate : original.primaryPaidDate
+  const reversalSecondaryPaidDate = secondaryIsMedicaid ? voidDate : original.secondaryPaidDate
+  const { estPayCycle, depositDate } = deriveCommercialClaimCycle({
+    primaryPayer: original.primaryPayer,
+    primaryPaidDate: reversalPrimaryPaidDate,
+    secondaryPayer: original.secondaryPayer,
+    secondaryPaidDate: reversalSecondaryPaidDate,
+  })
+
   const [reversal, updatedOriginal] = await prisma.$transaction([
     prisma.claim.create({
       data: {
@@ -44,17 +60,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         primaryAllowedAmt: neg(original.primaryAllowedAmt),
         primaryCO: neg(original.primaryCO),
         primaryPaidAmt: neg(original.primaryPaidAmt),
+        primaryPaidDate: reversalPrimaryPaidDate,
         secondaryAllowedAmt: neg(original.secondaryAllowedAmt),
         secondaryCO: neg(original.secondaryCO),
         secondaryPaidAmt: neg(original.secondaryPaidAmt),
+        secondaryPaidDate: reversalSecondaryPaidDate,
         totalReimbursed: neg(original.totalReimbursed),
         remainingBalance: neg(original.remainingBalance),
+        estPayCycle,
+        depositDate,
         voidReversalOf: original.id,
         // Points back at the original's claimId so groupClaims() collapses
         // the original underneath this reversal in the claims list, the same
         // way a resubmission collapses the claim it supersedes.
         resubmissionOf: original.claimId || null,
-        processingNotes: `Reversal of claim ${original.claimId || original.id}`,
+        processingNotes: `Reversal of claim ${original.claimId || original.id} — voided ${voidDate.toISOString().slice(0, 10)}`,
       },
     }),
     prisma.claim.update({

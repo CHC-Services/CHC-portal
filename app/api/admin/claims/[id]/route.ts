@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../lib/prisma'
 import { verifyToken } from '../../../../../lib/auth'
+import { deriveCommercialClaimCycle } from '../../../../../lib/medicaidPayCycle'
 
 function adminOnly(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -36,6 +37,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const { id } = await params
   const body = await req.json()
 
+  const existing = await prisma.claim.findUnique({ where: { id } })
+  if (!existing) return NextResponse.json({ error: 'Claim not found' }, { status: 404 })
+
   const data: Record<string, any> = {}
   if ('resubmissionOf'      in body) data.resubmissionOf      = parseStr(body.resubmissionOf)
   if ('claimId'             in body) data.claimId             = parseStr(body.claimId)
@@ -69,6 +73,20 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
   }
+
+  // Pay cycle / deposit date are re-derived from whatever the payer + paid
+  // date end up being after this edit — never taken from the client — so any
+  // edit that touches either one always leaves the claim filed under the
+  // correct pay cycle instead of a stale one.
+  const effective = {
+    primaryPayer:      'primaryPayer' in data ? data.primaryPayer : existing.primaryPayer,
+    primaryPaidDate:   'primaryPaidDate' in data ? data.primaryPaidDate : existing.primaryPaidDate,
+    secondaryPayer:    'secondaryPayer' in data ? data.secondaryPayer : existing.secondaryPayer,
+    secondaryPaidDate: 'secondaryPaidDate' in data ? data.secondaryPaidDate : existing.secondaryPaidDate,
+  }
+  const { estPayCycle, depositDate } = deriveCommercialClaimCycle(effective)
+  data.estPayCycle = estPayCycle
+  data.depositDate = depositDate
 
   const claim = await prisma.claim.update({
     where: { id },

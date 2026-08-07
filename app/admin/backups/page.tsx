@@ -241,6 +241,12 @@ export default function BackupsPage() {
                       </>
                     ) : (
                       <>
+                        <a
+                          href={`/api/admin/backup/claims/${backup.id}/export`}
+                          className="text-xs border border-[#D9E1E8] text-[#7A8F79] px-3 py-1.5 rounded-lg font-semibold hover:border-[#7A8F79] hover:text-[#2F3E4E] transition"
+                        >
+                          Download CSV
+                        </a>
                         <button
                           onClick={() => setConfirmRestore(backup)}
                           className="text-xs bg-[#7A8F79] text-white px-4 py-1.5 rounded-lg font-semibold hover:bg-[#2F3E4E] transition"

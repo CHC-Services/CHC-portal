@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '../../../lib/prisma'
 import { verifyToken } from '../../../lib/auth'
 import { getEffectiveTier } from '../../../lib/planPermissions'
+import { notifyNewHoursAdded } from '../../../lib/runHoursAlerts'
 
 export async function GET(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -126,6 +127,8 @@ export async function POST(req: Request) {
       patient: { select: { id: true, accountNumber: true, firstName: true, lastName: true } },
     },
   })
+
+  notifyNewHoursAdded(nurseId).catch(() => {})
 
   return NextResponse.json(entry)
 }

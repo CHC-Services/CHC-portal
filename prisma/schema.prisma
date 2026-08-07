@@ -116,6 +116,10 @@ model NurseProfile {
   notifyNewDocument     Boolean @default(true) // alert when admin uploads a document
   notifyNewClaim        Boolean @default(true) // alert when a new claim is added
 
+  // Admin text alert throttle — last date (YYYY-MM-DD) an admin was texted
+  // "New hours added for [this nurse]"; caps that alert at once per nurse per day.
+  hoursAlertSentDate String?
+
   // Self-reported type from public signup form
   signupRole String? // 'Nurse' | 'Patient' | 'Billing Service' | 'Other'
 

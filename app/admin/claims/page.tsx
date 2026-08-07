@@ -1220,9 +1220,9 @@ function AdminClaimCard({
             {(isMedicaid || isMedicaidPayerClaim) && (
               <span className="text-[10px] font-semibold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded-full shrink-0">Medicaid</span>
             )}
-            {c?.estPayCycle != null && (
-              <span className="text-[10px] font-semibold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded-full shrink-0" title={c.depositDate ? `Deposits ${fmtDate(c.depositDate)}` : undefined}>
-                Cycle {c.estPayCycle}
+            {c?.depositDate && (
+              <span className="ml-1.5 text-[10px] font-semibold text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded-full shrink-0 whitespace-nowrap">
+                EOB/Payment Date: {fmtDate(c.depositDate)}
               </span>
             )}
             {uc.voidedAt && (

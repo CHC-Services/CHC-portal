@@ -64,7 +64,7 @@ export default function ChoosePage() {
       <div className="hidden md:flex flex-col justify-start pt-24 bg-[#2F3E4E] text-white w-1/3 px-12 py-16 gap-6">
         <div className="border-t border-[#3d5166] pt-6">
           <p className="text-sm tracking-widest text-[#7A8F79] font-semibold">
-            <span className="italic text-lg">my</span><span className="font-bold text-lg text-white">Provider</span>
+            <span className="font-bold text-lg text-white">Coming Homecare</span>
           </p>
         </div>
         <div>

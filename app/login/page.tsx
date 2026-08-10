@@ -80,19 +80,19 @@ export default function LoginPage() {
       <div className="hidden md:flex flex-col justify-top pt-24 gap-8 bg-[#2F3E4E] text-white w-1/3 px-12 py-16 ">
         <div>
           <div className="flex items-baseline gap-2 border-t border-[#3d5166] pt-6 mb-2">
-            <p className="text-sm normal tracking-widest text-[#7A8F79] font-semibold">Inside the <span className="italic text-lg text-[#7A8F79]">my</span><span className="font-bold text-lg text-[#ffffff]">Provider</span> portal</p>
+            <p className="text-sm normal tracking-widest text-[#7A8F79] font-semibold">Inside your Coming Homecare account</p>
           </div>
           <p className="text-sm normal tracking-widest text-[#7A8F79] font-semibold">You'll find...</p>
         </div>
 
         <div className="space-y-3">
           {[
-            { icon: '⏰', label: 'Easily log your hours from anywhere' },
-            { icon: '📊', label: 'Claim status tracker & income reports' },
-            { icon: '📅', label: 'Important document renewal reminders' },
-            { icon: '🧾', label: 'Review & pay invoices, save receipts' },
-            { icon: '✍🏼', label: 'Provider guides for Medicaid enrollment' },
-            { icon: '⏳', label: 'Self-employed tax date reminders' },
+            { icon: '🔒', label: 'Secure access to your care information' },
+            { icon: '📁', label: 'Document & reminder tracking' },
+            { icon: '🤝', label: 'Direct connection with your care team' },
+            { icon: '📅', label: 'Renewal & appointment reminders' },
+            { icon: '💊', label: 'Medication & care coordination tools' },
+            { icon: '🧾', label: 'Billing, claims & invoice tracking' },
             { icon: '🗄️', label: 'Secure storage for sensitive documents' }
           ].map(f => (
             <div key={f.label} className="flex items-center gap-3">
@@ -113,11 +113,11 @@ export default function LoginPage() {
       {/* Right — login form */}
       <div className="flex flex-col justify-top pt-36 w-full md:w-2/3 px-8 md:px-16 py-16">
         <div className="max-w-sm w-full mx-auto">
-          <p className="text-sm uppercase tracking-widest text-[#7A8F79] font-semibold mb-1">Welcome to your</p>
+          <p className="text-sm uppercase tracking-widest text-[#7A8F79] font-semibold mb-1">Welcome to</p>
           <h1 className="text-3xl font-bold text-[#2F3E4E] mb-1 whitespace-nowrap">
-            <span className="italic text-[#7A8F79]">my</span>Provider Login
+            Coming Homecare
           </h1>
-          <p className="text-sm text-[#7A8F79]">Sign in to access your provider dashboard.</p>
+          <p className="text-sm text-[#7A8F79]">Sign in to access your dashboard.</p>
           <p className="text-sm mt-2 mb-8">
             <span className="text-[#7A8F79]">New user?</span>{' '}
             <Link href="/signup" className="font-semibold text-[#2F3E4E] underline underline-offset-2 hover:text-[#7A8F79] transition">

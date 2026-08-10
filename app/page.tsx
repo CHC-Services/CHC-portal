@@ -93,6 +93,39 @@ function FeatureCard({
   )
 }
 
+function AudienceCard({
+  title,
+  blurb,
+  bullets,
+  ctaLabel,
+}: {
+  title: string
+  blurb: string
+  bullets: string[]
+  ctaLabel: string
+}) {
+  return (
+    <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8 flex flex-col border-t-4 border-[#7A8F79]">
+      <h3 className="text-xl font-bold text-[#2F3E4E]">{title}</h3>
+      <p className="text-sm text-[#7A8F79] mt-1">{blurb}</p>
+      <ul className="mt-4 space-y-2 flex-1">
+        {bullets.map(b => (
+          <li key={b} className="text-sm text-[#2F3E4E] flex items-start gap-2">
+            <span className="text-[#7A8F79] mt-0.5">•</span>
+            <span>{b}</span>
+          </li>
+        ))}
+      </ul>
+      <Link
+        href="/login"
+        className="mt-6 inline-block text-center bg-[#2F3E4E] text-white px-5 py-3 rounded-xl font-semibold text-sm hover:bg-[#7A8F79] transition"
+      >
+        {ctaLabel}
+      </Link>
+    </div>
+  )
+}
+
 function ReminderPill({ title, dueDate, category }: { title: string; dueDate: Date; category: string }) {
   const due = new Date(dueDate)
   const daysLeft = Math.ceil((due.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
@@ -144,31 +177,25 @@ export default async function Home() {
             <div className="flex flex-col lg:flex-row lg:items-center gap-8">
               <div className="relative z-10 lg:flex-1 lg:min-w-0">
                 <p className="text-[#7A8F79] text-xs font-semibold uppercase tracking-widest mb-2">
-                  Administrative Resources
+                  Coming Homecare
                 </p>
                 <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight">
-                  Your practice,{' '}
-                  <span className="italic text-[#7A8F79]">streamlined.</span>
+                  Helping families and care teams stay{' '}
+                  <span className="italic text-[#7A8F79]">organized, informed, and connected.</span>
                 </h1>
                 <p className="mt-4 text-[#D9E1E8] text-sm max-w-xl">
-                  Coming Home Care's secure provider portal puts time tracking, claims management, billing services, and yearly renewal reminders all in one place — so your focus can stay on you and your patients.
+                  Tools for caregivers, families, nurses, and healthcare providers to manage the details of home care without adding more work to an already full day.
                 </p>
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Link
-                    href="/signup"
+                    href="#portals"
                     className="bg-[#7A8F79] text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-white hover:text-[#2F3E4E] transition"
                   >
-                    Enroll in <i>my</i>Provider →
-                  </Link>
-                  <Link
-                    href="/login"
-                    className="border border-[#7A8F79] text-[#D9E1E8] px-6 py-3 rounded-xl font-semibold text-sm hover:bg-[#7A8F79] hover:text-white transition"
-                  >
-                    Provider Login
+                    See how it works ↓
                   </Link>
                 </div>
                 <p className="mt-8 font-cormorant italic text-lg text-[#D9E1E8] max-w-sm border-l-2 border-[#7A8F79] pl-4">
-                  &ldquo;I built this so nurses spend less time on paperwork and more time with patients.&rdquo;
+                  &ldquo;I built this so families and care teams spend less time on paperwork and more time on what matters.&rdquo;
                   <span className="block not-italic text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mt-2">— Alex, Founder</span>
                 </p>
               </div>
@@ -258,21 +285,76 @@ export default async function Home() {
           </div>
         )}
 
-        {/* ── Logged-out: what the portal does ── */}
+        {/* ── Logged-out: audience gateway + shared/audience sections ── */}
         {!user && (
           <>
-            <div>
-              <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-3">Everything in One Place</p>
-              <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
-                <FeatureCard href="/login" icon="⏱"  title="Time Tracking"       description="Log billable hours in seconds from any device." />
-                <FeatureCard href="/login" icon="📋"  title="Claims Management"   description="Regular claim status updates, payment breakdowns, and EOB storage." />
-                <FeatureCard href="/login" icon="💳"  title="Online Enrollment"  description="Enroll in billing services and manage your plan online." />
-                <FeatureCard href="/login" icon="📅"  title="Renewal Reminders"   description="Never miss a license or insurance recertification with built-in reminders." />
-                <FeatureCard href="/resources" icon="📚"  title="Provider Resources" description="Step-by-step guides for NPI registration, Medicaid enrollment and more." />
-                <FeatureCard href="/care" icon="🧘" title="myWellness" description="Tips for preventing burnout & links to help keep you running at your best." />
-                <FeatureCard href="/login" icon="🔒"  title="Secure &amp; Private"    description="Privacy-conscious from the start. Your & your patient's data are protected with HIPAA level privacy encryptions." />
+            <section id="portals" className="scroll-mt-24">
+              <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-1 text-center">Which brings you here today?</p>
+              <p className="text-lg font-bold text-[#2F3E4E] text-center mb-6">Coming Homecare supports both sides of care.</p>
+              <div className="grid sm:grid-cols-2 gap-6">
+                <AudienceCard
+                  title="Families & Caregivers"
+                  blurb="Managing care for a loved one at home."
+                  bullets={[
+                    'Medication reminders',
+                    'Prior authorization renewal reminders',
+                    'Appointment and document tracking',
+                    'Care coordination tools',
+                  ]}
+                  ctaLabel="Enter Family Portal →"
+                />
+                <AudienceCard
+                  title="Nurses & Providers"
+                  blurb="Managing professional and administrative workflows."
+                  bullets={[
+                    'Time and task management',
+                    'Billing and claim tools',
+                    'Patient-care organization',
+                    'Administrative resources',
+                  ]}
+                  ctaLabel="Enter Provider Portal →"
+                />
               </div>
-            </div>
+            </section>
+
+            <section id="together" className="scroll-mt-24 text-center">
+              <p className="text-lg font-bold text-[#2F3E4E]">Home care has a lot of moving pieces.</p>
+              <p className="text-sm text-[#7A8F79] mb-6">Coming Homecare helps keep them together.</p>
+              <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4 text-left">
+                <FeatureCard href="#portals" icon="🗓️" title="Remember" description="Stay ahead of medications, appointments, renewals, and recurring care tasks." />
+                <FeatureCard href="#portals" icon="🗂️" title="Organize" description="Manage documents, schedules, authorizations, and important care information." />
+                <FeatureCard href="#portals" icon="🤝" title="Coordinate" description="Keep families, caregivers, nurses, and providers working from the same information." />
+                <FeatureCard href="#portals" icon="✨" title="Simplify" description="Automate repetitive administrative tasks and reduce the mental load of managing care." />
+              </div>
+            </section>
+
+            <section id="families" className="scroll-mt-24">
+              <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-3">Supporting Families</p>
+              <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <FeatureCard href="/login" icon="💊" title="Medication Reminders" description="Never miss a dose with built-in medication tracking." />
+                <FeatureCard href="/login" icon="📅" title="PA Renewal Reminders" description="Stay ahead of prior authorization renewals before they lapse." />
+                <FeatureCard href="/login" icon="📁" title="Document Tracking" description="Keep appointments and important paperwork organized in one place." />
+              </div>
+            </section>
+
+            <section id="providers" className="scroll-mt-24">
+              <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-3">Supporting Care Professionals</p>
+              <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <FeatureCard href="/login" icon="🧾" title="Billing &amp; Claims" description="Track claim status, payment breakdowns, and EOB storage." />
+                <FeatureCard href="/login" icon="⏱" title="Time Tracking" description="Log billable hours in seconds from any device." />
+                <FeatureCard href="/resources" icon="📚" title="Administrative Resources" description="Step-by-step guides for NPI registration, Medicaid enrollment and more." />
+              </div>
+            </section>
+
+            <section id="about" className="scroll-mt-24 text-center max-w-2xl mx-auto">
+              <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-2">About Coming Homecare</p>
+              <p className="text-sm text-[#2F3E4E]">
+                Coming Homecare was created and is operated by a Registered Nurse, built from the perspective of a nurse, caregiver, and someone who understands how much administrative work happens outside the actual moments of care.
+              </p>
+              <Link href="/about" className="inline-block mt-3 text-sm font-semibold text-[#7A8F79] hover:text-[#2F3E4E] underline underline-offset-2">
+                Learn more →
+              </Link>
+            </section>
 
             {/* Quote for logged-out visitors */}
             <RotatingQuote />

@@ -275,7 +275,7 @@ export default function Banner({ user: initialUser }: BannerProps) {
                             ) : (
                                 <>
                                     <Link href="/login" onClick={() => setMenuOpen(false)} className="transition hover:text-[#7A8F79]">
-                                        <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Provider Login
+                                        Sign In
                                     </Link>
                                     <Link href="/signup" onClick={() => setMenuOpen(false)} className="transition hover:text-[#7A8F79]">
                                         New User? Sign Up
@@ -341,7 +341,7 @@ export default function Banner({ user: initialUser }: BannerProps) {
                                     href="/login"
                                     className="text-sm font-semibold text-[#7A8F79] border border-[#7A8F79] px-5 py-2 rounded-full hover:bg-[#7A8F79] hover:text-white transition"
                                 >
-                                    <i>my</i><span style={{ color: 'inherit', fontSize: '0.905rem' }}>Provider Login</span>
+                                    <span style={{ color: 'inherit', fontSize: '0.905rem' }}>Sign In</span>
                                 </Link>
                                 <Link href="/signup" className="text-xs transition">
                                     <span style={{ color: '#7A8F79' }}>New User? </span>

@@ -114,9 +114,9 @@ export async function sendGuardianWelcomeEmail({
             <p style="margin:0;font-size:14px"><strong>Temporary Password:</strong> ${password}</p>
           </div>
 
-          <a href="${PORTAL_URL}/login/family"
+          <a href="${PORTAL_URL}/login"
              style="display:inline-block;background:#2F3E4E;color:white;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600">
-            Sign In to myCare →
+            Sign In →
           </a>
 
           <p style="margin-top:24px;font-size:13px;color:#7A8F79">

@@ -2,56 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import MedicationList, { MedicationDTO, MedicationInput, PharmacyOption } from '../../components/MedicationList'
-import GuardianInviteModal from '../../components/GuardianInviteModal'
-import Tabs from '../../components/Tabs'
-import PatientDocumentsPanel from '../../components/PatientDocumentsPanel'
 import { fmtPhoneInput } from '../../../lib/formatPhone'
-
-type DetailTab = 'demographics' | 'insurance' | 'medications' | 'documents'
-const DETAIL_TABS: { key: DetailTab; label: string }[] = [
-  { key: 'demographics', label: 'Demographics' },
-  { key: 'insurance', label: 'Insurance' },
-  { key: 'medications', label: 'Medications' },
-  { key: 'documents', label: 'Documents' },
-]
-
-type PatientPA = {
-  id: string
-  paNumber: string
-  paStartDate: string | null
-  paEndDate: string | null
-  highTech: boolean
-  createdAt: string
-}
 
 type Patient = {
   linkId: string
   patientId: string
   overrides: Record<string, any> | null
   merged: PatientFields
-  priorAuths: PatientPA[]
-  medications: MedicationDTO[]
-}
-
-// Puts the PA whose window contains today first (marked active); everything else
-// newest-to-oldest by end date, regardless of the order they were entered.
-function prioritizePAs(pas: PatientPA[]): PatientPA[] {
-  const today = new Date().toISOString().slice(0, 10)
-  const withinWindow = (pa: PatientPA) =>
-    (!pa.paStartDate || pa.paStartDate <= today) && (!pa.paEndDate || pa.paEndDate >= today)
-
-  const active = pas.filter(withinWindow)
-  // If more than one happens to overlap today, prefer the most recently started
-  const current = active.length
-    ? active.reduce((a, b) => (b.paStartDate || '') > (a.paStartDate || '') ? b : a)
-    : null
-
-  const rest = pas
-    .filter(pa => pa !== current)
-    .sort((a, b) => (b.paEndDate || '9999-99-99').localeCompare(a.paEndDate || '9999-99-99'))
-
-  return current ? [current, ...rest] : rest
 }
 
 type PatientFields = {
@@ -62,42 +19,11 @@ type PatientFields = {
   gender: string | null
   insuranceType: string
   insuranceId: string
-  insuranceName: string | null
-  insuranceGroup: string | null
-  insurancePlan: string | null
-  address: string | null
-  city: string | null
-  state: string | null
-  zip: string | null
-  phone: string | null
-  highTech: boolean
   dxCode1: string | null
   dxCode2: string | null
   dxCode3: string | null
   dxCode4: string | null
-  paNumber: string | null
-  paStartDate: string | null
-  paEndDate: string | null
-  subscriberName: string | null
-  subscriberRelation: string | null
-  networkStatus: string | null
-  hasCaseRate: boolean
-  caseRateAmount: string | null
-  policyNotes: string | null
-  ins2Type: string | null
-  ins2Id: string | null
-  ins2Name: string | null
-  ins2Group: string | null
-  ins2Plan: string | null
-  ins2SubscriberName: string | null
-  ins2SubscriberRelation: string | null
-  ins2NetworkStatus: string | null
-  ins2HasCaseRate: boolean
-  ins2CaseRateAmount: string | null
-  ins2PolicyNotes: string | null
-  isLocked: boolean
-  lockedAt: string | null
-  lockedBy: string | null
+  highTech: boolean
 }
 
 type SearchMatch = {
@@ -118,16 +44,6 @@ function fmtDob(dob: string) {
   const [y, m, d] = dob.split('-')
   if (!y || !m || !d) return dob
   return `${m}/${d}/${y}`
-}
-
-function Field({ label, value }: { label: string; value: string | null | undefined }) {
-  if (!value) return null
-  return (
-    <div>
-      <p className="text-[9px] font-bold uppercase tracking-widest text-[#7A8F79]">{label}</p>
-      <p className="text-xs text-[#2F3E4E] font-medium uppercase">{value}</p>
-    </div>
-  )
 }
 
 function NurseAdditionalInsuranceForm({
@@ -236,15 +152,6 @@ export default function MyPatients() {
   const [linking, setLinking] = useState(false)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null)
-  const [detailTab, setDetailTab] = useState<DetailTab>('demographics')
-  const [nurseUserId, setNurseUserId] = useState('')
-
-  // PA history state
-  const [showAddPA, setShowAddPA] = useState(false)
-  const [newPA, setNewPA] = useState({ paNumber: '', paStartDate: '', paEndDate: '', highTech: false })
-  const [savingPA, setSavingPA] = useState(false)
-  const [paError, setPaError] = useState('')
 
   // Step 1 — search fields
   const [srchLast, setSrchLast] = useState('')
@@ -260,9 +167,6 @@ export default function MyPatients() {
     setNewPt(p => ({ ...p, [field]: value }))
   }
 
-  const [pharmacies, setPharmacies] = useState<PharmacyOption[]>([])
-  const [invitingGuardian, setInvitingGuardian] = useState(false)
-
   function loadPatients() {
     return fetch('/api/nurse/patients', { credentials: 'include' })
       .then(r => r.json())
@@ -274,14 +178,10 @@ export default function MyPatients() {
     fetch('/api/nurse/profile', { credentials: 'include' })
       .then(r => r.json())
       .then(data => {
-        if (data.user?.id) setNurseUserId(data.user.id)
         if (!data.profile?.portalAgreementSignedAt && !data.profile?.isDemo) { router.replace('/nurse/agreement'); return }
         if (!data.onboardingComplete) { router.replace('/nurse/onboarding'); return }
         loadPatients()
       })
-    fetch('/api/pharmacies', { credentials: 'include' })
-      .then(r => r.json())
-      .then(data => { if (Array.isArray(data)) setPharmacies(data) })
   }, [router])
 
   function openModal() {
@@ -342,98 +242,6 @@ export default function MyPatients() {
     setCreating(false)
     if (res.ok) { await loadPatients(); closeModal() }
     else setError(data.error || 'Failed to create patient.')
-  }
-
-  async function refreshPAs(patientId: string) {
-    const res = await fetch(`/api/nurse/patients/${patientId}/pa`, { credentials: 'include' })
-    const data = await res.json()
-    const pas: PatientPA[] = data.priorAuths || []
-    setSelectedPatient(prev => prev ? { ...prev, priorAuths: pas } : prev)
-    setPatients(prev => prev.map(p => p.patientId === patientId ? { ...p, priorAuths: pas } : p))
-  }
-
-  async function refreshMedications(patientId: string) {
-    const res = await fetch(`/api/nurse/patients/${patientId}/medications`, { credentials: 'include' })
-    const data = await res.json()
-    const meds: MedicationDTO[] = data.medications || []
-    setSelectedPatient(prev => prev ? { ...prev, medications: meds } : prev)
-    setPatients(prev => prev.map(p => p.patientId === patientId ? { ...p, medications: meds } : p))
-  }
-
-  async function handleAddMedication(data: MedicationInput) {
-    if (!selectedPatient) return
-    await fetch(`/api/nurse/patients/${selectedPatient.patientId}/medications`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(data),
-    })
-    await refreshMedications(selectedPatient.patientId)
-  }
-
-  async function handleEditMedication(medId: string, data: MedicationInput) {
-    if (!selectedPatient) return
-    await fetch(`/api/nurse/patients/${selectedPatient.patientId}/medications`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ medId, ...data }),
-    })
-    await refreshMedications(selectedPatient.patientId)
-  }
-
-  async function handleConfirmRefill(medId: string, refillDate: string) {
-    if (!selectedPatient) return
-    await fetch(`/api/nurse/patients/${selectedPatient.patientId}/medications/refill`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ medId, refillDate }),
-    })
-    await refreshMedications(selectedPatient.patientId)
-  }
-
-  async function handleDeleteMedication(medId: string) {
-    if (!selectedPatient) return
-    await fetch(`/api/nurse/patients/${selectedPatient.patientId}/medications`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ medId }),
-    })
-    await refreshMedications(selectedPatient.patientId)
-  }
-
-  async function handleAddPA(e: React.FormEvent) {
-    e.preventDefault()
-    if (!selectedPatient || !newPA.paNumber.trim()) return
-    setSavingPA(true); setPaError('')
-    const res = await fetch(`/api/nurse/patients/${selectedPatient.patientId}/pa`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(newPA),
-    })
-    setSavingPA(false)
-    if (res.ok) {
-      await refreshPAs(selectedPatient.patientId)
-      setNewPA({ paNumber: '', paStartDate: '', paEndDate: '', highTech: false })
-      setShowAddPA(false)
-    } else {
-      const d = await res.json()
-      setPaError(d.error || 'Failed to save.')
-    }
-  }
-
-  async function handleDeletePA(paId: string) {
-    if (!selectedPatient) return
-    await fetch(`/api/nurse/patients/${selectedPatient.patientId}/pa`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ paId }),
-    })
-    await refreshPAs(selectedPatient.patientId)
   }
 
   const filtered = patients.filter(p => {
@@ -498,7 +306,7 @@ export default function MyPatients() {
             {filtered.map(p => (
               <div
                 key={p.patientId}
-                onClick={() => { setSelectedPatient(p); setDetailTab('demographics'); setShowAddPA(false); setNewPA({ paNumber: '', paStartDate: '', paEndDate: '', highTech: false }); setPaError('') }}
+                onClick={() => router.push(`/nurse/patients/${p.patientId}`)}
                 className="grid grid-cols-[2fr_1fr_1fr_1fr_2fr_1.5fr] hover:bg-[#F4F6F5] cursor-pointer transition-colors"
               >
                 <div className="px-4 py-3">
@@ -531,258 +339,6 @@ export default function MyPatients() {
           </div>
           <div className="px-4 py-2 bg-[#F4F6F5] border-t border-[#D9E1E8] text-[10px] text-[#7A8F79]">
             {filtered.length} patient{filtered.length !== 1 ? 's' : ''}
-          </div>
-        </div>
-      )}
-
-      {/* Patient detail drawer */}
-      {selectedPatient && (
-        <div className="fixed inset-0 z-50 flex justify-end">
-          <div className="absolute inset-0 bg-black/30" onClick={() => setSelectedPatient(null)} />
-          <div className="relative w-full max-w-md bg-white shadow-2xl overflow-y-auto flex flex-col">
-            {/* Drawer header */}
-            <div className="flex items-start justify-between px-5 py-4 border-b border-[#D9E1E8] bg-[#2F3E4E] text-white sticky top-0 z-10">
-              <div>
-                <p className="text-lg font-bold uppercase tracking-wide">
-                  {selectedPatient.merged.lastName}, {selectedPatient.merged.firstName}
-                </p>
-                <p className="text-xs text-[#C5D4C3] mt-0.5 font-mono">
-                  #{selectedPatient.merged.accountNumber} · DOB {fmtDob(selectedPatient.merged.dob)}
-                  {selectedPatient.merged.gender ? ` · ${selectedPatient.merged.gender}` : ''}
-                </p>
-              </div>
-              <button onClick={() => setSelectedPatient(null)} className="text-white/60 hover:text-white text-2xl leading-none mt-0.5 ml-4">✕</button>
-            </div>
-
-            {selectedPatient.merged.isLocked && (
-              <div className="mx-5 mt-3 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
-                <p className="text-xs font-bold text-amber-800">Record Locked — View Only</p>
-                <p className="text-[10px] text-amber-600 mt-0.5">
-                  Locked by {selectedPatient.merged.lockedBy || 'admin'}. Contact your administrator to make changes.
-                </p>
-              </div>
-            )}
-
-            {/* Care Team / Guardian Invite — always visible, not part of the tabs */}
-            <div className="flex items-center justify-between px-5 pt-4">
-              <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">Care Team</p>
-              <button onClick={() => setInvitingGuardian(true)} className="text-xs font-semibold text-[#7A8F79]">
-                + Invite Guardian
-              </button>
-            </div>
-            {invitingGuardian && (
-              <div className="px-5">
-                <GuardianInviteModal
-                  patientName={`${selectedPatient.merged.firstName} ${selectedPatient.merged.lastName}`}
-                  onClose={() => setInvitingGuardian(false)}
-                  onInvite={async data => {
-                    const res = await fetch(`/api/nurse/patients/${selectedPatient.patientId}/guardians`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      credentials: 'include',
-                      body: JSON.stringify(data),
-                    })
-                    const body = await res.json()
-                    return res.ok ? { ok: true } : { ok: false, error: body.error }
-                  }}
-                />
-              </div>
-            )}
-
-            <div className="px-5 pt-4">
-              <Tabs tabs={DETAIL_TABS} active={detailTab} onChange={k => setDetailTab(k as DetailTab)} />
-            </div>
-
-            <div className="p-5 space-y-5 text-[#2F3E4E]">
-
-              {detailTab === 'demographics' && (
-              <section>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] mb-2">Demographics</p>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-                  <Field label="Phone" value={selectedPatient.merged.phone} />
-                  <Field label="Address" value={[selectedPatient.merged.address, selectedPatient.merged.city, selectedPatient.merged.state, selectedPatient.merged.zip].filter(Boolean).join(', ')} />
-                </div>
-              </section>
-              )}
-
-              {detailTab === 'insurance' && (<>
-              {/* Primary Insurance */}
-              <section>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] mb-2">Primary Insurance</p>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-                  <Field label="Type" value={selectedPatient.merged.insuranceType} />
-                  <Field label="Member ID" value={selectedPatient.merged.insuranceId} />
-                  <Field label="Carrier" value={selectedPatient.merged.insuranceName} />
-                  <Field label="Group" value={selectedPatient.merged.insuranceGroup} />
-                  <Field label="Plan" value={selectedPatient.merged.insurancePlan} />
-                  <Field label="Network" value={selectedPatient.merged.networkStatus} />
-                  <Field label="Subscriber" value={selectedPatient.merged.subscriberName} />
-                  <Field label="Relation" value={selectedPatient.merged.subscriberRelation} />
-                </div>
-              </section>
-
-              {/* Additional Coverage */}
-              {(selectedPatient.merged.ins2Type || selectedPatient.merged.ins2Id) && (
-                <section>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] mb-2">Additional Coverage</p>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-                    <Field label="Type" value={selectedPatient.merged.ins2Type} />
-                    <Field label="Member ID" value={selectedPatient.merged.ins2Id} />
-                    <Field label="Carrier" value={selectedPatient.merged.ins2Name} />
-                    <Field label="Group" value={selectedPatient.merged.ins2Group} />
-                    <Field label="Plan" value={selectedPatient.merged.ins2Plan} />
-                    <Field label="Network" value={selectedPatient.merged.ins2NetworkStatus} />
-                    <Field label="Subscriber" value={selectedPatient.merged.ins2SubscriberName} />
-                    <Field label="Relation" value={selectedPatient.merged.ins2SubscriberRelation} />
-                    {selectedPatient.merged.ins2HasCaseRate && (
-                      <Field label="Case Rate" value={selectedPatient.merged.ins2CaseRateAmount || 'Yes'} />
-                    )}
-                  </div>
-                  {selectedPatient.merged.ins2PolicyNotes && (
-                    <div className="mt-1.5">
-                      <p className="text-[10px] font-semibold uppercase text-[#7A8F79]">Policy Notes</p>
-                      <p className="text-xs text-[#2F3E4E] mt-0.5 whitespace-pre-line">{selectedPatient.merged.ins2PolicyNotes}</p>
-                    </div>
-                  )}
-                </section>
-              )}
-
-              {/* Clinical */}
-              <section>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] mb-2">Clinical</p>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs mb-2">
-                  <Field label="Dx 1" value={selectedPatient.merged.dxCode1} />
-                  <Field label="Dx 2" value={selectedPatient.merged.dxCode2} />
-                  <Field label="Dx 3" value={selectedPatient.merged.dxCode3} />
-                  <Field label="Dx 4" value={selectedPatient.merged.dxCode4} />
-                  <Field label="Case Rate" value={selectedPatient.merged.hasCaseRate ? (selectedPatient.merged.caseRateAmount || 'Yes') : null} />
-                </div>
-                {selectedPatient.merged.policyNotes && (
-                  <div className="mb-2">
-                    <p className="text-[10px] font-semibold uppercase text-[#7A8F79]">Policy Notes</p>
-                    <p className="text-xs text-[#2F3E4E] mt-0.5 whitespace-pre-line">{selectedPatient.merged.policyNotes}</p>
-                  </div>
-                )}
-              </section>
-
-              {/* Prior Authorization History */}
-              <section>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8F79]">Prior Authorization History</p>
-                  {!selectedPatient.merged.isLocked && (
-                    <button
-                      onClick={() => { setShowAddPA(v => !v); setPaError('') }}
-                      className="text-[10px] font-semibold text-[#7A8F79] border border-[#D9E1E8] px-2 py-0.5 rounded hover:bg-[#F4F6F5] transition"
-                    >
-                      {showAddPA ? 'Cancel' : '+ Add PA'}
-                    </button>
-                  )}
-                </div>
-
-                {/* Add PA form */}
-                {showAddPA && (
-                  <form onSubmit={handleAddPA} className="bg-[#F4F6F5] rounded-xl p-3 mb-3 space-y-2">
-                    <div>
-                      <label className="block text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Prior Authorization</label>
-                      <input
-                        required
-                        value={newPA.paNumber}
-                        onChange={e => setNewPA(p => ({ ...p, paNumber: e.target.value }))}
-                        placeholder="PA #"
-                        className="w-full border border-[#D9E1E8] px-2 py-1.5 rounded-lg text-xs text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] uppercase"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Start Date</label>
-                        <input type="date" value={newPA.paStartDate} onChange={e => setNewPA(p => ({ ...p, paStartDate: e.target.value }))}
-                          className="w-full border border-[#D9E1E8] px-2 py-1.5 rounded-lg text-xs text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">End Date</label>
-                        <input type="date" value={newPA.paEndDate} onChange={e => setNewPA(p => ({ ...p, paEndDate: e.target.value }))}
-                          className="w-full border border-[#D9E1E8] px-2 py-1.5 rounded-lg text-xs text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
-                      </div>
-                    </div>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" checked={newPA.highTech} onChange={e => setNewPA(p => ({ ...p, highTech: e.target.checked }))} className="accent-[#7A8F79] w-3.5 h-3.5" />
-                      <span className="text-xs text-[#2F3E4E] font-semibold">High-Tech? <i>(check if YES)</i></span>
-                    </label>
-                    {paError && <p className="text-[10px] text-red-500">{paError}</p>}
-                    <button type="submit" disabled={savingPA}
-                      className="w-full bg-[#2F3E4E] text-white text-xs font-semibold py-1.5 rounded-lg hover:bg-[#7A8F79] transition disabled:opacity-50">
-                      {savingPA ? 'Saving…' : 'Save PA'}
-                    </button>
-                  </form>
-                )}
-
-                {/* PA list */}
-                {selectedPatient.priorAuths.length === 0 ? (
-                  <p className="text-xs text-[#7A8F79] italic">No prior authorizations on file.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {prioritizePAs(selectedPatient.priorAuths).map((pa) => {
-                      const today = new Date().toISOString().slice(0, 10)
-                      const isCurrent = (!pa.paStartDate || pa.paStartDate <= today) && (!pa.paEndDate || pa.paEndDate >= today)
-                      const isExpired = !isCurrent && !!pa.paEndDate && pa.paEndDate < today
-                      return (
-                        <div key={pa.id} className={`rounded-xl border px-3 py-2.5 ${isCurrent ? 'border-[#7A8F79] bg-[#f4f9f4]' : 'border-[#D9E1E8] bg-white'}`}>
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-xs font-bold text-[#2F3E4E] uppercase font-mono">{pa.paNumber}</span>
-                                {isCurrent && <span className="text-[9px] font-bold uppercase tracking-wide bg-[#7A8F79] text-white px-1.5 py-0.5 rounded-full">Active</span>}
-                                {pa.highTech && <span className="text-[9px] font-bold uppercase tracking-wide bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">Hi-Tech</span>}
-                                {isExpired && <span className="text-[9px] font-bold uppercase tracking-wide bg-[#F4F6F5] text-[#7A8F79] px-1.5 py-0.5 rounded-full">Expired</span>}
-                              </div>
-                              <p className="text-[10px] text-[#7A8F79] mt-0.5">
-                                {pa.paStartDate ? fmtDob(pa.paStartDate) : '?'} — {pa.paEndDate ? fmtDob(pa.paEndDate) : 'Present'}
-                              </p>
-                            </div>
-                            {!selectedPatient.merged.isLocked && (
-                              <button
-                                onClick={() => handleDeletePA(pa.id)}
-                                className="shrink-0 text-[10px] text-red-400 hover:text-red-600 font-semibold transition"
-                              >
-                                Remove
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </section>
-              </>)}
-
-              {detailTab === 'medications' && (
-              <section>
-                <MedicationList
-                  patientName={`${selectedPatient.merged.firstName} ${selectedPatient.merged.lastName}`}
-                  medications={selectedPatient.medications || []}
-                  onAdd={handleAddMedication}
-                  onEdit={handleEditMedication}
-                  onConfirmRefill={handleConfirmRefill}
-                  onDelete={handleDeleteMedication}
-                  readOnly={selectedPatient.merged.isLocked}
-                  pharmacies={pharmacies}
-                />
-              </section>
-              )}
-
-              {detailTab === 'documents' && (
-              <section>
-                <PatientDocumentsPanel
-                  patientId={selectedPatient.patientId}
-                  basePath={`/api/nurse/patients/${selectedPatient.patientId}/documents`}
-                  canDeleteAny
-                  uploaderId={nurseUserId}
-                />
-              </section>
-              )}
-
-            </div>
           </div>
         </div>
       )}

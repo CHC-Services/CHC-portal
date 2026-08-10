@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../lib/prisma'
 import { verifyToken } from '../../../../../lib/auth'
+import { flattenMedication } from '../../../../../lib/pharmacyLookup'
 
 function auth(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -8,6 +9,39 @@ function auth(req: Request) {
   const session = token ? verifyToken(token) : null
   if (!session || session.role !== 'nurse') return null
   return session
+}
+
+// GET — single linked patient (canonical merged with this nurse's overrides)
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = auth(req)
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { id } = await params
+
+  const link = await (prisma.nursePatient.findUnique as any)({
+    where: { nurseId_patientId: { nurseId: session.nurseProfileId!, patientId: id } },
+    include: {
+      patient: {
+        include: {
+          priorAuths: { orderBy: [{ paStartDate: 'desc' }, { createdAt: 'desc' }] },
+          medications: { orderBy: { createdAt: 'desc' }, include: { pharmacy: true } },
+        },
+      },
+    },
+  })
+  if (!link || !link.isActive) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  const { priorAuths, medications, ...patientFields } = link.patient
+
+  return NextResponse.json({
+    patient: {
+      linkId: link.id,
+      patientId: link.patientId,
+      overrides: link.overrides,
+      merged: { ...patientFields, ...(link.overrides || {}) },
+      priorAuths: priorAuths || [],
+      medications: (medications || []).map(flattenMedication),
+    },
+  })
 }
 
 // PATCH — update nurse-level overrides for a patient

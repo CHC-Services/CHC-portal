@@ -29,7 +29,7 @@ const session = token ? verifyToken(token) : null
 if (!session || session.role !== 'admin') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 ```
 
-**Filled-out data renders read-only, with an Edit button** — any field/section that already has a value (profile pages, patient records, medication details, etc.) must render as read-only display, not an open input, until the user clicks "Edit." Only fields with no existing value (e.g. "add a phone number" when none is on file) or brand-new-entry forms (e.g. "Add PA," "Add Medication") show inputs by default. Reuse `app/components/ReadOnlyField.tsx` (`Row` for a label/value line, `SectionHeader` for a card header with the Edit button baked in) — see `app/nurse/profile/page.tsx`, `app/family/patients/[id]/page.tsx`, and `app/admin/patients/page.tsx`'s `Section`/`Row` pattern for reference implementations. `app/components/MedicationList.tsx` already follows this natively (card view + "Edit" swaps to the form).
+**Filled-out data renders read-only, with an Edit button** — any field/section that already has a value (profile pages, patient records, medication details, etc.) must render as read-only display, not an open input, until the user clicks "Edit." Only fields with no existing value (e.g. "add a phone number" when none is on file) or brand-new-entry forms (e.g. "Add PA," "Add Medication") show inputs by default. Reuse `app/components/ReadOnlyField.tsx` (`Row` for a label/value line, `SectionHeader` for a card header with the Edit button baked in) — see `app/nurse/profile/page.tsx` and `app/components/patient/PatientDemographics.tsx`/`PatientInsurance.tsx` for reference implementations. `app/components/MedicationList.tsx` already follows this natively (card view + "Edit" swaps to the form).
 
 **Migrations** — applied manually:
 1. `execute_sql` via Supabase MCP (project: `rfhewykretdmldfwpnbw`, region: us-east-1)
@@ -49,7 +49,7 @@ if (!session || session.role !== 'admin') return NextResponse.json({ error: 'Una
 - Login redirects: nurse → `/nurse`, admin → `/admin`. `/portal` redirects all authenticated users.
 - All nurse banner links are `md:hidden` (they live in the side nav on desktop).
 
-## Patient Module (completed 2026-05-07)
+## Patient Module (completed 2026-05-07; detail-page consolidation 2026-08-10)
 
 ### Architecture
 Canonical `Patient` record + per-nurse `NursePatient` JSON override layer.
@@ -58,32 +58,49 @@ Read merge: `{ ...canonical, ...(overrides || {}) }`. Nurses write only to overr
 ### Patient Schema Fields
 Demographics: `lastName`, `firstName`, `dob`, `gender`, `phone`, `address`, `city`, `state`, `zip`
 Insurance: `insuranceType` (Medicaid/Commercial), `insuranceId`, `insuranceName`, `insuranceGroup`, `insurancePlan`
-Clinical: `highTech` (bool), `dxCode1-4`, `paNumber`, `paStartDate`, `paEndDate`
+Secondary insurance: full `ins2*` mirror of the primary insurance block (`ins2Type`, `ins2Id`, `ins2Name`, `ins2Group`, `ins2Plan`, `ins2SubscriberName`, `ins2SubscriberRelation`, `ins2NetworkStatus`, `ins2HasCaseRate`, `ins2CaseRateAmount`, `ins2PolicyNotes`)
+Clinical: `highTech` (bool), `dxCode1-4`, `paNumber`, `paStartDate`, `paEndDate` (current PA; full history lives on `PatientPA`)
 Commercial-only: `subscriberName`, `subscriberRelation`, `networkStatus` (IN/OON), `hasCaseRate` (bool), `caseRateAmount`, `policyNotes`
+Admin lock: `isLocked`, `lockedAt`, `lockedBy` — locks a record against nurse edits.
 Account number: `PT-001` format, sequential on creation.
 `TimeEntry.patientId` — optional FK linking hours to a patient for billing.
+
+### Shared patient-detail components (`app/components/patient/`)
+All three roles' patient-detail pages are thin route wrappers around one shared component set — no more per-role duplicated Demographics/Insurance/Care-Team/PA-History JSX:
+- `PatientDetailShell.tsx` — layout: back-link, header (name + account #), `banners` slot (role-specific lock/status copy), `aboveTabs` slot (Care Team + PA History), tab bar + active tab content. Owns tab state internally.
+- `PatientTabs.tsx` — `DetailTab` type + `PATIENT_DETAIL_TABS` (Demographics/Insurance/Medications/Documents), wraps the generic `app/components/Tabs.tsx`.
+- `PatientDemographics.tsx`, `PatientInsurance.tsx` — view (via `ReadOnlyField.tsx`'s `Row`/`SectionHeader`) + edit form, `readOnly` prop (true for nurse — no edit UI, preserved from before consolidation).
+- `PatientMedications.tsx`, `PatientDocuments.tsx` — thin wrappers around `MedicationList.tsx` / `PatientDocumentsPanel.tsx`.
+- `PatientCareTeam.tsx` — nurse-link display + `GuardianInviteModal` trigger; `canManageAssignment` prop gates the assign/unlink dropdown (admin only).
+- `PatientPriorAuthHistory.tsx` — PA list + add/remove form; `canEdit` prop (admin: always; nurse: false when `isLocked`).
+- `types.ts` — shared `PatientFields` type + `US_STATES`/`SUBSCRIBER_RELATIONS`/input class constants.
+
+Nurse's `merged` object (canonical + overrides) and admin's/family's canonical `Patient` object share the same field shape, so all three roles hand the identical shape to these components regardless of source.
 
 ### APIs
 | Route | Methods | Notes |
 |---|---|---|
 | `/api/nurse/patients` | GET, POST | List merged patients; create new or link existing |
 | `/api/nurse/patients/search` | POST | Search by lastName + dob + insuranceId |
-| `/api/nurse/patients/[id]` | PATCH, DELETE | Patch overrides; soft unlink |
+| `/api/nurse/patients/[id]` | GET, PATCH, DELETE | GET single merged patient (for the detail page); PATCH overrides; DELETE soft-unlinks |
 | `/api/admin/patients` | GET | All patients with nurseLinks + _count.timeEntries |
 | `/api/admin/patients/[id]` | GET, PATCH | Single patient detail + canonical edit |
 | `/api/admin/patients/[id]/assign` | POST, DELETE | Link/unlink a nurse to a patient |
 | `/api/time-entry` | GET, POST | GET includes patient info; POST accepts patientId |
 
 ### Pages
-- `app/nurse/patients/page.tsx` — myPatients: search bar + Add Patient button; modal: search → found (link existing) / not found → new patient form. Form branches Medicaid vs Commercial for required fields. All clinical fields always shown.
-- `app/admin/patients/page.tsx` — adPatients: searchable table; slide-over panel with full canonical edit + nurse assign/unlink.
+- `app/nurse/patients/page.tsx` — myPatients: search bar + Add Patient button; modal: search → found (link existing) / not found → new patient form. Row click navigates to `/nurse/patients/[patientId]`.
+- `app/nurse/patients/[id]/page.tsx` — nurse's patient detail page (routed, not a drawer). Demographics/Insurance render read-only (nurses have no edit UI for canonical fields). PA add/remove and medications are editable unless the record is admin-locked.
+- `app/admin/patients/page.tsx` — adPatients: searchable table. Row click navigates to `/admin/patients/[id]`.
+- `app/admin/patients/[id]/page.tsx` — admin's patient detail page (routed). Full canonical edit, nurse assign/unlink, lock/unlock.
+- `app/family/patients/[id]/page.tsx` — guardian's patient detail page (routed; this was the original reference pattern the admin/nurse pages were converted to match). No Care Team or PA History section for guardians.
 - `app/nurse/hours/page.tsx` — patient dropdown in Submit Hours (nurse sees `J. Smith` format); Patient column in history table.
 
 ### Nurse hours patient label
 Dropdown: `${firstName[0]}. ${lastName.slice(0,5)}` — admin sees account number (PT-001).
 
 ## What's Not Built Yet
-- Individual patient detail/edit view for nurses (currently card-only, no drill-down)
 - Voice dictation feature linked to patients (architecture agreed, not started)
 - Parent account level for patient assignment (future role)
 - myHours: admin view of patient column shows account number (UI not yet updated on admin side)
+- Configurable role-based permissions system (canonical-data doc proposes a `can(user, action, resource)` authorization layer + admin Roles & Permissions settings UI — not started; today's auth is still per-route inline role checks, per the Auth pattern above)

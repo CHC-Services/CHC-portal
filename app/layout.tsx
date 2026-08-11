@@ -6,6 +6,7 @@ import Banner from "./components/Banner";
 import Footer from "./components/Footer";
 import PullToRefresh from "./components/PullToRefresh";
 import PortalSettingsProvider from "./components/PortalSettingsProvider";
+import InactivityGuard from "./components/InactivityGuard";
 
 const cormorantUpright = Cormorant_Upright({
   subsets: ["latin"],
@@ -32,6 +33,7 @@ export default async function RootLayout({
       </head>
       <body className="pt-[135px] lg:pt-[200px]">
         <PortalSettingsProvider />
+        <InactivityGuard active={!!user} />
         <Banner user={user} />
         <PullToRefresh />
         <div className="page-wrap px-4 sm:px-6">

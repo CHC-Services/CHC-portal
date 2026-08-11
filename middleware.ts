@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { verifyToken } from "@/lib/auth";
+import { verifyToken, signToken, INACTIVITY_MS } from "@/lib/auth";
 
 // /nurse sub-paths that provider-role users may access
 const PROVIDER_ALLOWED_NURSE_PATHS = ['/nurse/profile', '/nurse/onboarding']
@@ -82,14 +82,25 @@ export function middleware(req: NextRequest) {
       return NextResponse.redirect(new URL("/login", req.url));
     }
 
-    // Valid session — reset the 24-hour inactivity clock on every page visit
+    // PHI protection: 10-minute idle timeout. Tokens issued before this rollout have
+    // no lastActivityAt claim — treat those as expired too, forcing a one-time relogin.
+    const lastActivityAt = (decoded as any).lastActivityAt
+    if (typeof lastActivityAt !== 'number' || Date.now() - lastActivityAt > INACTIVITY_MS) {
+      console.log('session idle timeout, redirect to login');
+      const res = NextResponse.redirect(new URL("/login", req.url));
+      res.cookies.set('auth_token', '', { path: '/', maxAge: 0 })
+      return res
+    }
+
+    // Valid, active session — reissue a session-only cookie (no maxAge, so it dies
+    // with the browser) carrying a refreshed inactivity clock.
     const res = NextResponse.next()
-    res.cookies.set('auth_token', token, {
+    const freshToken = signToken(decoded as any)
+    res.cookies.set('auth_token', freshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      maxAge: 60 * 60 * 24,
     })
     return res
   }

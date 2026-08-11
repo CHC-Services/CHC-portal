@@ -2,6 +2,7 @@
 
 import MedicationList, { MedicationDTO, MedicationInput, PharmacyOption } from '../MedicationList'
 import { searchDrugNames } from '../../../lib/drugSearchClient'
+import { fetchDrugFacts } from '../../../lib/drugFactsClient'
 
 export default function PatientMedications({
   patientName, medications, onAdd, onEdit, onConfirmRefill, onDelete, readOnly, pharmacies,
@@ -27,6 +28,7 @@ export default function PatientMedications({
         readOnly={readOnly}
         pharmacies={pharmacies}
         onSearchDrugNames={searchDrugNames}
+        onFetchDrugFacts={fetchDrugFacts}
       />
     </div>
   )

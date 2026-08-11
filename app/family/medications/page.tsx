@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import MedicationList, { MedicationDTO, MedicationInput, PharmacyOption } from '../../components/MedicationList'
 import { searchDrugNames } from '../../../lib/drugSearchClient'
+import { fetchDrugFacts } from '../../../lib/drugFactsClient'
 
 type FamilyPatient = {
   id: string
@@ -98,6 +99,7 @@ export default function FamilyMedicationsPage() {
                 onDelete={handleDelete}
                 pharmacies={pharmacies}
                 onSearchDrugNames={searchDrugNames}
+                onFetchDrugFacts={fetchDrugFacts}
               />
             ))}
           </div>

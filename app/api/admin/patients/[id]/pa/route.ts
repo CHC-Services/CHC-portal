@@ -44,6 +44,29 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   return NextResponse.json({ ok: true, pa })
 }
 
+// PATCH — edit an existing PA record (body: { paId, paNumber, paStartDate, paEndDate, highTech })
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!adminAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { id } = await params
+
+  const { paId, paNumber, paStartDate, paEndDate, highTech } = await req.json()
+  if (!paId) return NextResponse.json({ error: 'paId required' }, { status: 400 })
+  if (!paNumber?.trim()) return NextResponse.json({ error: 'PA number required' }, { status: 400 })
+
+  const pa = await (prisma.patientPA.update as any)({
+    where: { id: paId },
+    data: {
+      paNumber: paNumber.trim(),
+      paStartDate: paStartDate || null,
+      paEndDate: paEndDate || null,
+      highTech: highTech ?? false,
+    },
+  })
+
+  await syncHighTech(id)
+  return NextResponse.json({ ok: true, pa })
+}
+
 // DELETE — remove a PA record (body: { paId })
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!adminAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

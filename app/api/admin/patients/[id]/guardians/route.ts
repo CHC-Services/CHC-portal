@@ -80,3 +80,22 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   return NextResponse.json({ ok: true, email: user.email })
 }
+
+// DELETE — revoke a guardian's access to this patient (body: { userId })
+// Removes the GuardianPatient link only; the guardian's account (and any other
+// patients they're linked to) is untouched.
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = adminAuth(req)
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { id } = await params
+
+  const { userId } = await req.json()
+  if (!userId) return NextResponse.json({ error: 'userId required' }, { status: 400 })
+
+  const { count } = await (prisma.guardianPatient.deleteMany as any)({
+    where: { userId, patientId: id },
+  })
+  if (count === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  return NextResponse.json({ ok: true })
+}

@@ -17,13 +17,17 @@ type TokenPayload = {
   lastName?: string;
   isDemo?: boolean;
   portalAgreementSigned?: boolean;
+  lastActivityAt?: number; // epoch ms — refreshed on every request, checked against INACTIVITY_MS
 };
 
+// PHI session policy: cookie is session-only (no maxAge, dies on full browser close)
+// and the token itself carries a rolling inactivity clock enforced by middleware.ts.
+export const INACTIVITY_MS = 10 * 60 * 1000;
 
 export function signToken(payload: TokenPayload) {
   // JWT.sign complains if payload already contains exp/iat, so strip them
   const { exp, iat, ...clean } = payload as any;
-  return jwt.sign(clean, JWT_SECRET, {
+  return jwt.sign({ ...clean, lastActivityAt: Date.now() }, JWT_SECRET, {
     expiresIn: "7d",
   });
 }

@@ -1,6 +1,8 @@
 // Client-side fetch wrapper for /api/drugs/search — kept out of MedicationList.tsx
 // itself, which is a portable no-API-calls component; pages pass this in as a prop.
-export type DrugSearchResult = { exact: string[]; suggested: string[] }
+import type { DrugNameOption } from '../app/components/MedicationList'
+
+export type DrugSearchResult = { exact: DrugNameOption[]; suggested: DrugNameOption[] }
 
 export async function searchDrugNames(q: string): Promise<DrugSearchResult> {
   try {

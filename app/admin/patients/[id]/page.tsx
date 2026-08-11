@@ -134,6 +134,20 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
     return res.ok ? { ok: true } : { ok: false, error: body.error }
   }
 
+  async function handleUnlinkGuardian(userId: string) {
+    setMsg('')
+    const res = await fetch(`/api/admin/patients/${id}/guardians`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ userId }),
+    })
+    if (res.ok) {
+      await loadPatient()
+      setMsg('Unlinked.')
+    }
+  }
+
   async function refreshMedications() {
     const res = await fetch(`/api/admin/patients/${id}`, { credentials: 'include' })
     const body = await res.json()
@@ -192,6 +206,21 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify(pa),
+    })
+    if (res.ok) {
+      await refreshPAs()
+      return { ok: true }
+    }
+    const d = await res.json()
+    return { ok: false, error: d.error || 'Failed to save.' }
+  }
+
+  async function handleEditPA(paId: string, pa: { paNumber: string; paStartDate: string; paEndDate: string; highTech: boolean }) {
+    const res = await fetch(`/api/admin/patients/${id}/pa`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ paId, ...pa }),
     })
     if (res.ok) {
       await refreshPAs()
@@ -310,7 +339,7 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
           <PatientInsurance data={activeData} readOnly={false} editing={editing} onEdit={() => { setEditing(true); setEditData({ ...patient }) }} setField={setField} />
           {editControls}
           <div className="bg-white rounded-2xl shadow-sm p-6 mt-5">
-            <PatientPriorAuthHistory priorAuths={patient.priorAuths} canEdit onAdd={handleAddPA} onDelete={handleDeletePA} />
+            <PatientPriorAuthHistory priorAuths={patient.priorAuths} canEdit onAdd={handleAddPA} onEdit={handleEditPA} onDelete={handleDeletePA} />
           </div>
         </>
       ),
@@ -349,6 +378,7 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
             availableNurses={nurses}
             onAssign={handleAssign}
             onUnlink={handleUnlink}
+            onUnlinkGuardian={handleUnlinkGuardian}
             onInviteGuardian={handleInviteGuardian}
           />
         </div>

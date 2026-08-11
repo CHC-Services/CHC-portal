@@ -172,7 +172,12 @@ export async function PATCH(req: Request) {
     }
     const newToken = signToken(newPayload)
     // set cookie so banner/layout sees updated name on next render
-    res.headers.set('Set-Cookie', `auth_token=${newToken}; Path=/; HttpOnly; SameSite=Lax`)
+    res.cookies.set('auth_token', newToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+    })
   }
   return res
 }

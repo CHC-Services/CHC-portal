@@ -22,45 +22,63 @@ function dedupe(names: string[]): string[] {
   return [...new Set(names.filter(Boolean))]
 }
 
-export async function searchLocalDrugNames(q: string): Promise<string[]> {
+export type DrugNameResult = { name: string; rxcui: string | null }
+
+export async function searchLocalDrugNames(q: string): Promise<DrugNameResult[]> {
   const rows = await (prisma.drugName.findMany as any)({
     where: { displayName: { startsWith: q, mode: 'insensitive' } },
     take: 8,
     orderBy: { displayName: 'asc' },
   })
-  return rows.map((r: { displayName: string }) => r.displayName)
+  return rows.map((r: { displayName: string; rxcui: string | null }) => ({ name: r.displayName, rxcui: r.rxcui }))
 }
 
-export async function searchLiveDrugNames(q: string): Promise<string[]> {
+export async function searchLiveDrugNames(q: string): Promise<DrugNameResult[]> {
   try {
-    const res = await fetch(`${RXTERMS_SEARCH_URL}?terms=${encodeURIComponent(q)}&maxList=8`)
+    const res = await fetch(`${RXTERMS_SEARCH_URL}?terms=${encodeURIComponent(q)}&maxList=8&ef=RXCUIS`)
     const data = await res.json().catch(() => null)
     const rawNames: string[] = Array.isArray(data?.[1]) ? data[1] : []
-    return dedupe(rawNames.map(normalizeDrugName)).slice(0, 8)
+    const rxcuis: string[][] = Array.isArray(data?.[2]?.RXCUIS) ? data[2].RXCUIS : []
+    const seen = new Set<string>()
+    const results: DrugNameResult[] = []
+    rawNames.forEach((raw, i) => {
+      const name = normalizeDrugName(raw)
+      if (!name || seen.has(name)) return
+      seen.add(name)
+      results.push({ name, rxcui: rxcuis[i]?.[0] || null })
+    })
+    return results.slice(0, 8)
   } catch {
     return []
   }
 }
 
 // Last-resort typo fallback — only used when local + live-exact both come up empty.
-export async function searchApproximateDrugNames(q: string): Promise<string[]> {
+export async function searchApproximateDrugNames(q: string): Promise<DrugNameResult[]> {
   try {
     const res = await fetch(`${RXNORM_APPROX_URL}?term=${encodeURIComponent(q)}&maxEntries=5`)
     const data = await res.json().catch(() => null)
-    const candidates: { name?: string }[] = data?.approximateGroup?.candidate || []
-    const names = candidates.map(c => c.name).filter((n): n is string => !!n).map(n => n.trim())
-    return dedupe(names).slice(0, 5)
+    const candidates: { name?: string; rxcui?: string }[] = data?.approximateGroup?.candidate || []
+    const seen = new Set<string>()
+    const results: DrugNameResult[] = []
+    for (const c of candidates) {
+      const name = c.name?.trim()
+      if (!name || seen.has(name)) continue
+      seen.add(name)
+      results.push({ name, rxcui: c.rxcui || null })
+    }
+    return results.slice(0, 5)
   } catch {
     return []
   }
 }
 
 // Fire-and-forget — caching is a nice-to-have, never block the search response on it.
-export async function cacheDrugNames(names: string[]): Promise<void> {
-  if (names.length === 0) return
+export async function cacheDrugNames(results: DrugNameResult[]): Promise<void> {
+  if (results.length === 0) return
   try {
     await (prisma.drugName.createMany as any)({
-      data: names.map(displayName => ({ displayName })),
+      data: results.map(r => ({ displayName: r.name, rxcui: r.rxcui })),
       skipDuplicates: true,
     })
   } catch {

@@ -21,11 +21,12 @@ export async function GET(req: Request) {
   let exact = local
   if (local.length < 5 && q.length >= 3) {
     const live = await searchLiveDrugNames(q)
-    exact = [...new Set([...local, ...live])].slice(0, 8)
+    const seen = new Set<string>()
+    exact = [...local, ...live].filter(r => (seen.has(r.name) ? false : (seen.add(r.name), true))).slice(0, 8)
     cacheDrugNames(live).catch(() => {})
   }
 
-  let suggested: string[] = []
+  let suggested: typeof exact = []
   if (exact.length === 0 && q.length >= 4) {
     suggested = await searchApproximateDrugNames(q)
   }

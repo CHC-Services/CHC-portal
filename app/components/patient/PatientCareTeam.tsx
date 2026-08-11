@@ -16,6 +16,7 @@ export default function PatientCareTeam({
   availableNurses,
   onAssign,
   onUnlink,
+  onUnlinkGuardian,
   onInviteGuardian,
 }: {
   patientName: string
@@ -25,6 +26,7 @@ export default function PatientCareTeam({
   availableNurses?: NurseOption[]
   onAssign?: (nurseId: string) => Promise<void>
   onUnlink?: (nurseId: string) => Promise<void>
+  onUnlinkGuardian?: (userId: string) => Promise<void>
   onInviteGuardian: (data: GuardianInviteData) => Promise<{ ok: boolean; error?: string }>
 }) {
   const [assignNurseId, setAssignNurseId] = useState('')
@@ -67,7 +69,14 @@ export default function PatientCareTeam({
             {guardianLinks.map(g => (
               <div key={g.id} className="flex items-center justify-between bg-[#F4F6F5] rounded-lg px-3 py-2">
                 <span className="text-sm text-[#2F3E4E] font-semibold">{g.user.name}</span>
-                {g.relationship && <span className="text-[10px] font-semibold uppercase text-[#7A8F79]">{g.relationship}</span>}
+                <div className="flex items-center gap-2">
+                  {g.relationship && <span className="text-[10px] font-semibold uppercase text-[#7A8F79]">{g.relationship}</span>}
+                  {canManageAssignment && (
+                    <button onClick={() => onUnlinkGuardian?.(g.user.id)} className="text-xs text-red-500 hover:text-red-700 font-semibold transition">
+                      Unlink
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

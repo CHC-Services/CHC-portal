@@ -124,12 +124,13 @@ export async function POST(req: Request) {
   const res = NextResponse.json({ ok: true, role: user.role, portalAgreementSigned })
 
   // use a consistent cookie name that the middleware already expects
+  // Session-only cookie (no maxAge): dies on full browser close; the 10-min
+  // idle timeout is separately enforced via the lastActivityAt claim in middleware.ts
   res.cookies.set('auth_token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
-    maxAge: 60 * 60 * 24, // 24-hour inactivity window — refreshed on every page visit
   })
 
   return res

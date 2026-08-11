@@ -32,17 +32,23 @@ function prioritizePAs(pas: PatientPA[]): PatientPA[] {
 }
 
 export default function PatientPriorAuthHistory({
-  priorAuths, canEdit, onAdd, onDelete,
+  priorAuths, canEdit, onAdd, onEdit, onDelete,
 }: {
   priorAuths: PatientPA[]
   canEdit: boolean
   onAdd: (pa: { paNumber: string; paStartDate: string; paEndDate: string; highTech: boolean }) => Promise<{ ok: boolean; error?: string }>
+  onEdit: (paId: string, pa: { paNumber: string; paStartDate: string; paEndDate: string; highTech: boolean }) => Promise<{ ok: boolean; error?: string }>
   onDelete: (paId: string) => Promise<void>
 }) {
   const [showAddPA, setShowAddPA] = useState(false)
   const [newPA, setNewPA] = useState({ paNumber: '', paStartDate: '', paEndDate: '', highTech: false })
   const [savingPA, setSavingPA] = useState(false)
   const [paError, setPaError] = useState('')
+
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editPA, setEditPA] = useState({ paNumber: '', paStartDate: '', paEndDate: '', highTech: false })
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [editError, setEditError] = useState('')
 
   async function handleAddPA(e: React.FormEvent) {
     e.preventDefault()
@@ -58,12 +64,32 @@ export default function PatientPriorAuthHistory({
     }
   }
 
+  function startEdit(pa: PatientPA) {
+    setShowAddPA(false)
+    setEditingId(pa.id)
+    setEditPA({ paNumber: pa.paNumber, paStartDate: pa.paStartDate || '', paEndDate: pa.paEndDate || '', highTech: pa.highTech })
+    setEditError('')
+  }
+
+  async function handleEditPA(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editingId || !editPA.paNumber.trim()) return
+    setSavingEdit(true); setEditError('')
+    const result = await onEdit(editingId, editPA)
+    setSavingEdit(false)
+    if (result.ok) {
+      setEditingId(null)
+    } else {
+      setEditError(result.error || 'Failed to save.')
+    }
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-2 pb-1 border-b border-[#D9E1E8]">
         <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E]">Prior Authorization History</p>
         {canEdit && (
-          <button onClick={() => { setShowAddPA(v => !v); setPaError('') }}
+          <button onClick={() => { setShowAddPA(v => !v); setPaError(''); setEditingId(null) }}
             className="text-[10px] font-semibold text-[#7A8F79] border border-[#D9E1E8] px-2 py-0.5 rounded hover:bg-[#F4F6F5] transition">
             {showAddPA ? 'Cancel' : '+ Add PA'}
           </button>
@@ -107,6 +133,42 @@ export default function PatientPriorAuthHistory({
             const today = new Date().toISOString().slice(0, 10)
             const isCurrent = (!pa.paStartDate || pa.paStartDate <= today) && (!pa.paEndDate || pa.paEndDate >= today)
             const isExpired = !isCurrent && !!pa.paEndDate && pa.paEndDate < today
+            if (editingId === pa.id) {
+              return (
+                <form key={pa.id} onSubmit={handleEditPA} className="bg-[#F4F6F5] rounded-xl p-3 space-y-2">
+                  <div>
+                    <label className={lbl}>PA Number</label>
+                    <input required value={editPA.paNumber} onChange={e => setEditPA(p => ({ ...p, paNumber: e.target.value }))}
+                      placeholder="Authorization number" className={inp} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className={lbl}>Start Date</label>
+                      <input type="date" value={editPA.paStartDate} onChange={e => setEditPA(p => ({ ...p, paStartDate: e.target.value }))} className={inp} />
+                    </div>
+                    <div>
+                      <label className={lbl}>End Date</label>
+                      <input type="date" value={editPA.paEndDate} onChange={e => setEditPA(p => ({ ...p, paEndDate: e.target.value }))} className={inp} />
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={editPA.highTech} onChange={e => setEditPA(p => ({ ...p, highTech: e.target.checked }))} className="accent-[#7A8F79] w-4 h-4" />
+                    <span className="text-sm text-[#2F3E4E] font-semibold">High-Tech designation</span>
+                  </label>
+                  {editError && <p className="text-xs text-red-500">{editError}</p>}
+                  <div className="flex gap-2">
+                    <button type="submit" disabled={savingEdit}
+                      className="flex-1 bg-[#2F3E4E] text-white text-sm font-semibold py-1.5 rounded-lg hover:bg-[#7A8F79] transition disabled:opacity-50">
+                      {savingEdit ? 'Saving…' : 'Save Changes'}
+                    </button>
+                    <button type="button" onClick={() => setEditingId(null)}
+                      className="px-3 text-sm font-semibold text-[#7A8F79] border border-[#D9E1E8] rounded-lg hover:bg-white transition">
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )
+            }
             return (
               <div key={pa.id} className={`rounded-xl border px-3 py-2.5 ${isCurrent ? 'border-[#7A8F79] bg-[#f4f9f4]' : 'border-[#D9E1E8]'}`}>
                 <div className="flex items-start justify-between gap-2">
@@ -122,10 +184,16 @@ export default function PatientPriorAuthHistory({
                     </p>
                   </div>
                   {canEdit && (
-                    <button onClick={() => onDelete(pa.id)}
-                      className="text-[10px] text-red-400 hover:text-red-600 font-semibold shrink-0 transition">
-                      Remove
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button onClick={() => startEdit(pa)}
+                        className="text-[10px] text-[#7A8F79] hover:text-[#2F3E4E] font-semibold transition">
+                        Edit
+                      </button>
+                      <button onClick={() => onDelete(pa.id)}
+                        className="text-[10px] text-red-400 hover:text-red-600 font-semibold transition">
+                        Remove
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>

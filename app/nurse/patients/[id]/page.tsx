@@ -121,6 +121,21 @@ export default function NursePatientDetailPage({ params }: { params: Promise<{ i
     return { ok: false, error: d.error || 'Failed to save.' }
   }
 
+  async function handleEditPA(paId: string, pa: { paNumber: string; paStartDate: string; paEndDate: string; highTech: boolean }) {
+    const res = await fetch(`/api/nurse/patients/${id}/pa`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ paId, ...pa }),
+    })
+    if (res.ok) {
+      await refreshPAs()
+      return { ok: true }
+    }
+    const d = await res.json()
+    return { ok: false, error: d.error || 'Failed to save.' }
+  }
+
   async function handleDeletePA(paId: string) {
     await fetch(`/api/nurse/patients/${id}/pa`, {
       method: 'DELETE',
@@ -179,7 +194,7 @@ export default function NursePatientDetailPage({ params }: { params: Promise<{ i
         <>
           <PatientInsurance data={merged} readOnly editing={false} onEdit={() => {}} setField={() => {}} />
           <div className="bg-white rounded-2xl shadow-sm p-6 mt-5">
-            <PatientPriorAuthHistory priorAuths={patient.priorAuths} canEdit={!merged.isLocked} onAdd={handleAddPA} onDelete={handleDeletePA} />
+            <PatientPriorAuthHistory priorAuths={patient.priorAuths} canEdit={!merged.isLocked} onAdd={handleAddPA} onEdit={handleEditPA} onDelete={handleDeletePA} />
           </div>
         </>
       ),

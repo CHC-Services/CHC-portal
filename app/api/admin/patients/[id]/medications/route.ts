@@ -17,7 +17,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params
 
   const body = await req.json()
-  const { medicationName, dose, frequency, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone } = body
+  const { medicationName, rxcui, dose, unitStrength, frequency, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone } = body
   if (!medicationName?.trim()) return NextResponse.json({ error: 'Medication name required' }, { status: 400 })
   if (!lastFillDate) return NextResponse.json({ error: 'Last fill date required' }, { status: 400 })
 
@@ -27,7 +27,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     data: {
       patientId: id,
       medicationName: medicationName.trim(),
+      rxcui: rxcui || null,
       dose: dose || null,
+      unitStrength: unitStrength || null,
       frequency: frequency || null,
       daySupply: daySupply ? parseInt(daySupply, 10) : 30,
       lastFillDate: new Date(lastFillDate),
@@ -48,12 +50,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!adminAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await params
 
-  const { medId, medicationName, dose, frequency, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone, active } = await req.json()
+  const { medId, medicationName, rxcui, dose, unitStrength, frequency, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone, active } = await req.json()
   if (!medId) return NextResponse.json({ error: 'medId required' }, { status: 400 })
 
   const data: Record<string, any> = {}
   if (medicationName !== undefined) data.medicationName = medicationName?.trim()
+  if (rxcui !== undefined) data.rxcui = rxcui || null
   if (dose !== undefined) data.dose = dose || null
+  if (unitStrength !== undefined) data.unitStrength = unitStrength || null
   if (frequency !== undefined) data.frequency = frequency || null
   if (daySupply !== undefined) data.daySupply = parseInt(daySupply, 10)
   if (lastFillDate !== undefined) data.lastFillDate = new Date(lastFillDate)

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 
 // ─── Portable component — no API calls, no Prisma/site imports. ────────────────
 // Data flows in via props; the page that renders this does all the fetching.
@@ -49,6 +49,8 @@ export type PharmacyOption = {
   phone: string | null
 }
 
+export type DrugSearchFn = (q: string) => Promise<{ exact: string[]; suggested: string[] }>
+
 type MedicationListProps = {
   patientName: string
   medications: MedicationDTO[]
@@ -58,6 +60,7 @@ type MedicationListProps = {
   onDelete: (id: string) => Promise<void>
   readOnly?: boolean
   pharmacies?: PharmacyOption[]
+  onSearchDrugNames?: DrugSearchFn
 }
 
 const emptyForm: MedicationInput = {
@@ -105,22 +108,67 @@ function toFormValues(m: MedicationDTO): MedicationInput {
   }
 }
 
-function MedicationForm({ initial, onSubmit, onCancel, submitLabel, pharmacies = [] }: {
+function MedicationForm({ initial, onSubmit, onCancel, submitLabel, pharmacies = [], onSearchDrugNames }: {
   initial: MedicationInput
   onSubmit: (data: MedicationInput) => Promise<void>
   onCancel: () => void
   submitLabel: string
   pharmacies?: PharmacyOption[]
+  onSearchDrugNames?: DrugSearchFn
 }) {
   const [form, setForm] = useState(initial)
   const [saving, setSaving] = useState(false)
   const [pharmacySuggestions, setPharmacySuggestions] = useState<PharmacyOption[]>([])
   const [activeSuggestionIdx, setActiveSuggestionIdx] = useState(0)
+  const [drugSuggestions, setDrugSuggestions] = useState<string[]>([])
+  const [drugAltSuggestions, setDrugAltSuggestions] = useState<string[]>([])
+  const [activeDrugIdx, setActiveDrugIdx] = useState(0)
+  const drugSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const set = (k: keyof MedicationInput) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }))
 
   const inputCls = 'w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2'
   const inputStyle = { borderColor: theme.bg, color: theme.navy } as React.CSSProperties
+
+  function handleMedicationNameChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const value = e.target.value
+    setForm(f => ({ ...f, medicationName: value }))
+    if (drugSearchTimer.current) clearTimeout(drugSearchTimer.current)
+    const q = value.trim()
+    if (!onSearchDrugNames || q.length < 2) {
+      setDrugSuggestions([]); setDrugAltSuggestions([])
+      return
+    }
+    drugSearchTimer.current = setTimeout(async () => {
+      const result = await onSearchDrugNames(q)
+      setDrugSuggestions(result.exact)
+      setDrugAltSuggestions(result.suggested)
+      setActiveDrugIdx(0)
+    }, 250)
+  }
+
+  function selectDrugName(name: string) {
+    setForm(f => ({ ...f, medicationName: name }))
+    setDrugSuggestions([]); setDrugAltSuggestions([])
+  }
+
+  const allDrugSuggestions = [...drugSuggestions, ...drugAltSuggestions]
+
+  function handleMedicationKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (allDrugSuggestions.length === 0) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setActiveDrugIdx(i => Math.min(i + 1, allDrugSuggestions.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveDrugIdx(i => Math.max(i - 1, 0))
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      selectDrugName(allDrugSuggestions[activeDrugIdx] || allDrugSuggestions[0])
+    } else if (e.key === 'Escape') {
+      setDrugSuggestions([]); setDrugAltSuggestions([])
+    }
+  }
 
   function handlePharmacyNameChange(e: React.ChangeEvent<HTMLInputElement>) {
     const value = e.target.value
@@ -162,7 +210,55 @@ function MedicationForm({ initial, onSubmit, onCancel, submitLabel, pharmacies =
 
   return (
     <form onSubmit={submit} className="space-y-2 p-3 rounded-xl" style={{ background: theme.offWhite }}>
-      <input placeholder="Medication name" value={form.medicationName} onChange={set('medicationName')} required className={inputCls} style={inputStyle} />
+      <div className="relative">
+        <input
+          placeholder="Medication name"
+          value={form.medicationName}
+          onChange={handleMedicationNameChange}
+          onKeyDown={handleMedicationKeyDown}
+          onBlur={() => setTimeout(() => { setDrugSuggestions([]); setDrugAltSuggestions([]) }, 100)}
+          autoComplete="off"
+          required
+          className={inputCls}
+          style={inputStyle}
+        />
+        {allDrugSuggestions.length > 0 && (
+          <div className="absolute z-10 mt-1 w-full bg-white border rounded-xl shadow-lg overflow-hidden" style={{ borderColor: theme.bg }}>
+            {drugSuggestions.map((name, i) => (
+              <button
+                key={name}
+                type="button"
+                onMouseDown={() => selectDrugName(name)}
+                onMouseEnter={() => setActiveDrugIdx(i)}
+                className="block w-full text-left px-3 py-2 text-sm"
+                style={i === activeDrugIdx ? { background: theme.navy, color: 'white' } : { color: theme.navy }}
+              >
+                {name}
+              </button>
+            ))}
+            {drugAltSuggestions.length > 0 && (
+              <>
+                <p className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide font-semibold" style={{ color: theme.sage }}>Did you mean…</p>
+                {drugAltSuggestions.map((name, i) => {
+                  const idx = drugSuggestions.length + i
+                  return (
+                    <button
+                      key={name}
+                      type="button"
+                      onMouseDown={() => selectDrugName(name)}
+                      onMouseEnter={() => setActiveDrugIdx(idx)}
+                      className="block w-full text-left px-3 py-2 text-sm"
+                      style={idx === activeDrugIdx ? { background: theme.navy, color: 'white' } : { color: theme.navy }}
+                    >
+                      {name}
+                    </button>
+                  )
+                })}
+              </>
+            )}
+          </div>
+        )}
+      </div>
       <div className="grid grid-cols-2 gap-2">
         <input placeholder="Dose (e.g. 10mg)" value={form.dose} onChange={set('dose')} className={inputCls} style={inputStyle} />
         <input placeholder="Frequency (e.g. daily)" value={form.frequency} onChange={set('frequency')} className={inputCls} style={inputStyle} />
@@ -265,13 +361,14 @@ function RefillButton({ med, onConfirm, style }: { med: MedicationDTO; onConfirm
   )
 }
 
-function MedicationCard({ med, onEdit, onConfirmRefill, onDelete, readOnly, pharmacies }: {
+function MedicationCard({ med, onEdit, onConfirmRefill, onDelete, readOnly, pharmacies, onSearchDrugNames }: {
   med: MedicationDTO
   onEdit: (id: string, data: MedicationInput) => Promise<void>
   onConfirmRefill: (id: string, refillDate: string) => Promise<void>
   onDelete: (id: string) => Promise<void>
   readOnly?: boolean
   pharmacies?: PharmacyOption[]
+  onSearchDrugNames?: DrugSearchFn
 }) {
   const [editing, setEditing] = useState(false)
   const dueDate = addDaysStr(med.lastFillDate.slice(0, 10), med.daySupply)
@@ -284,6 +381,7 @@ function MedicationCard({ med, onEdit, onConfirmRefill, onDelete, readOnly, phar
         onCancel={() => setEditing(false)}
         onSubmit={async data => { await onEdit(med.id, data); setEditing(false) }}
         pharmacies={pharmacies}
+        onSearchDrugNames={onSearchDrugNames}
       />
     )
   }
@@ -342,7 +440,7 @@ function MedicationCard({ med, onEdit, onConfirmRefill, onDelete, readOnly, phar
   )
 }
 
-export default function MedicationList({ patientName, medications, onAdd, onEdit, onConfirmRefill, onDelete, readOnly, pharmacies }: MedicationListProps) {
+export default function MedicationList({ patientName, medications, onAdd, onEdit, onConfirmRefill, onDelete, readOnly, pharmacies, onSearchDrugNames }: MedicationListProps) {
   const [adding, setAdding] = useState(false)
 
   return (
@@ -365,6 +463,7 @@ export default function MedicationList({ patientName, medications, onAdd, onEdit
           onCancel={() => setAdding(false)}
           onSubmit={async data => { await onAdd(data); setAdding(false) }}
           pharmacies={pharmacies}
+          onSearchDrugNames={onSearchDrugNames}
         />
       )}
 
@@ -381,6 +480,7 @@ export default function MedicationList({ patientName, medications, onAdd, onEdit
               onDelete={onDelete}
               readOnly={readOnly}
               pharmacies={pharmacies}
+              onSearchDrugNames={onSearchDrugNames}
             />
           ))}
         </div>

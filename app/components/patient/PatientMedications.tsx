@@ -1,6 +1,7 @@
 'use client'
 
 import MedicationList, { MedicationDTO, MedicationInput, PharmacyOption } from '../MedicationList'
+import { searchDrugNames } from '../../../lib/drugSearchClient'
 
 export default function PatientMedications({
   patientName, medications, onAdd, onEdit, onConfirmRefill, onDelete, readOnly, pharmacies,
@@ -25,6 +26,7 @@ export default function PatientMedications({
         onDelete={onDelete}
         readOnly={readOnly}
         pharmacies={pharmacies}
+        onSearchDrugNames={searchDrugNames}
       />
     </div>
   )

@@ -883,6 +883,18 @@ model Pharmacy {
   @@index([name])
 }
 
+// Grow-as-you-go local cache of drug names looked up via NIH's RxTerms API for
+// the medication-name typeahead — no bulk/offline dataset exists, so this fills
+// in organically as real medications get searched, so repeat lookups resolve
+// instantly without depending on NIH's service being reachable.
+model DrugName {
+  id          String   @id @default(uuid())
+  displayName String   @unique
+  createdAt   DateTime @default(now())
+
+  @@index([displayName])
+}
+
 // Family/guardian login scoped to exactly the patient(s) they're linked to.
 model GuardianPatient {
   id                       String   @id @default(uuid())

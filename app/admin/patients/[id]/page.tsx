@@ -277,19 +277,6 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
     </>
   )
 
-  const aboveTabs = (
-    <PatientCareTeam
-      patientName={`${patient.firstName} ${patient.lastName}`}
-      nurseLinks={patient.nurseLinks}
-      guardianLinks={patient.guardianLinks}
-      canManageAssignment
-      availableNurses={nurses}
-      onAssign={handleAssign}
-      onUnlink={handleUnlink}
-      onInviteGuardian={handleInviteGuardian}
-    />
-  )
-
   const activeData = editing ? editData : patient
 
   function handleCancelEdit() {
@@ -351,6 +338,22 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
         />
       ),
     },
+    {
+      key: 'careTeam', label: 'Care Team', content: (
+        <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
+          <PatientCareTeam
+            patientName={`${patient.firstName} ${patient.lastName}`}
+            nurseLinks={patient.nurseLinks}
+            guardianLinks={patient.guardianLinks}
+            canManageAssignment
+            availableNurses={nurses}
+            onAssign={handleAssign}
+            onUnlink={handleUnlink}
+            onInviteGuardian={handleInviteGuardian}
+          />
+        </div>
+      ),
+    },
   ]
 
   return (
@@ -360,7 +363,6 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
       headerName={`${patient.lastName}, ${patient.firstName}`}
       headerAccountNumber={patient.accountNumber}
       banners={banners}
-      aboveTabs={aboveTabs}
       tabs={tabs}
     />
   )

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import MedicationList, { MedicationDTO, MedicationInput, PharmacyOption } from '../../components/MedicationList'
+import { searchDrugNames } from '../../../lib/drugSearchClient'
 
 type FamilyPatient = {
   id: string
@@ -96,6 +97,7 @@ export default function FamilyMedicationsPage() {
                 onConfirmRefill={handleConfirmRefill}
                 onDelete={handleDelete}
                 pharmacies={pharmacies}
+                onSearchDrugNames={searchDrugNames}
               />
             ))}
           </div>

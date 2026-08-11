@@ -67,12 +67,12 @@ Account number: `PT-001` format, sequential on creation.
 
 ### Shared patient-detail components (`app/components/patient/`)
 All three roles' patient-detail pages are thin route wrappers around one shared component set — no more per-role duplicated Demographics/Insurance/Care-Team/PA-History JSX:
-- `PatientDetailShell.tsx` — layout: back-link, header (name + account #), `banners` slot (role-specific lock/status copy), `aboveTabs` slot (Care Team), tab bar + active tab content. Owns tab state internally. Prior Authorization History renders inside the Insurance tab (not `aboveTabs`) since it's insurance-related.
-- `PatientTabs.tsx` — `DetailTab` type + `PATIENT_DETAIL_TABS` (Demographics/Insurance/Medications/Documents), wraps the generic `app/components/Tabs.tsx`.
+- `PatientDetailShell.tsx` — layout: back-link, header (name + account #), `banners` slot (role-specific lock/status copy), tab bar + active tab content. Owns tab state internally. The tab bar reflects whatever `tabs` array a page actually passes in (not a hardcoded global) — this is how admin/nurse get a 5th "Care Team" tab that family doesn't.
+- `PatientTabs.tsx` — `DetailTab` type + `PATIENT_DETAIL_TABS` (the standard 4: Demographics/Insurance/Medications/Documents), wraps the generic `app/components/Tabs.tsx`. Roles needing more tabs (admin/nurse add `careTeam`) build their own tabs array rather than using the constant directly.
 - `PatientDemographics.tsx`, `PatientInsurance.tsx` — view (via `ReadOnlyField.tsx`'s `Row`/`SectionHeader`) + edit form, `readOnly` prop (true for nurse — no edit UI, preserved from before consolidation).
 - `PatientMedications.tsx`, `PatientDocuments.tsx` — thin wrappers around `MedicationList.tsx` / `PatientDocumentsPanel.tsx`.
-- `PatientCareTeam.tsx` — `GuardianInviteModal` trigger + everyone with access to the record, split into **Family** (`guardianLinks`) and **Provider** (`nurseLinks` — nurse and provider roles both roll up here) lists. Site admins are intentionally excluded from this list (blanket access regardless). `canManageAssignment` prop gates the assign/unlink dropdown (admin only); nurse sees the same lists read-only.
-- `PatientPriorAuthHistory.tsx` — PA list + add/remove form; `canEdit` prop (admin: always; nurse: false when `isLocked`).
+- `PatientCareTeam.tsx` — rendered on its own **Care Team** tab (admin/nurse only, not family). `GuardianInviteModal` trigger + everyone with access to the record, split into **Family** (`guardianLinks`) and **Provider** (`nurseLinks` — nurse and provider roles both roll up here) lists. Site admins are intentionally excluded from this list (blanket access regardless). `canManageAssignment` prop gates the assign/unlink dropdown (admin only); nurse sees the same lists read-only.
+- `PatientPriorAuthHistory.tsx` — renders inside the **Insurance** tab (not its own tab) since it's insurance-related. PA list + add/remove form; `canEdit` prop (admin: always; nurse: false when `isLocked`).
 - `types.ts` — shared `PatientFields` type + `US_STATES`/`SUBSCRIBER_RELATIONS`/input class constants.
 
 Nurse's `merged` object (canonical + overrides) and admin's/family's canonical `Patient` object share the same field shape, so all three roles hand the identical shape to these components regardless of source.
@@ -98,6 +98,13 @@ Nurse's `merged` object (canonical + overrides) and admin's/family's canonical `
 
 ### Nurse hours patient label
 Dropdown: `${firstName[0]}. ${lastName.slice(0,5)}` — admin sees account number (PT-001).
+
+## Medication-name typeahead (completed 2026-08-11)
+`app/components/MedicationList.tsx`'s "Medication name" field has a live typeahead, mirroring its existing pharmacy-name typeahead pattern (dropdown, arrow-key/Enter/Escape nav) — but debounced-fetch-backed instead of a client-side filter of a preloaded prop, since the drug universe can't be preloaded. `MedicationList.tsx` stays a portable no-API-calls component per its own header comment — it takes an `onSearchDrugNames` callback prop; the actual fetch lives in `lib/drugSearchClient.ts` (`searchDrugNames`), wired in once inside `app/components/patient/PatientMedications.tsx` and `app/family/medications/page.tsx` (the two places `MedicationList` is rendered) rather than per-caller.
+
+**Architecture — grow-as-you-go local cache, no bulk NIH dataset exists**: `DrugName` model (`prisma/schema.prisma`, migration `20260811_add_drug_name_cache`) is a local cache that starts empty and fills in organically. `GET /api/drugs/search?q=` (same auth as `/api/pharmacies` — any nurse/admin/guardian) checks `lib/drugNameLookup.ts`'s `searchLocalDrugNames` first; if thin, falls back to NIH's live RxTerms API (`searchLiveDrugNames`) and caches new results (`cacheDrugNames`, fire-and-forget); if still empty, tries RxNorm's `approximateTerm` fuzzy-match as a typo fallback (`searchApproximateDrugNames`, surfaced in the UI under "Did you mean…"). All external calls are wrapped in try/catch returning `[]` on failure — NIH being down degrades to a plain free-text field, never an error.
+
+**Casing**: NIH's RxTerms `DISPLAY_NAME` does NOT already follow "generic lowercase, brand capitalized" (verified live — brand names come back ALL CAPS, e.g. `TYLENOL`; generic names come back mixed-case with inline tall-man lettering, e.g. `Acetaminophen/diphenhydrAMINE`). `normalizeDrugName()` in `lib/drugNameLookup.ts` detects brand (source is all-caps) vs. generic (anything else) and title-cases or lowercases accordingly before caching/returning — this transform is necessary, not a passthrough.
 
 ## What's Not Built Yet
 - Voice dictation feature linked to patients (architecture agreed, not started)

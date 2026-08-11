@@ -5,14 +5,13 @@ import Link from 'next/link'
 import PatientTabs, { DetailTab } from './PatientTabs'
 
 export default function PatientDetailShell({
-  backHref, backLabel, headerName, headerAccountNumber, banners, aboveTabs, tabs, initialTab = 'demographics',
+  backHref, backLabel, headerName, headerAccountNumber, banners, tabs, initialTab = 'demographics',
 }: {
   backHref: string
   backLabel: string
   headerName: string
   headerAccountNumber: string
   banners?: React.ReactNode
-  aboveTabs?: React.ReactNode
   tabs: { key: DetailTab; label: string; content: React.ReactNode }[]
   initialTab?: DetailTab
 }) {
@@ -36,14 +35,8 @@ export default function PatientDetailShell({
 
         {banners}
 
-        {aboveTabs && (
-          <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4 mt-4 mb-5">
-            {aboveTabs}
-          </div>
-        )}
-
         <div className="mb-4 mt-5">
-          <PatientTabs active={activeTab} onChange={setActiveTab} />
+          <PatientTabs tabs={tabs.map(({ key, label }) => ({ key, label }))} active={activeTab} onChange={setActiveTab} />
         </div>
 
         {active?.content}

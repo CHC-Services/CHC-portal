@@ -168,16 +168,6 @@ export default function NursePatientDetailPage({ params }: { params: Promise<{ i
     </div>
   ) : null
 
-  const aboveTabs = (
-    <PatientCareTeam
-      patientName={`${merged.firstName} ${merged.lastName}`}
-      nurseLinks={patient.nurseLinks}
-      guardianLinks={patient.guardianLinks}
-      canManageAssignment={false}
-      onInviteGuardian={handleInviteGuardian}
-    />
-  )
-
   const tabs: { key: DetailTab; label: string; content: React.ReactNode }[] = [
     {
       key: 'demographics', label: 'Demographics', content: (
@@ -218,6 +208,19 @@ export default function NursePatientDetailPage({ params }: { params: Promise<{ i
         />
       ),
     },
+    {
+      key: 'careTeam', label: 'Care Team', content: (
+        <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
+          <PatientCareTeam
+            patientName={`${merged.firstName} ${merged.lastName}`}
+            nurseLinks={patient.nurseLinks}
+            guardianLinks={patient.guardianLinks}
+            canManageAssignment={false}
+            onInviteGuardian={handleInviteGuardian}
+          />
+        </div>
+      ),
+    },
   ]
 
   return (
@@ -227,7 +230,6 @@ export default function NursePatientDetailPage({ params }: { params: Promise<{ i
       headerName={`${merged.lastName}, ${merged.firstName}`}
       headerAccountNumber={merged.accountNumber}
       banners={banners}
-      aboveTabs={aboveTabs}
       tabs={tabs}
     />
   )

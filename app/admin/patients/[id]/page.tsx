@@ -6,19 +6,19 @@ import PatientDemographics from '../../../components/patient/PatientDemographics
 import PatientInsurance from '../../../components/patient/PatientInsurance'
 import PatientMedications from '../../../components/patient/PatientMedications'
 import PatientDocuments from '../../../components/patient/PatientDocuments'
-import PatientCareTeam from '../../../components/patient/PatientCareTeam'
+import PatientCareTeam, { NurseLink, GuardianLink } from '../../../components/patient/PatientCareTeam'
 import PatientPriorAuthHistory, { PatientPA } from '../../../components/patient/PatientPriorAuthHistory'
 import { DetailTab } from '../../../components/patient/PatientTabs'
 import { PatientFields } from '../../../components/patient/types'
 import { MedicationDTO, MedicationInput, PharmacyOption } from '../../../components/MedicationList'
 import { GuardianInviteData } from '../../../components/GuardianInviteModal'
 
-type NurseLink = { id: string; isActive: boolean; nurse: { id: string; displayName: string; firstName?: string; lastName?: string; accountNumber: string | null } }
 type Nurse = { id: string; displayName: string; firstName?: string; lastName?: string; accountNumber: string | null }
 
 type Patient = PatientFields & {
   id: string
   nurseLinks: NurseLink[]
+  guardianLinks: GuardianLink[]
   priorAuths: PatientPA[]
   medications: MedicationDTO[]
 }
@@ -278,18 +278,16 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
   )
 
   const aboveTabs = (
-    <>
-      <PatientCareTeam
-        patientName={`${patient.firstName} ${patient.lastName}`}
-        nurseLinks={patient.nurseLinks}
-        canManageAssignment
-        availableNurses={nurses}
-        onAssign={handleAssign}
-        onUnlink={handleUnlink}
-        onInviteGuardian={handleInviteGuardian}
-      />
-      <PatientPriorAuthHistory priorAuths={patient.priorAuths} canEdit onAdd={handleAddPA} onDelete={handleDeletePA} />
-    </>
+    <PatientCareTeam
+      patientName={`${patient.firstName} ${patient.lastName}`}
+      nurseLinks={patient.nurseLinks}
+      guardianLinks={patient.guardianLinks}
+      canManageAssignment
+      availableNurses={nurses}
+      onAssign={handleAssign}
+      onUnlink={handleUnlink}
+      onInviteGuardian={handleInviteGuardian}
+    />
   )
 
   const activeData = editing ? editData : patient
@@ -324,6 +322,9 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
         <>
           <PatientInsurance data={activeData} readOnly={false} editing={editing} onEdit={() => { setEditing(true); setEditData({ ...patient }) }} setField={setField} />
           {editControls}
+          <div className="bg-white rounded-2xl shadow-sm p-6 mt-5">
+            <PatientPriorAuthHistory priorAuths={patient.priorAuths} canEdit onAdd={handleAddPA} onDelete={handleDeletePA} />
+          </div>
         </>
       ),
     },

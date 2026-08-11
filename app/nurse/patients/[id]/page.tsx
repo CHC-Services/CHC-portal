@@ -6,14 +6,12 @@ import PatientDemographics from '../../../components/patient/PatientDemographics
 import PatientInsurance from '../../../components/patient/PatientInsurance'
 import PatientMedications from '../../../components/patient/PatientMedications'
 import PatientDocuments from '../../../components/patient/PatientDocuments'
-import PatientCareTeam from '../../../components/patient/PatientCareTeam'
+import PatientCareTeam, { NurseLink, GuardianLink } from '../../../components/patient/PatientCareTeam'
 import PatientPriorAuthHistory, { PatientPA } from '../../../components/patient/PatientPriorAuthHistory'
 import { DetailTab } from '../../../components/patient/PatientTabs'
 import { PatientFields } from '../../../components/patient/types'
 import { MedicationDTO, MedicationInput, PharmacyOption } from '../../../components/MedicationList'
 import { GuardianInviteData } from '../../../components/GuardianInviteModal'
-
-type NurseLink = { id: string; isActive: boolean; nurse: { id: string; displayName: string; firstName?: string; lastName?: string; accountNumber: string | null } }
 
 type LinkedPatient = {
   linkId: string
@@ -22,6 +20,8 @@ type LinkedPatient = {
   merged: PatientFields
   priorAuths: PatientPA[]
   medications: MedicationDTO[]
+  nurseLinks: NurseLink[]
+  guardianLinks: GuardianLink[]
 }
 
 export default function NursePatientDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -158,7 +158,6 @@ export default function NursePatientDetailPage({ params }: { params: Promise<{ i
   }
 
   const merged = patient.merged
-  const noopNurseLinks: NurseLink[] = []
 
   const banners = merged.isLocked ? (
     <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
@@ -170,15 +169,13 @@ export default function NursePatientDetailPage({ params }: { params: Promise<{ i
   ) : null
 
   const aboveTabs = (
-    <>
-      <PatientCareTeam
-        patientName={`${merged.firstName} ${merged.lastName}`}
-        nurseLinks={noopNurseLinks}
-        canManageAssignment={false}
-        onInviteGuardian={handleInviteGuardian}
-      />
-      <PatientPriorAuthHistory priorAuths={patient.priorAuths} canEdit={!merged.isLocked} onAdd={handleAddPA} onDelete={handleDeletePA} />
-    </>
+    <PatientCareTeam
+      patientName={`${merged.firstName} ${merged.lastName}`}
+      nurseLinks={patient.nurseLinks}
+      guardianLinks={patient.guardianLinks}
+      canManageAssignment={false}
+      onInviteGuardian={handleInviteGuardian}
+    />
   )
 
   const tabs: { key: DetailTab; label: string; content: React.ReactNode }[] = [
@@ -189,7 +186,12 @@ export default function NursePatientDetailPage({ params }: { params: Promise<{ i
     },
     {
       key: 'insurance', label: 'Insurance', content: (
-        <PatientInsurance data={merged} readOnly editing={false} onEdit={() => {}} setField={() => {}} />
+        <>
+          <PatientInsurance data={merged} readOnly editing={false} onEdit={() => {}} setField={() => {}} />
+          <div className="bg-white rounded-2xl shadow-sm p-6 mt-5">
+            <PatientPriorAuthHistory priorAuths={patient.priorAuths} canEdit={!merged.isLocked} onAdd={handleAddPA} onDelete={handleDeletePA} />
+          </div>
+        </>
       ),
     },
     {

@@ -22,6 +22,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           nurse: { select: { id: true, displayName: true, firstName: true, lastName: true, accountNumber: true } },
         },
       },
+      guardianLinks: {
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+        },
+      },
       priorAuths: { orderBy: [{ paStartDate: 'desc' }, { createdAt: 'desc' }] },
       medications: { orderBy: { createdAt: 'desc' }, include: { pharmacy: true } },
       timeEntries: {

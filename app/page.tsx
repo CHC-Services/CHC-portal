@@ -181,7 +181,12 @@ export default async function Home() {
                 </p>
                 <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight">
                   Helping families and care teams stay{' '}
-                  <span className="italic text-[#7A8F79]">organized, informed, and connected.</span>
+                  <span className="italic text-[#7A8F79]">organized</span>
+                  <span className="not-italic text-white">, </span>
+                  <span className="italic text-[#7A8F79]">informed</span>
+                  <span className="not-italic text-white">, and </span>
+                  <span className="italic text-[#7A8F79]">connected</span>
+                  <span className="not-italic text-white">.</span>
                 </h1>
                 <p className="mt-4 text-[#D9E1E8] text-sm max-w-xl">
                   Tools for caregivers, families, nurses, and healthcare providers to manage the details of home care without adding more work to an already full day.
@@ -203,8 +208,8 @@ export default async function Home() {
               {/* Team photo — same row as the text on large screens, stacked below on mobile */}
               <div className="hidden lg:block lg:w-[500px] lg:shrink-0">
                 <Image
-                  src="/NurseGroup_NoBkgd.png"
-                  alt="Group of nurses in scrubs."
+                  src="/Nurse_Family_Couch.png"
+                  alt="A nurse visiting with a family at home."
                   width={500}
                   height={320}
                   priority

@@ -67,11 +67,11 @@ Account number: `PT-001` format, sequential on creation.
 
 ### Shared patient-detail components (`app/components/patient/`)
 All three roles' patient-detail pages are thin route wrappers around one shared component set — no more per-role duplicated Demographics/Insurance/Care-Team/PA-History JSX:
-- `PatientDetailShell.tsx` — layout: back-link, header (name + account #), `banners` slot (role-specific lock/status copy), `aboveTabs` slot (Care Team + PA History), tab bar + active tab content. Owns tab state internally.
+- `PatientDetailShell.tsx` — layout: back-link, header (name + account #), `banners` slot (role-specific lock/status copy), `aboveTabs` slot (Care Team), tab bar + active tab content. Owns tab state internally. Prior Authorization History renders inside the Insurance tab (not `aboveTabs`) since it's insurance-related.
 - `PatientTabs.tsx` — `DetailTab` type + `PATIENT_DETAIL_TABS` (Demographics/Insurance/Medications/Documents), wraps the generic `app/components/Tabs.tsx`.
 - `PatientDemographics.tsx`, `PatientInsurance.tsx` — view (via `ReadOnlyField.tsx`'s `Row`/`SectionHeader`) + edit form, `readOnly` prop (true for nurse — no edit UI, preserved from before consolidation).
 - `PatientMedications.tsx`, `PatientDocuments.tsx` — thin wrappers around `MedicationList.tsx` / `PatientDocumentsPanel.tsx`.
-- `PatientCareTeam.tsx` — nurse-link display + `GuardianInviteModal` trigger; `canManageAssignment` prop gates the assign/unlink dropdown (admin only).
+- `PatientCareTeam.tsx` — `GuardianInviteModal` trigger + everyone with access to the record, split into **Family** (`guardianLinks`) and **Provider** (`nurseLinks` — nurse and provider roles both roll up here) lists. Site admins are intentionally excluded from this list (blanket access regardless). `canManageAssignment` prop gates the assign/unlink dropdown (admin only); nurse sees the same lists read-only.
 - `PatientPriorAuthHistory.tsx` — PA list + add/remove form; `canEdit` prop (admin: always; nurse: false when `isLocked`).
 - `types.ts` — shared `PatientFields` type + `US_STATES`/`SUBSCRIBER_RELATIONS`/input class constants.
 

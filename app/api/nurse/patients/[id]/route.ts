@@ -24,13 +24,23 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         include: {
           priorAuths: { orderBy: [{ paStartDate: 'desc' }, { createdAt: 'desc' }] },
           medications: { orderBy: { createdAt: 'desc' }, include: { pharmacy: true } },
+          nurseLinks: {
+            include: {
+              nurse: { select: { id: true, displayName: true, firstName: true, lastName: true, accountNumber: true } },
+            },
+          },
+          guardianLinks: {
+            include: {
+              user: { select: { id: true, name: true, email: true } },
+            },
+          },
         },
       },
     },
   })
   if (!link || !link.isActive) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const { priorAuths, medications, ...patientFields } = link.patient
+  const { priorAuths, medications, nurseLinks, guardianLinks, ...patientFields } = link.patient
 
   return NextResponse.json({
     patient: {
@@ -40,6 +50,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       merged: { ...patientFields, ...(link.overrides || {}) },
       priorAuths: priorAuths || [],
       medications: (medications || []).map(flattenMedication),
+      nurseLinks: nurseLinks || [],
+      guardianLinks: guardianLinks || [],
     },
   })
 }

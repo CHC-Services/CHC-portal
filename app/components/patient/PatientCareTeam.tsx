@@ -4,12 +4,14 @@ import { useState } from 'react'
 import GuardianInviteModal, { GuardianInviteData } from '../GuardianInviteModal'
 import { formalName } from '../../../lib/formatName'
 
-type NurseLink = { id: string; isActive: boolean; nurse: { id: string; displayName: string; firstName?: string; lastName?: string; accountNumber: string | null } }
+export type NurseLink = { id: string; isActive: boolean; nurse: { id: string; displayName: string; firstName?: string; lastName?: string; accountNumber: string | null } }
+export type GuardianLink = { id: string; relationship: string | null; user: { id: string; name: string; email: string } }
 type NurseOption = { id: string; displayName: string; firstName?: string; lastName?: string; accountNumber: string | null }
 
 export default function PatientCareTeam({
   patientName,
   nurseLinks,
+  guardianLinks,
   canManageAssignment,
   availableNurses,
   onAssign,
@@ -18,6 +20,7 @@ export default function PatientCareTeam({
 }: {
   patientName: string
   nurseLinks: NurseLink[]
+  guardianLinks: GuardianLink[]
   canManageAssignment: boolean
   availableNurses?: NurseOption[]
   onAssign?: (nurseId: string) => Promise<void>
@@ -40,23 +43,56 @@ export default function PatientCareTeam({
 
   return (
     <>
-      {canManageAssignment && (
-        <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-3 pb-1 border-b border-[#D9E1E8]">Linked Providers</p>
-          {activeLinks.length === 0 ? (
-            <p className="text-xs text-[#7A8F79] italic mb-3">No providers linked.</p>
-          ) : (
-            <div className="space-y-2 mb-3">
-              {activeLinks.map(l => (
-                <div key={l.id} className="flex items-center justify-between bg-[#F4F6F5] rounded-lg px-3 py-2">
-                  <span className="text-sm text-[#2F3E4E] font-semibold">{l.nurse.lastName || l.nurse.displayName}</span>
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">Care Team</p>
+        <button onClick={() => setInvitingGuardian(true)} className="text-xs font-semibold text-[#7A8F79]">
+          + Invite Guardian
+        </button>
+      </div>
+      {invitingGuardian && (
+        <GuardianInviteModal
+          patientName={patientName}
+          onClose={() => setInvitingGuardian(false)}
+          onInvite={onInviteGuardian}
+        />
+      )}
+
+      {/* Everyone with access to this record, by role — site admins are excluded, they have blanket access regardless */}
+      <div className="pt-2 border-t border-[#D9E1E8]">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] mb-2">Family</p>
+        {guardianLinks.length === 0 ? (
+          <p className="text-xs text-[#7A8F79] italic">No family members with access yet.</p>
+        ) : (
+          <div className="space-y-1.5">
+            {guardianLinks.map(g => (
+              <div key={g.id} className="flex items-center justify-between bg-[#F4F6F5] rounded-lg px-3 py-2">
+                <span className="text-sm text-[#2F3E4E] font-semibold">{g.user.name}</span>
+                {g.relationship && <span className="text-[10px] font-semibold uppercase text-[#7A8F79]">{g.relationship}</span>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="pt-2 border-t border-[#D9E1E8]">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] mb-2">Provider</p>
+        {activeLinks.length === 0 ? (
+          <p className="text-xs text-[#7A8F79] italic mb-2">No providers linked.</p>
+        ) : (
+          <div className="space-y-1.5 mb-2">
+            {activeLinks.map(l => (
+              <div key={l.id} className="flex items-center justify-between bg-[#F4F6F5] rounded-lg px-3 py-2">
+                <span className="text-sm text-[#2F3E4E] font-semibold">{l.nurse.lastName || l.nurse.displayName}</span>
+                {canManageAssignment && (
                   <button onClick={() => onUnlink?.(l.nurse.id)} className="text-xs text-red-500 hover:text-red-700 font-semibold transition">
                     Unlink
                   </button>
-                </div>
-              ))}
-            </div>
-          )}
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        {canManageAssignment && (
           <div className="flex gap-2">
             <select
               value={assignNurseId}
@@ -78,22 +114,8 @@ export default function PatientCareTeam({
               {assigning ? '…' : 'Link'}
             </button>
           </div>
-        </div>
-      )}
-
-      <div className={`flex items-center justify-between ${canManageAssignment ? 'pt-2 border-t border-[#D9E1E8]' : ''}`}>
-        <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">Care Team</p>
-        <button onClick={() => setInvitingGuardian(true)} className="text-xs font-semibold text-[#7A8F79]">
-          + Invite Guardian
-        </button>
+        )}
       </div>
-      {invitingGuardian && (
-        <GuardianInviteModal
-          patientName={patientName}
-          onClose={() => setInvitingGuardian(false)}
-          onInvite={onInviteGuardian}
-        />
-      )}
     </>
   )
 }

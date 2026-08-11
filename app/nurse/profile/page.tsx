@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import PortalMessages from '../../components/PortalMessages'
 import { Row, SectionHeader } from '../../components/ReadOnlyField'
 import { fmtPhoneInput } from '../../../lib/formatPhone'
+import DateInput from '../../components/DateInput'
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -507,12 +508,20 @@ function SensitiveField({ label, value, onChange, type = 'text' }: {
         <span className="ml-2 text-[10px] normal-case font-normal bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded">encrypted</span>
       </label>
       <div className="relative">
-        <input
-          type={show ? type : 'password'}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] pr-16"
-        />
+        {type === 'date' && show ? (
+          <DateInput
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] pr-16"
+          />
+        ) : (
+          <input
+            type={type === 'date' ? 'password' : (show ? type : 'password')}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] pr-16"
+          />
+        )}
         <button type="button" onClick={() => setShow(!show)} className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[#7A8F79] hover:text-[#2F3E4E]">
           {show ? 'hide' : 'show'}
         </button>

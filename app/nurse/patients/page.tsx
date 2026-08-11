@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { fmtPhoneInput } from '../../../lib/formatPhone'
+import DateInput from '../../components/DateInput'
 
 type Patient = {
   linkId: string
@@ -370,7 +371,7 @@ export default function MyPatients() {
                   </div>
                   <div>
                     <label className={lbl}>Date of Birth</label>
-                    <input type="date" required value={srchDob} onChange={e => setSrchDob(e.target.value)} className={inp} />
+                    <DateInput required value={srchDob} onChange={e => setSrchDob(e.target.value)} className={inp} />
                   </div>
                   <div>
                     <label className={lbl}>Medicaid / Insurance Member ID</label>
@@ -457,7 +458,7 @@ export default function MyPatients() {
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className={lbl}>Date of Birth</label>
-                          <input type="date" required value={newPt.dob} onChange={e => setPt('dob', e.target.value)} className={inp} />
+                          <DateInput required value={newPt.dob} onChange={e => setPt('dob', e.target.value)} className={inp} />
                         </div>
                         <div>
                           <label className={lbl}>Sex</label>
@@ -582,11 +583,11 @@ export default function MyPatients() {
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className={lbl}>PA Start Date</label>
-                          <input type="date" value={newPt.paStartDate} onChange={e => setPt('paStartDate', e.target.value)} className={inp} />
+                          <DateInput value={newPt.paStartDate} onChange={e => setPt('paStartDate', e.target.value)} className={inp} />
                         </div>
                         <div>
                           <label className={lbl}>PA End Date</label>
-                          <input type="date" value={newPt.paEndDate} onChange={e => setPt('paEndDate', e.target.value)} className={inp} />
+                          <DateInput value={newPt.paEndDate} onChange={e => setPt('paEndDate', e.target.value)} className={inp} />
                         </div>
                       </div>
 

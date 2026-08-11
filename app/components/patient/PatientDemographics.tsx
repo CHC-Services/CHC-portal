@@ -3,6 +3,7 @@
 import { fmtPhoneInput } from '../../../lib/formatPhone'
 import { Row, SectionHeader } from '../ReadOnlyField'
 import { PatientFields, US_STATES, inp, lbl } from './types'
+import DateInput from '../DateInput'
 
 export default function PatientDemographics({
   data, readOnly, editing, onEdit, setField,
@@ -42,7 +43,7 @@ export default function PatientDemographics({
             <div><label className={lbl}>Last Name</label><input value={data.lastName || ''} onChange={e => setField('lastName', e.target.value)} className={inp} /></div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div><label className={lbl}>Date of Birth</label><input type="date" value={data.dob || ''} onChange={e => setField('dob', e.target.value)} className={inp} /></div>
+            <div><label className={lbl}>Date of Birth</label><DateInput value={data.dob || ''} onChange={e => setField('dob', e.target.value)} className={inp} /></div>
             <div>
               <label className={lbl}>Sex</label>
               <select value={data.gender || ''} onChange={e => setField('gender', e.target.value)} className={inp}>

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import AdminNav from '../../components/AdminNav'
 import { formalName } from '../../../lib/formatName'
 import { fmtPhoneInput } from '../../../lib/formatPhone'
+import DateInput from '../../components/DateInput'
 
 type NurseLink = {
   id: string
@@ -280,7 +281,7 @@ export default function AdPatients() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className={lbl}>Date of Birth</label>
-                        <input type="date" required value={createData.dob} onChange={e => setCreateField('dob', e.target.value)} className={inp} />
+                        <DateInput required value={createData.dob} onChange={e => setCreateField('dob', e.target.value)} className={inp} />
                       </div>
                       <div>
                         <label className={lbl}>Sex</label>
@@ -425,11 +426,11 @@ export default function AdPatients() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className={lbl}>PA Start Date</label>
-                    <input type="date" value={createPA.paStartDate} onChange={e => setCreatePA(p => ({ ...p, paStartDate: e.target.value }))} className={inp} />
+                    <DateInput value={createPA.paStartDate} onChange={e => setCreatePA(p => ({ ...p, paStartDate: e.target.value }))} className={inp} />
                   </div>
                   <div>
                     <label className={lbl}>PA End Date</label>
-                    <input type="date" value={createPA.paEndDate} onChange={e => setCreatePA(p => ({ ...p, paEndDate: e.target.value }))} className={inp} />
+                    <DateInput value={createPA.paEndDate} onChange={e => setCreatePA(p => ({ ...p, paEndDate: e.target.value }))} className={inp} />
                   </div>
                 </div>
 

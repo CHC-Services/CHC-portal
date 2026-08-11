@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { DateInput, DateInputHandle } from '../../components/DateInput'
+import DateInput from '../../components/DateInput'
 import AddPatientModal from '../../components/AddPatientModal'
 
 type TimeEntry = {
@@ -23,7 +23,7 @@ type LinkedPatient = {
 
 export default function MyHours() {
   const router = useRouter()
-  const dateInputRef = useRef<DateInputHandle>(null)
+  const dateInputRef = useRef<HTMLInputElement>(null)
   const [workDate, setWorkDate] = useState('')
   const [hours, setHours] = useState('')
   const [notes, setNotes] = useState('')
@@ -325,7 +325,7 @@ export default function MyHours() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Date Worked</label>
-                <DateInput ref={dateInputRef} value={workDate} onChange={setWorkDate} />
+                <DateInput ref={dateInputRef} value={workDate} onChange={e => setWorkDate(e.target.value)} />
               </div>
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Hours Worked</label>

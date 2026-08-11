@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AdminNav from '../../components/AdminNav'
+import DateInput from '../../components/DateInput'
 
 type GlobalEvent = {
   id: string
@@ -110,8 +111,8 @@ export default function AdminCalendarPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Date</label>
-                <input
-                  type="date" required value={form.eventDate}
+                <DateInput
+                  required value={form.eventDate}
                   onChange={e => setForm({ ...form, eventDate: e.target.value })}
                   className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
                 />

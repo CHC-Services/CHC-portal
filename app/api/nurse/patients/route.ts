@@ -33,7 +33,10 @@ export async function GET(req: Request) {
     orderBy: { createdAt: 'asc' },
   })
 
-  const patients = links.map((link: any) => {
+  // Guards against a NursePatient link whose patient row is gone (should be
+  // prevented by the FK's onDelete: Cascade, but a link surviving a bad manual
+  // delete shouldn't 500 the whole list for one nurse).
+  const patients = links.filter((link: any) => link.patient).map((link: any) => {
     const { priorAuths, medications, ...patientFields } = link.patient
     return {
       linkId: link.id,

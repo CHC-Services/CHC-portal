@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import AdminNav from '../../components/AdminNav'
 import { shortInvoiceNumber } from '../../../lib/formatInvoice'
+import DateInput from '../../components/DateInput'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -674,8 +675,7 @@ export default function AdminInvoicingPage() {
                 <label className="block text-[10px] font-bold uppercase tracking-wide text-[#7A8F79] mb-1">
                   Date Paid <span className="normal-case font-normal text-[#7A8F79]">(used for late fee &amp; prompt-pay calculations)</span>
                 </label>
-                <input
-                  type="date"
+                <DateInput
                   required
                   value={payPaidDate}
                   onChange={e => setPayPaidDate(e.target.value)}

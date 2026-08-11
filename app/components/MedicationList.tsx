@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import DateInput from './DateInput'
 
 // ─── Portable component — no API calls, no Prisma/site imports. ────────────────
 // Data flows in via props; the page that renders this does all the fetching.
@@ -161,7 +162,7 @@ function MedicationForm({ initial, onSubmit, onCancel, submitLabel, pharmacies =
   const [drugAltSuggestions, setDrugAltSuggestions] = useState<DrugNameOption[]>([])
   const [activeDrugIdx, setActiveDrugIdx] = useState(0)
   const drugSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const set = (k: keyof MedicationInput) => (e: React.ChangeEvent<HTMLInputElement>) =>
+  const set = (k: keyof MedicationInput) => (e: { target: { value: string } }) =>
     setForm(f => ({ ...f, [k]: e.target.value }))
 
   const inputCls = 'w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2'
@@ -314,7 +315,7 @@ function MedicationForm({ initial, onSubmit, onCancel, submitLabel, pharmacies =
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="block text-[10px] uppercase tracking-wide mb-0.5" style={{ color: theme.sage }}>Last Fill</label>
-          <input type="date" value={form.lastFillDate} onChange={set('lastFillDate')} required className={inputCls} style={inputStyle} />
+          <DateInput value={form.lastFillDate} onChange={set('lastFillDate')} required className={inputCls} style={inputStyle} />
         </div>
         <div>
           <label className="block text-[10px] uppercase tracking-wide mb-0.5" style={{ color: theme.sage }}>Day Supply</label>
@@ -387,8 +388,7 @@ function RefillButton({ med, onConfirm, style }: { med: MedicationDTO; onConfirm
 
   return (
     <div className="flex items-center gap-2">
-      <input
-        type="date"
+      <DateInput
         value={date}
         onChange={e => setDate(e.target.value)}
         className="flex-1 border rounded-lg p-2 text-sm"

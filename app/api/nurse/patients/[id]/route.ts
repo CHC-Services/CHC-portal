@@ -38,7 +38,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       },
     },
   })
-  if (!link || !link.isActive) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!link || !link.isActive || !link.patient) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const { priorAuths, medications, nurseLinks, guardianLinks, ...patientFields } = link.patient
 

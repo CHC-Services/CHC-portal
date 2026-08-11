@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import DateInput from './DateInput'
 
 type SearchMatch = {
   id: string
@@ -145,7 +146,7 @@ export default function AddPatientModal({
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className={lbl}>Date of Birth</label>
-                    <input type="date" className={inp} value={srchDob} onChange={e => setSrchDob(e.target.value)} />
+                    <DateInput className={inp} value={srchDob} onChange={e => setSrchDob(e.target.value)} />
                   </div>
                   <div>
                     <label className={lbl}>Insurance ID</label>
@@ -223,7 +224,7 @@ export default function AddPatientModal({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={lbl}>Date of Birth <span className="text-red-400">*</span></label>
-                  <input type="date" className={inp} value={newPt.dob} onChange={e => setPt('dob', e.target.value)} />
+                  <DateInput className={inp} value={newPt.dob} onChange={e => setPt('dob', e.target.value)} />
                 </div>
                 <div>
                   <label className={lbl}>Gender</label>
@@ -297,11 +298,11 @@ export default function AddPatientModal({
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className={lbl}>PA Start</label>
-                    <input type="date" className={inp} value={newPt.paStartDate} onChange={e => setPt('paStartDate', e.target.value)} />
+                    <DateInput className={inp} value={newPt.paStartDate} onChange={e => setPt('paStartDate', e.target.value)} />
                   </div>
                   <div>
                     <label className={lbl}>PA End</label>
-                    <input type="date" className={inp} value={newPt.paEndDate} onChange={e => setPt('paEndDate', e.target.value)} />
+                    <DateInput className={inp} value={newPt.paEndDate} onChange={e => setPt('paEndDate', e.target.value)} />
                   </div>
                 </div>
               )}

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import AdminNav from '../../components/AdminNav'
 import { formalName } from '../../../lib/formatName'
 import { campaignRuleLabel, campaignWindowLabel } from '../../../lib/campaignDiscount'
+import DateInput from '../../components/DateInput'
 
 type Tab = 'hours' | 'invoices' | 'campaigns'
 
@@ -792,7 +793,7 @@ function CampaignsTab() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-1">
               <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Start Date <span className="normal-case font-normal">(optional)</span></label>
-              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+              <DateInput value={startDate} onChange={e => setStartDate(e.target.value)}
                 className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
             </div>
             <div className="space-y-1">

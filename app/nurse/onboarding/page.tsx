@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { fmtPhoneInput } from '../../../lib/formatPhone'
+import DateInput from '../../components/DateInput'
 
 type TermType = 'short_term' | 'long_term'
 type CarrierType = 'commercial' | 'medicaid' | 'dual'
@@ -690,8 +691,7 @@ export default function OnboardingPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Date of Birth <span className="text-red-500">*</span></label>
-                  <input
-                    type="date"
+                  <DateInput
                     value={enrollInfo.dob}
                     onChange={e => setInfo({ dob: e.target.value })}
                     className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"

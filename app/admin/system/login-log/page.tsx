@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import AdminNav from '../../../components/AdminNav'
 import Link from 'next/link'
+import DateInput from '../../../components/DateInput'
 
 type LogRow = {
   id: string
@@ -208,16 +209,14 @@ export default function LoginLogPage() {
             {RESULT_PREFIXES.map(r => <option key={r} value={r}>{r}</option>)}
           </select>
           <div className="flex gap-1.5 items-center">
-            <input
-              type="date"
+            <DateInput
               value={dateFrom}
               onChange={e => setDateFrom(e.target.value)}
               className="flex-1 border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
               title="From date"
             />
             <span className="text-[#7A8F79] text-xs">–</span>
-            <input
-              type="date"
+            <DateInput
               value={dateTo}
               onChange={e => setDateTo(e.target.value)}
               className="flex-1 border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"

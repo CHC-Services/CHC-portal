@@ -4,105 +4,13 @@ import React, { useState, useEffect, useRef, Fragment, useMemo } from 'react'
 import AdminNav from '../../components/AdminNav'
 import { calcMedicaidCycleInfo, payCycleDateLabel } from '../../../lib/medicaidPayCycle'
 import { formalName } from '../../../lib/formatName'
+import DateInput from '../../components/DateInput'
 
 const CLAIM_STAGES = [
   'Draft', 'INS-1 Submitted', 'Resubmitted', 'Adjusted', 'Pending', 'Info Requested',
   'Info Sent', 'INS-2 Submitted', 'Appealed', 'Appeal Needed', 'Paid', 'Denied',
   'Rejected', 'Check Wait', 'Voided',
 ]
-
-// 3-segment MM / DD / YYYY date input.
-// Auto-advances: MM→DD on 2 digits, DD→YYYY on 2 digits, YYYY→nextRef on 4 digits.
-// Backspace on empty segment retreats to previous segment.
-// "/" on MM or DD also advances (with zero-padding).
-const SmartDateInput = React.forwardRef<
-  HTMLInputElement,
-  {
-    value: string
-    onChange: (val: string) => void
-    nextRef?: React.RefObject<HTMLInputElement | null>
-    className?: string
-  }
->(({ onChange, nextRef }, ref) => {
-  const [mm, setMm] = useState('')
-  const [dd, setDd] = useState('')
-  const [yyyy, setYyyy] = useState('')
-  const mmRef  = useRef<HTMLInputElement>(null)
-  const ddRef  = useRef<HTMLInputElement>(null)
-  const yyyyRef = useRef<HTMLInputElement>(null)
-
-  React.useImperativeHandle(ref, () => mmRef.current!)
-
-  function emit(m: string, d: string, y: string) {
-    onChange(m.length === 2 && d.length === 2 && y.length === 4 ? `${y}-${m}-${d}` : '')
-  }
-
-  const seg = 'w-full text-center border border-[#D9E1E8] rounded px-1 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]'
-
-  return (
-    <div className="flex items-center gap-1">
-      {/* Month */}
-      <input
-        ref={mmRef}
-        type="text" inputMode="numeric" maxLength={2} placeholder="MM"
-        value={mm}
-        className={`w-10 ${seg}`}
-        onChange={e => {
-          const v = e.target.value.replace(/\D/g, '').slice(0, 2)
-          setMm(v); emit(v, dd, yyyy)
-          if (v.length === 2) ddRef.current?.focus()
-        }}
-        onKeyDown={e => {
-          if ((e.key === '/' || e.key === 'Tab') && mm) {
-            e.preventDefault()
-            const padded = mm.padStart(2, '0'); setMm(padded); emit(padded, dd, yyyy)
-            ddRef.current?.focus()
-          }
-        }}
-      />
-      <span className="text-[#7A8F79] text-sm select-none">/</span>
-      {/* Day */}
-      <input
-        ref={ddRef}
-        type="text" inputMode="numeric" maxLength={2} placeholder="DD"
-        value={dd}
-        className={`w-10 ${seg}`}
-        onChange={e => {
-          const v = e.target.value.replace(/\D/g, '').slice(0, 2)
-          setDd(v); emit(mm, v, yyyy)
-          if (v.length === 2) yyyyRef.current?.focus()
-        }}
-        onKeyDown={e => {
-          if (e.key === 'Backspace' && !dd) { e.preventDefault(); mmRef.current?.focus() }
-          if ((e.key === '/' || e.key === 'Tab') && dd) {
-            e.preventDefault()
-            const padded = dd.padStart(2, '0'); setDd(padded); emit(mm, padded, yyyy)
-            yyyyRef.current?.focus()
-          }
-        }}
-      />
-      <span className="text-[#7A8F79] text-sm select-none">/</span>
-      {/* Year */}
-      <input
-        ref={yyyyRef}
-        type="text" inputMode="numeric" maxLength={4} placeholder="YYYY"
-        value={yyyy}
-        className={`w-16 ${seg}`}
-        onChange={e => {
-          const v = e.target.value.replace(/\D/g, '').slice(0, 4)
-          setYyyy(v); emit(mm, dd, v)
-          if (v.length === 4 && nextRef?.current) {
-            setTimeout(() => nextRef.current!.focus(), 10)
-          }
-        }}
-        onKeyDown={e => {
-          if (e.key === 'Backspace' && !yyyy) { e.preventDefault(); ddRef.current?.focus() }
-        }}
-      />
-    </div>
-  )
-})
-SmartDateInput.displayName = 'SmartDateInput'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -743,8 +651,7 @@ function ClaimDetailModal({
                 <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">
                   Void Date {(claim._type === 'medicaid' || isMed || isSecondaryMed) && <span className="text-[#7A8F79] font-normal">(determines which pay cycle the reversal lands in)</span>}
                 </label>
-                <input
-                  type="date"
+                <DateInput
                   value={voidDate}
                   onChange={e => setVoidDate(e.target.value)}
                   className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
@@ -810,15 +717,15 @@ function ClaimDetailModal({
                   </div>
                   <div>
                     <label className={lbl}>Submit Date</label>
-                    <input type="date" className={dateInp} value={cForm.submitDate} onChange={e => setCForm(f => ({ ...f, submitDate: e.target.value }))} />
+                    <DateInput className={dateInp} value={cForm.submitDate} onChange={e => setCForm(f => ({ ...f, submitDate: e.target.value }))} />
                   </div>
                   <div>
                     <label className={lbl}>DOS Start</label>
-                    <input type="date" className={dateInp} value={cForm.dosStart} onChange={e => setCForm(f => ({ ...f, dosStart: e.target.value }))} />
+                    <DateInput className={dateInp} value={cForm.dosStart} onChange={e => setCForm(f => ({ ...f, dosStart: e.target.value }))} />
                   </div>
                   <div>
                     <label className={lbl}>DOS Stop</label>
-                    <input type="date" className={dateInp} value={cForm.dosStop} onChange={e => setCForm(f => ({ ...f, dosStop: e.target.value }))} />
+                    <DateInput className={dateInp} value={cForm.dosStop} onChange={e => setCForm(f => ({ ...f, dosStop: e.target.value }))} />
                   </div>
                 </div>
               </div>
@@ -846,7 +753,7 @@ function ClaimDetailModal({
                   </div>
                   <div>
                     <label className={lbl}>Processed Date {isMed && <span className="text-[#7A8F79] font-normal normal-case text-[10px]">(auto-calcs pay cycle)</span>}</label>
-                    <input type="date" className={dateInp} value={cForm.primaryPaidDate} onChange={e => setCForm(f => ({ ...f, primaryPaidDate: e.target.value }))} />
+                    <DateInput className={dateInp} value={cForm.primaryPaidDate} onChange={e => setCForm(f => ({ ...f, primaryPaidDate: e.target.value }))} />
                     {isMed && cForm.primaryPaidDate && (() => {
                       const info = calcMedicaidCycleInfo(cForm.primaryPaidDate)
                       return info ? (
@@ -895,7 +802,7 @@ function ClaimDetailModal({
                   </div>
                   <div>
                     <label className={lbl}>Processed Date {isSecondaryMed && <span className="text-[#7A8F79] font-normal normal-case text-[10px]">(auto-calcs pay cycle)</span>}</label>
-                    <input type="date" className={dateInp} value={cForm.secondaryPaidDate} onChange={e => setCForm(f => ({ ...f, secondaryPaidDate: e.target.value }))} />
+                    <DateInput className={dateInp} value={cForm.secondaryPaidDate} onChange={e => setCForm(f => ({ ...f, secondaryPaidDate: e.target.value }))} />
                     {isSecondaryMed && cForm.secondaryPaidDate && (() => {
                       const info = calcMedicaidCycleInfo(cForm.secondaryPaidDate)
                       return info ? (
@@ -940,11 +847,11 @@ function ClaimDetailModal({
                   </div>
                   <div>
                     <label className={lbl}>Finalized</label>
-                    <input type="date" className={dateInp} value={cForm.dateFullyFinalized} onChange={e => setCForm(f => ({ ...f, dateFullyFinalized: e.target.value }))} />
+                    <DateInput className={dateInp} value={cForm.dateFullyFinalized} onChange={e => setCForm(f => ({ ...f, dateFullyFinalized: e.target.value }))} />
                   </div>
                   <div>
                     <label className={lbl}>Paid Date</label>
-                    <input type="date" className={dateInp} value={cForm.checkReceivedDate} onChange={e => setCForm(f => ({ ...f, checkReceivedDate: e.target.value }))} />
+                    <DateInput className={dateInp} value={cForm.checkReceivedDate} onChange={e => setCForm(f => ({ ...f, checkReceivedDate: e.target.value }))} />
                   </div>
                   <div>
                     <label className={lbl}>Resubmission Of</label>
@@ -980,11 +887,11 @@ function ClaimDetailModal({
                   </div>
                   <div>
                     <label className={lbl}>DOS Start</label>
-                    <input type="date" className={dateInp} value={mForm.dosStart} onChange={e => setMForm(f => ({ ...f, dosStart: e.target.value }))} />
+                    <DateInput className={dateInp} value={mForm.dosStart} onChange={e => setMForm(f => ({ ...f, dosStart: e.target.value }))} />
                   </div>
                   <div>
                     <label className={lbl}>DOS Stop</label>
-                    <input type="date" className={dateInp} value={mForm.dosStop} onChange={e => setMForm(f => ({ ...f, dosStop: e.target.value }))} />
+                    <DateInput className={dateInp} value={mForm.dosStop} onChange={e => setMForm(f => ({ ...f, dosStop: e.target.value }))} />
                   </div>
                   <div>
                     <label className={lbl}>Total Charge</label>
@@ -996,7 +903,7 @@ function ClaimDetailModal({
                   </div>
                   <div>
                     <label className={lbl}>Proc Date <span className="text-[#7A8F79] font-normal normal-case text-[10px]">(auto-calcs cycle)</span></label>
-                    <input type="date" className={dateInp} value={mForm.processedDate} onChange={e => setMForm(f => ({ ...f, processedDate: e.target.value }))} />
+                    <DateInput className={dateInp} value={mForm.processedDate} onChange={e => setMForm(f => ({ ...f, processedDate: e.target.value }))} />
                   </div>
                   <div>
                     <label className={lbl}>Pay Cycle # <span className="text-[#7A8F79] font-normal normal-case text-[10px]">(derived, not editable)</span></label>
@@ -2400,15 +2307,15 @@ export default function AdminClaimsPage() {
                     </div>
                     <div>
                       <label className={lbl}>Submit Date</label>
-                      <SmartDateInput key={`${modalResetKey}-submitDate`} ref={submitDateRef} nextRef={dosStartRef} value={addForm.submitDate || ''} onChange={v => setAddForm(f => ({ ...f, submitDate: v }))} />
+                      <DateInput key={`${modalResetKey}-submitDate`} ref={submitDateRef} nextRef={dosStartRef} value={addForm.submitDate || ''} onChange={e => setAddForm(f => ({ ...f, submitDate: e.target.value }))} className={fi} />
                     </div>
                     <div>
                       <label className={lbl}>DOS Start</label>
-                      <SmartDateInput key={`${modalResetKey}-dosStart`} ref={dosStartRef} nextRef={dosStopRef} value={addForm.dosStart || ''} onChange={v => setAddForm(f => ({ ...f, dosStart: v }))} />
+                      <DateInput key={`${modalResetKey}-dosStart`} ref={dosStartRef} nextRef={dosStopRef} value={addForm.dosStart || ''} onChange={e => setAddForm(f => ({ ...f, dosStart: e.target.value }))} className={fi} />
                     </div>
                     <div>
                       <label className={lbl}>DOS Stop</label>
-                      <SmartDateInput key={`${modalResetKey}-dosStop`} ref={dosStopRef} value={addForm.dosStop || ''} onChange={v => setAddForm(f => ({ ...f, dosStop: v }))} />
+                      <DateInput key={`${modalResetKey}-dosStop`} ref={dosStopRef} value={addForm.dosStop || ''} onChange={e => setAddForm(f => ({ ...f, dosStop: e.target.value }))} className={fi} />
                     </div>
                     <div>
                       <label className={lbl}>Total Billed</label>
@@ -2440,7 +2347,7 @@ export default function AdminClaimsPage() {
                     </div>
                     <div>
                       <label className={lbl}>Processed Date</label>
-                      <SmartDateInput key={`${modalResetKey}-primPaid`} ref={primPaidDateRef} nextRef={primaryIsMedicaid ? finalDateRef : secPaidDateRef} value={addForm.primaryPaidDate || ''} onChange={v => setAddForm(f => ({ ...f, primaryPaidDate: v }))} />
+                      <DateInput key={`${modalResetKey}-primPaid`} ref={primPaidDateRef} nextRef={primaryIsMedicaid ? finalDateRef : secPaidDateRef} value={addForm.primaryPaidDate || ''} onChange={e => setAddForm(f => ({ ...f, primaryPaidDate: e.target.value }))} className={fi} />
                       {primaryIsMedicaid && addForm.primaryPaidDate && (() => {
                         const info = calcMedicaidCycleInfo(addForm.primaryPaidDate)
                         return info ? (
@@ -2487,7 +2394,7 @@ export default function AdminClaimsPage() {
                       </div>
                       <div>
                         <label className={lbl}>Processed Date</label>
-                        <SmartDateInput key={`${modalResetKey}-secPaid`} ref={secPaidDateRef} nextRef={finalDateRef} value={addForm.secondaryPaidDate || ''} onChange={v => setAddForm(f => ({ ...f, secondaryPaidDate: v }))} />
+                        <DateInput key={`${modalResetKey}-secPaid`} ref={secPaidDateRef} nextRef={finalDateRef} value={addForm.secondaryPaidDate || ''} onChange={e => setAddForm(f => ({ ...f, secondaryPaidDate: e.target.value }))} className={fi} />
                         {secondaryIsMedicaid && addForm.secondaryPaidDate && (() => {
                           const info = calcMedicaidCycleInfo(addForm.secondaryPaidDate)
                           return info ? (
@@ -2534,11 +2441,11 @@ export default function AdminClaimsPage() {
                     </div>
                     <div>
                       <label className={lbl}>Date Fully Finalized{primaryIsMedicaid && <span className="text-[#7A8F79] font-normal normal-case text-[10px] ml-1">(auto from deposit)</span>}</label>
-                      <input ref={finalDateRef} type="date" value={addForm.dateFullyFinalized || ''} onChange={e => setAddForm(f => ({ ...f, dateFullyFinalized: e.target.value }))} className={fi} />
+                      <DateInput ref={finalDateRef} value={addForm.dateFullyFinalized || ''} onChange={e => setAddForm(f => ({ ...f, dateFullyFinalized: e.target.value }))} className={fi} />
                     </div>
                     <div>
                       <label className={lbl}>Paid Date</label>
-                      <input type="date" value={addForm.checkReceivedDate || ''} onChange={e => setAddForm(f => ({ ...f, checkReceivedDate: e.target.value }))} className={fi} />
+                      <DateInput value={addForm.checkReceivedDate || ''} onChange={e => setAddForm(f => ({ ...f, checkReceivedDate: e.target.value }))} className={fi} />
                     </div>
                     <div>
                       <label className={lbl}>Avg Hourly Rate</label>
@@ -2611,8 +2518,7 @@ export default function AdminClaimsPage() {
 
               <div>
                 <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Follow-Up Date</label>
-                <input
-                  type="date"
+                <DateInput
                   value={reminderForm.dueDate}
                   onChange={e => setReminderForm(f => ({ ...f, dueDate: e.target.value }))}
                   className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"

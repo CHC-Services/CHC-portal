@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { PDFDocument, PDFTextField, rgb, StandardFonts } from 'pdf-lib'
 import SignaturePad from 'signature_pad'
+import DateInput from '../../components/DateInput'
 
 const REMINDER_CATEGORIES = [
   { value: 'license',   label: '📄 Professional License' },
@@ -667,7 +668,7 @@ export default function NurseDocumentsPage() {
                   </div>
                   <div className="space-y-1">
                     <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Due Date</label>
-                    <input type="date" value={reminderForm.dueDate} onChange={e => setReminderForm({ ...reminderForm, dueDate: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" required />
+                    <DateInput value={reminderForm.dueDate} onChange={e => setReminderForm({ ...reminderForm, dueDate: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" required />
                   </div>
                 </div>
                 <div className="space-y-1">

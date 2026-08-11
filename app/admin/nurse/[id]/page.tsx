@@ -4,7 +4,7 @@ import { useState, useEffect, use, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AdminNav from '../../../components/AdminNav'
-import { DateInput, DateInputHandle } from '../../../components/DateInput'
+import DateInput from '../../../components/DateInput'
 import { fmtPhoneInput } from '../../../../lib/formatPhone'
 import { shortInvoiceNumber } from '../../../../lib/formatInvoice'
 import { formalName } from '../../../../lib/formatName'
@@ -82,15 +82,23 @@ function Field({
         )}
       </label>
       <div className="relative">
-        <input
-          type={sensitive && !show ? 'password' : type}
-          value={value}
-          onChange={(e) => {
-            const val = type === 'tel' ? fmtPhoneInput(e.target.value) : e.target.value
-            setProfile({ ...profile, [field]: val })
-          }}
-          className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] pr-16"
-        />
+        {type === 'date' && (!sensitive || show) ? (
+          <DateInput
+            value={value}
+            onChange={(e) => setProfile({ ...profile, [field]: e.target.value })}
+            className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] pr-16"
+          />
+        ) : (
+          <input
+            type={sensitive && !show ? 'password' : type}
+            value={value}
+            onChange={(e) => {
+              const val = type === 'tel' ? fmtPhoneInput(e.target.value) : e.target.value
+              setProfile({ ...profile, [field]: val })
+            }}
+            className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] pr-16"
+          />
+        )}
         {sensitive && (
           <button
             type="button"
@@ -434,7 +442,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
 
   // Log hours form
   const [workDate, setWorkDate] = useState('')
-  const workDateRef = useRef<DateInputHandle>(null)
+  const workDateRef = useRef<HTMLInputElement>(null)
   const [workHours, setWorkHours] = useState('')
   const [workNotes, setWorkNotes] = useState('')
   const [workPatientId, setWorkPatientId] = useState('')
@@ -1458,8 +1466,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                     <option value="custom">Custom expiry date…</option>
                   </select>
                   {trialPreset === 'custom' && (
-                    <input
-                      type="date"
+                    <DateInput
                       value={trialCustomDate}
                       onChange={e => setTrialCustomDate(e.target.value)}
                       className="mt-2 w-full border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
@@ -1706,7 +1713,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
               <div className="flex gap-3 items-end">
                 <div className="flex-1 space-y-1">
                   <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Date of Service</label>
-                  <DateInput ref={workDateRef} value={workDate} onChange={setWorkDate} />
+                  <DateInput ref={workDateRef} value={workDate} onChange={e => setWorkDate(e.target.value)} />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Hours</label>
@@ -2495,8 +2502,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                 <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">
                   Expiration Date <span className="normal-case font-normal text-[#7A8F79]">(optional)</span>
                 </label>
-                <input
-                  type="date"
+                <DateInput
                   value={docExpiry}
                   onChange={e => setDocExpiry(e.target.value)}
                   className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import AdminNav from '../../components/AdminNav'
+import DateInput from '../../components/DateInput'
 
 type Nurse = { id: string; displayName: string; user: { email: string; name: string } | null }
 type QueueDoc = { id: string; title: string; fileName: string; category: string; fileSize: number | null; createdAt: string; nurseId: string; nurse: { displayName: string } }
@@ -808,8 +809,7 @@ export default function AdminDocumentsPage() {
                   <label className="text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79]">
                     Exp Date <span className="normal-case font-normal">(optional)</span>
                   </label>
-                  <input
-                    type="date"
+                  <DateInput
                     value={docExpiry}
                     onChange={e => setDocExpiry(e.target.value)}
                     className="w-full border border-[#D9E1E8] px-2.5 py-1 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] mt-0.5"
@@ -1047,8 +1047,7 @@ export default function AdminDocumentsPage() {
               <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">
                 Expiration Date <span className="normal-case font-normal">(optional)</span>
               </label>
-              <input
-                type="date"
+              <DateInput
                 value={editExpiry}
                 onChange={e => setEditExpiry(e.target.value)}
                 className="w-full border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"

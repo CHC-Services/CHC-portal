@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react'
 import AdminNav from '../../components/AdminNav'
 import Link from 'next/link'
 import { formalName } from '../../../lib/formatName'
+import DateInput from '../../components/DateInput'
 
 type Nurse = {
   id: string
@@ -219,8 +220,7 @@ function DateCell({
 
   if (isEditingThis) {
     return (
-      <input
-        type="date"
+      <DateInput
         autoFocus
         value={editVal}
         onChange={e => setEditVal(e.target.value)}
@@ -589,8 +589,7 @@ export default function EnrollmentPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-[#7A8F79] uppercase tracking-widest mb-1">Service Start *</label>
-                    <input
-                      type="date"
+                    <DateInput
                       value={manualForm.serviceStartDate}
                       onChange={e => setManualForm(f => ({ ...f, serviceStartDate: e.target.value }))}
                       className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
@@ -598,8 +597,7 @@ export default function EnrollmentPage() {
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#7A8F79] uppercase tracking-widest mb-1">Service End</label>
-                    <input
-                      type="date"
+                    <DateInput
                       value={manualForm.serviceEndDate}
                       onChange={e => setManualForm(f => ({ ...f, serviceEndDate: e.target.value }))}
                       className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"

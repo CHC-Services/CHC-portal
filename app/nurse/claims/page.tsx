@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import PortalMessages from '../../components/PortalMessages'
 import { payCycleDateLabel, calcMedicaidCycleInfo } from '../../../lib/medicaidPayCycle'
+import DateInput from '../../components/DateInput'
 
 // ── Search helper — checks every string/number field on a claim ──────────────
 function claimMatchesSearch(c: Claim, q: string): boolean {
@@ -466,8 +467,7 @@ function ClaimRow({ primary: c, chain, eobDocs, onClaimPaid }: ClaimGroup & { eo
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={cancelCheckPopup}>
           <div className="bg-white rounded-2xl shadow-xl p-6 w-72 mx-4" onClick={e => e.stopPropagation()}>
             <p className="text-sm font-bold text-[#2F3E4E] mb-3">Received Date?</p>
-            <input
-              type="date"
+            <DateInput
               value={checkDate}
               onChange={e => setCheckDate(e.target.value)}
               className="w-full border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] mb-4"

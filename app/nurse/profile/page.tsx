@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import PortalMessages from '../../components/PortalMessages'
-import { Row, SectionHeader } from '../../components/ReadOnlyField'
-import { fmtPhoneInput } from '../../../lib/formatPhone'
-import DateInput from '../../components/DateInput'
+import ProfileDemographicsCard from '../../components/profile/ProfileDemographicsCard'
+import ProfileBillingInfoCard from '../../components/profile/ProfileBillingInfoCard'
+import ProfileBankingCard from '../../components/profile/ProfileBankingCard'
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -40,6 +40,12 @@ export default function ProfilePage() {
   const [medPatients, setMedPatients] = useState<{ patientId: string; firstName: string; lastName: string; medicationRemindersOptIn: boolean }[]>([])
   const [notifSavingId, setNotifSavingId] = useState<string | null>(null)
 
+  // which profile cards are enabled for the nurse role (admin-configurable,
+  // see app/admin/system/profile-cards) — defaults assume today's fields
+  // until the fetch below resolves, so nothing flashes/disappears on load
+  const [visibleCards, setVisibleCards] = useState<string[]>(['demographics', 'billing_info'])
+  const setField = (k: string, v: any) => setProfile((p: any) => ({ ...p, [k]: v }))
+
   useEffect(() => {
     fetch('/api/nurse/profile')
       .then((r) => {
@@ -51,6 +57,7 @@ export default function ProfilePage() {
           setUser(data.user)
           setProfile(data.profile || {})
           setMfaEnabled(data.user?.mfaEnabled ?? false)
+          if (data.visibleCards) setVisibleCards(data.visibleCards)
         }
       })
       .finally(() => setLoading(false))
@@ -225,95 +232,34 @@ export default function ProfilePage() {
         {/* ── Col 1+2: Personal Information + myLogin ── */}
         <div className="lg:col-span-3 space-y-5">
 
-          {/* Personal Information */}
+          {/* Demographics + Billing Info — shared cards, reused across every account role */}
           {!editingProfile ? (
-            <div className="bg-white rounded-xl shadow p-6">
-              <SectionHeader title="Personal Information" editing={false} onEdit={() => setEditingProfile(true)} />
-              <div className="space-y-0.5">
-                <Row label="Name" value={[profile.firstName, profile.middleInitial, profile.lastName].filter(Boolean).join(' ')} />
-                <Row label="Preferred Name" value={profile.displayName} />
-                <Row label="Phone" value={profile.phone} />
-                <Row label="Address" value={profile.address} />
-                <Row label="City/State/ZIP" value={[profile.city, profile.state, profile.zip].filter(Boolean).join(', ')} />
-                <Row label="Date of Birth" value={profile.dob ? 'On file' : null} />
-                <Row label="SSN" value={profile.ssn ? 'On file' : null} />
-                <Row label="NPI Number" value={profile.npiNumber ? 'On file' : null} />
-                <Row label="Medicaid ID" value={profile.medicaidNumber ? 'On file' : null} />
-              </div>
-            </div>
+            <>
+              <ProfileDemographicsCard data={profile} readOnly={false} editing={false} onEdit={() => setEditingProfile(true)} setField={setField} />
+              {visibleCards.includes('billing_info') && (
+                <ProfileBillingInfoCard data={profile} readOnly={false} editing={false} onEdit={() => setEditingProfile(true)} setField={setField} />
+              )}
+            </>
           ) : (
-          <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-[#2F3E4E]">Personal Information</h2>
-              <button type="button" onClick={() => setEditingProfile(false)} className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">
-                Cancel
-              </button>
-            </div>
-
-            {/* Name row */}
-            <div className="grid grid-cols-6 gap-3">
-              <div className="col-span-2 space-y-1">
-                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">First Name</label>
-                <input type="text" value={profile.firstName || ''} onChange={(e) => setProfile({ ...profile, firstName: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79]/50" />
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <ProfileDemographicsCard data={profile} readOnly={false} editing={true} onEdit={() => {}} setField={setField} />
+              {visibleCards.includes('billing_info') && (
+                <ProfileBillingInfoCard data={profile} readOnly={false} editing={true} onEdit={() => {}} setField={setField} />
+              )}
+              <div className="bg-white rounded-xl shadow p-6 space-y-3">
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setEditingProfile(false)} className="flex-1 border border-[#D9E1E8] text-[#7A8F79] py-2 rounded-lg text-sm font-semibold hover:border-[#7A8F79] transition">
+                    Cancel
+                  </button>
+                  <button type="submit" className="flex-1 bg-[#2F3E4E] text-white p-2 rounded-lg hover:bg-[#7A8F79] transition font-semibold">
+                    Save Changes
+                  </button>
+                </div>
+                {message && <p className="text-sm text-center text-[#2F3E4E]">{message}</p>}
               </div>
-              <div className="col-span-1 space-y-1">
-                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">MI</label>
-                <input type="text" maxLength={1} value={profile.middleInitial || ''} onChange={(e) => setProfile({ ...profile, middleInitial: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79]/50" />
-              </div>
-              <div className="col-span-3 space-y-1">
-                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Last Name</label>
-                <input type="text" value={profile.lastName || ''} onChange={(e) => setProfile({ ...profile, lastName: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79]/50" />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Preferred Name <span className="normal-case font-normal text-[#7A8F79]">(optional)</span></label>
-                <input type="text" value={profile.displayName || ''} onChange={(e) => setProfile({ ...profile, displayName: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79]/50" />
-              </div>
-              <div className="space-y-1">
-                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Phone Number</label>
-                <input type="tel" placeholder="(555) 555-5555" value={profile.phone || ''} onChange={(e) => setProfile({ ...profile, phone: fmtPhoneInput(e.target.value) })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79]/50" />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Home Address</label>
-              <input type="text" placeholder="Street address" value={profile.address || ''} onChange={(e) => setProfile({ ...profile, address: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79]/50" />
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="sm:col-span-2 space-y-1">
-                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">City</label>
-                <input type="text" placeholder="City" value={profile.city || ''} onChange={(e) => setProfile({ ...profile, city: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79]/50" />
-              </div>
-              <div className="space-y-1">
-                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">State</label>
-                <input type="text" placeholder="State" value={profile.state || ''} onChange={(e) => setProfile({ ...profile, state: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79]/50" />
-              </div>
-              <div className="space-y-1">
-                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">ZIP</label>
-                <input type="text" placeholder="ZIP" value={profile.zip || ''} onChange={(e) => setProfile({ ...profile, zip: e.target.value })} className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] placeholder-[#7A8F79]/50" />
-              </div>
-            </div>
-
-            {/* Sensitive fields */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <SensitiveField label="Date of Birth" type="date" value={profile.dob || ''} onChange={(v) => setProfile({ ...profile, dob: v })} />
-              <SensitiveField label="SSN" value={profile.ssn || ''} onChange={(v) => setProfile({ ...profile, ssn: v })} />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <SensitiveField label="NPI Number (Individual)" value={profile.npiNumber || ''} onChange={(v) => setProfile({ ...profile, npiNumber: v })} />
-              <SensitiveField label="Medicaid ID" value={profile.medicaidNumber || ''} onChange={(v) => setProfile({ ...profile, medicaidNumber: v })} />
-            </div>
-
-            <button type="submit" className="w-full bg-[#2F3E4E] text-white p-2 rounded-lg hover:bg-[#7A8F79] transition font-semibold">
-              Save Changes
-            </button>
-            {message && <p className="text-sm text-center text-[#2F3E4E]">{message}</p>}
-          </form>
+            </form>
           )}
+          {visibleCards.includes('banking') && <ProfileBankingCard data={profile} />}
 
           {/* 2FA */}
           <div className="bg-white rounded-xl shadow p-6">
@@ -541,41 +487,6 @@ export default function ProfilePage() {
           )}
         </div>
 
-      </div>
-    </div>
-  )
-}
-
-// ── Sensitive field with show/hide toggle ─────────────────────────────────────
-
-function SensitiveField({ label, value, onChange, type = 'text' }: {
-  label: string; value: string; onChange: (v: string) => void; type?: string
-}) {
-  const [show, setShow] = useState(false)
-  return (
-    <div className="space-y-1">
-      <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">
-        {label}
-        <span className="ml-2 text-[10px] normal-case font-normal bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded">encrypted</span>
-      </label>
-      <div className="relative">
-        {type === 'date' && show ? (
-          <DateInput
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] pr-16"
-          />
-        ) : (
-          <input
-            type={type === 'date' ? 'password' : (show ? type : 'password')}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] pr-16"
-          />
-        )}
-        <button type="button" onClick={() => setShow(!show)} className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[#7A8F79] hover:text-[#2F3E4E]">
-          {show ? 'hide' : 'show'}
-        </button>
       </div>
     </div>
   )

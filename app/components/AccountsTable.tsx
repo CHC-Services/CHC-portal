@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 
 export type Account = {
   id: string
@@ -28,6 +29,16 @@ const ROLE_LABEL: Record<string, string> = {
 function fmtDate(d: string | null) {
   if (!d) return '—'
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+// Nurse/provider rows go to the existing per-nurse detail page (keyed by
+// nurseProfile.id, not user.id); admin/guardian rows go to the new lightweight
+// account-profile page (keyed by user.id). Biller has no portal at all today,
+// so there's nowhere meaningful to send those rows yet.
+function accountHref(a: Account): string | null {
+  if ((a.role === 'nurse' || a.role === 'provider') && a.nurseProfileId) return `/admin/nurse/${a.nurseProfileId}`
+  if (a.role === 'admin' || a.role === 'guardian') return `/admin/accounts/${a.id}`
+  return null
 }
 
 export default function AccountsTable({ accounts, loading }: { accounts: Account[]; loading: boolean }) {
@@ -106,10 +117,18 @@ export default function AccountsTable({ accounts, loading }: { accounts: Account
               </tr>
             </thead>
             <tbody>
-              {filtered.map(a => (
+              {filtered.map(a => {
+                const href = accountHref(a)
+                return (
                 <tr key={a.id} className="border-t border-[#D9E1E8] hover:bg-[#F4F6F5] transition">
                   <td className="px-3 py-2 text-sm text-[#2F3E4E] font-semibold">
-                    {a.displayName || a.name}
+                    {href ? (
+                      <Link href={href} className="hover:text-[#7A8F79] hover:underline transition">
+                        {a.displayName || a.name}
+                      </Link>
+                    ) : (
+                      a.displayName || a.name
+                    )}
                     {a.isDemo && <span className="ml-2 text-[9px] font-bold uppercase bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">Test</span>}
                   </td>
                   <td className="px-3 py-2 text-sm text-[#7A8F79]">{a.email}</td>
@@ -119,7 +138,8 @@ export default function AccountsTable({ accounts, loading }: { accounts: Account
                   <td className="px-3 py-2 text-xs text-[#7A8F79]">{fmtDate(a.createdAt)}</td>
                   <td className="px-3 py-2 text-xs text-[#7A8F79]">{fmtDate(a.lastLoginAt)}</td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>

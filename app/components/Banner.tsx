@@ -134,6 +134,9 @@ export default function Banner({ user: initialUser }: BannerProps) {
             <Link href="/admin/email" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/admin/email" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>ad</span>Messaging
             </Link>
+            <Link href="/admin/profile" onClick={() => setMenuOpen(false)} className={`transition ${pathname === "/admin/profile" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>ad</span>Profile
+            </Link>
         </>
     ) : role === 'provider' ? (
         <>

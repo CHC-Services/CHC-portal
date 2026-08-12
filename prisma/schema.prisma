@@ -166,6 +166,20 @@ model NurseProfile {
   medicaidPayWeekLogs MedicaidPayWeekLog[]
 }
 
+// Admin-configurable matrix of which profile "cards" (Demographics, Billing
+// Info, Banking) render on a given role's profile page — lets Alex add/remove
+// a card per role without a code deploy. Every role's profile data still lives
+// on NurseProfile itself (see lib/profileCards.ts); this table only controls
+// visibility, not storage.
+model ProfileCardConfig {
+  id      String  @id @default(uuid())
+  cardKey String // 'demographics' | 'billing_info' | 'banking'
+  role    Role
+  enabled Boolean @default(true)
+
+  @@unique([cardKey, role])
+}
+
 model RoutedForm {
   id             String       @id @default(uuid())
   nurseId        String

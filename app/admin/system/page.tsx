@@ -23,6 +23,12 @@ const CARDS = [
     icon: '🗒️',
   },
   {
+    href: '/admin/system/profile-cards',
+    title: 'User Profile Data',
+    description: 'Choose which profile cards (Demographics, Billing Info, Banking) each account role sees.',
+    icon: '🪪',
+  },
+  {
     href: '/admin/ideas',
     title: 'Ideas',
     description: 'Feature requests and improvement ideas.',

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '../../../../lib/prisma'
 import { verifyToken, signToken } from '../../../../lib/auth'
 import { encrypt, decrypt } from '../../../../lib/encrypt'
+import { getVisibleCards } from '../../../../lib/profileCards'
 import bcrypt from 'bcrypt'
 
 function safeDecrypt(val: string | null | undefined): string {
@@ -42,7 +43,8 @@ export async function GET(req: Request) {
   } : null
 
   const { password, mfaSecret, passwordResetToken, ...safeUser } = user as any
-  return NextResponse.json({ user: safeUser, profile, onboardingComplete: (profileRaw as any)?.onboardingComplete ?? false })
+  const visibleCards = await getVisibleCards('nurse')
+  return NextResponse.json({ user: safeUser, profile, onboardingComplete: (profileRaw as any)?.onboardingComplete ?? false, visibleCards })
 }
 
 export async function PATCH(req: Request) {

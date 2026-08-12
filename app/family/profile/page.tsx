@@ -6,6 +6,7 @@ import Tabs from '../../components/Tabs'
 import AppearanceControls from '../../components/AppearanceControls'
 import { Row } from '../../components/ReadOnlyField'
 import GuardianInviteModal from '../../components/GuardianInviteModal'
+import ProfileDemographicsCard from '../../components/profile/ProfileDemographicsCard'
 
 type LinkedPatient = {
   id: string
@@ -58,6 +59,40 @@ export default function FamilyProfilePage() {
   const [invitingGuardian, setInvitingGuardian] = useState(false)
   const [invitePatientId, setInvitePatientId] = useState('')
 
+  // Demographics card (admin-configurable — see app/admin/system/profile-cards)
+  const [demographics, setDemographics] = useState<any>({})
+  const [visibleCards, setVisibleCards] = useState<string[]>(['demographics'])
+  const [editingDemographics, setEditingDemographics] = useState(false)
+  const [demoSaving, setDemoSaving] = useState(false)
+  const [demoMessage, setDemoMessage] = useState('')
+
+  function loadDemographics() {
+    fetch('/api/family/profile', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => {
+        if (data.profile) setDemographics(data.profile)
+        if (data.visibleCards) setVisibleCards(data.visibleCards)
+      })
+      .catch(() => {})
+  }
+
+  const setDemographicsField = (k: string, v: any) => setDemographics((d: any) => ({ ...d, [k]: v }))
+
+  async function saveDemographics(e: React.FormEvent) {
+    e.preventDefault()
+    setDemoSaving(true)
+    setDemoMessage('')
+    const res = await fetch('/api/family/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(demographics),
+    })
+    setDemoSaving(false)
+    if (res.ok) { setDemoMessage('Saved.'); setEditingDemographics(false) }
+    else { const data = await res.json(); setDemoMessage(data.error || 'Update failed.') }
+  }
+
   function loadPatients() {
     fetch('/api/family/patients', { credentials: 'include' })
       .then(r => r.json())
@@ -79,6 +114,7 @@ export default function FamilyProfilePage() {
         setLoading(false)
       })
     loadPatients()
+    loadDemographics()
   }, [])
 
   async function toggleMedReminders(patientId: string, value: boolean) {
@@ -244,6 +280,28 @@ export default function FamilyProfilePage() {
               <p><span className="text-[#7A8F79]">Email:</span> <span className="text-[#2F3E4E] font-medium">{email}</span></p>
             </div>
           </div>
+
+          {/* Demographics */}
+          {visibleCards.includes('demographics') && (
+            !editingDemographics ? (
+              <ProfileDemographicsCard data={demographics} readOnly={false} editing={false} onEdit={() => setEditingDemographics(true)} setField={setDemographicsField} showPreferredName={false} />
+            ) : (
+              <form onSubmit={saveDemographics} className="space-y-4">
+                <ProfileDemographicsCard data={demographics} readOnly={false} editing={true} onEdit={() => {}} setField={setDemographicsField} showPreferredName={false} />
+                <div className="bg-white rounded-2xl shadow-sm p-6 space-y-3">
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setEditingDemographics(false)} className="flex-1 border border-[#D9E1E8] text-[#7A8F79] py-2 rounded-lg text-sm font-semibold hover:border-[#7A8F79] transition">
+                      Cancel
+                    </button>
+                    <button type="submit" disabled={demoSaving} className="flex-1 bg-[#2F3E4E] text-white py-2 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-50">
+                      {demoSaving ? 'Saving…' : 'Save Changes'}
+                    </button>
+                  </div>
+                  {demoMessage && <p className="text-sm text-center text-[#2F3E4E]">{demoMessage}</p>}
+                </div>
+              </form>
+            )
+          )}
 
           {/* SMS phone number */}
           <div className="bg-white rounded-2xl shadow-sm p-6">

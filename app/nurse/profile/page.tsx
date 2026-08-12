@@ -36,6 +36,10 @@ export default function ProfilePage() {
   const [emailPassword, setEmailPassword] = useState('')
   const [emailMessage, setEmailMessage] = useState('')
 
+  // medication refill reminder opt-in, per linked patient
+  const [medPatients, setMedPatients] = useState<{ patientId: string; firstName: string; lastName: string; medicationRemindersOptIn: boolean }[]>([])
+  const [notifSavingId, setNotifSavingId] = useState<string | null>(null)
+
   useEffect(() => {
     fetch('/api/nurse/profile')
       .then((r) => {
@@ -50,7 +54,32 @@ export default function ProfilePage() {
         }
       })
       .finally(() => setLoading(false))
+
+    fetch('/api/nurse/patients', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => {
+        const list = (data.patients || []).map((p: any) => ({
+          patientId: p.patientId,
+          firstName: p.merged?.firstName || '',
+          lastName: p.merged?.lastName || '',
+          medicationRemindersOptIn: !!p.medicationRemindersOptIn,
+        }))
+        setMedPatients(list)
+      })
+      .catch(() => {})
   }, [router])
+
+  async function toggleMedReminders(patientId: string, value: boolean) {
+    setNotifSavingId(patientId)
+    await fetch(`/api/nurse/patients/${patientId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ medicationRemindersOptIn: value }),
+    })
+    setMedPatients(ps => ps.map(p => p.patientId === patientId ? { ...p, medicationRemindersOptIn: value } : p))
+    setNotifSavingId(null)
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -488,6 +517,28 @@ export default function ProfilePage() {
         <div className="lg:col-span-2 space-y-5">
           <BillingSection profile={profile} onUnenroll={() => setProfile({ ...profile, enrolledInBilling: false })} />
           <NotifPrefsBlock profile={profile} setProfile={setProfile} />
+          {medPatients.length > 0 && (
+            <div className="bg-white rounded-xl shadow p-6">
+              <p className="font-bold text-[#2F3E4E] text-sm mb-1">Refill Reminders</p>
+              <p className="text-xs text-[#7A8F79] leading-relaxed mb-4">
+                Medication refill text reminders for your linked patients.
+              </p>
+              <div className="space-y-3">
+                {medPatients.map(p => (
+                  <label key={p.patientId} className="flex items-center justify-between cursor-pointer">
+                    <span className="text-sm text-[#2F3E4E]">{p.firstName} {p.lastName} — refill reminders</span>
+                    <input
+                      type="checkbox"
+                      checked={p.medicationRemindersOptIn}
+                      disabled={notifSavingId === p.patientId}
+                      onChange={e => toggleMedReminders(p.patientId, e.target.checked)}
+                      className="accent-[#7A8F79] w-4 h-4"
+                    />
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
       </div>

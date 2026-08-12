@@ -45,6 +45,7 @@ export async function GET(req: Request) {
       merged: { ...patientFields, ...(link.overrides || {}) },
       priorAuths: priorAuths || [],
       medications: (medications || []).map(flattenMedication),
+      medicationRemindersOptIn: link.medicationRemindersOptIn,
     }
   })
 

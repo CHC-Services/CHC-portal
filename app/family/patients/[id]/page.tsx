@@ -73,12 +73,22 @@ export default function FamilyPatientDetailPage({ params }: { params: Promise<{ 
     loadMedications()
   }
 
-  async function handleConfirmRefill(medId: string, refillDate: string) {
+  async function handleConfirmRefill(medId: string, refillDate: string, daySupply: string) {
     await fetch('/api/family/medications/refill', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ medId, refillDate }),
+      body: JSON.stringify({ medId, refillDate, daySupply }),
+    })
+    loadMedications()
+  }
+
+  async function handleOrderRefill(medId: string, orderedDate: string) {
+    await fetch('/api/family/medications/order', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ medId, orderedDate }),
     })
     loadMedications()
   }
@@ -174,6 +184,7 @@ export default function FamilyPatientDetailPage({ params }: { params: Promise<{ 
           onAdd={handleAddMedication}
           onEdit={handleEditMedication}
           onConfirmRefill={handleConfirmRefill}
+          onOrderRefill={handleOrderRefill}
           onDelete={handleDeleteMedication}
           pharmacies={pharmacies}
         />

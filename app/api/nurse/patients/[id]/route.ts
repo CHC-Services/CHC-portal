@@ -56,7 +56,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   })
 }
 
-// PATCH — update nurse-level overrides for a patient
+// PATCH — update nurse-level overrides for a patient, or this nurse's own
+// medicationRemindersOptIn flag (lives on the NursePatient link, not overrides)
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = auth(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -67,16 +68,29 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     include: { patient: { select: { isLocked: true } } },
   })
   if (!link) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  if (link.patient?.isLocked) return NextResponse.json({ error: 'Record locked by admin' }, { status: 403 })
 
-  const updates = await req.json()
-  const existing = (link.overrides as Record<string, any>) || {}
-  const merged = { ...existing, ...updates }
+  const body = await req.json()
 
-  await (prisma.nursePatient.update as any)({
-    where: { id: link.id },
-    data: { overrides: merged, updatedAt: new Date() },
-  })
+  // Notification opt-in isn't clinical data, so it's exempt from the isLocked
+  // block below — an admin-locked record shouldn't block a nurse from
+  // managing their own reminder subscription for that patient.
+  if ('medicationRemindersOptIn' in body) {
+    await (prisma.nursePatient.update as any)({
+      where: { id: link.id },
+      data: { medicationRemindersOptIn: !!body.medicationRemindersOptIn },
+    })
+  }
+
+  const { medicationRemindersOptIn, ...updates } = body
+  if (Object.keys(updates).length > 0) {
+    if (link.patient?.isLocked) return NextResponse.json({ error: 'Record locked by admin' }, { status: 403 })
+    const existing = (link.overrides as Record<string, any>) || {}
+    const merged = { ...existing, ...updates }
+    await (prisma.nursePatient.update as any)({
+      where: { id: link.id },
+      data: { overrides: merged, updatedAt: new Date() },
+    })
+  }
 
   return NextResponse.json({ ok: true })
 }

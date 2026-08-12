@@ -33,3 +33,23 @@ export function isReminderDue(
 ): boolean {
   return medicationReminderDate(lastFillDate, daySupply, refillsRemaining).getTime() <= today.getTime()
 }
+
+export type RefillStatus = 'due' | 'overdue' | 'ordered' | 'filled'
+
+// Due/Overdue/Filled are always derived from the same date math the reminder
+// cron uses, never stored, so the on-screen badge can't drift from it. Only
+// "ordered" is a persisted fact (refillOrderedAt) — it wins outright and stays
+// sticky through the due date, so an order in flight (waiting on the pharmacy)
+// doesn't flip back to due/overdue.
+export function effectiveRefillStatus(
+  refillOrderedAt: Date | null | undefined,
+  lastFillDate: Date,
+  daySupply: number,
+  refillsRemaining: number | null | undefined,
+  today: Date = new Date()
+): RefillStatus {
+  if (refillOrderedAt) return 'ordered'
+  if (today.getTime() >= medicationDueDate(lastFillDate, daySupply).getTime()) return 'overdue'
+  if (isReminderDue(lastFillDate, daySupply, refillsRemaining, today)) return 'due'
+  return 'filled'
+}

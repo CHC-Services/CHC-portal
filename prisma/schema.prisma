@@ -863,6 +863,15 @@ model PatientMedication {
 
   reminderSentAt DateTime? // cleared on each refill confirm; set once a reminder fires this cycle
 
+  // Refill status (Due/Overdue/Ordered/Filled) is computed on read from
+  // lastFillDate/daySupply/refillsRemaining/refillOrderedAt (see
+  // lib/medicationReminders.ts effectiveRefillStatus) rather than stored, so it
+  // can never drift from the reminder cron's due-date math. Only the sticky
+  // "an order is in flight" fact needs to persist.
+  refillOrderedAt       DateTime? // cleared on each refill confirm; set when marked "RX Ordered"
+  refillOrderedByUserId String?
+  refillOrderedByRole   String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

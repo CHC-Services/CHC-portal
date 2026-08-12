@@ -15,6 +15,8 @@ const theme = {
   offWhite: '#F4F6F5',
 }
 
+export type RefillStatus = 'due' | 'overdue' | 'ordered' | 'filled'
+
 export type MedicationDTO = {
   id: string
   medicationName: string
@@ -30,6 +32,8 @@ export type MedicationDTO = {
   pharmacyAddress: string | null
   pharmacyPhone: string | null
   active: boolean
+  refillStatus: RefillStatus
+  refillOrderedAt: string | null // ISO date string, set while refillStatus === 'ordered'
 }
 
 export type MedicationInput = {
@@ -91,7 +95,8 @@ type MedicationListProps = {
   medications: MedicationDTO[]
   onAdd: (data: MedicationInput) => Promise<void>
   onEdit: (id: string, data: MedicationInput) => Promise<void>
-  onConfirmRefill: (id: string, refillDate: string) => Promise<void>
+  onConfirmRefill: (id: string, refillDate: string, daySupply: string) => Promise<void>
+  onOrderRefill: (id: string, orderedDate: string) => Promise<void>
   onDelete: (id: string) => Promise<void>
   readOnly?: boolean
   pharmacies?: PharmacyOption[]
@@ -369,41 +374,116 @@ function MedicationForm({ initial, onSubmit, onCancel, submitLabel, pharmacies =
   )
 }
 
-function RefillButton({ med, onConfirm, style }: { med: MedicationDTO; onConfirm: (id: string, date: string) => Promise<void>; style: React.CSSProperties }) {
-  const [open, setOpen] = useState(false)
+const refillStatusMeta: Record<RefillStatus, { label: string; bg: string; text: string }> = {
+  due: { label: 'Refill Due', bg: '#FEF3C7', text: '#92400E' },
+  overdue: { label: 'Refill Overdue', bg: '#FEE2E2', text: '#B91C1C' },
+  ordered: { label: 'Refill Ordered', bg: '#DBEAFE', text: '#1D4ED8' },
+  filled: { label: 'Filled', bg: theme.offWhite, text: theme.sage },
+}
+
+function RefillStatusBadge({ status }: { status: RefillStatus }) {
+  const meta = refillStatusMeta[status]
+  return (
+    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0" style={{ background: meta.bg, color: meta.text }}>
+      {meta.label}
+    </span>
+  )
+}
+
+// Buttons only populate once a refill is due/overdue (or already ordered, in
+// which case only "RX Filled" remains — no double-ordering in the same cycle).
+// "RX Ordered" just logs the date the order was placed with the pharmacy and
+// silences the reminder for everyone on the account until it's picked up.
+// "RX Filled" is the actual restock: prompts for the fill date, pre-fills the
+// day supply from the current value (editable), and clears any in-flight order.
+function RefillActions({ med, onConfirmRefill, onOrderRefill }: {
+  med: MedicationDTO
+  onConfirmRefill: (id: string, refillDate: string, daySupply: string) => Promise<void>
+  onOrderRefill: (id: string, orderedDate: string) => Promise<void>
+}) {
+  const [prompt, setPrompt] = useState<'order' | 'fill' | null>(null)
   const [date, setDate] = useState(todayStr())
+  const [daySupply, setDaySupply] = useState(String(med.daySupply))
   const [saving, setSaving] = useState(false)
 
-  if (!open) {
+  if (prompt === 'order') {
     return (
-      <button
-        onClick={() => { setDate(todayStr()); setOpen(true) }}
-        className="w-full rounded-lg py-2.5 text-sm font-semibold text-white"
-        style={style}
-      >
-        Mark Refilled
-      </button>
+      <div className="flex items-center gap-2">
+        <DateInput
+          value={date}
+          onChange={e => setDate(e.target.value)}
+          className="flex-1 border rounded-lg p-2 text-sm"
+          style={{ borderColor: theme.bg, color: theme.navy }}
+        />
+        <button
+          onClick={async () => { setSaving(true); await onOrderRefill(med.id, date); setSaving(false); setPrompt(null) }}
+          disabled={saving}
+          className="rounded-lg px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          style={{ background: theme.navy }}
+        >
+          {saving ? '…' : 'Confirm'}
+        </button>
+        <button onClick={() => setPrompt(null)} className="text-xs font-semibold" style={{ color: theme.sage }}>
+          Cancel
+        </button>
+      </div>
+    )
+  }
+
+  if (prompt === 'fill') {
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <DateInput
+            value={date}
+            onChange={e => setDate(e.target.value)}
+            className="flex-1 border rounded-lg p-2 text-sm"
+            style={{ borderColor: theme.bg, color: theme.navy }}
+          />
+          <input
+            type="number"
+            min="1"
+            value={daySupply}
+            onChange={e => setDaySupply(e.target.value)}
+            placeholder="Day supply"
+            className="w-24 border rounded-lg p-2 text-sm"
+            style={{ borderColor: theme.bg, color: theme.navy }}
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={async () => { setSaving(true); await onConfirmRefill(med.id, date, daySupply); setSaving(false); setPrompt(null) }}
+            disabled={saving}
+            className="flex-1 rounded-lg py-2 text-sm font-semibold text-white disabled:opacity-50"
+            style={{ background: theme.sage }}
+          >
+            {saving ? '…' : 'Confirm Filled'}
+          </button>
+          <button onClick={() => setPrompt(null)} className="text-xs font-semibold" style={{ color: theme.sage }}>
+            Cancel
+          </button>
+        </div>
+      </div>
     )
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <DateInput
-        value={date}
-        onChange={e => setDate(e.target.value)}
-        className="flex-1 border rounded-lg p-2 text-sm"
-        style={{ borderColor: theme.bg, color: theme.navy }}
-      />
+    <div className="flex gap-2">
+      {med.refillStatus !== 'ordered' && (
+        <button
+          onClick={() => { setDate(todayStr()); setPrompt('order') }}
+          className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white"
+          style={{ background: theme.navy }}
+        >
+          RX Ordered
+        </button>
+      )}
       <button
-        onClick={async () => { setSaving(true); await onConfirm(med.id, date); setSaving(false); setOpen(false) }}
-        disabled={saving}
-        className="rounded-lg px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
-        style={style}
+        onClick={() => { setDate(todayStr()); setDaySupply(String(med.daySupply)); setPrompt('fill') }}
+        className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white"
+        style={{ background: theme.sage }}
       >
-        {saving ? '…' : 'Confirm'}
-      </button>
-      <button onClick={() => setOpen(false)} className="text-xs font-semibold" style={{ color: theme.sage }}>
-        Cancel
+        RX Filled
       </button>
     </div>
   )
@@ -442,10 +522,11 @@ function DrugFactsModal({ medicationName, facts, loading, onClose }: {
   )
 }
 
-function MedicationCard({ med, onEdit, onConfirmRefill, onDelete, readOnly, pharmacies, onSearchDrugNames, onFetchDrugFacts }: {
+function MedicationCard({ med, onEdit, onConfirmRefill, onOrderRefill, onDelete, readOnly, pharmacies, onSearchDrugNames, onFetchDrugFacts }: {
   med: MedicationDTO
   onEdit: (id: string, data: MedicationInput) => Promise<void>
-  onConfirmRefill: (id: string, refillDate: string) => Promise<void>
+  onConfirmRefill: (id: string, refillDate: string, daySupply: string) => Promise<void>
+  onOrderRefill: (id: string, orderedDate: string) => Promise<void>
   onDelete: (id: string) => Promise<void>
   readOnly?: boolean
   pharmacies?: PharmacyOption[]
@@ -488,6 +569,7 @@ function MedicationCard({ med, onEdit, onConfirmRefill, onDelete, readOnly, phar
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <p className="font-bold text-base" style={{ color: theme.navy }}>{med.medicationName}</p>
+            <RefillStatusBadge status={med.refillStatus} />
             {onFetchDrugFacts && (
               <button onClick={handleShowFacts} className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full border shrink-0" style={{ borderColor: theme.sage, color: theme.sage }}>
                 Drug Facts
@@ -507,44 +589,49 @@ function MedicationCard({ med, onEdit, onConfirmRefill, onDelete, readOnly, phar
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs mb-3" style={{ color: theme.navy }}>
-        <div>
-          <p className="uppercase tracking-wide text-[10px]" style={{ color: theme.sage }}>Last Fill</p>
-          <p className="font-semibold">{fmtDate(med.lastFillDate)}</p>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs mb-3" style={{ color: theme.navy }}>
+        <div className="flex items-baseline gap-1 min-w-0">
+          <span className="uppercase tracking-wide text-[10px] shrink-0" style={{ color: theme.sage }}>Last Fill:</span>
+          <span className="font-semibold truncate">{fmtDate(med.lastFillDate)}</span>
         </div>
-        <div>
-          <p className="uppercase tracking-wide text-[10px]" style={{ color: theme.sage }}>Due</p>
-          <p className="font-semibold">{fmtDate(dueDate)}</p>
+        <div className="flex items-baseline gap-1 min-w-0 flex-wrap">
+          <span className="uppercase tracking-wide text-[10px] shrink-0" style={{ color: theme.sage }}>Due:</span>
+          <span className="font-semibold truncate">{fmtDate(dueDate)}</span>
+          {med.refillStatus === 'ordered' && med.refillOrderedAt && (
+            <span className="text-[10px] font-semibold" style={{ color: refillStatusMeta.ordered.text }}>
+              · Ordered {fmtDate(med.refillOrderedAt)}
+            </span>
+          )}
         </div>
         {med.rxNumber && (
-          <div>
-            <p className="uppercase tracking-wide text-[10px]" style={{ color: theme.sage }}>RX #</p>
-            <p className="font-semibold font-mono">{med.rxNumber}</p>
+          <div className="flex items-baseline gap-1 min-w-0">
+            <span className="uppercase tracking-wide text-[10px] shrink-0" style={{ color: theme.sage }}>RX #:</span>
+            <span className="font-semibold font-mono truncate">{med.rxNumber}</span>
           </div>
         )}
         {med.refillsRemaining != null && (
-          <div>
-            <p className="uppercase tracking-wide text-[10px]" style={{ color: theme.sage }}>Refills Left</p>
-            <p className="font-semibold">{med.refillsRemaining}</p>
+          <div className="flex items-baseline gap-1 min-w-0">
+            <span className="uppercase tracking-wide text-[10px] shrink-0" style={{ color: theme.sage }}>Refills Left:</span>
+            <span className="font-semibold">{med.refillsRemaining}</span>
           </div>
         )}
         {unitsPerDose != null && (
-          <div>
-            <p className="uppercase tracking-wide text-[10px]" style={{ color: theme.sage }}>Per Dose</p>
-            <p className="font-semibold">{fmtUnits(unitsPerDose)} unit(s)</p>
+          <div className="flex items-baseline gap-1 min-w-0">
+            <span className="uppercase tracking-wide text-[10px] shrink-0" style={{ color: theme.sage }}>Per Dose:</span>
+            <span className="font-semibold">{fmtUnits(unitsPerDose)} unit(s)</span>
           </div>
         )}
         {(med.pharmacyName || med.pharmacyAddress || med.pharmacyPhone) && (
-          <div className="col-span-2">
-            <p className="uppercase tracking-wide text-[10px]" style={{ color: theme.sage }}>Pharmacy</p>
-            <p className="font-semibold">{[med.pharmacyName, med.pharmacyPhone].filter(Boolean).join(' · ')}</p>
-            {med.pharmacyAddress && <p className="opacity-80">{med.pharmacyAddress}</p>}
+          <div className="col-span-2 flex items-baseline gap-1 flex-wrap">
+            <span className="uppercase tracking-wide text-[10px] shrink-0" style={{ color: theme.sage }}>Pharmacy:</span>
+            <span className="font-semibold">{[med.pharmacyName, med.pharmacyPhone].filter(Boolean).join(' · ')}</span>
+            {med.pharmacyAddress && <span className="opacity-80">· {med.pharmacyAddress}</span>}
           </div>
         )}
       </div>
 
-      {!readOnly && (
-        <RefillButton med={med} onConfirm={onConfirmRefill} style={{ background: theme.sage }} />
+      {!readOnly && med.refillStatus !== 'filled' && (
+        <RefillActions med={med} onConfirmRefill={onConfirmRefill} onOrderRefill={onOrderRefill} />
       )}
 
       {showFacts && (
@@ -559,7 +646,7 @@ function MedicationCard({ med, onEdit, onConfirmRefill, onDelete, readOnly, phar
   )
 }
 
-export default function MedicationList({ patientName, medications, onAdd, onEdit, onConfirmRefill, onDelete, readOnly, pharmacies, onSearchDrugNames, onFetchDrugFacts }: MedicationListProps) {
+export default function MedicationList({ patientName, medications, onAdd, onEdit, onConfirmRefill, onOrderRefill, onDelete, readOnly, pharmacies, onSearchDrugNames, onFetchDrugFacts }: MedicationListProps) {
   const [adding, setAdding] = useState(false)
 
   return (
@@ -596,6 +683,7 @@ export default function MedicationList({ patientName, medications, onAdd, onEdit
               med={med}
               onEdit={onEdit}
               onConfirmRefill={onConfirmRefill}
+              onOrderRefill={onOrderRefill}
               onDelete={onDelete}
               readOnly={readOnly}
               pharmacies={pharmacies}

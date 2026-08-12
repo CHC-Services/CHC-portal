@@ -174,12 +174,22 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
     await refreshMedications()
   }
 
-  async function handleConfirmRefill(medId: string, refillDate: string) {
+  async function handleConfirmRefill(medId: string, refillDate: string, daySupply: string) {
     await fetch(`/api/admin/patients/${id}/medications/refill`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ medId, refillDate }),
+      body: JSON.stringify({ medId, refillDate, daySupply }),
+    })
+    await refreshMedications()
+  }
+
+  async function handleOrderRefill(medId: string, orderedDate: string) {
+    await fetch(`/api/admin/patients/${id}/medications/order`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ medId, orderedDate }),
     })
     await refreshMedications()
   }
@@ -352,6 +362,7 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
           onAdd={handleAddMedication}
           onEdit={handleEditMedication}
           onConfirmRefill={handleConfirmRefill}
+          onOrderRefill={handleOrderRefill}
           onDelete={handleDeleteMedication}
           pharmacies={pharmacies}
         />

@@ -18,17 +18,19 @@ async function verifyGuardianLinked(userId: string, patientId: string) {
   return !!link
 }
 
-// PATCH — confirm a refill (body: { medId, refillDate })
+// PATCH — mark a refill as ordered (body: { medId, orderedDate }) — silences
+// the reminder for this cycle so every viewer on the account sees "Ordered"
+// instead of duplicate refill requests going out.
 export async function PATCH(req: Request) {
   const session = auth(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { medId, refillDate, daySupply } = await req.json()
-  if (!medId || !refillDate) return NextResponse.json({ error: 'medId and refillDate required' }, { status: 400 })
+  const { medId, orderedDate } = await req.json()
+  if (!medId || !orderedDate) return NextResponse.json({ error: 'medId and orderedDate required' }, { status: 400 })
 
   const existing = await (prisma.patientMedication.findUnique as any)({
     where: { id: medId },
-    select: { patientId: true, refillsRemaining: true, daySupply: true },
+    select: { patientId: true },
   })
   if (!existing || !await verifyGuardianLinked(session.id, existing.patientId)) {
     return NextResponse.json({ error: 'Medication not found' }, { status: 404 })
@@ -37,13 +39,10 @@ export async function PATCH(req: Request) {
   const medication = await (prisma.patientMedication.update as any)({
     where: { id: medId },
     data: {
-      lastFillDate: new Date(refillDate),
-      daySupply: daySupply ? parseInt(daySupply, 10) : existing.daySupply,
-      reminderSentAt: null,
-      refillsRemaining: existing.refillsRemaining != null ? Math.max(0, existing.refillsRemaining - 1) : null,
-      refillOrderedAt: null,
-      refillOrderedByUserId: null,
-      refillOrderedByRole: null,
+      refillOrderedAt: new Date(orderedDate),
+      refillOrderedByUserId: session.id,
+      refillOrderedByRole: session.role,
+      reminderSentAt: new Date(),
     },
     include: { pharmacy: true },
   })

@@ -1,5 +1,7 @@
 -- CreateTable: PatientDocument
-CREATE TABLE "PatientDocument" (
+-- Safe to re-run: every statement below silently no-ops if it was already applied,
+-- so pasting this into Supabase's SQL editor twice can't error or duplicate anything.
+CREATE TABLE IF NOT EXISTS "PatientDocument" (
     "id" TEXT NOT NULL,
     "patientId" TEXT NOT NULL,
     "title" TEXT NOT NULL,
@@ -17,8 +19,12 @@ CREATE TABLE "PatientDocument" (
     CONSTRAINT "PatientDocument_pkey" PRIMARY KEY ("id")
 );
 
-CREATE INDEX "PatientDocument_patientId_idx" ON "PatientDocument"("patientId");
-CREATE INDEX "PatientDocument_expiresAt_idx" ON "PatientDocument"("expiresAt");
+CREATE INDEX IF NOT EXISTS "PatientDocument_patientId_idx" ON "PatientDocument"("patientId");
+CREATE INDEX IF NOT EXISTS "PatientDocument_expiresAt_idx" ON "PatientDocument"("expiresAt");
 
-ALTER TABLE "PatientDocument" ADD CONSTRAINT "PatientDocument_patientId_fkey"
-    FOREIGN KEY ("patientId") REFERENCES "Patient"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "PatientDocument" ADD CONSTRAINT "PatientDocument_patientId_fkey"
+        FOREIGN KEY ("patientId") REFERENCES "Patient"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;

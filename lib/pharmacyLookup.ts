@@ -1,4 +1,5 @@
 import { prisma } from './prisma'
+import { effectiveRefillStatus } from './medicationReminders'
 
 /**
  * Resolves a typed-in pharmacy name/address/phone to a shared Pharmacy row,
@@ -55,5 +56,6 @@ export function flattenMedication(med: any) {
     pharmacyName: pharmacy?.name ?? null,
     pharmacyAddress: pharmacy?.address ?? null,
     pharmacyPhone: pharmacy?.phone ?? null,
+    refillStatus: effectiveRefillStatus(med.refillOrderedAt, med.lastFillDate, med.daySupply, med.refillsRemaining),
   }
 }

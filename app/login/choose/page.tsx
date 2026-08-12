@@ -30,7 +30,7 @@ export default function ChoosePage() {
       .catch(() => router.replace('/login'))
   }, [router])
 
-  async function choose(method: 'sms' | 'email') {
+  async function choose(method: 'sms' | 'email' | 'totp') {
     setError('')
     setLoading(true)
     try {
@@ -51,10 +51,6 @@ export default function ChoosePage() {
       setError('Something went wrong. Please try again.')
       setLoading(false)
     }
-  }
-
-  function chooseAuthenticator() {
-    router.push('/login/verify?via=totp')
   }
 
   return (
@@ -118,7 +114,7 @@ export default function ChoosePage() {
               </button>
               {methods.hasAuthenticator && (
                 <button
-                  onClick={chooseAuthenticator}
+                  onClick={() => choose('totp')}
                   disabled={loading}
                   className="w-full flex items-center gap-4 bg-white border-2 border-[#D9E1E8] hover:border-[#7A8F79] rounded-xl px-5 py-4 text-left transition disabled:opacity-50"
                 >

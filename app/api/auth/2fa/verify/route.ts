@@ -8,7 +8,7 @@ export async function POST(req: Request) {
   const cookie = req.headers.get('cookie') || ''
   const pendingToken = cookie.split('pending_2fa=').pop()?.split(';')[0]
   const pending = pendingToken ? verifyPendingToken(pendingToken) : null
-  if (!pending) return NextResponse.json({ error: 'Session expired — please log in again' }, { status: 401 })
+  if (!pending || !pending.mfaMethod) return NextResponse.json({ error: 'Session expired — please log in again' }, { status: 401 })
 
   const { code } = await req.json()
   if (!code) return NextResponse.json({ error: 'Code required' }, { status: 400 })
@@ -41,16 +41,19 @@ export async function POST(req: Request) {
   const authUser = user as AuthUser
   let valid = false
 
-  if (authUser.mfaSecret) {
-    valid = speakeasy.totp.verify({
-      secret: authUser.mfaSecret,
-      encoding: 'base32',
-      token: code,
-      window: 1,
-    })
-  }
-
-  if (!valid && authUser.smsOtp) {
+  // Check strictly against the method bound to this pending session at selection time
+  // (see /api/auth/2fa/send) — never fall back to another method, so e.g. an
+  // authenticator-app code can't be used to satisfy a text-message challenge.
+  if (pending.mfaMethod === 'totp') {
+    if (authUser.mfaSecret) {
+      valid = speakeasy.totp.verify({
+        secret: authUser.mfaSecret,
+        encoding: 'base32',
+        token: code,
+        window: 1,
+      })
+    }
+  } else if (authUser.smsOtp) {
     const expiresAt = authUser.smsOtpExpiresAt ? new Date(authUser.smsOtpExpiresAt) : null
     if (expiresAt && expiresAt.getTime() > Date.now() && code === authUser.smsOtp) {
       valid = true

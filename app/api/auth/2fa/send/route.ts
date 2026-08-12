@@ -1,8 +1,18 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../lib/prisma'
-import { verifyPendingToken } from '../../../../../lib/auth'
+import { verifyPendingToken, signPendingToken } from '../../../../../lib/auth'
 import { sendSms } from '../../../../../lib/sendSms'
 import { sendTwoFactorCodeEmail } from '../../../../../lib/sendEmail'
+
+function setPendingCookie(res: NextResponse, token: string) {
+  res.cookies.set('pending_2fa', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 300,
+  })
+}
 
 export async function POST(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -11,12 +21,24 @@ export async function POST(req: Request) {
   if (!pending) return NextResponse.json({ error: 'Session expired — please log in again' }, { status: 401 })
 
   const { method } = await req.json()
-  if (method !== 'sms' && method !== 'email') {
+  if (method !== 'sms' && method !== 'email' && method !== 'totp') {
     return NextResponse.json({ error: 'Invalid method' }, { status: 400 })
   }
 
   const user = await (prisma.user.findUnique as any)({ where: { id: pending.id }, include: { nurseProfile: true } })
   if (!user) return NextResponse.json({ error: 'Invalid session' }, { status: 401 })
+
+  // Binds the method the user actually picked into the signed pending-2FA cookie so
+  // /api/auth/2fa/verify can check the submitted code strictly against that one method
+  // instead of accepting whichever of TOTP/SMS happens to match.
+  if (method === 'totp') {
+    if (!user.mfaEnabled || !user.mfaSecret) {
+      return NextResponse.json({ error: 'Authenticator app is not set up for this account' }, { status: 400 })
+    }
+    const res = NextResponse.json({ ok: true })
+    setPendingCookie(res, signPendingToken(user.id, 'totp'))
+    return res
+  }
 
   const effectivePhone = user.phone || user.nurseProfile?.phone || null
 
@@ -37,5 +59,7 @@ export async function POST(req: Request) {
     data: { smsOtp: code, smsOtpExpiresAt: expiresAt },
   })
 
-  return NextResponse.json({ ok: true })
+  const res = NextResponse.json({ ok: true })
+  setPendingCookie(res, signPendingToken(user.id, method))
+  return res
 }

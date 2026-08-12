@@ -22,7 +22,7 @@ type TokenPayload = {
 
 // PHI session policy: cookie is session-only (no maxAge, dies on full browser close)
 // and the token itself carries a rolling inactivity clock enforced by middleware.ts.
-export const INACTIVITY_MS = 30 * 60 * 1000;
+export const INACTIVITY_MS = 60 * 60 * 1000;
 
 export function signToken(payload: TokenPayload) {
   // JWT.sign complains if payload already contains exp/iat, so strip them

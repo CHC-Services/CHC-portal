@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, use } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AdminNav from '../../../components/AdminNav'
 import ProfileDemographicsCard from '../../../components/profile/ProfileDemographicsCard'
@@ -17,6 +18,7 @@ const ROLE_LABEL: Record<string, string> = {
 
 export default function AdminAccountDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
+  const router = useRouter()
 
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -26,6 +28,23 @@ export default function AdminAccountDetailPage({ params }: { params: Promise<{ i
   const [visibleCards, setVisibleCards] = useState<string[]>([])
   const [editing, setEditing] = useState(false)
   const [message, setMessage] = useState('')
+
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
+
+  async function handleDelete() {
+    setDeleting(true)
+    setDeleteError('')
+    const res = await fetch(`/api/admin/accounts/${id}`, { method: 'DELETE', credentials: 'include' })
+    if (res.ok) {
+      router.push('/admin')
+    } else {
+      const data = await res.json().catch(() => null)
+      setDeleteError(data?.error || 'Delete failed.')
+      setDeleting(false)
+    }
+  }
 
   function load() {
     fetch(`/api/admin/accounts/${id}/profile`, { credentials: 'include' })
@@ -127,6 +146,27 @@ export default function AdminAccountDetailPage({ params }: { params: Promise<{ i
         {visibleCards.length === 0 && (
           <p className="text-sm text-[#7A8F79] italic">No profile cards are enabled for this account&apos;s role. Manage this in ⚙ System → User Profile Data.</p>
         )}
+
+        {/* Danger Zone */}
+        <div className="bg-white rounded-xl shadow p-6">
+          <p className="text-xs font-bold uppercase tracking-widest text-red-500 mb-3 pb-1 border-b border-[#D9E1E8]">Danger Zone</p>
+          {confirmDelete ? (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
+              <p className="text-sm text-red-700 font-semibold">Permanently delete {account.name}? This cannot be undone.</p>
+              <div className="flex gap-2">
+                <button onClick={() => setConfirmDelete(false)} className="flex-1 border border-[#D9E1E8] text-[#7A8F79] py-1.5 rounded text-sm font-semibold">Cancel</button>
+                <button onClick={handleDelete} disabled={deleting} className="flex-1 bg-red-600 text-white py-1.5 rounded text-sm font-semibold hover:bg-red-700 disabled:opacity-50">
+                  {deleting ? 'Deleting…' : 'Yes, Delete'}
+                </button>
+              </div>
+              {deleteError && <p className="text-xs text-red-600">{deleteError}</p>}
+            </div>
+          ) : (
+            <button onClick={() => setConfirmDelete(true)} className="text-xs text-red-500 hover:text-red-700 underline underline-offset-2">
+              Delete this account
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )

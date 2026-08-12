@@ -226,6 +226,9 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   const [newPassword, setNewPassword] = useState('')
   const [pwSaving, setPwSaving] = useState(false)
   const [pwMessage, setPwMessage] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
 
   // Plan & trial
   const [planTier, setPlanTier] = useState('FREE')
@@ -937,6 +940,19 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
     }
   }
 
+  async function handleDelete() {
+    setDeleting(true)
+    setDeleteError('')
+    const res = await fetch(`/api/admin/accounts/${id}`, { method: 'DELETE', credentials: 'include' })
+    if (res.ok) {
+      router.push('/admin')
+    } else {
+      const data = await res.json().catch(() => null)
+      setDeleteError(data?.error || 'Delete failed.')
+      setDeleting(false)
+    }
+  }
+
   async function save(e?: React.FormEvent) {
     e?.preventDefault()
     setSaving(true)
@@ -1574,6 +1590,26 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
               >
                 {notifSaving ? 'Saving…' : notifEnabled ? 'Turn Off' : 'Turn On'}
               </button>
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-[#D9E1E8]">
+              <p className="text-xs font-bold uppercase tracking-widest text-red-500 mb-2">Danger Zone</p>
+              {confirmDelete ? (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2 max-w-sm">
+                  <p className="text-sm text-red-700 font-semibold">Permanently delete {formalName(profile) || profile.displayName}? This cannot be undone.</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => setConfirmDelete(false)} className="flex-1 border border-[#D9E1E8] text-[#7A8F79] py-1.5 rounded text-sm font-semibold">Cancel</button>
+                    <button onClick={handleDelete} disabled={deleting} className="flex-1 bg-red-600 text-white py-1.5 rounded text-sm font-semibold hover:bg-red-700 disabled:opacity-50">
+                      {deleting ? 'Deleting…' : 'Yes, Delete'}
+                    </button>
+                  </div>
+                  {deleteError && <p className="text-xs text-red-600">{deleteError}</p>}
+                </div>
+              ) : (
+                <button onClick={() => setConfirmDelete(true)} className="text-xs text-red-500 hover:text-red-700 underline underline-offset-2">
+                  Delete this account
+                </button>
+              )}
             </div>
           </div>
 

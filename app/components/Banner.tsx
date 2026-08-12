@@ -107,6 +107,9 @@ export default function Banner({ user: initialUser }: BannerProps) {
             <Link href="/nurse/invoices" onClick={() => setMenuOpen(false)} className={`lg:hidden transition ${pathname === "/nurse/invoices" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Invoices
             </Link>
+            <Link href="/nurse/tax-report" onClick={() => setMenuOpen(false)} className={`lg:hidden transition ${pathname === "/nurse/tax-report" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Tax Summary
+            </Link>
             <Link href="/nurse/documents" onClick={() => setMenuOpen(false)} className={`lg:hidden transition ${pathname === "/nurse/documents" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Documents
             </Link>

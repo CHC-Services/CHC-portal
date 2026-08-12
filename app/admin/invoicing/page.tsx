@@ -55,10 +55,19 @@ type Stats = {
 type MonthData = { invoiced: number; collected: number; count: number }
 type IncomeData = { monthly: Record<number, MonthData>; yearTotal: MonthData; year: number }
 
+type ClaimPeriodData = { medicaid: number; commercial: number; count: number }
+type IncomeExtraData = {
+  claimIncome: { monthly: Record<number, ClaimPeriodData>; quarterly: Record<number, ClaimPeriodData>; total: ClaimPeriodData }
+  invoiceIncome: { quarterly: Record<number, MonthData> }
+  receivables: { outstanding: number; count: number; asOf: string }
+  discountExpense: { total: number; count: number }
+  reports: { id: string; periodLabel: string; fileName: string; createdAt: string }[]
+}
+
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-const METHODS = ['Venmo','Zelle','CashApp','ApplePay','Check','ACH','Other']
+const METHODS = ['Venmo','Zelle','CashApp','ApplePay','Cash','Check','ACH','Other']
 
 const STATUS_STYLE: Record<string, string> = {
   Sent:       'bg-blue-100 text-blue-700',
@@ -99,6 +108,12 @@ export default function AdminInvoicingPage() {
   const [incomeData, setIncomeData] = useState<IncomeData | null>(null)
   const [incomeYear, setIncomeYear] = useState(new Date().getFullYear())
   const [loading, setLoading] = useState(true)
+
+  // Income tab — claim income / receivables / discount-expense / report export
+  const [incomeExtra, setIncomeExtra] = useState<IncomeExtraData | null>(null)
+  const [reportQuarter, setReportQuarter] = useState<number | null>(null)
+  const [exporting, setExporting] = useState(false)
+  const [exportMsg, setExportMsg] = useState('')
 
   // Invoices tab state
   const [search, setSearch] = useState('')
@@ -142,7 +157,37 @@ export default function AdminInvoicingPage() {
     fetch(`/api/admin/invoicing?view=income&year=${incomeYear}`, { credentials: 'include' })
       .then(r => r.json())
       .then(d => { if (d.monthly) setIncomeData(d) })
+    fetch(`/api/admin/reports/income?year=${incomeYear}`, { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => { if (d.claimIncome) setIncomeExtra(d) })
   }, [tab, incomeYear])
+
+  async function exportIncomeReport() {
+    setExporting(true)
+    setExportMsg('')
+    const res = await fetch('/api/admin/reports/income/export', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ year: incomeYear, quarter: reportQuarter }),
+    })
+    const data = await res.json()
+    setExporting(false)
+    if (res.ok && data.url) {
+      window.open(data.url, '_blank')
+      fetch(`/api/admin/reports/income?year=${incomeYear}`, { credentials: 'include' })
+        .then(r => r.json())
+        .then(d => { if (d.claimIncome) setIncomeExtra(d) })
+    } else {
+      setExportMsg(data.error || 'Export failed')
+    }
+  }
+
+  async function redownloadReport(id: string) {
+    const res = await fetch(`/api/admin/reports/income/${id}`, { credentials: 'include' })
+    const data = await res.json()
+    if (res.ok && data.url) window.open(data.url, '_blank')
+  }
 
   async function changeStatus(invoiceId: string, status: string) {
     setStatusSaving(invoiceId)
@@ -961,6 +1006,102 @@ export default function AdminInvoicingPage() {
                   </tbody>
                 </table>
               </div>
+
+              {incomeExtra && (
+                <>
+                  {/* Receivables + discount expense */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-white rounded-xl shadow-sm p-4 border-t-4 border-red-400">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8F79]">Accounts Receivable — Outstanding</p>
+                      <p className="text-2xl font-black text-red-600 mt-1">{currency(incomeExtra.receivables.outstanding)}</p>
+                      <p className="text-xs text-[#7A8F79]">{incomeExtra.receivables.count} invoice(s) not yet fully paid, as of today</p>
+                    </div>
+                    <div className="bg-white rounded-xl shadow-sm p-4 border-t-4 border-red-400">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8F79]">Marketing / Promo Discount Expense ({incomeYear})</p>
+                      <p className="text-2xl font-black text-red-600 mt-1">{currency(incomeExtra.discountExpense.total)}</p>
+                      <p className="text-xs text-[#7A8F79]">{incomeExtra.discountExpense.count} discounted invoice(s)</p>
+                    </div>
+                  </div>
+
+                  {/* Claim income (Medicaid vs Commercial) */}
+                  <div className="bg-white rounded-xl shadow-sm p-5">
+                    <h2 className="text-sm font-semibold text-[#2F3E4E] uppercase tracking-widest mb-3 pb-2 border-b border-[#D9E1E8]">
+                      Claim Income Billed Through Service — {incomeYear}
+                    </h2>
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-[#7A8F79] text-[10px] uppercase tracking-wide border-b border-[#D9E1E8]">
+                          <th className="text-left py-1.5 pr-4">Month</th>
+                          <th className="text-right py-1.5 pr-4">Medicaid</th>
+                          <th className="text-right py-1.5 pr-4">Commercial</th>
+                          <th className="text-right py-1.5">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {MONTHS.map((month, idx) => {
+                          const m = incomeExtra.claimIncome.monthly[idx + 1]
+                          return (
+                            <tr key={month} className={`border-b border-[#D9E1E8] last:border-0 ${idx % 2 === 0 ? 'bg-white' : 'bg-[#F4F6F5]'}`}>
+                              <td className="py-1.5 pr-4 font-semibold text-[#2F3E4E] text-xs">{month} {incomeYear}</td>
+                              <td className="py-1.5 pr-4 text-right text-xs text-[#2F3E4E]">{m.medicaid > 0 ? currency(m.medicaid) : '—'}</td>
+                              <td className="py-1.5 pr-4 text-right text-xs text-[#2F3E4E]">{m.commercial > 0 ? currency(m.commercial) : '—'}</td>
+                              <td className="py-1.5 text-right text-xs font-semibold text-[#2F3E4E]">{(m.medicaid + m.commercial) > 0 ? currency(m.medicaid + m.commercial) : '—'}</td>
+                            </tr>
+                          )
+                        })}
+                        <tr className="border-t-2 border-[#2F3E4E] bg-[#f4f6f8]">
+                          <td className="py-2 pr-4 font-bold text-xs text-[#2F3E4E]">TOTAL {incomeYear}</td>
+                          <td className="py-2 pr-4 text-right font-black text-xs text-[#2F3E4E]">{currency(incomeExtra.claimIncome.total.medicaid)}</td>
+                          <td className="py-2 pr-4 text-right font-black text-xs text-[#2F3E4E]">{currency(incomeExtra.claimIncome.total.commercial)}</td>
+                          <td className="py-2 text-right font-black text-xs text-[#2F3E4E]">{currency(incomeExtra.claimIncome.total.medicaid + incomeExtra.claimIncome.total.commercial)}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Export */}
+                  <div className="bg-white rounded-xl shadow-sm p-5">
+                    <h2 className="text-sm font-semibold text-[#2F3E4E] uppercase tracking-widest mb-3 pb-2 border-b border-[#D9E1E8]">
+                      Export Report
+                    </h2>
+                    <div className="flex flex-wrap items-center gap-2 mb-3">
+                      <button
+                        onClick={() => setReportQuarter(null)}
+                        className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition ${reportQuarter === null ? 'bg-[#2F3E4E] text-white border-[#2F3E4E]' : 'bg-white text-[#7A8F79] border-[#D9E1E8] hover:border-[#7A8F79]'}`}
+                      >Full Year</button>
+                      {[1, 2, 3, 4].map(q => (
+                        <button
+                          key={q}
+                          onClick={() => setReportQuarter(q)}
+                          className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition ${reportQuarter === q ? 'bg-[#2F3E4E] text-white border-[#2F3E4E]' : 'bg-white text-[#7A8F79] border-[#D9E1E8] hover:border-[#7A8F79]'}`}
+                        >Q{q}</button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={exportIncomeReport}
+                      disabled={exporting}
+                      className="bg-[#2F3E4E] text-white px-5 py-2 rounded-xl text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-50"
+                    >
+                      {exporting ? 'Generating…' : `Export ${reportQuarter ? `Q${reportQuarter}` : 'Full Year'} ${incomeYear} PDF`}
+                    </button>
+                    {exportMsg && <p className="text-xs text-red-500 mt-2">{exportMsg}</p>}
+
+                    {incomeExtra.reports.length > 0 && (
+                      <div className="mt-5 pt-4 border-t border-[#D9E1E8]">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] mb-2">Report History</p>
+                        <div className="space-y-1.5">
+                          {incomeExtra.reports.map(r => (
+                            <div key={r.id} className="flex items-center justify-between text-xs">
+                              <span className="text-[#2F3E4E] font-medium">{r.periodLabel} — {new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                              <button onClick={() => redownloadReport(r.id)} className="text-[#7A8F79] font-semibold hover:text-[#2F3E4E] transition">Download</button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </>
           ) : (
             <p className="text-sm text-[#7A8F79]">Loading income data…</p>

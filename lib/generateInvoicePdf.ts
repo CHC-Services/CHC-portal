@@ -3,7 +3,7 @@ import type { Browser } from 'puppeteer-core'
 // Renders an HTML string to a PDF buffer using headless Chromium.
 // @sparticuz/chromium provides a binary compatible with Vercel's serverless
 // runtime; puppeteer-core drives it without bundling a full Chromium download.
-export async function generatePdfFromHtml(html: string): Promise<Buffer> {
+export async function generatePdfFromHtml(html: string, options: { landscape?: boolean } = {}): Promise<Buffer> {
   const isLocal = !process.env.AWS_LAMBDA_FUNCTION_NAME && !process.env.VERCEL
 
   let browser: Browser
@@ -28,6 +28,7 @@ export async function generatePdfFromHtml(html: string): Promise<Buffer> {
     await page.setContent(html, { waitUntil: 'load' })
     const pdf = await page.pdf({
       format: 'letter',
+      landscape: !!options.landscape,
       printBackground: true,
       margin: { top: '0.25in', bottom: '0.25in', left: '0.25in', right: '0.25in' },
     })

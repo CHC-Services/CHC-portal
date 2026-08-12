@@ -397,7 +397,7 @@ model Payment {
   invoiceId     String
   receiptNumber String   @unique
   amount        Float
-  method        String? // Venmo | Zelle | CashApp | ApplePay | Check | ACH | Other
+  method        String? // Venmo | Zelle | CashApp | ApplePay | Cash | Check | ACH | Other
   note          String?
   s3Key         String?
   appliedAt     DateTime @default(now())
@@ -416,6 +416,23 @@ model InvoiceActivity {
 
   nurse   NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
   invoice Invoice?     @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+}
+
+// Admin's own generated income/tax reports — the equivalent of NurseDocument's
+// role for nurse-facing tax reports, but admin has no NurseProfile to hang a
+// document off of, so this is its own small table. Just a re-download index;
+// the PDF itself lives in S3.
+model AdminReport {
+  id                String   @id @default(uuid())
+  reportType        String // 'income_summary'
+  periodLabel       String // "Q2 2026" | "2025" | "2025-2026"
+  filterKey         String?
+  storageKey        String
+  fileName          String
+  generatedByUserId String
+  createdAt         DateTime @default(now())
+
+  @@index([reportType])
 }
 
 model PortalMessage {

@@ -11,6 +11,7 @@ const links = [
   { href: '/nurse/patients',  label: 'Patients'  },
   { href: '/nurse/claims?tab=paylog', label: 'Payments' },
   { href: '/nurse/invoices',  label: 'Invoices'  },
+  { href: '/nurse/tax-report', label: 'Tax Summary' },
   { href: '/nurse/documents', label: 'Documents' },
   { href: '/nurse/profile',    label: 'Profile'    },
   { href: '/care',             label: 'Wellness'       },

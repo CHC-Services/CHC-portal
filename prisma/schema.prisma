@@ -174,7 +174,13 @@ model NurseProfile {
 model ProfileCardConfig {
   id      String  @id @default(uuid())
   cardKey String // 'demographics' | 'billing_info' | 'banking'
-  role    Role
+  // Deliberately String, not the Role enum: role is stored as plain TEXT
+  // throughout this schema (no native Postgres enum type exists anywhere in
+  // this database — see User.role), and every other role check in this
+  // codebase compares in JS after fetching. Typing this Role would make
+  // Prisma cast WHERE role = $1 against a nonexistent native enum type and
+  // throw at query time the moment anything actually filters by it.
+  role    String
   enabled Boolean @default(true)
 
   @@unique([cardKey, role])

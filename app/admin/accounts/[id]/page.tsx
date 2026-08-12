@@ -20,6 +20,7 @@ export default function AdminAccountDetailPage({ params }: { params: Promise<{ i
 
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+  const [loadError, setLoadError] = useState('')
   const [account, setAccount] = useState<{ id: string; name: string; email: string; role: string } | null>(null)
   const [profile, setProfile] = useState<any>({})
   const [visibleCards, setVisibleCards] = useState<string[]>([])
@@ -28,8 +29,13 @@ export default function AdminAccountDetailPage({ params }: { params: Promise<{ i
 
   function load() {
     fetch(`/api/admin/accounts/${id}/profile`, { credentials: 'include' })
-      .then(r => {
+      .then(async r => {
         if (r.status === 404) { setNotFound(true); return null }
+        if (!r.ok) {
+          const body = await r.json().catch(() => null)
+          setLoadError(body?.error || `Failed to load account (${r.status})`)
+          return null
+        }
         return r.json()
       })
       .then(data => {
@@ -39,6 +45,7 @@ export default function AdminAccountDetailPage({ params }: { params: Promise<{ i
           setVisibleCards(data.visibleCards || [])
         }
       })
+      .catch(err => setLoadError(err?.message || 'Failed to load account'))
       .finally(() => setLoading(false))
   }
 
@@ -61,12 +68,12 @@ export default function AdminAccountDetailPage({ params }: { params: Promise<{ i
 
   if (loading) return <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8"><AdminNav /><p className="text-sm text-[#7A8F79]">Loading…</p></div>
 
-  if (notFound || !account) {
+  if (notFound || loadError || !account) {
     return (
       <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">
         <AdminNav />
         <div className="bg-white rounded-xl shadow-sm p-8 text-center max-w-md mx-auto mt-8">
-          <p className="text-[#2F3E4E] font-semibold">Account not found</p>
+          <p className="text-[#2F3E4E] font-semibold">{notFound ? 'Account not found' : (loadError || 'Something went wrong loading this account.')}</p>
           <Link href="/admin" className="inline-block mt-4 text-sm font-semibold text-[#7A8F79] hover:text-[#2F3E4E]">← Back to adAccounts</Link>
         </div>
       </div>

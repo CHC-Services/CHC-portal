@@ -754,7 +754,7 @@ export default function MedicationList({ patientName, medications, onAdd, onEdit
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-sm font-bold uppercase tracking-widest" style={{ color: theme.navy }}>
-          {patientName}&rsquo;s Medications
+          Medications
         </p>
         {!readOnly && (
           <button onClick={() => setAdding(true)} className="text-xs font-semibold" style={{ color: theme.sage }}>

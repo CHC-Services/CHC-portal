@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../lib/prisma'
 import { verifyToken } from '../../../../../lib/auth'
+import { getAccountBalance } from '../../../../../lib/accountBalance'
 
 function getNurseId(req: Request): string | null {
   const cookie = req.headers.get('cookie') || ''
@@ -29,6 +30,7 @@ export async function GET(req: Request) {
   const totalInvoices = invoices.length
   const totalPaid = invoices.reduce((sum, inv) => sum + (inv.paidAmount ?? 0), 0)
   const accountTotal = invoices.reduce((sum, inv) => sum + inv.totalAmount, 0)
+  const accountBalance = await getAccountBalance(nurseId)
 
-  return NextResponse.json({ totalDue, count, totalInvoices, totalPaid, accountTotal })
+  return NextResponse.json({ totalDue, count, totalInvoices, totalPaid, accountTotal, accountBalance })
 }

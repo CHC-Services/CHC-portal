@@ -39,6 +39,10 @@ export async function GET(req: Request) {
             gte: new Date(`${year}-01-01`),
             lte: new Date(`${year}-12-31T23:59:59Z`),
           },
+          // Paying via account balance moves already-collected money between
+          // invoices, not new cash in the door — counting it here would
+          // double-count income already recorded when the original overpayment came in.
+          method: { not: 'Account Balance' },
         },
         select: { appliedAt: true, amount: true },
       }),

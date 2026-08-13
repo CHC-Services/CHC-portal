@@ -1155,6 +1155,9 @@ export async function sendReceiptEmail({
   newTotalPaid: _newTotalPaid,
   balance,
   newStatus,
+  overageAmount,
+  accountBalanceApplied,
+  newAccountBalance,
 }: {
   to: string
   nurseName: string
@@ -1172,6 +1175,15 @@ export async function sendReceiptEmail({
   newTotalPaid: number
   balance: number
   newStatus: string
+  // Set when this payment overpaid the invoice — the excess became a new
+  // account-balance credit (see app/api/admin/invoices/[id]/payment/route.ts).
+  overageAmount?: number
+  // Set when this payment was made via the "Account Balance" method — how much
+  // of the nurse's existing credit was spent against this invoice.
+  accountBalanceApplied?: number
+  // The nurse's account balance after this payment, whenever overageAmount or
+  // accountBalanceApplied is set.
+  newAccountBalance?: number
 }): Promise<boolean> {
   if (!process.env.RESEND_API_KEY) return false
   const resend = createLoggedResend('receipt', nurseName)
@@ -1271,6 +1283,18 @@ export async function sendReceiptEmail({
     <div style="margin-top:20px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px 18px">
       <p style="margin:0;font-size:12px;color:#2563eb">Remaining balance of <strong>${fmtMoney(balance)}</strong> is due on the original invoice terms.</p>
     </div>`}
+
+    ${overageAmount && overageAmount > 0 ? `
+    <div style="margin-top:12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px 18px;text-align:center">
+      <p style="margin:0;font-size:14px;font-weight:800;color:#2563eb">Account Credit: ${fmtMoney(overageAmount)}</p>
+      <p style="margin:4px 0 0;font-size:12px;color:#2563eb">You paid more than was owed on this invoice — the difference has been added to your account balance${newAccountBalance != null ? `, now <strong>${fmtMoney(newAccountBalance)}</strong>` : ''}. It will automatically be available to apply toward a future invoice.</p>
+    </div>` : ''}
+
+    ${accountBalanceApplied && accountBalanceApplied > 0 ? `
+    <div style="margin-top:12px;background:#f4f6f8;border:1px solid #D9E1E8;border-radius:10px;padding:14px 18px;text-align:center">
+      <p style="margin:0;font-size:13px;font-weight:700;color:#2F3E4E">${fmtMoney(accountBalanceApplied)} applied from your account balance</p>
+      ${newAccountBalance != null ? `<p style="margin:4px 0 0;font-size:12px;color:#7A8F79">Remaining account balance: <strong>${fmtMoney(newAccountBalance)}</strong></p>` : ''}
+    </div>` : ''}
 
     ${paymentNote ? `<div style="margin-top:14px;padding:10px 14px;background:#f4f6f8;border-left:3px solid #7A8F79;border-radius:0 8px 8px 0"><p style="margin:0;font-size:12px;color:#4a5a6a"><strong>Note:</strong> ${paymentNote}</p></div>` : ''}
   </div>

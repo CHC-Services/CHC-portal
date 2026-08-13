@@ -3,6 +3,7 @@ import { prisma } from '../../../../../../lib/prisma'
 import { verifyToken } from '../../../../../../lib/auth'
 import { uploadToS3 } from '../../../../../../lib/s3'
 import { sendReceiptEmail } from '../../../../../../lib/sendEmail'
+import { getAccountBalance } from '../../../../../../lib/accountBalance'
 
 function adminOnly(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -68,8 +69,34 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: 'Invoice is already closed.' }, { status: 400 })
   }
 
+  const requestedAmount = Number(amount)
+  const remaining = Math.max(0, invoice.totalAmount - (invoice.paidAmount || 0))
+  const isAccountBalance = method === 'Account Balance'
+  const priorBalance = await getAccountBalance(invoice.nurseId)
+
+  // "Account Balance" spends down the nurse's existing credit ledger instead
+  // of taking real money — never let it apply more than the nurse actually has.
+  if (isAccountBalance && requestedAmount > priorBalance) {
+    return NextResponse.json(
+      { error: `Insufficient account balance (available: $${priorBalance.toFixed(2)})` },
+      { status: 400 }
+    )
+  }
+
+  // The amount that actually reduces this invoice's balance is capped at what's
+  // owed — for real-money methods, anything beyond that is an overpayment that
+  // becomes a new account-balance credit rather than silently inflating paidAmount
+  // past totalAmount. For Account Balance, any requested-but-unneeded amount is
+  // just left un-spent (the cap check above already guarantees enough exists).
+  const appliedAmount = Math.min(requestedAmount, remaining)
+  const overageAmount = isAccountBalance ? 0 : Math.max(0, requestedAmount - appliedAmount)
+  // Account Balance payments only ever move `appliedAmount` (there's no "extra
+  // cash received" concept); every other method records the real amount received.
+  const paymentAmount = isAccountBalance ? appliedAmount : requestedAmount
+
+  const paymentId = crypto.randomUUID()
   const receiptNumber = await generateReceiptNumber(appliedAt.getFullYear())
-  const newPaid = (invoice.paidAmount || 0) + Number(amount)
+  const newPaid = (invoice.paidAmount || 0) + appliedAmount
   const newStatus = newPaid >= invoice.totalAmount ? 'Paid' : 'Partial'
   const isNowFullyPaid = newStatus === 'Paid'
 
@@ -104,7 +131,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       accountNumber: invoice.nurse?.accountNumber || null,
     },
     payment: {
-      amount: Number(amount),
+      amount: paymentAmount,
+      appliedToInvoice: appliedAmount,
       method: method || null,
       note: note || null,
       appliedAt: appliedAt.toISOString(),
@@ -116,6 +144,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       newTotalPaid: newPaid,
       balance: Math.max(0, invoice.totalAmount - newPaid),
       newStatus,
+    },
+    accountBalance: {
+      overageCredited: overageAmount || null,
+      appliedFromBalance: isAccountBalance ? appliedAmount : null,
+      newBalance: priorBalance - (isAccountBalance ? appliedAmount : 0) + overageAmount,
     },
     generatedAt: new Date().toISOString(),
   }
@@ -134,9 +167,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const txOps: any[] = [
     (prisma.payment as any).create({
       data: {
+        id: paymentId,
         invoiceId: id,
         receiptNumber,
-        amount: Number(amount),
+        amount: paymentAmount,
         method: method || null,
         note: note || null,
         appliedAt,
@@ -153,6 +187,43 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       },
     }),
   ]
+
+  // Real-money overpayment beyond what the invoice owed becomes a new
+  // account-balance credit, spendable against a future invoice.
+  if (overageAmount > 0) {
+    txOps.push(
+      (prisma.providerCredit as any).create({
+        data: {
+          id: crypto.randomUUID(),
+          nurseId: invoice.nurseId,
+          invoiceId: id,
+          paymentId,
+          type: 'account_balance',
+          amount: overageAmount,
+          description: `Overpayment credit — paid $${requestedAmount.toFixed(2)} via ${method || 'payment'} against $${remaining.toFixed(2)} owed on invoice ${invoice.invoiceNumber}`,
+          appliedAt,
+        },
+      })
+    )
+  }
+
+  // Paying via Account Balance debits the ledger by exactly what was applied.
+  if (isAccountBalance && appliedAmount > 0) {
+    txOps.push(
+      (prisma.providerCredit as any).create({
+        data: {
+          id: crypto.randomUUID(),
+          nurseId: invoice.nurseId,
+          invoiceId: id,
+          paymentId,
+          type: 'account_balance',
+          amount: -appliedAmount,
+          description: `Applied to invoice ${invoice.invoiceNumber}`,
+          appliedAt,
+        },
+      })
+    )
+  }
 
   // Auto-record prompt-pay credit (positive = credit on next invoice)
   if (promptPayQualifies && !hasPromptPayCredit) {
@@ -192,6 +263,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const [payment] = await (prisma.$transaction as any)(txOps)
+  const newAccountBalance = priorBalance - (isAccountBalance ? appliedAmount : 0) + overageAmount
 
   // Send receipt email fire-and-forget
   const nurseEmail = invoice.nurse?.user?.email || invoice.nurseEmail
@@ -202,7 +274,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       accountNumber: invoice.nurse?.accountNumber ?? null,
       receiptNumber,
       invoiceNumber: invoice.invoiceNumber,
-      paymentAmount: Number(amount),
+      paymentAmount,
       paymentMethod: method || null,
       paymentNote: note || null,
       appliedAt,
@@ -211,6 +283,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       newTotalPaid: newPaid,
       balance: Math.max(0, invoice.totalAmount - newPaid),
       newStatus,
+      overageAmount: overageAmount || undefined,
+      accountBalanceApplied: isAccountBalance ? appliedAmount : undefined,
+      newAccountBalance: (overageAmount > 0 || isAccountBalance) ? newAccountBalance : undefined,
     }).catch(() => {})
   }
 
@@ -223,6 +298,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     newPaid,
     promptPayCreditApplied: promptPayQualifies && !hasPromptPayCredit ? invoice.promptPayCredit : null,
     lateFeeApplied: lateFeeOwed > 0 && !hasLateFeeCredit ? lateFeeOwed : null,
+    overageAmount: overageAmount || null,
+    appliedFromBalance: isAccountBalance ? appliedAmount : null,
+    accountBalance: newAccountBalance,
   })
 }
 
@@ -253,14 +331,26 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
+  // Reverse whatever this payment did to the nurse's account-balance ledger:
+  // an overpayment credit (positive) it created, or a balance debit (negative)
+  // it spent. Only the overpayment-credit portion was ever diverted away from
+  // this invoice, so that's what has to come back out of `payment.amount`
+  // before subtracting it from the invoice's paidAmount.
+  const linkedCredits = await (prisma.providerCredit.findMany as any)({ where: { paymentId } })
+  const overageReversed = linkedCredits
+    .filter((c: any) => c.type === 'account_balance' && c.amount > 0)
+    .reduce((s: number, c: any) => s + c.amount, 0)
+  const appliedToInvoice = payment.amount - overageReversed
+
   const invoice = await (prisma.invoice.findUnique as any)({
     where: { id: invoiceId },
     select: { totalAmount: true, paidAmount: true },
   })
-  const newPaid = Math.max(0, (invoice?.paidAmount || 0) - payment.amount)
+  const newPaid = Math.max(0, (invoice?.paidAmount || 0) - appliedToInvoice)
   const newStatus = newPaid <= 0 ? 'Sent' : newPaid >= (invoice?.totalAmount || 0) ? 'Paid' : 'Partial'
 
   await (prisma.$transaction as any)([
+    (prisma.providerCredit as any).deleteMany({ where: { paymentId } }),
     (prisma.payment as any).delete({ where: { id: paymentId } }),
     (prisma.invoice as any).update({
       where: { id: invoiceId },

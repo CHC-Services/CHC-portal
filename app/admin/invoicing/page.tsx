@@ -67,7 +67,7 @@ type IncomeExtraData = {
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-const METHODS = ['Venmo','Zelle','CashApp','ApplePay','Cash','Check','ACH','Other']
+const METHODS = ['Venmo','Zelle','CashApp','ApplePay','Cash','Check','ACH','Account Balance','Other']
 
 const STATUS_STYLE: Record<string, string> = {
   Sent:       'bg-blue-100 text-blue-700',
@@ -131,6 +131,7 @@ export default function AdminInvoicingPage() {
   const [payPaidDate, setPayPaidDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [payMsg, setPayMsg] = useState('')
   const [paySubmitting, setPaySubmitting] = useState(false)
+  const [payNurseBalance, setPayNurseBalance] = useState<number | null>(null)
 
   // Statement state
   const [stmtNurseId, setStmtNurseId] = useState('')
@@ -151,6 +152,14 @@ export default function AdminInvoicingPage() {
   }, [])
 
   useEffect(() => { loadAll() }, [loadAll])
+
+  useEffect(() => {
+    const inv = invoices.find(i => i.id === payInvoiceId)
+    if (!inv) { setPayNurseBalance(null); return }
+    fetch(`/api/admin/nurses/${inv.nurseId}/account-balance`, { credentials: 'include' })
+      .then(r => r.ok ? r.json() : { balance: 0 })
+      .then(d => setPayNurseBalance(d.balance || 0))
+  }, [payInvoiceId, invoices])
 
   useEffect(() => {
     if (tab !== 'income') return
@@ -239,10 +248,17 @@ export default function AdminInvoicingPage() {
       const lateFeeNote = data.lateFeeApplied
         ? ` Late fee of ${currency(data.lateFeeApplied)} recorded.`
         : ''
-      setPayMsg(`Payment applied — Receipt ${data.receiptNumber} · ${inv ? shortInvoiceNumber(inv.invoiceNumber) : ''} · Status: ${data.newStatus}.${s3Note}${creditNote}${lateFeeNote}`)
+      const overageNote = data.overageAmount
+        ? ` ✓ Overpayment of ${currency(data.overageAmount)} added to account balance (new balance: ${currency(data.accountBalance)}).`
+        : ''
+      const balanceSpendNote = data.appliedFromBalance
+        ? ` ${currency(data.appliedFromBalance)} applied from account balance (remaining: ${currency(data.accountBalance)}).`
+        : ''
+      setPayMsg(`Payment applied — Receipt ${data.receiptNumber} · ${inv ? shortInvoiceNumber(inv.invoiceNumber) : ''} · Status: ${data.newStatus}.${s3Note}${creditNote}${lateFeeNote}${overageNote}${balanceSpendNote}`)
       setPayAmount('')
       setPayNote('')
       setPayPaidDate(new Date().toISOString().slice(0, 10))
+      setPayNurseBalance(data.accountBalance)
       await loadAll()
     } else {
       setPayMsg(data.error || 'Payment failed.')
@@ -818,10 +834,35 @@ export default function AdminInvoicingPage() {
                     onChange={e => setPayMethod(e.target.value)}
                     className="w-full border border-[#D9E1E8] rounded-lg px-2 py-1.5 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
                   >
-                    {METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+                    {METHODS.map(m => (
+                      <option key={m} value={m} disabled={m === 'Account Balance' && !payNurseBalance}>
+                        {m}{m === 'Account Balance' && payNurseBalance ? ` (${currency(payNurseBalance)} available)` : ''}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
+
+              {payMethod === 'Account Balance' && payInvoiceId && (
+                <p className={`text-[10px] font-medium ${payNurseBalance ? 'text-[#7A8F79]' : 'text-red-500'}`}>
+                  {payNurseBalance
+                    ? `Account balance available: ${currency(payNurseBalance)}. Amount will be deducted from this balance instead of recording new money received.`
+                    : 'This provider has no account balance to apply.'}
+                </p>
+              )}
+
+              {payMethod !== 'Account Balance' && payInvoiceId && payAmount && (() => {
+                const inv = invoices.find(i => i.id === payInvoiceId)
+                if (!inv) return null
+                const due = inv.totalAmount - (inv.paidAmount || 0)
+                const over = parseFloat(payAmount) - due
+                if (!(over > 0)) return null
+                return (
+                  <p className="text-[10px] font-medium text-blue-600">
+                    This overpays the invoice by {currency(over)} — the excess will be credited to the provider&rsquo;s account balance for a future invoice.
+                  </p>
+                )
+              })()}
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-wide text-[#7A8F79] mb-1">Note <span className="normal-case font-normal">(optional)</span></label>
                 <input
@@ -834,7 +875,10 @@ export default function AdminInvoicingPage() {
               </div>
               <button
                 type="submit"
-                disabled={paySubmitting || !payInvoiceId || !payAmount || !payPaidDate}
+                disabled={
+                  paySubmitting || !payInvoiceId || !payAmount || !payPaidDate ||
+                  (payMethod === 'Account Balance' && parseFloat(payAmount) > (payNurseBalance || 0))
+                }
                 className="w-full bg-[#2F3E4E] text-white py-2 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-50"
               >
                 {paySubmitting ? 'Applying…' : 'Apply Payment'}

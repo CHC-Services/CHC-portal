@@ -23,7 +23,9 @@ export type MedicationDTO = {
   rxcui: string | null
   dose: string | null
   unitStrength: string | null
+  unitType: string | null
   frequency: string | null
+  route: string | null
   daySupply: number
   lastFillDate: string // ISO date string
   rxNumber: string | null
@@ -41,7 +43,9 @@ export type MedicationInput = {
   rxcui: string
   dose: string
   unitStrength: string
+  unitType: string
   frequency: string
+  route: string
   daySupply: string
   lastFillDate: string
   rxNumber: string
@@ -105,7 +109,7 @@ type MedicationListProps = {
 }
 
 const emptyForm: MedicationInput = {
-  medicationName: '', rxcui: '', dose: '', unitStrength: '', frequency: '', daySupply: '30',
+  medicationName: '', rxcui: '', dose: '', unitStrength: '', unitType: '', frequency: '', route: '', daySupply: '30',
   lastFillDate: '', rxNumber: '', refillsRemaining: '', pharmacyName: '', pharmacyAddress: '', pharmacyPhone: '',
 }
 
@@ -140,7 +144,9 @@ function toFormValues(m: MedicationDTO): MedicationInput {
     rxcui: m.rxcui || '',
     dose: m.dose || '',
     unitStrength: m.unitStrength || '',
+    unitType: m.unitType || '',
     frequency: m.frequency || '',
+    route: m.route || '',
     daySupply: String(m.daySupply),
     lastFillDate: m.lastFillDate.slice(0, 10),
     rxNumber: m.rxNumber || '',
@@ -171,6 +177,10 @@ function MedicationForm({ initial, onSubmit, onCancel, submitLabel, pharmacies =
     setForm(f => ({ ...f, [k]: e.target.value }))
 
   const inputCls = 'w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2'
+  // Unlike inputCls, doesn't force full width — paired with an explicit w-*
+  // so fields with a known bounded length (day supply, refill count, dates,
+  // phone numbers, on-hand dose/type) don't stretch across the whole row.
+  const narrowCls = 'border rounded-lg p-2 text-sm focus:outline-none focus:ring-2'
   const inputStyle = { borderColor: theme.bg, color: theme.navy } as React.CSSProperties
   const unitsPerDose = computeUnitsPerDose(form.dose, form.unitStrength)
 
@@ -256,112 +266,131 @@ function MedicationForm({ initial, onSubmit, onCancel, submitLabel, pharmacies =
 
   return (
     <form onSubmit={submit} className="space-y-2 p-3 rounded-xl" style={{ background: theme.offWhite }}>
-      <div className="relative">
-        <input
-          placeholder="Medication name"
-          value={form.medicationName}
-          onChange={handleMedicationNameChange}
-          onKeyDown={handleMedicationKeyDown}
-          onBlur={() => setTimeout(() => { setDrugSuggestions([]); setDrugAltSuggestions([]) }, 100)}
-          autoComplete="off"
-          required
-          className={inputCls}
-          style={inputStyle}
-        />
-        {allDrugSuggestions.length > 0 && (
-          <div className="absolute z-10 mt-1 w-full bg-white border rounded-xl shadow-lg overflow-hidden" style={{ borderColor: theme.bg }}>
-            {drugSuggestions.map((option, i) => (
-              <button
-                key={option.name}
-                type="button"
-                onMouseDown={() => selectDrugName(option)}
-                onMouseEnter={() => setActiveDrugIdx(i)}
-                className="block w-full text-left px-3 py-2 text-sm"
-                style={i === activeDrugIdx ? { background: theme.navy, color: 'white' } : { color: theme.navy }}
-              >
-                {option.name}
-              </button>
-            ))}
-            {drugAltSuggestions.length > 0 && (
-              <>
-                <p className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide font-semibold" style={{ color: theme.sage }}>Did you mean…</p>
-                {drugAltSuggestions.map((option, i) => {
-                  const idx = drugSuggestions.length + i
-                  return (
-                    <button
-                      key={option.name}
-                      type="button"
-                      onMouseDown={() => selectDrugName(option)}
-                      onMouseEnter={() => setActiveDrugIdx(idx)}
-                      className="block w-full text-left px-3 py-2 text-sm"
-                      style={idx === activeDrugIdx ? { background: theme.navy, color: 'white' } : { color: theme.navy }}
-                    >
-                      {option.name}
-                    </button>
-                  )
-                })}
-              </>
-            )}
-          </div>
-        )}
+      <div className="flex gap-2">
+        <div className="relative flex-1 min-w-0">
+          <input
+            placeholder="On-hand medication name"
+            value={form.medicationName}
+            onChange={handleMedicationNameChange}
+            onKeyDown={handleMedicationKeyDown}
+            onBlur={() => setTimeout(() => { setDrugSuggestions([]); setDrugAltSuggestions([]) }, 100)}
+            autoComplete="off"
+            required
+            className={inputCls}
+            style={inputStyle}
+          />
+          {allDrugSuggestions.length > 0 && (
+            <div className="absolute z-10 mt-1 w-full bg-white border rounded-xl shadow-lg overflow-hidden" style={{ borderColor: theme.bg }}>
+              {drugSuggestions.map((option, i) => (
+                <button
+                  key={option.name}
+                  type="button"
+                  onMouseDown={() => selectDrugName(option)}
+                  onMouseEnter={() => setActiveDrugIdx(i)}
+                  className="block w-full text-left px-3 py-2 text-sm"
+                  style={i === activeDrugIdx ? { background: theme.navy, color: 'white' } : { color: theme.navy }}
+                >
+                  {option.name}
+                </button>
+              ))}
+              {drugAltSuggestions.length > 0 && (
+                <>
+                  <p className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide font-semibold" style={{ color: theme.sage }}>Did you mean…</p>
+                  {drugAltSuggestions.map((option, i) => {
+                    const idx = drugSuggestions.length + i
+                    return (
+                      <button
+                        key={option.name}
+                        type="button"
+                        onMouseDown={() => selectDrugName(option)}
+                        onMouseEnter={() => setActiveDrugIdx(idx)}
+                        className="block w-full text-left px-3 py-2 text-sm"
+                        style={idx === activeDrugIdx ? { background: theme.navy, color: 'white' } : { color: theme.navy }}
+                      >
+                        {option.name}
+                      </button>
+                    )
+                  })}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+        <input placeholder="On-hand dose (e.g. 10mg)" value={form.unitStrength} onChange={set('unitStrength')} className={`${narrowCls} w-28`} style={inputStyle} />
+        <input placeholder="On-hand type (e.g. tablet)" value={form.unitType} onChange={set('unitType')} className={`${narrowCls} w-32`} style={inputStyle} />
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <input placeholder="Prescribed dose (e.g. 15mg)" value={form.dose} onChange={set('dose')} className={inputCls} style={inputStyle} />
-        <input placeholder="Frequency (e.g. daily)" value={form.frequency} onChange={set('frequency')} className={inputCls} style={inputStyle} />
-      </div>
+
       <div>
-        <input placeholder="Unit strength on hand (e.g. 10mg/tablet)" value={form.unitStrength} onChange={set('unitStrength')} className={inputCls} style={inputStyle} />
+        <label className="block text-[10px] uppercase tracking-wide mb-1" style={{ color: theme.sage }}>Prescribed Administration</label>
+        <div className="flex flex-wrap items-center gap-1.5 text-sm" style={{ color: theme.navy }}>
+          <span>Administer</span>
+          <input placeholder="Dose (e.g. 81mg)" value={form.dose} onChange={set('dose')} className={`${narrowCls} w-24`} style={inputStyle} />
+          <input placeholder="Frequency (e.g. twice daily)" value={form.frequency} onChange={set('frequency')} className={`${narrowCls} w-36`} style={inputStyle} />
+          <span>via</span>
+          <input placeholder="Route (e.g. G-Tube)" value={form.route} onChange={set('route')} className={`${narrowCls} w-32`} style={inputStyle} />
+        </div>
         {unitsPerDose != null && (
           <p className="text-[10px] mt-1 font-semibold" style={{ color: theme.sage }}>
             = {fmtUnits(unitsPerDose)} unit(s) per dose ({form.dose} ÷ {form.unitStrength})
           </p>
         )}
       </div>
-      <div className="grid grid-cols-2 gap-2">
+
+      <div className="flex gap-2">
         <div>
           <label className="block text-[10px] uppercase tracking-wide mb-0.5" style={{ color: theme.sage }}>Last Fill</label>
-          <DateInput value={form.lastFillDate} onChange={set('lastFillDate')} required className={inputCls} style={inputStyle} />
+          <DateInput value={form.lastFillDate} onChange={set('lastFillDate')} required className={`${narrowCls} w-28`} style={inputStyle} />
         </div>
         <div>
           <label className="block text-[10px] uppercase tracking-wide mb-0.5" style={{ color: theme.sage }}>Day Supply</label>
-          <input type="number" min="1" value={form.daySupply} onChange={set('daySupply')} className={inputCls} style={inputStyle} />
+          <input type="number" min="1" value={form.daySupply} onChange={set('daySupply')} className={`${narrowCls} w-16`} style={inputStyle} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <label className="block text-[10px] uppercase tracking-wide mb-0.5" style={{ color: theme.sage }}>RX #</label>
+          <input placeholder="RX #" value={form.rxNumber} onChange={set('rxNumber')} className={inputCls} style={inputStyle} />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <input placeholder="RX #" value={form.rxNumber} onChange={set('rxNumber')} className={inputCls} style={inputStyle} />
-        <input type="number" min="0" placeholder="Refills remaining" value={form.refillsRemaining} onChange={set('refillsRemaining')} className={inputCls} style={inputStyle} />
+
+      <div className="flex gap-2 items-start">
+        <div className="relative flex-1 min-w-0">
+          <input
+            placeholder="Pharmacy name"
+            value={form.pharmacyName}
+            onChange={handlePharmacyNameChange}
+            onKeyDown={handlePharmacyKeyDown}
+            onBlur={() => setTimeout(() => setPharmacySuggestions([]), 100)}
+            autoComplete="off"
+            className={inputCls}
+            style={inputStyle}
+          />
+          {pharmacySuggestions.length > 0 && (
+            <div className="absolute z-10 mt-1 w-full bg-white border rounded-xl shadow-lg overflow-hidden" style={{ borderColor: theme.bg }}>
+              {pharmacySuggestions.map((p, i) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onMouseDown={() => selectPharmacy(p)}
+                  onMouseEnter={() => setActiveSuggestionIdx(i)}
+                  className="block w-full text-left px-3 py-2 text-sm"
+                  style={i === activeSuggestionIdx ? { background: theme.navy, color: 'white' } : { color: theme.navy }}
+                >
+                  <span className="font-semibold">{p.name}</span>
+                  {p.address && <span className="block text-xs opacity-80">{p.address}</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div>
+          <label className="block text-[10px] uppercase tracking-wide mb-0.5" style={{ color: theme.sage }}>Refills Left</label>
+          <input type="number" min="0" value={form.refillsRemaining} onChange={set('refillsRemaining')} className={`${narrowCls} w-14`} style={inputStyle} />
+        </div>
       </div>
-      <div className="relative">
-        <input
-          placeholder="Pharmacy name"
-          value={form.pharmacyName}
-          onChange={handlePharmacyNameChange}
-          onKeyDown={handlePharmacyKeyDown}
-          onBlur={() => setTimeout(() => setPharmacySuggestions([]), 100)}
-          autoComplete="off"
-          className={inputCls}
-          style={inputStyle}
-        />
-        {pharmacySuggestions.length > 0 && (
-          <div className="absolute z-10 mt-1 w-full bg-white border rounded-xl shadow-lg overflow-hidden" style={{ borderColor: theme.bg }}>
-            {pharmacySuggestions.map((p, i) => (
-              <button
-                key={p.id}
-                type="button"
-                onMouseDown={() => selectPharmacy(p)}
-                onMouseEnter={() => setActiveSuggestionIdx(i)}
-                className="block w-full text-left px-3 py-2 text-sm"
-                style={i === activeSuggestionIdx ? { background: theme.navy, color: 'white' } : { color: theme.navy }}
-              >
-                <span className="font-semibold">{p.name}</span>
-                {p.address && <span className="block text-xs opacity-80">{p.address}</span>}
-              </button>
-            ))}
-          </div>
-        )}
+
+      <div className="flex gap-2">
+        <input placeholder="Pharmacy address" value={form.pharmacyAddress} onChange={set('pharmacyAddress')} className={`${inputCls} flex-1 min-w-0`} style={inputStyle} />
+        <input placeholder="Pharmacy phone" value={form.pharmacyPhone} onChange={e => setForm(f => ({ ...f, pharmacyPhone: fmtPhoneInput(e.target.value) }))} className={`${narrowCls} w-36`} style={inputStyle} />
       </div>
-      <input placeholder="Pharmacy address" value={form.pharmacyAddress} onChange={set('pharmacyAddress')} className={inputCls} style={inputStyle} />
-      <input placeholder="Pharmacy phone" value={form.pharmacyPhone} onChange={e => setForm(f => ({ ...f, pharmacyPhone: fmtPhoneInput(e.target.value) }))} className={inputCls} style={inputStyle} />
       <div className="flex gap-2 pt-1">
         <button type="button" onClick={onCancel} className="flex-1 border rounded-lg py-2 text-sm font-semibold" style={{ borderColor: theme.bg, color: theme.sage }}>
           Cancel
@@ -522,25 +551,88 @@ function DrugFactsModal({ medicationName, facts, loading, onClose }: {
   )
 }
 
-function MedicationCard({ med, onEdit, onConfirmRefill, onOrderRefill, onDelete, readOnly, pharmacies, onSearchDrugNames, onFetchDrugFacts }: {
-  med: MedicationDTO
+function adminSentenceOf(med: Pick<MedicationDTO, 'medicationName' | 'dose' | 'frequency' | 'route'>): string | null {
+  const parts = [med.dose, med.frequency].filter(Boolean).join(' ')
+  if (!parts && !med.route) return null
+  return `Administer ${med.medicationName}${parts ? ` ${parts}` : ''}${med.route ? ` via ${med.route}` : ''}.`
+}
+
+function onHandOf(med: Pick<MedicationDTO, 'unitStrength' | 'unitType'>): string {
+  return [med.unitStrength, med.unitType].filter(Boolean).join(' ')
+}
+
+// One line of the data sheet — plain read-only cells, no per-row action
+// controls. Clicking anywhere on the row opens MedicationDetailModal, which
+// owns editing/refill/delete/drug-facts so the sheet itself stays dense and scannable.
+function MedicationRow({ med, onClick }: { med: MedicationDTO; onClick: () => void }) {
+  const dueDate = addDaysStr(med.lastFillDate.slice(0, 10), med.daySupply)
+  const cellCls = 'px-3 py-2 align-top whitespace-nowrap'
+  return (
+    <tr onClick={onClick} className="cursor-pointer border-b last:border-b-0 hover:bg-black/[0.02]" style={{ borderColor: theme.bg }}>
+      <td className={cellCls}>
+        <p className="font-semibold" style={{ color: theme.navy }}>{med.medicationName}</p>
+      </td>
+      <td className={`${cellCls} text-xs`} style={{ color: theme.navy }}>{onHandOf(med) || '—'}</td>
+      <td className={`${cellCls} text-xs whitespace-normal min-w-[14rem]`} style={{ color: theme.navy }}>{adminSentenceOf(med) || '—'}</td>
+      <td className={`${cellCls} text-xs`} style={{ color: theme.navy }}>{med.daySupply}d</td>
+      <td className={`${cellCls} text-xs`} style={{ color: theme.navy }}>{fmtDate(med.lastFillDate)}</td>
+      <td className={`${cellCls} text-xs`} style={{ color: theme.navy }}>{fmtDate(dueDate)}</td>
+      <td className={cellCls}><RefillStatusBadge status={med.refillStatus} /></td>
+      <td className={`${cellCls} text-xs font-mono`} style={{ color: theme.navy }}>{med.rxNumber || '—'}</td>
+      <td className={`${cellCls} text-xs`} style={{ color: theme.navy }}>{med.refillsRemaining ?? '—'}</td>
+      <td className={`${cellCls} text-xs`} style={{ color: theme.navy }}>{med.pharmacyName || '—'}</td>
+    </tr>
+  )
+}
+
+const tableHeaders = ['Medication', 'On Hand', 'Prescribed Administration', 'Supply', 'Last Fill', 'Due', 'Status', 'RX #', 'Refills', 'Pharmacy']
+
+function MedicationTable({ medications, onSelect }: { medications: MedicationDTO[]; onSelect: (med: MedicationDTO) => void }) {
+  return (
+    <div className="overflow-x-auto rounded-xl border" style={{ borderColor: theme.bg }}>
+      <table className="w-full border-collapse">
+        <thead>
+          <tr style={{ background: theme.offWhite }}>
+            {tableHeaders.map(h => (
+              <th key={h} className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap" style={{ color: theme.sage }}>
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="bg-white">
+          {medications.map(med => (
+            <MedicationRow key={med.id} med={med} onClick={() => onSelect(med)} />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+// Side panel opened by clicking a row (or "+ Add Medication"). Owns the
+// read/edit toggle, refill workflow, delete, and drug-facts lookup — the one
+// place per medication where those actions live, keeping MedicationTable pure display.
+function MedicationDetailModal({ med, onAdd, onEdit, onConfirmRefill, onOrderRefill, onDelete, onClose, readOnly, pharmacies, onSearchDrugNames, onFetchDrugFacts }: {
+  med: MedicationDTO | null // null = "add new" mode
+  onAdd?: (data: MedicationInput) => Promise<void>
   onEdit: (id: string, data: MedicationInput) => Promise<void>
   onConfirmRefill: (id: string, refillDate: string, daySupply: string) => Promise<void>
   onOrderRefill: (id: string, orderedDate: string) => Promise<void>
   onDelete: (id: string) => Promise<void>
+  onClose: () => void
   readOnly?: boolean
   pharmacies?: PharmacyOption[]
   onSearchDrugNames?: DrugSearchFn
   onFetchDrugFacts?: DrugFactsFn
 }) {
-  const [editing, setEditing] = useState(false)
+  const [editing, setEditing] = useState(!med)
   const [showFacts, setShowFacts] = useState(false)
   const [factsLoading, setFactsLoading] = useState(false)
   const [facts, setFacts] = useState<DrugFactsResult>(null)
-  const dueDate = addDaysStr(med.lastFillDate.slice(0, 10), med.daySupply)
 
   async function handleShowFacts() {
-    if (!onFetchDrugFacts) return
+    if (!onFetchDrugFacts || !med) return
     setShowFacts(true)
     setFactsLoading(true)
     const result = await onFetchDrugFacts({ rxcui: med.rxcui, medicationName: med.medicationName })
@@ -548,106 +640,115 @@ function MedicationCard({ med, onEdit, onConfirmRefill, onOrderRefill, onDelete,
     setFactsLoading(false)
   }
 
-  const unitsPerDose = computeUnitsPerDose(med.dose, med.unitStrength)
-
-  if (editing) {
-    return (
-      <MedicationForm
-        initial={toFormValues(med)}
-        submitLabel="Save Changes"
-        onCancel={() => setEditing(false)}
-        onSubmit={async data => { await onEdit(med.id, data); setEditing(false) }}
-        pharmacies={pharmacies}
-        onSearchDrugNames={onSearchDrugNames}
-      />
-    )
-  }
+  const unitsPerDose = med ? computeUnitsPerDose(med.dose, med.unitStrength) : null
+  const dueDate = med ? addDaysStr(med.lastFillDate.slice(0, 10), med.daySupply) : null
 
   return (
-    <div className="rounded-xl border shadow-sm p-4 bg-white" style={{ borderColor: theme.bg }}>
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-bold text-base" style={{ color: theme.navy }}>{med.medicationName}</p>
-            <RefillStatusBadge status={med.refillStatus} />
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
+        {editing ? (
+          <MedicationForm
+            initial={med ? toFormValues(med) : emptyForm}
+            submitLabel={med ? 'Save Changes' : 'Add Medication'}
+            onCancel={() => (med ? setEditing(false) : onClose())}
+            onSubmit={async data => {
+              if (med) { await onEdit(med.id, data); setEditing(false) }
+              else { await onAdd?.(data); onClose() }
+            }}
+            pharmacies={pharmacies}
+            onSearchDrugNames={onSearchDrugNames}
+          />
+        ) : med && (
+          <>
+            <div className="flex items-start justify-between gap-2 mb-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="font-bold text-lg" style={{ color: theme.navy }}>{med.medicationName}</p>
+                <RefillStatusBadge status={med.refillStatus} />
+              </div>
+              {!readOnly && (
+                <div className="flex gap-2 shrink-0">
+                  <button onClick={() => setEditing(true)} className="text-xs font-semibold" style={{ color: theme.sage }}>Edit</button>
+                  <button onClick={async () => { await onDelete(med.id); onClose() }} className="text-xs font-semibold text-red-500">Delete</button>
+                </div>
+              )}
+            </div>
+
+            <p className="text-sm mb-1" style={{ color: theme.navy }}>{adminSentenceOf(med) || '—'}</p>
+            {onHandOf(med) && <p className="text-xs mb-3" style={{ color: theme.sage }}>{onHandOf(med)} on hand</p>}
+
             {onFetchDrugFacts && (
-              <button onClick={handleShowFacts} className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full border shrink-0" style={{ borderColor: theme.sage, color: theme.sage }}>
+              <button onClick={handleShowFacts} className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full border shrink-0 mb-3" style={{ borderColor: theme.sage, color: theme.sage }}>
                 Drug Facts
               </button>
             )}
-          </div>
-          <p className="text-xs" style={{ color: theme.sage }}>
-            {[med.dose, med.frequency].filter(Boolean).join(' · ') || '—'}
-            {med.unitStrength && ` · ${med.unitStrength} on hand`}
-          </p>
-        </div>
-        {!readOnly && (
-          <div className="flex gap-2 shrink-0">
-            <button onClick={() => setEditing(true)} className="text-xs font-semibold" style={{ color: theme.sage }}>Edit</button>
-            <button onClick={() => onDelete(med.id)} className="text-xs font-semibold text-red-500">Delete</button>
-          </div>
+
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs mb-3" style={{ color: theme.navy }}>
+              <div className="flex items-baseline gap-1 min-w-0">
+                <span className="uppercase tracking-wide text-[10px] shrink-0" style={{ color: theme.sage }}>Last Fill:</span>
+                <span className="font-semibold truncate">{fmtDate(med.lastFillDate)}</span>
+              </div>
+              <div className="flex items-baseline gap-1 min-w-0 flex-wrap">
+                <span className="uppercase tracking-wide text-[10px] shrink-0" style={{ color: theme.sage }}>Due:</span>
+                <span className="font-semibold truncate">{dueDate && fmtDate(dueDate)}</span>
+                {med.refillStatus === 'ordered' && med.refillOrderedAt && (
+                  <span className="text-[10px] font-semibold" style={{ color: refillStatusMeta.ordered.text }}>
+                    · Ordered {fmtDate(med.refillOrderedAt)}
+                  </span>
+                )}
+              </div>
+              {med.rxNumber && (
+                <div className="flex items-baseline gap-1 min-w-0">
+                  <span className="uppercase tracking-wide text-[10px] shrink-0" style={{ color: theme.sage }}>RX #:</span>
+                  <span className="font-semibold font-mono truncate">{med.rxNumber}</span>
+                </div>
+              )}
+              {med.refillsRemaining != null && (
+                <div className="flex items-baseline gap-1 min-w-0">
+                  <span className="uppercase tracking-wide text-[10px] shrink-0" style={{ color: theme.sage }}>Refills Left:</span>
+                  <span className="font-semibold">{med.refillsRemaining}</span>
+                </div>
+              )}
+              {unitsPerDose != null && (
+                <div className="flex items-baseline gap-1 min-w-0">
+                  <span className="uppercase tracking-wide text-[10px] shrink-0" style={{ color: theme.sage }}>Per Dose:</span>
+                  <span className="font-semibold">{fmtUnits(unitsPerDose)} unit(s)</span>
+                </div>
+              )}
+              {(med.pharmacyName || med.pharmacyAddress || med.pharmacyPhone) && (
+                <div className="col-span-2 flex items-baseline gap-1 flex-wrap">
+                  <span className="uppercase tracking-wide text-[10px] shrink-0" style={{ color: theme.sage }}>Pharmacy:</span>
+                  <span className="font-semibold">{[med.pharmacyName, med.pharmacyPhone].filter(Boolean).join(' · ')}</span>
+                  {med.pharmacyAddress && <span className="opacity-80">· {med.pharmacyAddress}</span>}
+                </div>
+              )}
+            </div>
+
+            {!readOnly && med.refillStatus !== 'filled' && (
+              <RefillActions med={med} onConfirmRefill={onConfirmRefill} onOrderRefill={onOrderRefill} />
+            )}
+
+            <button onClick={onClose} className="mt-4 w-full rounded-lg py-2 text-sm font-semibold border" style={{ borderColor: theme.bg, color: theme.sage }}>
+              Close
+            </button>
+
+            {showFacts && (
+              <DrugFactsModal
+                medicationName={med.medicationName}
+                facts={facts}
+                loading={factsLoading}
+                onClose={() => setShowFacts(false)}
+              />
+            )}
+          </>
         )}
       </div>
-
-      <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs mb-3" style={{ color: theme.navy }}>
-        <div className="flex items-baseline gap-1 min-w-0">
-          <span className="uppercase tracking-wide text-[10px] shrink-0" style={{ color: theme.sage }}>Last Fill:</span>
-          <span className="font-semibold truncate">{fmtDate(med.lastFillDate)}</span>
-        </div>
-        <div className="flex items-baseline gap-1 min-w-0 flex-wrap">
-          <span className="uppercase tracking-wide text-[10px] shrink-0" style={{ color: theme.sage }}>Due:</span>
-          <span className="font-semibold truncate">{fmtDate(dueDate)}</span>
-          {med.refillStatus === 'ordered' && med.refillOrderedAt && (
-            <span className="text-[10px] font-semibold" style={{ color: refillStatusMeta.ordered.text }}>
-              · Ordered {fmtDate(med.refillOrderedAt)}
-            </span>
-          )}
-        </div>
-        {med.rxNumber && (
-          <div className="flex items-baseline gap-1 min-w-0">
-            <span className="uppercase tracking-wide text-[10px] shrink-0" style={{ color: theme.sage }}>RX #:</span>
-            <span className="font-semibold font-mono truncate">{med.rxNumber}</span>
-          </div>
-        )}
-        {med.refillsRemaining != null && (
-          <div className="flex items-baseline gap-1 min-w-0">
-            <span className="uppercase tracking-wide text-[10px] shrink-0" style={{ color: theme.sage }}>Refills Left:</span>
-            <span className="font-semibold">{med.refillsRemaining}</span>
-          </div>
-        )}
-        {unitsPerDose != null && (
-          <div className="flex items-baseline gap-1 min-w-0">
-            <span className="uppercase tracking-wide text-[10px] shrink-0" style={{ color: theme.sage }}>Per Dose:</span>
-            <span className="font-semibold">{fmtUnits(unitsPerDose)} unit(s)</span>
-          </div>
-        )}
-        {(med.pharmacyName || med.pharmacyAddress || med.pharmacyPhone) && (
-          <div className="col-span-2 flex items-baseline gap-1 flex-wrap">
-            <span className="uppercase tracking-wide text-[10px] shrink-0" style={{ color: theme.sage }}>Pharmacy:</span>
-            <span className="font-semibold">{[med.pharmacyName, med.pharmacyPhone].filter(Boolean).join(' · ')}</span>
-            {med.pharmacyAddress && <span className="opacity-80">· {med.pharmacyAddress}</span>}
-          </div>
-        )}
-      </div>
-
-      {!readOnly && med.refillStatus !== 'filled' && (
-        <RefillActions med={med} onConfirmRefill={onConfirmRefill} onOrderRefill={onOrderRefill} />
-      )}
-
-      {showFacts && (
-        <DrugFactsModal
-          medicationName={med.medicationName}
-          facts={facts}
-          loading={factsLoading}
-          onClose={() => setShowFacts(false)}
-        />
-      )}
     </div>
   )
 }
 
 export default function MedicationList({ patientName, medications, onAdd, onEdit, onConfirmRefill, onOrderRefill, onDelete, readOnly, pharmacies, onSearchDrugNames, onFetchDrugFacts }: MedicationListProps) {
   const [adding, setAdding] = useState(false)
+  const [selected, setSelected] = useState<MedicationDTO | null>(null)
 
   return (
     <div className="space-y-3">
@@ -655,43 +756,33 @@ export default function MedicationList({ patientName, medications, onAdd, onEdit
         <p className="text-sm font-bold uppercase tracking-widest" style={{ color: theme.navy }}>
           {patientName}&rsquo;s Medications
         </p>
-        {!readOnly && !adding && (
+        {!readOnly && (
           <button onClick={() => setAdding(true)} className="text-xs font-semibold" style={{ color: theme.sage }}>
             + Add Medication
           </button>
         )}
       </div>
 
-      {adding && (
-        <MedicationForm
-          initial={emptyForm}
-          submitLabel="Add Medication"
-          onCancel={() => setAdding(false)}
-          onSubmit={async data => { await onAdd(data); setAdding(false) }}
-          pharmacies={pharmacies}
-          onSearchDrugNames={onSearchDrugNames}
-        />
-      )}
-
-      {medications.length === 0 && !adding ? (
+      {medications.length === 0 ? (
         <p className="text-sm italic" style={{ color: theme.sage }}>No medications on file yet.</p>
       ) : (
-        <div className="space-y-3">
-          {medications.map(med => (
-            <MedicationCard
-              key={med.id}
-              med={med}
-              onEdit={onEdit}
-              onConfirmRefill={onConfirmRefill}
-              onOrderRefill={onOrderRefill}
-              onDelete={onDelete}
-              readOnly={readOnly}
-              pharmacies={pharmacies}
-              onSearchDrugNames={onSearchDrugNames}
-              onFetchDrugFacts={onFetchDrugFacts}
-            />
-          ))}
-        </div>
+        <MedicationTable medications={medications} onSelect={setSelected} />
+      )}
+
+      {(adding || selected) && (
+        <MedicationDetailModal
+          med={selected}
+          onAdd={onAdd}
+          onEdit={onEdit}
+          onConfirmRefill={onConfirmRefill}
+          onOrderRefill={onOrderRefill}
+          onDelete={onDelete}
+          onClose={() => { setAdding(false); setSelected(null) }}
+          readOnly={readOnly}
+          pharmacies={pharmacies}
+          onSearchDrugNames={onSearchDrugNames}
+          onFetchDrugFacts={onFetchDrugFacts}
+        />
       )}
     </div>
   )

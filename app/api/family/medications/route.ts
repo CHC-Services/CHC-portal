@@ -45,7 +45,7 @@ export async function POST(req: Request) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { patientId, medicationName, rxcui, dose, unitStrength, frequency, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone } = body
+  const { patientId, medicationName, rxcui, dose, unitStrength, unitType, frequency, route, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone } = body
   if (!patientId) return NextResponse.json({ error: 'patientId required' }, { status: 400 })
   if (!await verifyGuardianLinked(session.id, patientId)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -62,7 +62,9 @@ export async function POST(req: Request) {
       rxcui: rxcui || null,
       dose: dose || null,
       unitStrength: unitStrength || null,
+      unitType: unitType || null,
       frequency: frequency || null,
+      route: route || null,
       daySupply: daySupply ? parseInt(daySupply, 10) : 30,
       lastFillDate: new Date(lastFillDate),
       rxNumber: rxNumber || null,
@@ -82,7 +84,7 @@ export async function PATCH(req: Request) {
   const session = auth(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { medId, medicationName, rxcui, dose, unitStrength, frequency, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone, active } = await req.json()
+  const { medId, medicationName, rxcui, dose, unitStrength, unitType, frequency, route, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone, active } = await req.json()
   if (!medId) return NextResponse.json({ error: 'medId required' }, { status: 400 })
 
   const existing = await (prisma.patientMedication.findUnique as any)({ where: { id: medId }, select: { patientId: true } })
@@ -95,7 +97,9 @@ export async function PATCH(req: Request) {
   if (rxcui !== undefined) data.rxcui = rxcui || null
   if (dose !== undefined) data.dose = dose || null
   if (unitStrength !== undefined) data.unitStrength = unitStrength || null
+  if (unitType !== undefined) data.unitType = unitType || null
   if (frequency !== undefined) data.frequency = frequency || null
+  if (route !== undefined) data.route = route || null
   if (daySupply !== undefined) data.daySupply = parseInt(daySupply, 10)
   if (lastFillDate !== undefined) data.lastFillDate = new Date(lastFillDate)
   if (rxNumber !== undefined) data.rxNumber = rxNumber || null

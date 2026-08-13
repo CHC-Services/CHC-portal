@@ -30,7 +30,7 @@ type NurseDocument = {
 export default function NurseDashboard() {
   const router = useRouter()
   const [entries, setEntries] = useState<TimeEntry[]>([])
-  const [invoiceSummary, setInvoiceSummary] = useState<{ totalDue: number; count: number; totalInvoices: number; totalPaid: number; accountTotal: number } | null>(null)
+  const [invoiceSummary, setInvoiceSummary] = useState<{ totalDue: number; count: number; totalInvoices: number; totalPaid: number; accountTotal: number; accountBalance: number } | null>(null)
   const [lastLoginAt, setLastLoginAt] = useState<string | null>(null)
   const [claimSummary, setClaimSummary] = useState<{ totalBilled: number; totalAllowed: number; totalPaid: number; avgPerHour: number | null; statusCounts: { submitted: number; pending: number; paid: number; denied: number } } | null>(null)
   const [documents, setDocuments] = useState<NurseDocument[]>([])
@@ -162,13 +162,21 @@ export default function NurseDashboard() {
                 </p>
               )}
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className={`grid grid-cols-2 gap-4 ${invoiceSummary.accountBalance > 0 ? 'md:grid-cols-6' : 'md:grid-cols-5'}`}>
               <div className="bg-[#F4F6F5] rounded-xl p-4 border-t-2 border-[#2F3E4E]">
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Account Total</p>
                 <p className="text-2xl font-black text-[#2F3E4E]">
                   ${invoiceSummary.accountTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
               </div>
+              {invoiceSummary.accountBalance > 0 && (
+                <div className="bg-[#F4F6F5] rounded-xl p-4 border-t-2 border-blue-400">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Account Balance</p>
+                  <p className="text-2xl font-black text-blue-600">
+                    ${invoiceSummary.accountBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                </div>
+              )}
               <div className="bg-[#F4F6F5] rounded-xl p-4 border-t-2 border-green-400">
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Paid to Date</p>
                 <p className="text-2xl font-black text-green-600">

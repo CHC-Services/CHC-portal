@@ -379,17 +379,23 @@ model ProviderCredit {
   id          String   @id @default(uuid())
   nurseId     String
   amount      Float // positive = credit, negative = charge/late fee
-  type        String // 'prompt_pay' | 'late_fee' | 'manual'
+  type        String // 'prompt_pay' | 'late_fee' | 'manual' | 'account_balance'
   description String?
   invoiceId   String?
+  // Links an 'account_balance' row to the Payment that created it (overpayment
+  // credit) or spent it (paid-via-balance debit), so deleting that payment can
+  // reverse the ledger entry instead of leaving a stale balance behind.
+  paymentId   String?
   appliedAt   DateTime @default(now())
   createdAt   DateTime @default(now())
 
   nurse   NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
   invoice Invoice?     @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  payment Payment?     @relation(fields: [paymentId], references: [id], onDelete: SetNull)
 
   @@index([nurseId])
   @@index([invoiceId])
+  @@index([paymentId])
 }
 
 model Payment {
@@ -397,11 +403,13 @@ model Payment {
   invoiceId     String
   receiptNumber String   @unique
   amount        Float
-  method        String? // Venmo | Zelle | CashApp | ApplePay | Cash | Check | ACH | Other
+  method        String? // Venmo | Zelle | CashApp | ApplePay | Cash | Check | ACH | Other | Account Balance
   note          String?
   s3Key         String?
   appliedAt     DateTime @default(now())
   invoice       Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  providerCredits ProviderCredit[]
 }
 
 model InvoiceActivity {
@@ -884,8 +892,10 @@ model PatientMedication {
   medicationName   String
   rxcui            String? // RxNorm concept id, captured from the typeahead selection — powers the drug-facts lookup (MedlinePlus Connect)
   dose             String? // prescribed dose per administration, e.g. "15mg"
-  unitStrength     String? // strength of the tablet/unit on hand, e.g. "10mg" — with dose, derives units-per-dose (e.g. 1.5 tablets)
-  frequency        String?
+  unitStrength     String? // on-hand strength/amount, e.g. "10mg" — with dose, derives units-per-dose (e.g. 1.5 tablets)
+  unitType         String? // on-hand form, e.g. "tablet", "capsule", "liquid", "spray"
+  frequency        String? // prescribed frequency, e.g. "twice daily", "BID"
+  route            String? // prescribed route of administration, e.g. "mouth", "G-Tube", "IM", "SQ"
   daySupply        Int      @default(30)
   lastFillDate     DateTime
   rxNumber         String?

@@ -65,6 +65,7 @@ export default function NurseInvoicesPage() {
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [effectiveTier, setEffectiveTier] = useState<'FREE' | 'BASIC' | 'PRO' | null>(null)
+  const [accountBalance, setAccountBalance] = useState(0)
 
   useEffect(() => {
     fetch('/api/nurse/plan', { credentials: 'include' })
@@ -77,6 +78,9 @@ export default function NurseInvoicesPage() {
       .then(r => r.json())
       .then(d => { if (Array.isArray(d)) setInvoices(d) })
       .finally(() => setLoading(false))
+    fetch('/api/nurse/account-balance', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : { balance: 0 })
+      .then(d => setAccountBalance(d.balance || 0))
   }, [])
 
   const fmt = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
@@ -131,11 +135,17 @@ export default function NurseInvoicesPage() {
           return (
             <div className="bg-white rounded-xl shadow-sm p-5 mb-6">
               <p className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] mb-4">Account Summary</p>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className={`grid grid-cols-2 gap-4 ${accountBalance > 0 ? 'md:grid-cols-6' : 'md:grid-cols-5'}`}>
                 <div className="bg-[#F4F6F5] rounded-xl p-4">
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Account Total</p>
                   <p className="text-2xl font-black text-[#2F3E4E]">{fmt2(accountTotal)}</p>
                 </div>
+                {accountBalance > 0 && (
+                  <div className="bg-[#F4F6F5] rounded-xl p-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Account Balance</p>
+                    <p className="text-2xl font-black text-blue-600">{fmt2(accountBalance)}</p>
+                  </div>
+                )}
                 <div className="bg-[#F4F6F5] rounded-xl p-4">
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-1">Paid to Date</p>
                   <p className="text-2xl font-black text-green-600">{fmt2(paidToDate)}</p>

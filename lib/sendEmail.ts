@@ -834,7 +834,7 @@ ${emailHeader('New Message')}
 
   <div style="border-left:3px solid #7A8F79;padding:2px 0 2px 16px;margin-bottom:22px">
     <p style="margin:0;font-size:12px;color:#4a5568 !important;line-height:1.6">
-      You can turn these email alerts off any time from your Profile — messages will still arrive in your inbox either way.
+      Getting too many email alerts? You can turn message notifications anytime from your profile settings — messages will still arrive in your portal inbox.
     </p>
   </div>
 </div>

@@ -36,6 +36,10 @@ if (!session || session.role !== 'admin') return NextResponse.json({ error: 'Una
 2. `npx prisma migrate resolve --applied <migration_name>`
 3. `npx prisma generate`
 
+New migration files always go directly under `prisma/migrations/<name>/migration.sql` — never move or create anything under `prisma/migrations/Already_Ran_Archived/`; Alex moves a migration there himself once he's run it, as his own applied-vs-pending tracker.
+
+**RLS** — every table in this project has Row Level Security enabled (Supabase auto-exposes every table via its public PostgREST API regardless of whether the app's own code calls it, and RLS is what blocks anon-key access to that API; Prisma's `DATABASE_URL` connection bypasses RLS, so this doesn't affect the app itself). Any `CREATE TABLE` in a new migration must include a matching `ALTER TABLE "TableName" ENABLE ROW LEVEL SECURITY;` right after it — no policies needed unless a specific one is requested.
+
 ## Design System
 - Navy: `#2F3E4E`, Sage: `#7A8F79`, Blue-grey bg: `#D9E1E8`, Off-white: `#F4F6F5`
 - Brand name: **myProvider** (not myPortal) — italic sage "my" prefix on all portal labels

@@ -28,7 +28,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { title, storageKey, fileName, fileSize, mimeType, category } = await req.json()
+  const { title, storageKey, fileName, fileSize, mimeType, category, orderDate, orderEndDate, providerName, specialty, orderNotes } = await req.json()
   if (!title || !storageKey || !fileName) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
@@ -36,6 +36,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const document = await confirmPatientDocument({
     patientId: id, storageKey, fileName, title, category, fileSize, mimeType,
     uploadedByUserId: session.id, uploadedByRole: 'guardian',
+    orderDate, orderEndDate, providerName, specialty, orderNotes,
   })
 
   return NextResponse.json({ ok: true, document })

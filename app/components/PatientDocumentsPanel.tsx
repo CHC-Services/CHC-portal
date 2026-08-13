@@ -24,21 +24,18 @@ function fmtSize(bytes: number | null) {
 const inp = 'w-full border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]'
 
 export default function PatientDocumentsPanel({
-  patientId, basePath, canDeleteAny, uploaderId = '',
-  fixedCategory, excludeCategory, label = 'Document',
+  patientId, basePath, canDeleteAny, uploaderId = '', excludeCategory,
 }: {
   patientId: string
   basePath: string // e.g. `/api/nurse/patients/${id}/documents`
   canDeleteAny: boolean
   uploaderId?: string // required only when canDeleteAny is false
-  fixedCategory?: string // when set, uploads always use this category and the list shows only this category (category input hidden)
-  excludeCategory?: string // when set, the list hides documents with this category (used by the general Documents tab to keep fixedCategory tabs like Orders out)
-  label?: string // singular noun for copy, e.g. 'Document' vs 'Order'
+  excludeCategory?: string // when set, the list hides documents with this category (keeps Orders out of the general Documents tab)
 }) {
   const [documents, setDocuments] = useState<PatientDocument[]>([])
   const [loading, setLoading] = useState(true)
   const [title, setTitle] = useState('')
-  const [category, setCategory] = useState(fixedCategory || 'General')
+  const [category, setCategory] = useState('General')
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [message, setMessage] = useState('')
@@ -51,11 +48,9 @@ export default function PatientDocumentsPanel({
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data.documents)) {
-          const filtered = fixedCategory
-            ? data.documents.filter((d: PatientDocument) => d.category === fixedCategory)
-            : excludeCategory
-              ? data.documents.filter((d: PatientDocument) => d.category !== excludeCategory)
-              : data.documents
+          const filtered = excludeCategory
+            ? data.documents.filter((d: PatientDocument) => d.category !== excludeCategory)
+            : data.documents
           setDocuments(filtered)
         }
         setLoading(false)
@@ -105,9 +100,9 @@ export default function PatientDocumentsPanel({
       })
       const confirmData = await confirmRes.json()
       if (confirmData.ok) {
-        setMessage(`${label} uploaded.`)
+        setMessage('Document uploaded.')
         setMessageIsError(false)
-        setTitle(''); setCategory(fixedCategory || 'General'); setFile(null)
+        setTitle(''); setCategory('General'); setFile(null)
         refresh()
       } else {
         setMessage(confirmData.error || 'File uploaded but record not saved.')
@@ -144,14 +139,12 @@ export default function PatientDocumentsPanel({
   return (
     <div className="space-y-4">
       <form onSubmit={handleUpload} className="bg-[#F4F6F5] rounded-xl p-3 space-y-2">
-        <input value={title} onChange={e => setTitle(e.target.value)} placeholder={`${label} title`} className={inp} required />
-        {!fixedCategory && (
-          <input value={category} onChange={e => setCategory(e.target.value)} placeholder="Category (e.g. Care Plan, PA Letter)" className={inp} />
-        )}
+        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Document title" className={inp} required />
+        <input value={category} onChange={e => setCategory(e.target.value)} placeholder="Category (e.g. Care Plan, PA Letter)" className={inp} />
         <input type="file" onChange={e => setFile(e.target.files?.[0] || null)} className="text-xs text-[#2F3E4E]" required />
         <button type="submit" disabled={uploading || !file || !title.trim()}
           className="w-full bg-[#2F3E4E] text-white text-xs font-semibold py-1.5 rounded-lg hover:bg-[#7A8F79] transition disabled:opacity-50">
-          {uploading ? 'Uploading…' : `Upload ${label}`}
+          {uploading ? 'Uploading…' : 'Upload Document'}
         </button>
         {message && <p className={`text-[10px] ${messageIsError ? 'text-red-500' : 'text-green-600'}`}>{message}</p>}
       </form>
@@ -159,7 +152,7 @@ export default function PatientDocumentsPanel({
       {loading ? (
         <p className="text-xs text-[#7A8F79]">Loading…</p>
       ) : documents.length === 0 ? (
-        <p className="text-xs text-[#7A8F79] italic">No {label.toLowerCase()}s on file.</p>
+        <p className="text-xs text-[#7A8F79] italic">No documents on file.</p>
       ) : (
         <div className="space-y-2">
           {documents.map(d => {

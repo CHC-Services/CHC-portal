@@ -76,6 +76,7 @@ model NurseProfile {
   medicaidNumber String?
   etin           String? // Electronic Transmitter Identification Number (3-4 chars)
   epacesUserId   String? // ePaces system user ID
+  credentials    String? // e.g. "RN", "LPN" — shown on the "Recorded by" note on patient orders
 
   // Business provider — admin-managed, conditional
   hasBusinessProvider Boolean @default(false)
@@ -566,6 +567,14 @@ model PatientDocument {
   reminderSentAt   DateTime? // set once the expiration reminder fires
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+
+  // Orders-category fields only (category === "Orders") — plain text dates
+  // to match the dob/paStartDate convention elsewhere in this schema.
+  orderDate    String?
+  orderEndDate String?
+  providerName String?
+  specialty    String?
+  orderNotes   String?
 
   @@index([patientId])
   @@index([expiresAt])

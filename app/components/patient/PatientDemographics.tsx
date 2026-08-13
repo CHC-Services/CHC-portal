@@ -74,16 +74,7 @@ export default function PatientDemographics({
           <Row label="Minor" value={isMinorByAge ? 'Yes (by date of birth)' : null} />
           {!isMinorByAge && <Row label="Guardian on File" value={data.isMinor ? 'Yes' : null} />}
           <Row label="High-Tech" value={data.highTech ? 'Yes' : null} />
-          {data.linkedSpecialties && data.linkedSpecialties.length > 0 && (
-            <div className="flex gap-2 text-sm py-1">
-              <span className="text-[#7A8F79] w-32 shrink-0">Linked Specialties</span>
-              <div className="flex flex-wrap gap-1.5">
-                {data.linkedSpecialties.map(s => (
-                  <span key={s} className="text-xs font-semibold text-[#2F3E4E] bg-[#F4F6F5] border border-[#D9E1E8] rounded-full px-2.5 py-0.5">{s}</span>
-                ))}
-              </div>
-            </div>
-          )}
+          <Row label="Linked Specialties" value={data.linkedSpecialties && data.linkedSpecialties.length > 0 ? data.linkedSpecialties.join(', ') : null} />
         </div>
         <div>
           <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-2 pb-1 border-b border-[#D9E1E8]">Address</p>

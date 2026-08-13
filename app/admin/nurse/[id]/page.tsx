@@ -1188,6 +1188,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                 <Field label="Phone"          field="phone"         profile={profile} setProfile={setProfile} editing={editingProfile} type="tel" />
                 <Field label="Email"          field="user.email"    profile={profile} setProfile={setProfile} editing={editingProfile} type="email" />
               </div>
+              <Field label="Credentials (e.g. RN, LPN)" field="credentials" profile={profile} setProfile={setProfile} editing={editingProfile} />
               <Field label="Home Address"     field="address"       profile={profile} setProfile={setProfile} editing={editingProfile} />
               <div className="grid grid-cols-3 gap-3">
                 <Field label="City"           field="city"          profile={profile} setProfile={setProfile} editing={editingProfile} />

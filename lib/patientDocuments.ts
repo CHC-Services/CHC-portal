@@ -23,6 +23,7 @@ export async function presignPatientDocument({
 
 export async function confirmPatientDocument({
   patientId, storageKey, fileName, title, category, fileSize, mimeType, uploadedByUserId, uploadedByRole,
+  orderDate, orderEndDate, providerName, specialty, orderNotes,
 }: {
   patientId: string
   storageKey: string
@@ -33,6 +34,11 @@ export async function confirmPatientDocument({
   mimeType?: string | null
   uploadedByUserId: string
   uploadedByRole: 'nurse' | 'admin' | 'guardian'
+  orderDate?: string | null
+  orderEndDate?: string | null
+  providerName?: string | null
+  specialty?: string | null
+  orderNotes?: string | null
 }) {
   return (prisma.patientDocument.create as any)({
     data: {
@@ -45,12 +51,17 @@ export async function confirmPatientDocument({
       mimeType: mimeType ?? null,
       uploadedByUserId,
       uploadedByRole,
+      orderDate: orderDate || null,
+      orderEndDate: orderEndDate || null,
+      providerName: providerName || null,
+      specialty: specialty || null,
+      orderNotes: orderNotes || null,
     },
   })
 }
 
 export async function listPatientDocuments(patientId: string) {
-  return (prisma.patientDocument.findMany as any)({
+  const docs = await (prisma.patientDocument.findMany as any)({
     where: { patientId },
     orderBy: { createdAt: 'desc' },
     select: {
@@ -64,9 +75,42 @@ export async function listPatientDocuments(patientId: string) {
       createdAt: true,
       uploadedByUserId: true,
       uploadedByRole: true,
+      orderDate: true,
+      orderEndDate: true,
+      providerName: true,
+      specialty: true,
+      orderNotes: true,
       // storageKey intentionally excluded — never sent to client
     },
   })
+
+  // "Recorded by" note: only for docs uploaded by a nurse who is still an
+  // active member of this patient's care team — not just anyone who once uploaded one.
+  const nurseUploaderUserIds = [...new Set(
+    docs.filter((d: any) => d.uploadedByRole === 'nurse').map((d: any) => d.uploadedByUserId)
+  )]
+  if (nurseUploaderUserIds.length) {
+    const nurseProfiles = await (prisma.nurseProfile.findMany as any)({
+      where: { userId: { in: nurseUploaderUserIds } },
+      select: { id: true, userId: true, firstName: true, lastName: true, displayName: true, credentials: true },
+    })
+    const activeLinks = await (prisma.nursePatient.findMany as any)({
+      where: { patientId, nurseId: { in: nurseProfiles.map((p: any) => p.id) }, isActive: true },
+      select: { nurseId: true },
+    })
+    const activeNurseIds = new Set(activeLinks.map((l: any) => l.nurseId))
+    const profileByUserId = new Map(nurseProfiles.map((p: any) => [p.userId, p]))
+
+    for (const doc of docs) {
+      if (doc.uploadedByRole !== 'nurse') continue
+      const np = profileByUserId.get(doc.uploadedByUserId) as any
+      if (!np || !activeNurseIds.has(np.id)) continue
+      const name = np.firstName && np.lastName ? `${np.firstName} ${np.lastName[0]}.` : np.displayName
+      doc.recordedBy = name + (np.credentials ? `, ${np.credentials}` : '')
+    }
+  }
+
+  return docs
 }
 
 export async function getPatientDocumentDownloadUrl(docId: string, patientId: string) {

@@ -6,6 +6,7 @@ import Tabs from '../../components/Tabs'
 import AppearanceControls from '../../components/AppearanceControls'
 import { Row } from '../../components/ReadOnlyField'
 import GuardianInviteModal from '../../components/GuardianInviteModal'
+import MessagingPrefToggle from '../../components/MessagingPrefToggle'
 import ProfileDemographicsCard from '../../components/profile/ProfileDemographicsCard'
 
 type LinkedPatient = {
@@ -453,6 +454,13 @@ export default function FamilyProfilePage() {
             gives you a backup if one service is temporarily unavailable.
           </p>
 
+
+          {/* Messaging */}
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <p className="font-bold text-[#2F3E4E] text-sm mb-1">Messaging</p>
+            <p className="text-xs text-[#7A8F79] leading-relaxed mb-4">Email alerts for new messages you receive on the portal.</p>
+            <MessagingPrefToggle />
+          </div>
 
           {/* Change email */}
           <form onSubmit={saveEmail} className="bg-white rounded-2xl shadow-sm p-6">

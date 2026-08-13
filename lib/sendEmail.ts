@@ -773,6 +773,86 @@ ${emailFooter('support@cominghomecare.com')}
   }
 }
 
+export async function sendNewMessageNotification({
+  recipientEmail,
+  recipientName,
+  senderName,
+  subject,
+  preview,
+  messageUrl,
+}: {
+  recipientEmail: string
+  recipientName: string
+  senderName: string
+  subject: string
+  preview: string
+  messageUrl: string
+}): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) return false
+  const resend = createLoggedResend('alert', recipientName)
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to: recipientEmail,
+      replyTo: 'support@cominghomecare.com',
+      subject: `New message from ${senderName}${subject ? ` — ${subject}` : ''}`,
+      html: `
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background:#D9E1E8 !important;font-family:'Helvetica Neue',Arial,sans-serif;color:#2F3E4E !important">
+<div style="padding:36px 16px;background:#D9E1E8 !important">
+<div style="max-width:560px;margin:0 auto;background:#ffffff !important;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(47,62,78,0.13)">
+
+${emailHeader('New Message')}
+
+<div style="padding:26px 32px 0;background:#ffffff !important">
+  <p style="margin:0 0 4px;font-size:10px;color:#7A8F79 !important;text-transform:uppercase;letter-spacing:2px;font-weight:700">Hello,</p>
+  <p style="margin:0 0 18px;font-size:22px;font-weight:800;color:#2F3E4E !important;line-height:1.2">${recipientName}</p>
+  <p style="margin:0 0 20px;font-size:14px;color:#4a5568 !important;line-height:1.65">
+    You have a new message from <strong style="color:#2F3E4E !important">${senderName}</strong> on
+    <span style="font-style:italic;color:#2F3E4E !important;font-family:Georgia,serif">Coming Home</span><span style="color:#7A8F79 !important;font-weight:600">care</span>.
+  </p>
+
+  <div style="border-radius:14px;overflow:hidden;margin-bottom:22px">
+    <div style="background:#2F3E4E !important;padding:16px 20px">
+      <p style="margin:0 0 4px;font-size:9px;color:#7A8F79 !important;text-transform:uppercase;letter-spacing:2.5px;font-weight:700">${subject ? 'Subject' : 'Message'}</p>
+      <p style="margin:0;font-size:14px;font-weight:700;color:#ffffff !important;line-height:1.35">${subject || preview}</p>
+    </div>
+    ${subject ? `<div style="background:#D9E1E8 !important;padding:14px 20px">
+      <p style="margin:0;font-size:12px;color:#2F3E4E !important;line-height:1.5">${preview}</p>
+    </div>` : ''}
+  </div>
+
+  <table style="width:100%;border-collapse:collapse;margin-bottom:28px">
+    <tr><td style="text-align:center">
+      <a href="${messageUrl}" style="display:inline-block;background:#2F3E4E !important;color:#ffffff !important;text-decoration:none;padding:13px 36px;border-radius:10px;font-size:14px;font-weight:700;letter-spacing:0.5px">
+        Read Message &rarr;
+      </a>
+    </td></tr>
+  </table>
+
+  <div style="border-left:3px solid #7A8F79;padding:2px 0 2px 16px;margin-bottom:22px">
+    <p style="margin:0;font-size:12px;color:#4a5568 !important;line-height:1.6">
+      You can turn these email alerts off any time from your Profile — messages will still arrive in your inbox either way.
+    </p>
+  </div>
+</div>
+
+${emailFooter('support@cominghomecare.com')}
+
+</div>
+</div>
+</body>
+</html>
+      `,
+    })
+    return !error
+  } catch {
+    return false
+  }
+}
+
 export async function sendNewClaimAlert({
   nurseEmail,
   nurseName,

@@ -3,6 +3,7 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
+import UnreadBadge from './messaging/UnreadBadge'
 
 const links = [
   { href: '/nurse',           label: 'Dashboard' },
@@ -13,6 +14,7 @@ const links = [
   { href: '/nurse/invoices',  label: 'Invoices'  },
   { href: '/nurse/tax-report', label: 'Tax Summary' },
   { href: '/nurse/documents', label: 'Documents' },
+  { href: '/nurse/messaging', label: 'Messaging' },
   { href: '/nurse/profile',    label: 'Profile'    },
   { href: '/care',             label: 'Wellness'       },
   { href: '/nurse/appearance', label: 'Settings' },
@@ -66,6 +68,7 @@ function NurseSideNavInner() {
           const onClaimsPath = pathname === '/nurse/claims'
           const active = link.label === 'Payments' ? (onClaimsPath && onPayLogTab)
             : link.label === 'Claims' ? (onClaimsPath && !onPayLogTab)
+            : link.label === 'Messaging' ? (pathname === link.href || pathname.startsWith(link.href + '/'))
             : pathname === link.href
           return (
             <div key={link.href}>
@@ -103,6 +106,9 @@ function NurseSideNavInner() {
                   my
                 </span>
                 {link.label}
+                {link.label === 'Messaging' && (
+                  <span className="ml-1.5 inline-flex"><UnreadBadge /></span>
+                )}
               </Link>
             </div>
           )

@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import AdminNav from '../../components/AdminNav'
+import UnreadBadge from '../../components/messaging/UnreadBadge'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Nurse = {
@@ -912,6 +914,17 @@ If you have any questions about your hours or billing, reply to this email and w
                   )}
                 </div>
               </div>
+
+              {/* adInbox — peer-to-peer messaging, distinct from the broadcast tools above */}
+              <Link href="/admin/email/inbox" className="block bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition">
+                <div className="bg-[#2F3E4E] px-4 py-3 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-sm font-bold text-white"><span className="text-[#7A8F79] italic">ad</span>Inbox</h2>
+                    <p className="text-[11px] text-[#D9E1E8] mt-0.5">Message other users directly</p>
+                  </div>
+                  <UnreadBadge />
+                </div>
+              </Link>
 
               {/* Sent Communications */}
               <div className="bg-white rounded-xl shadow-sm overflow-hidden">

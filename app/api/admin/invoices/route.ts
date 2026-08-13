@@ -117,8 +117,11 @@ export async function POST(req: Request) {
   // every later print/email/view reuses instead of re-rendering its own copy.
   const { url: pdfUrl } = await getOrCreateInvoicePdf(invoice.id)
 
-  // Send email with the stored PDF attached
-  await sendInvoiceEmail({
+  // Send email with the stored PDF attached — fire-and-forget so a slow or
+  // failed Resend call can't hang the response for an invoice that has
+  // already been created successfully at this point (matches the pattern
+  // used for other action-triggered emails, e.g. sendNewDocumentAlert).
+  sendInvoiceEmail({
     to: nurse.user.email,
     pdfUrl,
     invoiceNumber,
@@ -161,7 +164,7 @@ export async function POST(req: Request) {
       invoiceFeeAmt: e.invoiceFeeAmt ?? 0,
     })),
     notes: notes || undefined,
-  })
+  }).catch(err => console.error('Invoice email failed to send:', err))
 
   return NextResponse.json(invoice)
 }

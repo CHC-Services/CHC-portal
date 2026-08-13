@@ -42,9 +42,16 @@ model User {
   passwordResetExpiry DateTime?
   lastLoginAt         DateTime?
 
-  nurseProfile  NurseProfile?
-  guardianLinks GuardianPatient[]
-  createdAt     DateTime          @default(now())
+  // Peer-to-peer messaging — email alert on new message (receiving itself
+  // can't be opted out of, only whether the nav badge shows a count or a
+  // plain dot; see Message/MessageRecipient below).
+  notifyNewMessage Boolean @default(true)
+
+  nurseProfile      NurseProfile?
+  guardianLinks     GuardianPatient[]
+  sentMessages      Message[]          @relation("MessageSender")
+  messageRecipients MessageRecipient[]
+  createdAt         DateTime           @default(now())
 }
 
 model NurseProfile {
@@ -454,6 +461,49 @@ model PortalMessage {
   updatedAt DateTime @updatedAt
 
   @@index([createdAt])
+}
+
+// Peer-to-peer messaging (distinct from PortalMessage above, which is a
+// one-way admin broadcast). Any user can message any other user, 1:1 or
+// group. Folder membership (Inbox/Drafts/Sent/Saved/Trash) is derived at
+// query time from the flags below, not stored as an enum.
+model Message {
+  id                String    @id @default(uuid())
+  senderId          String? // nullable + SetNull below — a deleted sender's messages survive
+  senderName        String // snapshot at send time, so display still works after sender deletion
+  subject           String?
+  body              String    @default("")
+  isDraft           Boolean   @default(true)
+  draftRecipientIds String[]  @default([]) // recipient picker state while isDraft=true only
+  patientId         String? // plain pointer, no FK — "message this patient's care team" context tag
+  inReplyToId       String? // plain pointer, no FK — single-level "in reply to", same pattern as Claim.resubmissionOf
+  sentAt            DateTime?
+  senderSavedAt     DateTime? // sender's own "Saved" flag on their Sent copy
+  senderTrashedAt   DateTime? // sender's own "Trash" flag on their Sent copy
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  sender     User?              @relation("MessageSender", fields: [senderId], references: [id], onDelete: SetNull)
+  recipients MessageRecipient[]
+
+  @@index([senderId])
+  @@index([sentAt])
+}
+
+model MessageRecipient {
+  id        String    @id @default(uuid())
+  messageId String
+  userId    String
+  readAt    DateTime?
+  savedAt   DateTime?
+  trashedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([userId, readAt])
 }
 
 model AdminIdea {

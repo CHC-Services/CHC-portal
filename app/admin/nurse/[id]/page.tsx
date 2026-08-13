@@ -1586,7 +1586,14 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                     body: JSON.stringify({ receiveNotifications: next }),
                   })
                   setNotifSaving(false)
-                  if (res.ok) setNotifEnabled(next)
+                  if (res.ok) {
+                    setNotifEnabled(next)
+                    // Keep the full profile snapshot in sync too — otherwise the
+                    // next unrelated "Save Changes" click PATCHes the whole
+                    // (stale) profile object and silently reverts this toggle.
+                    setProfile((p: any) => ({ ...p, receiveNotifications: next }))
+                    setProfileSnapshot((p: any) => ({ ...p, receiveNotifications: next }))
+                  }
                 }}
                 className={`shrink-0 ml-4 px-4 py-2 rounded-lg text-sm font-semibold transition disabled:opacity-50 ${
                   notifEnabled

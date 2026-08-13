@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import PortalMessages from '../../components/PortalMessages'
+import MessagingPrefToggle from '../../components/MessagingPrefToggle'
 import ProfileDemographicsCard from '../../components/profile/ProfileDemographicsCard'
 import ProfileBillingInfoCard from '../../components/profile/ProfileBillingInfoCard'
 import ProfileBankingCard from '../../components/profile/ProfileBankingCard'
@@ -484,6 +485,10 @@ function NotifPrefsBlock({ profile, setProfile }: { profile: any; setProfile: (p
             />
           ))}
         </div>
+      </div>
+      <div className="pt-4 border-t border-[#D9E1E8]">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7A8F79] mb-3">Messaging</p>
+        <MessagingPrefToggle />
       </div>
     </div>
   )

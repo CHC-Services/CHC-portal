@@ -2,12 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import UnreadBadge from './messaging/UnreadBadge'
 
 const links = [
   { href: '/family',            label: 'Dashboard' },
   { href: '/family/patients',   label: 'Patients'  },
   { href: '/family/reminders',  label: 'Reminders' },
   { href: '/family/documents',  label: 'Documents' },
+  { href: '/family/messaging',  label: 'Messaging' },
   { href: '/family/profile',    label: 'Profile'    },
   { href: '/family/medications', label: 'Medications', noPrefix: true },
   { href: '/family/insurance',   label: 'Insurances',  noPrefix: true },
@@ -49,7 +51,9 @@ export default function FamilySideNav() {
       {/* Nav links */}
       <nav className="flex flex-col gap-0.5 p-1.5">
         {links.map((link) => {
-          const active = pathname === link.href
+          const active = link.label === 'Messaging'
+            ? (pathname === link.href || pathname.startsWith(link.href + '/'))
+            : pathname === link.href
           return (
             <div key={link.href}>
               {DIVIDERS_BEFORE.has(link.label) && (
@@ -88,6 +92,9 @@ export default function FamilySideNav() {
                   </span>
                 )}
                 {link.label}
+                {link.label === 'Messaging' && (
+                  <span className="ml-1.5 inline-flex"><UnreadBadge /></span>
+                )}
               </Link>
             </div>
           )

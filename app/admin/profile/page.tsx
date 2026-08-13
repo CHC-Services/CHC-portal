@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import ProfileDemographicsCard from '../../components/profile/ProfileDemographicsCard'
 import ProfileBillingInfoCard from '../../components/profile/ProfileBillingInfoCard'
 import ProfileBankingCard from '../../components/profile/ProfileBankingCard'
+import MessagingPrefToggle from '../../components/MessagingPrefToggle'
 
 export default function AdminProfilePage() {
   const router = useRouter()
@@ -83,6 +84,11 @@ export default function AdminProfilePage() {
           </form>
         )}
         {visibleCards.includes('banking') && <ProfileBankingCard data={profile} />}
+        <div className="bg-white rounded-xl shadow p-6">
+          <p className="font-bold text-[#2F3E4E] text-sm mb-1">Messaging</p>
+          <p className="text-xs text-[#7A8F79] leading-relaxed mb-4">Email alerts for new messages you receive on the portal.</p>
+          <MessagingPrefToggle />
+        </div>
       </div>
     </div>
   )

@@ -6,6 +6,7 @@ import { calcMedicaidCycleInfo, payCycleDateLabel } from '../../../lib/medicaidP
 import { formalName } from '../../../lib/formatName'
 import { excludedClaimIds as totalsExcludedClaimIds } from '../../../lib/claimTotals'
 import DateInput from '../../components/DateInput'
+import CarcLookupModal from '../../components/CarcLookupModal'
 
 const CLAIM_STAGES = [
   'Draft', 'INS-1 Submitted', 'Resubmitted', 'Adjusted', 'Pending', 'Info Requested',
@@ -1772,6 +1773,7 @@ export default function AdminClaimsPage() {
             <p className="text-sm text-[#7A8F79] mt-0.5">Import from CSV or manage claims below.</p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
+            <CarcLookupModal showAdminTools />
             <button
               onClick={toggleBulkMode}
               disabled={bulkModeLoading}

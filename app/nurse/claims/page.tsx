@@ -6,6 +6,7 @@ import PortalMessages from '../../components/PortalMessages'
 import { payCycleDateLabel, calcMedicaidCycleInfo } from '../../../lib/medicaidPayCycle'
 import { activeClaims } from '../../../lib/claimTotals'
 import DateInput from '../../components/DateInput'
+import CarcLookupModal from '../../components/CarcLookupModal'
 
 // ── Search helper — checks every string/number field on a claim ──────────────
 function claimMatchesSearch(c: Claim, q: string): boolean {
@@ -960,11 +961,14 @@ function NurseClaimsPageInner() {
 
       <div className="max-w-4xl mx-auto">
 
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-[#2F3E4E]">
-            <span className="text-[#7A8F79] italic">my</span>Claims
-          </h1>
-          <p className="text-sm text-[#7A8F79] mt-1">View the status of your submitted billing claims.</p>
+        <div className="mb-6 flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <h1 className="text-3xl font-bold text-[#2F3E4E]">
+              <span className="text-[#7A8F79] italic">my</span>Claims
+            </h1>
+            <p className="text-sm text-[#7A8F79] mt-1">View the status of your submitted billing claims.</p>
+          </div>
+          <CarcLookupModal />
         </div>
 
         {/* Tab switcher */}

@@ -574,6 +574,29 @@ model FaqItem {
   updatedAt   DateTime @updatedAt
 }
 
+// X12 Claim Adjustment Reason Codes — the standard codes payers use on
+// EOBs/835 remittances to explain a claim adjustment (e.g. "45: Charge
+// exceeds fee schedule..."). Seeded from https://x12.org/codes/claim-adjustment-reason-codes
+// (2026-08-12 snapshot); source-of-record for lookups on the claims pages and
+// for the generated reference PDF linked from the FAQ. Deactivated codes are
+// kept (not deleted) since old EOBs may still reference them, often with a
+// `notes` pointer to the code that replaced them.
+model CarcCode {
+  id           String    @id @default(uuid())
+  code         String    @unique // e.g. "45", "A1", "W8"
+  description  String
+  active       Boolean   @default(true)
+  startDate    DateTime?
+  lastModified DateTime?
+  stopDate     DateTime?
+  notes        String? // e.g. "Use code P19" — replacement pointer on deactivated codes
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active])
+}
+
 model PromptPayDocument {
   id        String   @id @default(uuid())
   claimRef  String // claimId text e.g. "CLM-0042"

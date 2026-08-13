@@ -269,7 +269,7 @@ function MedicationForm({ initial, onSubmit, onCancel, submitLabel, pharmacies =
       <div className="flex gap-2">
         <div className="relative flex-1 min-w-0">
           <input
-            placeholder="On-hand medication name"
+            placeholder="Medication Name"
             value={form.medicationName}
             onChange={handleMedicationNameChange}
             onKeyDown={handleMedicationKeyDown}
@@ -316,14 +316,14 @@ function MedicationForm({ initial, onSubmit, onCancel, submitLabel, pharmacies =
             </div>
           )}
         </div>
-        <input placeholder="On-hand dose (e.g. 10mg)" value={form.unitStrength} onChange={set('unitStrength')} className={`${narrowCls} w-28`} style={inputStyle} />
-        <input placeholder="On-hand type (e.g. tablet)" value={form.unitType} onChange={set('unitType')} className={`${narrowCls} w-32`} style={inputStyle} />
+        <input placeholder="Dose (e.g. 10mg)" value={form.unitStrength} onChange={set('unitStrength')} className={`${narrowCls} w-28`} style={inputStyle} />
+        <input placeholder="Dose Form (e.g. tablet)" value={form.unitType} onChange={set('unitType')} className={`${narrowCls} w-32`} style={inputStyle} />
       </div>
 
       <div>
         <label className="block text-[10px] uppercase tracking-wide mb-1" style={{ color: theme.sage }}>Prescribed Administration</label>
         <div className="flex flex-wrap items-center gap-1.5 text-sm" style={{ color: theme.navy }}>
-          <span>Administer</span>
+          <span><em>SIG:</em>Administer</span>
           <input placeholder="Dose (e.g. 81mg)" value={form.dose} onChange={set('dose')} className={`${narrowCls} w-24`} style={inputStyle} />
           <input placeholder="Frequency (e.g. twice daily)" value={form.frequency} onChange={set('frequency')} className={`${narrowCls} w-36`} style={inputStyle} />
           <span>via</span>

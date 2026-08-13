@@ -150,100 +150,104 @@ export default function PatientOrders({
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
-      <form onSubmit={handleUpload} className="bg-[#F4F6F5] rounded-xl p-3 space-y-2">
-        <div className="grid grid-cols-3 gap-2">
-          <div>
-            <label className={lbl}>Order Title *</label>
-            <input value={title} onChange={e => setTitle(e.target.value)} className={inp} required />
+    <div className="space-y-5">
+      <div className="bg-white rounded-2xl shadow-sm p-6">
+        <form onSubmit={handleUpload} className="bg-[#F4F6F5] rounded-xl p-3 space-y-2">
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <label className={lbl}>Order Title *</label>
+              <input value={title} onChange={e => setTitle(e.target.value)} className={inp} required />
+            </div>
+            <div>
+              <label className={lbl}>Order Date *</label>
+              <DateInput value={orderDate} onChange={e => setOrderDate(e.target.value)} className={inp} required />
+            </div>
+            <div>
+              <label className={lbl}>End Date</label>
+              <DateInput value={orderEndDate} onChange={e => setOrderEndDate(e.target.value)} className={inp} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className={lbl}>Provider Name</label>
+              <input value={providerName} onChange={e => setProviderName(e.target.value)} placeholder="e.g. Dr. Smith" className={inp} />
+            </div>
+            <div>
+              <label className={lbl}>Related Specialty *</label>
+              <select value={specialty} onChange={e => setSpecialty(e.target.value)} className={inp} required>
+                <option value="">Select…</option>
+                {MEDICAL_SPECIALTIES.map(s => <option key={s}>{s}</option>)}
+              </select>
+            </div>
           </div>
           <div>
-            <label className={lbl}>Order Date *</label>
-            <DateInput value={orderDate} onChange={e => setOrderDate(e.target.value)} className={inp} required />
+            <label className={lbl}>Order Notes</label>
+            <textarea value={orderNotes} onChange={e => setOrderNotes(e.target.value)} rows={2}
+              placeholder="Optional summary, clarifying information, or care plan goal…"
+              className="w-full border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] resize-none" />
           </div>
-          <div>
-            <label className={lbl}>End Date</label>
-            <DateInput value={orderEndDate} onChange={e => setOrderEndDate(e.target.value)} className={inp} />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className={lbl}>Provider Name</label>
-            <input value={providerName} onChange={e => setProviderName(e.target.value)} placeholder="e.g. Dr. Smith" className={inp} />
-          </div>
-          <div>
-            <label className={lbl}>Related Specialty *</label>
-            <select value={specialty} onChange={e => setSpecialty(e.target.value)} className={inp} required>
-              <option value="">Select…</option>
-              {MEDICAL_SPECIALTIES.map(s => <option key={s}>{s}</option>)}
-            </select>
-          </div>
-        </div>
-        <div>
-          <label className={lbl}>Order Notes</label>
-          <textarea value={orderNotes} onChange={e => setOrderNotes(e.target.value)} rows={2}
-            placeholder="Optional summary, clarifying information, or care plan goal…"
-            className="w-full border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] resize-none" />
-        </div>
-        <input type="file" onChange={e => setFile(e.target.files?.[0] || null)} className="text-xs text-[#2F3E4E]" required />
-        <button type="submit" disabled={uploading || !file || !title.trim() || !orderDate || !specialty}
-          className="w-full bg-[#2F3E4E] text-white text-xs font-semibold py-1.5 rounded-lg hover:bg-[#7A8F79] transition disabled:opacity-50">
-          {uploading ? 'Uploading…' : 'Upload Order'}
-        </button>
-        {message && <p className={`text-[10px] ${messageIsError ? 'text-red-500' : 'text-green-600'}`}>{message}</p>}
-      </form>
+          <input type="file" onChange={e => setFile(e.target.files?.[0] || null)} className="text-xs text-[#2F3E4E]" required />
+          <button type="submit" disabled={uploading || !file || !title.trim() || !orderDate || !specialty}
+            className="w-full bg-[#2F3E4E] text-white text-xs font-semibold py-1.5 rounded-lg hover:bg-[#7A8F79] transition disabled:opacity-50">
+            {uploading ? 'Uploading…' : 'Upload Order'}
+          </button>
+          {message && <p className={`text-[10px] ${messageIsError ? 'text-red-500' : 'text-green-600'}`}>{message}</p>}
+        </form>
+      </div>
 
-      {loading ? (
-        <p className="text-xs text-[#7A8F79]">Loading…</p>
-      ) : orders.length === 0 ? (
-        <p className="text-xs text-[#7A8F79] italic">No orders on file.</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
-                <th className="text-left font-semibold py-2 px-3">Order Title</th>
-                <th className="text-left font-semibold py-2 px-3">Date</th>
-                <th className="text-left font-semibold py-2 px-3">End Date</th>
-                <th className="text-left font-semibold py-2 px-3">Specialty</th>
-                <th className="text-left font-semibold py-2 px-3">Provider</th>
-                <th className="text-left font-semibold py-2 px-3">Order Notes</th>
-                <th className="py-2 px-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map(o => {
-                const canDelete = canDeleteAny || o.uploadedByUserId === uploaderId
-                return (
-                  <tr key={o.id} className="border-b border-[#D9E1E8] last:border-0 align-top">
-                    <td className="py-2.5 px-3">
-                      <p className="text-[#2F3E4E] font-medium">{o.title}</p>
-                      {o.recordedBy && <p className="text-[10px] text-[#7A8F79] mt-0.5">Recorded by {o.recordedBy}</p>}
-                    </td>
-                    <td className="py-2.5 px-3 text-[#2F3E4E]">{fmtDate(o.orderDate)}</td>
-                    <td className="py-2.5 px-3 text-[#2F3E4E]">{fmtDate(o.orderEndDate)}</td>
-                    <td className="py-2.5 px-3 text-[#2F3E4E]">{o.specialty || ''}</td>
-                    <td className="py-2.5 px-3 text-[#2F3E4E]">{o.providerName || ''}</td>
-                    <td className="py-2.5 px-3 text-[#2F3E4E]">{o.orderNotes || ''}</td>
-                    <td className="py-2.5 px-3 text-right whitespace-nowrap">
-                      <button onClick={() => handleDownload(o.id)} disabled={downloading === o.id}
-                        className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition disabled:opacity-50 mr-3">
-                        {downloading === o.id ? '…' : 'Download'}
-                      </button>
-                      {canDelete && (
-                        <button onClick={() => handleDelete(o.id)} disabled={deleting === o.id}
-                          className="text-xs font-semibold text-red-500 hover:text-red-600 transition disabled:opacity-50">
-                          {deleting === o.id ? '…' : 'Delete'}
+      <div className="bg-white rounded-2xl shadow-sm p-6">
+        {loading ? (
+          <p className="text-xs text-[#7A8F79]">Loading…</p>
+        ) : orders.length === 0 ? (
+          <p className="text-xs text-[#7A8F79] italic">No orders on file.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
+                  <th className="text-left font-semibold py-2 px-3">Order Title</th>
+                  <th className="text-left font-semibold py-2 px-3">Date</th>
+                  <th className="text-left font-semibold py-2 px-3">End Date</th>
+                  <th className="text-left font-semibold py-2 px-3">Specialty</th>
+                  <th className="text-left font-semibold py-2 px-3">Provider</th>
+                  <th className="text-left font-semibold py-2 px-3">Order Notes</th>
+                  <th className="py-2 px-3"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map(o => {
+                  const canDelete = canDeleteAny || o.uploadedByUserId === uploaderId
+                  return (
+                    <tr key={o.id} className="border-b border-[#D9E1E8] last:border-0 align-top">
+                      <td className="py-2.5 px-3">
+                        <p className="text-[#2F3E4E] font-medium">{o.title}</p>
+                        {o.recordedBy && <p className="text-[10px] text-[#7A8F79] mt-0.5">Recorded by {o.recordedBy}</p>}
+                      </td>
+                      <td className="py-2.5 px-3 text-[#2F3E4E]">{fmtDate(o.orderDate)}</td>
+                      <td className="py-2.5 px-3 text-[#2F3E4E]">{fmtDate(o.orderEndDate)}</td>
+                      <td className="py-2.5 px-3 text-[#2F3E4E]">{o.specialty || ''}</td>
+                      <td className="py-2.5 px-3 text-[#2F3E4E]">{o.providerName || ''}</td>
+                      <td className="py-2.5 px-3 text-[#2F3E4E]">{o.orderNotes || ''}</td>
+                      <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                        <button onClick={() => handleDownload(o.id)} disabled={downloading === o.id}
+                          className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition disabled:opacity-50 mr-3">
+                          {downloading === o.id ? '…' : 'Download'}
                         </button>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+                        {canDelete && (
+                          <button onClick={() => handleDelete(o.id)} disabled={deleting === o.id}
+                            className="text-xs font-semibold text-red-500 hover:text-red-600 transition disabled:opacity-50">
+                            {deleting === o.id ? '…' : 'Delete'}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

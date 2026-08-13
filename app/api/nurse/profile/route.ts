@@ -43,6 +43,9 @@ export async function GET(req: Request) {
   } : null
 
   const { password, mfaSecret, passwordResetToken, ...safeUser } = user as any
+  // Report the true combined state, not the raw flag — mfaEnabled without a
+  // mfaSecret behind it isn't actually protecting anything.
+  safeUser.mfaEnabled = !!(safeUser.mfaEnabled && mfaSecret)
   const visibleCards = await getVisibleCards('nurse')
   return NextResponse.json({ user: safeUser, profile, onboardingComplete: (profileRaw as any)?.onboardingComplete ?? false, visibleCards })
 }

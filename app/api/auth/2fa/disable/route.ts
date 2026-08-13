@@ -13,7 +13,17 @@ export async function POST(req: Request) {
   if (!code) return NextResponse.json({ error: 'Code required' }, { status: 400 })
 
   const user = await (prisma.user as any).findUnique({ where: { id: session.id } })
-  if (!user?.mfaSecret) return NextResponse.json({ error: '2FA not enabled' }, { status: 400 })
+
+  if (!user?.mfaSecret) {
+    // Orphaned state: mfaEnabled was true with no secret behind it (e.g. a
+    // manual data edit), so no code could ever verify against it. Nothing to
+    // protect here — self-heal the flag instead of permanently dead-ending
+    // the UI on a check that can never pass.
+    if (user?.mfaEnabled) {
+      await (prisma.user as any).update({ where: { id: session.id }, data: { mfaEnabled: false } })
+    }
+    return NextResponse.json({ ok: true })
+  }
 
   const valid = (speakeasy as any).totp.verify({
     secret: user.mfaSecret,

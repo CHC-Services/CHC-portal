@@ -16,13 +16,15 @@ export async function GET(req: Request) {
 
   const user = await (prisma.user.findUnique as any)({
     where: { id: session.id },
-    select: { name: true, email: true, phone: true, mfaEnabled: true },
+    select: { name: true, email: true, phone: true, mfaEnabled: true, mfaSecret: true },
   })
   return NextResponse.json({
     name: user?.name || '',
     email: user?.email || '',
     phone: user?.phone || '',
-    mfaEnabled: user?.mfaEnabled ?? false,
+    // Report the true combined state, not the raw flag — mfaEnabled without
+    // a mfaSecret behind it isn't actually protecting anything.
+    mfaEnabled: !!(user?.mfaEnabled && user?.mfaSecret),
   })
 }
 

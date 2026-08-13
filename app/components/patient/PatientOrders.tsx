@@ -2,7 +2,7 @@
 
 import PatientDocumentsPanel from '../PatientDocumentsPanel'
 
-export default function PatientDocuments({
+export default function PatientOrders({
   patientId, basePath, canDeleteAny, uploaderId,
 }: {
   patientId: string
@@ -17,7 +17,8 @@ export default function PatientDocuments({
         basePath={basePath}
         canDeleteAny={canDeleteAny}
         uploaderId={uploaderId}
-        excludeCategory="Orders"
+        fixedCategory="Orders"
+        label="Order"
       />
     </div>
   )

@@ -7,6 +7,7 @@ import PatientDemographics from '../../../components/patient/PatientDemographics
 import PatientInsurance from '../../../components/patient/PatientInsurance'
 import PatientMedications from '../../../components/patient/PatientMedications'
 import PatientDocuments from '../../../components/patient/PatientDocuments'
+import PatientOrders from '../../../components/patient/PatientOrders'
 import PatientNotifications from '../../../components/patient/PatientNotifications'
 import { DetailTab } from '../../../components/patient/PatientTabs'
 import { PatientFields } from '../../../components/patient/types'
@@ -204,6 +205,16 @@ export default function FamilyPatientDetailPage({ params }: { params: Promise<{ 
     {
       key: 'documents', label: 'Documents', content: (
         <PatientDocuments
+          patientId={id}
+          basePath={`/api/family/patients/${id}/documents`}
+          canDeleteAny={false}
+          uploaderId={guardianUserId}
+        />
+      ),
+    },
+    {
+      key: 'orders', label: 'Orders', content: (
+        <PatientOrders
           patientId={id}
           basePath={`/api/family/patients/${id}/documents`}
           canDeleteAny={false}

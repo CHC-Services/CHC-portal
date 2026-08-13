@@ -6,6 +6,7 @@ import PatientDemographics from '../../../components/patient/PatientDemographics
 import PatientInsurance from '../../../components/patient/PatientInsurance'
 import PatientMedications from '../../../components/patient/PatientMedications'
 import PatientDocuments from '../../../components/patient/PatientDocuments'
+import PatientOrders from '../../../components/patient/PatientOrders'
 import PatientCareTeam, { NurseLink, GuardianLink } from '../../../components/patient/PatientCareTeam'
 import PatientNotifications from '../../../components/patient/PatientNotifications'
 import PatientPriorAuthHistory, { PatientPA } from '../../../components/patient/PatientPriorAuthHistory'
@@ -239,6 +240,16 @@ export default function NursePatientDetailPage({ params }: { params: Promise<{ i
     {
       key: 'documents', label: 'Documents', content: (
         <PatientDocuments
+          patientId={id}
+          basePath={`/api/nurse/patients/${id}/documents`}
+          canDeleteAny
+          uploaderId={nurseUserId}
+        />
+      ),
+    },
+    {
+      key: 'orders', label: 'Orders', content: (
+        <PatientOrders
           patientId={id}
           basePath={`/api/nurse/patients/${id}/documents`}
           canDeleteAny

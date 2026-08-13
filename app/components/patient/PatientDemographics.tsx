@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { fmtPhoneInput } from '../../../lib/formatPhone'
+import { calculateAge } from '../../../lib/patientAge'
 import { Row, SectionHeader } from '../ReadOnlyField'
 import { PatientFields, US_STATES, GUARDIAN_RELATIONSHIPS, MEDICAL_SPECIALTIES, inp, lbl } from './types'
 import DateInput from '../DateInput'
@@ -51,6 +52,17 @@ export default function PatientDemographics({
   onEdit: () => void
   setField: (k: string, v: any) => void
 }) {
+  const age = data.dob ? calculateAge(data.dob) : null
+  const isMinorByAge = age !== null && age < 18
+
+  // Under-18 by DOB is always a minor — the guardian card is mandatory and
+  // not something an admin/family user can toggle off for them.
+  useEffect(() => {
+    if (editing && !readOnly && isMinorByAge && !data.isMinor) setField('isMinor', true)
+  }, [editing, readOnly, isMinorByAge, data.isMinor, setField])
+
+  const showGuardianCard = isMinorByAge || !!data.isMinor
+
   if (readOnly || !editing) {
     return (
       <div className="bg-white rounded-2xl shadow-sm p-6 space-y-5">
@@ -59,7 +71,8 @@ export default function PatientDemographics({
           <Row label="Date of Birth" value={data.dob} />
           <Row label="Sex" value={data.gender} />
           <Row label="Phone" value={data.phone} />
-          <Row label="Minor" value={data.isMinor ? 'Yes' : null} />
+          <Row label="Minor" value={isMinorByAge ? 'Yes (by date of birth)' : null} />
+          {!isMinorByAge && <Row label="Guardian on File" value={data.isMinor ? 'Yes' : null} />}
           <Row label="High-Tech" value={data.highTech ? 'Yes' : null} />
           {data.linkedSpecialties && data.linkedSpecialties.length > 0 && (
             <div className="flex gap-2 text-sm py-1">
@@ -77,7 +90,7 @@ export default function PatientDemographics({
           <Row label="Street" value={data.address} />
           <Row label="City/State/ZIP" value={[data.city, data.state, data.zip].filter(Boolean).join(', ')} />
         </div>
-        {data.isMinor && (
+        {showGuardianCard && (
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-2 pb-1 border-b border-[#D9E1E8]">Guardian Contact</p>
             <Row label="Name" value={[data.guardianFirstName, data.guardianLastName].filter(Boolean).join(' ')} />
@@ -115,11 +128,20 @@ export default function PatientDemographics({
               <input value={data.phone || ''} onChange={e => setField('phone', fmtPhoneInput(e.target.value))} placeholder="(555) 000-0000" className={inp} />
             </div>
             <div>
-              <label className={lbl}>Patient is a Minor?</label>
-              <select value={data.isMinor ? 'yes' : 'no'} onChange={e => setField('isMinor', e.target.value === 'yes')} className={inp}>
-                <option value="no">No</option>
-                <option value="yes">Yes</option>
-              </select>
+              {isMinorByAge ? (
+                <>
+                  <label className={lbl}>Minor</label>
+                  <p className={`${inp} bg-[#F4F6F5]`}>Yes — based on date of birth</p>
+                </>
+              ) : (
+                <>
+                  <label className={lbl}>Guardian on File?</label>
+                  <select value={data.isMinor ? 'yes' : 'no'} onChange={e => setField('isMinor', e.target.value === 'yes')} className={inp}>
+                    <option value="no">No</option>
+                    <option value="yes">Yes</option>
+                  </select>
+                </>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -133,10 +155,10 @@ export default function PatientDemographics({
         </div>
       </div>
 
-      {data.isMinor && (
+      {showGuardianCard && (
         <div>
           <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-3 pb-1 border-b border-[#D9E1E8]">
-            Guardian Contact <span className="normal-case font-normal text-[#7A8F79]">(required for minors — so 2FA codes and authenticator apps reach a guardian)</span>
+            Guardian Contact <span className="normal-case font-normal text-[#7A8F79]">(required — so 2FA codes and authenticator apps reach a guardian)</span>
           </p>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">

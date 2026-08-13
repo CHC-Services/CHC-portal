@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../lib/prisma'
 import { verifyToken } from '../../../../../lib/auth'
+import { calculateAge } from '../../../../../lib/patientAge'
 
 function auth(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -77,9 +78,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (Object.keys(data).length) {
     const current = await (prisma.patient.findUnique as any)({
       where: { id },
-      select: { isMinor: true, phone: true, guardianFirstName: true, guardianLastName: true, guardianPhone: true, guardianRelationship: true },
+      select: { dob: true, isMinor: true, phone: true, guardianFirstName: true, guardianLastName: true, guardianPhone: true, guardianRelationship: true },
     })
     const merged = { ...current, ...data }
+    // Under-18 by DOB is always treated as a minor, regardless of what the isMinor flag says —
+    // a guardian card is mandatory for them, not an optional toggle like it is for adults.
+    const age = merged.dob ? calculateAge(merged.dob) : null
+    if (age !== null && age < 18) {
+      merged.isMinor = true
+      data.isMinor = true
+    }
     if (!merged.isMinor && !merged.phone) {
       return NextResponse.json({ error: 'Phone number is required for adult patients.' }, { status: 400 })
     }

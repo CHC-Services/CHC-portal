@@ -120,6 +120,9 @@ export default function PatientInsurance({
           <Row label="Plan" value={data.insurancePlan} />
           <Row label="Subscriber" value={data.subscriberName} />
           <Row label="Relation" value={data.subscriberRelation} />
+          <Row label="Network" value={data.networkStatus} />
+          <Row label="Case Rate" value={data.hasCaseRate ? (data.caseRateAmount || 'Yes') : null} />
+          <Row label="Policy Notes" value={data.policyNotes} />
         </div>
         <AdditionalCoverageView data={data} />
         <div>
@@ -127,9 +130,6 @@ export default function PatientInsurance({
           <Row label="Dx Codes" value={[data.dxCode1, data.dxCode2, data.dxCode3, data.dxCode4].filter(Boolean).join(', ')} />
           <Row label="Prior Auth #" value={data.paNumber} />
           <Row label="PA Dates" value={data.paStartDate || data.paEndDate ? `${data.paStartDate || '?'} — ${data.paEndDate || 'Present'}` : null} />
-          <Row label="Network" value={data.networkStatus} />
-          <Row label="Case Rate" value={data.hasCaseRate ? (data.caseRateAmount || 'Yes') : null} />
-          <Row label="Policy Notes" value={data.policyNotes} />
         </div>
       </div>
     )
@@ -162,23 +162,6 @@ export default function PatientInsurance({
               </select>
             </div>
           </div>
-        </div>
-      </div>
-
-      <AdditionalCoverageForm data={data} setField={setField} />
-
-      <div>
-        <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-3 pb-1 border-b border-[#D9E1E8]">Clinical / Billing</p>
-        <div className="space-y-3">
-          <div>
-            <label className={lbl}>Diagnosis Codes (ICD-10)</label>
-            <div className="grid grid-cols-2 gap-2">
-              {(['dxCode1', 'dxCode2', 'dxCode3', 'dxCode4'] as const).map((k, i) => (
-                <input key={k} value={(data as any)[k] || ''} onChange={e => setField(k, e.target.value)} placeholder={`Dx ${i + 1}`} className={inp} />
-              ))}
-            </div>
-          </div>
-          <p className="text-[10px] text-[#7A8F79] italic">Manage prior authorizations in the Prior Authorization History section above.</p>
           <div>
             <label className={lbl}>Network Status</label>
             <div className="flex gap-2">
@@ -203,6 +186,23 @@ export default function PatientInsurance({
               placeholder="e.g. Primary plan covers first 100 days only…"
               className="w-full border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] resize-none" />
           </div>
+        </div>
+      </div>
+
+      <AdditionalCoverageForm data={data} setField={setField} />
+
+      <div>
+        <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-3 pb-1 border-b border-[#D9E1E8]">Clinical / Billing</p>
+        <div className="space-y-3">
+          <div>
+            <label className={lbl}>Diagnosis Codes (ICD-10)</label>
+            <div className="grid grid-cols-2 gap-2">
+              {(['dxCode1', 'dxCode2', 'dxCode3', 'dxCode4'] as const).map((k, i) => (
+                <input key={k} value={(data as any)[k] || ''} onChange={e => setField(k, e.target.value)} placeholder={`Dx ${i + 1}`} className={inp} />
+              ))}
+            </div>
+          </div>
+          <p className="text-[10px] text-[#7A8F79] italic">Manage prior authorizations in the Prior Authorization History section above.</p>
         </div>
       </div>
     </div>

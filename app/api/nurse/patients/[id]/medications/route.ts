@@ -52,7 +52,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (canonical?.isLocked) return NextResponse.json({ error: 'Record locked by admin' }, { status: 403 })
 
   const body = await req.json()
-  const { medicationName, rxcui, dose, doseUnit, unitStrength, unitType, frequency, route, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone } = body
+  const { medicationName, rxcui, dose, doseUnit, unitStrength, unitType, frequency, route, duration, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone } = body
   if (!medicationName?.trim()) return NextResponse.json({ error: 'Medication name required' }, { status: 400 })
   if (!lastFillDate) return NextResponse.json({ error: 'Last fill date required' }, { status: 400 })
 
@@ -69,6 +69,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       unitType: unitType || null,
       frequency: frequency || null,
       route: route || null,
+      duration: duration || null,
       daySupply: daySupply ? parseInt(daySupply, 10) : 30,
       lastFillDate: new Date(lastFillDate),
       rxNumber: rxNumber || null,
@@ -96,7 +97,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const canonical = await (prisma.patient.findUnique as any)({ where: { id }, select: { isLocked: true } })
   if (canonical?.isLocked) return NextResponse.json({ error: 'Record locked by admin' }, { status: 403 })
 
-  const { medId, medicationName, rxcui, dose, doseUnit, unitStrength, unitType, frequency, route, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone, active } = await req.json()
+  const { medId, medicationName, rxcui, dose, doseUnit, unitStrength, unitType, frequency, route, duration, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone, active } = await req.json()
   if (!medId) return NextResponse.json({ error: 'medId required' }, { status: 400 })
 
   const data: Record<string, any> = {}
@@ -108,6 +109,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (unitType !== undefined) data.unitType = unitType || null
   if (frequency !== undefined) data.frequency = frequency || null
   if (route !== undefined) data.route = route || null
+  if (duration !== undefined) data.duration = duration || null
   if (daySupply !== undefined) data.daySupply = parseInt(daySupply, 10)
   if (lastFillDate !== undefined) data.lastFillDate = new Date(lastFillDate)
   if (rxNumber !== undefined) data.rxNumber = rxNumber || null

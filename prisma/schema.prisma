@@ -513,6 +513,7 @@ model PatientDocument {
   uploadedByUserId String
   uploadedByRole   String // 'nurse' | 'admin' | 'guardian'
   expiresAt        DateTime?
+  reminderSentAt   DateTime? // set once the expiration reminder fires
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -825,6 +826,19 @@ model Patient {
   zip            String?
   phone          String?
 
+  // Minor status — drives 2FA contact requirements: adults need their own
+  // phone on file, minors instead require a guardian contact card below.
+  isMinor              Boolean @default(false)
+  guardianFirstName    String?
+  guardianLastName     String?
+  guardianEmail        String? // only needed if different from the guardian's login email
+  guardianPhone        String?
+  guardianRelationship String? // 'Parent' | 'Grandparent' | 'Sibling' | 'Child' | 'Other Family' | 'Friend' | 'Legal Guardian' | 'Volunteer Caregiver' | 'Power of Attorney'
+
+  // Provider specialties involved in this patient's care, picked from a
+  // fixed checklist on the Demographics tab.
+  linkedSpecialties String[] @default([])
+
   // Clinical / billing
   highTech    Boolean @default(false) // High-Tech designation (yes/no)
   dxCode1     String? // ICD-10 diagnosis code 1
@@ -863,6 +877,10 @@ model Patient {
   lockedAt DateTime?
   lockedBy String? // admin display name
 
+  // Notifications & Reminders (patient-wide, admin-controlled)
+  documentRemindersEnabled Boolean @default(false) // alert before an uploaded document expires
+  paRemindersEnabled       Boolean @default(false) // alert 3 weeks before the current PA end date
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -878,11 +896,12 @@ model PatientPA {
   id          String   @id @default(cuid())
   patientId   String
   patient     Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  paNumber    String
-  paStartDate String?
-  paEndDate   String?
-  highTech    Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  paNumber       String
+  paStartDate    String?
+  paEndDate      String?
+  highTech       Boolean   @default(false)
+  reminderSentAt DateTime? // set once the 3-weeks-before-paEndDate reminder fires
+  createdAt      DateTime  @default(now())
 
   @@index([patientId])
 }
@@ -920,6 +939,7 @@ model PatientMedication {
   unitType         String? // on-hand form, e.g. "tablet", "capsule", "liquid", "spray"
   frequency        String? // prescribed frequency, e.g. "twice daily", "BID"
   route            String? // prescribed route of administration, e.g. "mouth", "G-Tube", "IM", "SQ"
+  duration         String? // how long the order is valid before renewal, e.g. "30 days", "Ongoing"
   daySupply        Int      @default(30)
   lastFillDate     DateTime
   rxNumber         String?

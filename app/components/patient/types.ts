@@ -13,6 +13,13 @@ export type PatientFields = {
   city: string | null
   state: string | null
   zip: string | null
+  isMinor?: boolean
+  guardianFirstName: string | null
+  guardianLastName: string | null
+  guardianEmail: string | null
+  guardianPhone: string | null
+  guardianRelationship: string | null
+  linkedSpecialties?: string[]
   highTech: boolean
   insuranceType: string
   insuranceId: string
@@ -46,6 +53,11 @@ export type PatientFields = {
   isLocked?: boolean
   lockedAt?: string | null
   lockedBy?: string | null
+  documentRemindersEnabled?: boolean
+  paRemindersEnabled?: boolean
+  // Not a canonical Patient field — lives on the current viewer's own
+  // NursePatient/GuardianPatient link, mixed into this shape for convenience.
+  medicationRemindersOptIn?: boolean
 }
 
 export const US_STATES = [
@@ -56,6 +68,24 @@ export const US_STATES = [
 ]
 
 export const SUBSCRIBER_RELATIONS = ['Self', 'Spouse', 'Child', 'Parent', 'Other']
+
+export const GUARDIAN_RELATIONSHIPS = [
+  'Parent', 'Grandparent', 'Sibling', 'Child', 'Other Family', 'Friend',
+  'Legal Guardian', 'Volunteer Caregiver', 'Power of Attorney',
+]
+
+export const MEDICAL_SPECIALTIES = [
+  'Allergy & Immunology', 'Anesthesiology', 'Cardiology', 'Cardiothoracic Surgery',
+  'Dermatology', 'Emergency Medicine', 'Endocrinology', 'Family Medicine',
+  'Gastroenterology', 'General Surgery', 'Geriatrics', 'Hematology',
+  'Hospice & Palliative Care', 'Infectious Disease', 'Internal Medicine',
+  'Nephrology', 'Neurology', 'Neurosurgery', 'Obstetrics & Gynecology',
+  'Occupational Therapy', 'Oncology', 'Ophthalmology', 'Orthopedics',
+  'Otolaryngology (ENT)', 'Pain Management', 'Pediatrics',
+  'Physical Medicine & Rehabilitation', 'Physical Therapy', 'Podiatry',
+  'Psychiatry', 'Pulmonology', 'Radiology', 'Rheumatology',
+  'Speech-Language Pathology', 'Urology', 'Wound Care',
+]
 
 export const inp = 'w-full border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]'
 export const lbl = 'block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1'

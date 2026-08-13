@@ -7,6 +7,7 @@ import PatientInsurance from '../../../components/patient/PatientInsurance'
 import PatientMedications from '../../../components/patient/PatientMedications'
 import PatientDocuments from '../../../components/patient/PatientDocuments'
 import PatientCareTeam, { NurseLink, GuardianLink } from '../../../components/patient/PatientCareTeam'
+import PatientNotifications from '../../../components/patient/PatientNotifications'
 import PatientPriorAuthHistory, { PatientPA } from '../../../components/patient/PatientPriorAuthHistory'
 import { DetailTab } from '../../../components/patient/PatientTabs'
 import { PatientFields } from '../../../components/patient/types'
@@ -17,6 +18,7 @@ type LinkedPatient = {
   linkId: string
   patientId: string
   overrides: Record<string, any> | null
+  medicationRemindersOptIn: boolean
   merged: PatientFields
   priorAuths: PatientPA[]
   medications: MedicationDTO[]
@@ -156,6 +158,16 @@ export default function NursePatientDetailPage({ params }: { params: Promise<{ i
     await refreshPAs()
   }
 
+  async function handleToggleMedicationReminders(val: boolean) {
+    await fetch(`/api/nurse/patients/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ medicationRemindersOptIn: val }),
+    })
+    setPatient(p => p ? { ...p, medicationRemindersOptIn: val } : p)
+  }
+
   async function handleInviteGuardian(data: GuardianInviteData) {
     const res = await fetch(`/api/nurse/patients/${id}/guardians`, {
       method: 'POST',
@@ -245,6 +257,17 @@ export default function NursePatientDetailPage({ params }: { params: Promise<{ i
             onInviteGuardian={handleInviteGuardian}
           />
         </div>
+      ),
+    },
+    {
+      key: 'reminders', label: 'Notifications & Reminders', content: (
+        <PatientNotifications
+          role="nurse"
+          medicationOptIn={patient.medicationRemindersOptIn}
+          onToggleMedicationOptIn={handleToggleMedicationReminders}
+          documentRemindersEnabled={merged.documentRemindersEnabled}
+          paRemindersEnabled={merged.paRemindersEnabled}
+        />
       ),
     },
   ]

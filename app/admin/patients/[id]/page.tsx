@@ -7,6 +7,7 @@ import PatientInsurance from '../../../components/patient/PatientInsurance'
 import PatientMedications from '../../../components/patient/PatientMedications'
 import PatientDocuments from '../../../components/patient/PatientDocuments'
 import PatientCareTeam, { NurseLink, GuardianLink } from '../../../components/patient/PatientCareTeam'
+import PatientNotifications from '../../../components/patient/PatientNotifications'
 import PatientPriorAuthHistory, { PatientPA } from '../../../components/patient/PatientPriorAuthHistory'
 import { DetailTab } from '../../../components/patient/PatientTabs'
 import { PatientFields } from '../../../components/patient/types'
@@ -89,7 +90,8 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
       setEditing(false)
       setMsg('Saved.')
     } else {
-      setMsg('Save failed.')
+      const body = await res.json().catch(() => ({}))
+      setMsg(body.error ? `Save failed: ${body.error}` : 'Save failed.')
     }
   }
 
@@ -250,6 +252,26 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
     await refreshPAs()
   }
 
+  async function handleToggleDocumentReminders(val: boolean) {
+    await fetch(`/api/admin/patients/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ documentRemindersEnabled: val }),
+    })
+    setPatient(p => p ? { ...p, documentRemindersEnabled: val } : p)
+  }
+
+  async function handleTogglePaReminders(val: boolean) {
+    await fetch(`/api/admin/patients/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ paRemindersEnabled: val }),
+    })
+    setPatient(p => p ? { ...p, paRemindersEnabled: val } : p)
+  }
+
   async function handleLock() {
     setLocking(true)
     const res = await fetch(`/api/admin/patients/${id}/lock`, { method: 'POST', credentials: 'include' })
@@ -393,6 +415,27 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
             onInviteGuardian={handleInviteGuardian}
           />
         </div>
+      ),
+    },
+    {
+      key: 'reminders', label: 'Notifications & Reminders', content: (
+        <PatientNotifications
+          role="admin"
+          medicationStatuses={[
+            ...patient.nurseLinks.filter(l => l.isActive).map(l => ({
+              name: l.nurse.lastName || l.nurse.displayName,
+              optedIn: !!(l as any).medicationRemindersOptIn,
+            })),
+            ...patient.guardianLinks.map(g => ({
+              name: g.user.name,
+              optedIn: !!(g as any).medicationRemindersOptIn,
+            })),
+          ]}
+          documentRemindersEnabled={patient.documentRemindersEnabled}
+          paRemindersEnabled={patient.paRemindersEnabled}
+          onToggleDocumentReminders={handleToggleDocumentReminders}
+          onTogglePaReminders={handleTogglePaReminders}
+        />
       ),
     },
   ]

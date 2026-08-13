@@ -37,9 +37,7 @@ export default function FamilyProfilePage() {
   const [mfaMessage, setMfaMessage] = useState('')
   const [mfaLoading, setMfaLoading] = useState(false)
 
-  // Notification preferences
   const [patients, setPatients] = useState<LinkedPatient[]>([])
-  const [notifSavingId, setNotifSavingId] = useState<string | null>(null)
 
   // Change email
   const [newEmail, setNewEmail] = useState('')
@@ -116,18 +114,6 @@ export default function FamilyProfilePage() {
     loadPatients()
     loadDemographics()
   }, [])
-
-  async function toggleMedReminders(patientId: string, value: boolean) {
-    setNotifSavingId(patientId)
-    await fetch(`/api/family/patients/${patientId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ medicationRemindersOptIn: value }),
-    })
-    setPatients(ps => ps.map(p => p.id === patientId ? { ...p, medicationRemindersOptIn: value } : p))
-    setNotifSavingId(null)
-  }
 
   async function saveEmail(e: React.FormEvent) {
     e.preventDefault()
@@ -467,29 +453,6 @@ export default function FamilyProfilePage() {
             gives you a backup if one service is temporarily unavailable.
           </p>
 
-          {/* Notification preferences */}
-          {patients.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-sm p-6">
-              <p className="font-bold text-[#2F3E4E] text-sm mb-1">Notifications</p>
-              <p className="text-xs text-[#7A8F79] leading-relaxed mb-4">
-                Medication refill text reminders for your linked patients.
-              </p>
-              <div className="space-y-3">
-                {patients.map(p => (
-                  <label key={p.id} className="flex items-center justify-between cursor-pointer">
-                    <span className="text-sm text-[#2F3E4E]">{p.firstName} {p.lastName} — refill reminders</span>
-                    <input
-                      type="checkbox"
-                      checked={p.medicationRemindersOptIn}
-                      disabled={notifSavingId === p.id}
-                      onChange={e => toggleMedReminders(p.id, e.target.checked)}
-                      className="accent-[#7A8F79] w-4 h-4"
-                    />
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Change email */}
           <form onSubmit={saveEmail} className="bg-white rounded-2xl shadow-sm p-6">

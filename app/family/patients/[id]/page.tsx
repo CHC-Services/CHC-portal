@@ -7,6 +7,7 @@ import PatientDemographics from '../../../components/patient/PatientDemographics
 import PatientInsurance from '../../../components/patient/PatientInsurance'
 import PatientMedications from '../../../components/patient/PatientMedications'
 import PatientDocuments from '../../../components/patient/PatientDocuments'
+import PatientNotifications from '../../../components/patient/PatientNotifications'
 import { DetailTab } from '../../../components/patient/PatientTabs'
 import { PatientFields } from '../../../components/patient/types'
 import { MedicationDTO, MedicationInput, PharmacyOption } from '../../../components/MedicationList'
@@ -103,6 +104,16 @@ export default function FamilyPatientDetailPage({ params }: { params: Promise<{ 
     loadMedications()
   }
 
+  async function handleToggleMedicationReminders(val: boolean) {
+    await fetch(`/api/family/patients/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ medicationRemindersOptIn: val }),
+    })
+    setData(d => ({ ...d, medicationRemindersOptIn: val }))
+  }
+
   function setField(k: string, v: any) {
     setData(d => ({ ...d, [k]: v }))
     setSaved(false)
@@ -197,6 +208,15 @@ export default function FamilyPatientDetailPage({ params }: { params: Promise<{ 
           basePath={`/api/family/patients/${id}/documents`}
           canDeleteAny={false}
           uploaderId={guardianUserId}
+        />
+      ),
+    },
+    {
+      key: 'reminders', label: 'Notifications & Reminders', content: (
+        <PatientNotifications
+          role="family"
+          medicationOptIn={data.medicationRemindersOptIn}
+          onToggleMedicationOptIn={handleToggleMedicationReminders}
         />
       ),
     },

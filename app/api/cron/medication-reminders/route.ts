@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { runMedicationReminders } from '../../../../lib/runMedicationReminders'
+import { runPAReminders } from '../../../../lib/runPAReminders'
 
 // Vercel cron invokes with GET — protected by CRON_SECRET header
 export async function GET(req: Request) {
@@ -8,6 +9,9 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const result = await runMedicationReminders()
-  return NextResponse.json({ ok: true, ...result })
+  const [medications, priorAuths] = await Promise.all([
+    runMedicationReminders(),
+    runPAReminders(),
+  ])
+  return NextResponse.json({ ok: true, medications, priorAuths })
 }

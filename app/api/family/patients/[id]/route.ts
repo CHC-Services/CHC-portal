@@ -19,6 +19,8 @@ async function verifyLinked(userId: string, patientId: string) {
 
 const EDITABLE_FIELDS = [
   'firstName', 'lastName', 'dob', 'gender', 'phone',
+  'isMinor', 'guardianFirstName', 'guardianLastName', 'guardianEmail', 'guardianPhone', 'guardianRelationship',
+  'linkedSpecialties',
   'insuranceType', 'insuranceId', 'insuranceName', 'insuranceGroup', 'insurancePlan',
   'address', 'city', 'state', 'zip',
   'highTech', 'dxCode1', 'dxCode2', 'dxCode3', 'dxCode4',
@@ -70,6 +72,20 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const data: Record<string, any> = {}
   for (const key of EDITABLE_FIELDS) {
     if (key in body) data[key] = body[key]
+  }
+
+  if (Object.keys(data).length) {
+    const current = await (prisma.patient.findUnique as any)({
+      where: { id },
+      select: { isMinor: true, phone: true, guardianFirstName: true, guardianLastName: true, guardianPhone: true, guardianRelationship: true },
+    })
+    const merged = { ...current, ...data }
+    if (!merged.isMinor && !merged.phone) {
+      return NextResponse.json({ error: 'Phone number is required for adult patients.' }, { status: 400 })
+    }
+    if (merged.isMinor && (!merged.guardianFirstName || !merged.guardianLastName || !merged.guardianPhone || !merged.guardianRelationship)) {
+      return NextResponse.json({ error: 'Guardian first name, last name, phone, and relationship are required for minor patients.' }, { status: 400 })
+    }
   }
 
   const patient = Object.keys(data).length

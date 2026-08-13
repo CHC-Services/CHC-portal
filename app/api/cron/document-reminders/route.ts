@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../../lib/prisma'
 import { sendDocumentExpirationReminder } from '../../../../lib/sendEmail'
+import { runPatientDocumentReminders } from '../../../../lib/runPatientDocumentReminders'
 
 export async function GET(req: Request) {
   // Verify cron secret to prevent unauthorized calls
@@ -64,5 +65,7 @@ export async function GET(req: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, sent, skipped })
+  const patientDocs = await runPatientDocumentReminders()
+
+  return NextResponse.json({ ok: true, sent, skipped, patientDocuments: patientDocs })
 }

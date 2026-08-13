@@ -27,6 +27,7 @@ export type MedicationDTO = {
   unitType: string | null
   frequency: string | null
   route: string | null
+  duration: string | null
   daySupply: number
   lastFillDate: string // ISO date string
   rxNumber: string | null
@@ -48,6 +49,7 @@ export type MedicationInput = {
   unitType: string
   frequency: string
   route: string
+  duration: string
   daySupply: string
   lastFillDate: string
   rxNumber: string
@@ -116,7 +118,7 @@ type MedicationListProps = {
 }
 
 const emptyForm: MedicationInput = {
-  medicationName: '', rxcui: '', dose: '', doseUnit: '', unitStrength: '', unitType: '', frequency: '', route: '', daySupply: '30',
+  medicationName: '', rxcui: '', dose: '', doseUnit: '', unitStrength: '', unitType: '', frequency: '', route: '', duration: '', daySupply: '30',
   lastFillDate: '', rxNumber: '', refillsRemaining: '', pharmacyName: '', pharmacyAddress: '', pharmacyPhone: '',
 }
 
@@ -168,6 +170,12 @@ const ROUTE_OPTIONS = [
   'Rectal', 'Vaginal', 'Topical', 'Transdermal', 'Inhalation', 'Nebulizer',
   'Intranasal', 'Ophthalmic (eye)', 'Otic (ear)',
   'Intramuscular (IM)', 'Subcutaneous (SQ)', 'Intravenous (IV)',
+]
+
+// How long the order is valid for before it needs to be renewed/reordered.
+const DURATION_OPTIONS = [
+  '7 days', '14 days', '30 days', '60 days', '90 days',
+  '6 months', '1 year', 'Ongoing', 'Until discontinued',
 ]
 
 // Normalizes a free-typed shorthand ("qd", "q.i.d.", "po") to its standardized
@@ -305,6 +313,18 @@ function DropdownOrOther({ value, onChange, options, aliases, otherPlaceholder, 
   )
 }
 
+// A thin navy rule with a label breaking through the middle — separates the
+// form into its Medication / SIG / Fill Details sections.
+function SectionDivider({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-0 my-2">
+      <div className="flex-1 h-px" style={{ background: theme.navy }} />
+      <span className="text-[10px] font-bold uppercase tracking-widest px-2" style={{ color: theme.navy }}>{label}</span>
+      <div className="flex-1 h-px" style={{ background: theme.navy }} />
+    </div>
+  )
+}
+
 function toFormValues(m: MedicationDTO): MedicationInput {
   return {
     medicationName: m.medicationName,
@@ -315,6 +335,7 @@ function toFormValues(m: MedicationDTO): MedicationInput {
     unitType: m.unitType || '',
     frequency: m.frequency || '',
     route: m.route || '',
+    duration: m.duration || '',
     daySupply: String(m.daySupply),
     lastFillDate: m.lastFillDate.slice(0, 10),
     rxNumber: m.rxNumber || '',
@@ -348,7 +369,11 @@ function MedicationForm({ initial, onSubmit, onCancel, submitLabel, pharmacies =
   // Unlike inputCls, doesn't force full width — paired with an explicit w-*
   // so fields with a known bounded length (day supply, refill count, dates,
   // phone numbers, on-hand dose/type) don't stretch across the whole row.
-  const narrowCls = 'border rounded-lg p-2 text-sm focus:outline-none focus:ring-2'
+  // h-9 pins a fixed height — browsers give <select> and <input> different
+  // intrinsic heights at the same padding (the select's native dropdown-arrow
+  // box renders taller/shorter depending on browser), so without it the dose
+  // number field and the unit/frequency/route dropdowns don't line up.
+  const narrowCls = 'border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 h-9'
   const inputStyle = { borderColor: theme.bg, color: theme.navy } as React.CSSProperties
   const unitsPerDose = computeUnitsPerDose(form.dose, form.doseUnit, form.unitStrength)
 
@@ -434,7 +459,11 @@ function MedicationForm({ initial, onSubmit, onCancel, submitLabel, pharmacies =
 
   return (
     <form onSubmit={submit} className="space-y-2 p-3 rounded-xl" style={{ background: theme.offWhite }}>
-      <div className="flex gap-2">
+      <p className="text-center text-sm font-bold uppercase tracking-widest" style={{ color: theme.navy }}>
+        Prescribed Medication
+      </p>
+
+      <div className="flex gap-2 pt-1">
         <div className="relative flex-1 min-w-0">
           <input
             placeholder="Medication Name"
@@ -485,13 +514,14 @@ function MedicationForm({ initial, onSubmit, onCancel, submitLabel, pharmacies =
           )}
         </div>
         <input placeholder="Dose (e.g. 10mg)" value={form.unitStrength} onChange={set('unitStrength')} className={`${narrowCls} w-28`} style={inputStyle} />
-        <input placeholder="Dose Form (e.g. tablet)" value={form.unitType} onChange={set('unitType')} className={`${narrowCls} w-32`} style={inputStyle} />
+        <input placeholder="Form (e.g. tablet)" value={form.unitType} onChange={set('unitType')} className={`${narrowCls} w-32`} style={inputStyle} />
       </div>
 
+      <SectionDivider label="SIG" />
+
       <div>
-        <label className="block text-[10px] uppercase tracking-wide mb-1" style={{ color: theme.sage }}>Prescribed Administration</label>
         <div className="flex flex-wrap items-center gap-1.5 text-sm" style={{ color: theme.navy }}>
-          <span><strong>SIG:</strong>Administer</span>
+          <span>Administer</span>
           <input type="number" step="any" min="0" placeholder="dose" value={form.dose} onChange={set('dose')} className={`${narrowCls} w-16`} style={inputStyle} />
           <DropdownOrOther
             value={form.doseUnit}
@@ -521,6 +551,15 @@ function MedicationForm({ initial, onSubmit, onCancel, submitLabel, pharmacies =
             className={`${narrowCls} w-32`}
             style={inputStyle}
           />
+          <span>for</span>
+          <DropdownOrOther
+            value={form.duration}
+            onChange={v => setForm(f => ({ ...f, duration: v }))}
+            options={DURATION_OPTIONS}
+            otherPlaceholder="duration"
+            className={`${narrowCls} w-32`}
+            style={inputStyle}
+          />
         </div>
         {unitsPerDose != null && (
           <p className="text-[10px] mt-1 font-semibold" style={{ color: theme.sage }}>
@@ -528,6 +567,8 @@ function MedicationForm({ initial, onSubmit, onCancel, submitLabel, pharmacies =
           </p>
         )}
       </div>
+
+      <SectionDivider label="Fill Details" />
 
       <div className="flex gap-2">
         <div>
@@ -744,11 +785,11 @@ function DrugFactsModal({ medicationName, facts, loading, onClose }: {
   )
 }
 
-function adminSentenceOf(med: Pick<MedicationDTO, 'medicationName' | 'dose' | 'doseUnit' | 'frequency' | 'route'>): string | null {
+function adminSentenceOf(med: Pick<MedicationDTO, 'medicationName' | 'dose' | 'doseUnit' | 'frequency' | 'route' | 'duration'>): string | null {
   const doseText = med.dose ? `${med.dose}${med.doseUnit || ''}` : null
   const parts = [doseText, med.frequency].filter(Boolean).join(' ')
-  if (!parts && !med.route) return null
-  return `Administer ${med.medicationName}${parts ? ` ${parts}` : ''}${med.route ? ` via ${med.route}` : ''}.`
+  if (!parts && !med.route && !med.duration) return null
+  return `Administer ${med.medicationName}${parts ? ` ${parts}` : ''}${med.route ? ` via ${med.route}` : ''}${med.duration ? ` for ${med.duration}` : ''}.`
 }
 
 function onHandOf(med: Pick<MedicationDTO, 'unitStrength' | 'unitType'>): string {

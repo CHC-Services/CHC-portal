@@ -47,6 +47,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       linkId: link.id,
       patientId: link.patientId,
       overrides: link.overrides,
+      medicationRemindersOptIn: link.medicationRemindersOptIn,
       merged: { ...patientFields, ...(link.overrides || {}) },
       priorAuths: priorAuths || [],
       medications: (medications || []).map(flattenMedication),

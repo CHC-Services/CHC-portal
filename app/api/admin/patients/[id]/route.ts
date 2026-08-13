@@ -53,6 +53,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     'lastName', 'firstName', 'dob', 'gender',
     'insuranceType', 'insuranceId', 'insuranceName', 'insuranceGroup', 'insurancePlan',
     'address', 'city', 'state', 'zip', 'phone',
+    'isMinor', 'guardianFirstName', 'guardianLastName', 'guardianEmail', 'guardianPhone', 'guardianRelationship',
+    'linkedSpecialties',
     'highTech', 'dxCode1', 'dxCode2', 'dxCode3', 'dxCode4',
     'paNumber', 'paStartDate', 'paEndDate',
     'subscriberName', 'subscriberRelation',
@@ -60,12 +62,25 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     'ins2Type', 'ins2Id', 'ins2Name', 'ins2Group', 'ins2Plan',
     'ins2SubscriberName', 'ins2SubscriberRelation',
     'ins2NetworkStatus', 'ins2HasCaseRate', 'ins2CaseRateAmount', 'ins2PolicyNotes',
+    'documentRemindersEnabled', 'paRemindersEnabled',
   ]
   const data: Record<string, any> = {}
   for (const key of allowed) {
     if (key in updates) data[key] = updates[key]
   }
   data.updatedAt = new Date()
+
+  const current = await (prisma.patient.findUnique as any)({
+    where: { id },
+    select: { isMinor: true, phone: true, guardianFirstName: true, guardianLastName: true, guardianPhone: true, guardianRelationship: true },
+  })
+  const merged = { ...current, ...data }
+  if (!merged.isMinor && !merged.phone) {
+    return NextResponse.json({ error: 'Phone number is required for adult patients.' }, { status: 400 })
+  }
+  if (merged.isMinor && (!merged.guardianFirstName || !merged.guardianLastName || !merged.guardianPhone || !merged.guardianRelationship)) {
+    return NextResponse.json({ error: 'Guardian first name, last name, phone, and relationship are required for minor patients.' }, { status: 400 })
+  }
 
   const patient = await (prisma.patient.update as any)({ where: { id }, data })
 

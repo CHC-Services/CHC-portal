@@ -52,7 +52,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (canonical?.isLocked) return NextResponse.json({ error: 'Record locked by admin' }, { status: 403 })
 
   const body = await req.json()
-  const { medicationName, rxcui, dose, unitStrength, unitType, frequency, route, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone } = body
+  const { medicationName, rxcui, dose, doseUnit, unitStrength, unitType, frequency, route, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone } = body
   if (!medicationName?.trim()) return NextResponse.json({ error: 'Medication name required' }, { status: 400 })
   if (!lastFillDate) return NextResponse.json({ error: 'Last fill date required' }, { status: 400 })
 
@@ -64,6 +64,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       medicationName: medicationName.trim(),
       rxcui: rxcui || null,
       dose: dose || null,
+      doseUnit: doseUnit || null,
       unitStrength: unitStrength || null,
       unitType: unitType || null,
       frequency: frequency || null,
@@ -95,13 +96,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const canonical = await (prisma.patient.findUnique as any)({ where: { id }, select: { isLocked: true } })
   if (canonical?.isLocked) return NextResponse.json({ error: 'Record locked by admin' }, { status: 403 })
 
-  const { medId, medicationName, rxcui, dose, unitStrength, unitType, frequency, route, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone, active } = await req.json()
+  const { medId, medicationName, rxcui, dose, doseUnit, unitStrength, unitType, frequency, route, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone, active } = await req.json()
   if (!medId) return NextResponse.json({ error: 'medId required' }, { status: 400 })
 
   const data: Record<string, any> = {}
   if (medicationName !== undefined) data.medicationName = medicationName?.trim()
   if (rxcui !== undefined) data.rxcui = rxcui || null
   if (dose !== undefined) data.dose = dose || null
+  if (doseUnit !== undefined) data.doseUnit = doseUnit || null
   if (unitStrength !== undefined) data.unitStrength = unitStrength || null
   if (unitType !== undefined) data.unitType = unitType || null
   if (frequency !== undefined) data.frequency = frequency || null

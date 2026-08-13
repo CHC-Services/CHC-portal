@@ -914,7 +914,8 @@ model PatientMedication {
 
   medicationName   String
   rxcui            String? // RxNorm concept id, captured from the typeahead selection — powers the drug-facts lookup (MedlinePlus Connect)
-  dose             String? // prescribed dose per administration, e.g. "15mg"
+  dose             String? // prescribed dose amount, numeric only e.g. "15" — paired with doseUnit
+  doseUnit         String? // unit for the prescribed dose, e.g. "mg", "mL", "tablet" — picked from a standard list in the UI
   unitStrength     String? // on-hand strength/amount, e.g. "10mg" — with dose, derives units-per-dose (e.g. 1.5 tablets)
   unitType         String? // on-hand form, e.g. "tablet", "capsule", "liquid", "spray"
   frequency        String? // prescribed frequency, e.g. "twice daily", "BID"

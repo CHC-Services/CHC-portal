@@ -45,7 +45,7 @@ export async function POST(req: Request) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { patientId, medicationName, rxcui, dose, unitStrength, unitType, frequency, route, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone } = body
+  const { patientId, medicationName, rxcui, dose, doseUnit, unitStrength, unitType, frequency, route, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone } = body
   if (!patientId) return NextResponse.json({ error: 'patientId required' }, { status: 400 })
   if (!await verifyGuardianLinked(session.id, patientId)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -61,6 +61,7 @@ export async function POST(req: Request) {
       medicationName: medicationName.trim(),
       rxcui: rxcui || null,
       dose: dose || null,
+      doseUnit: doseUnit || null,
       unitStrength: unitStrength || null,
       unitType: unitType || null,
       frequency: frequency || null,
@@ -84,7 +85,7 @@ export async function PATCH(req: Request) {
   const session = auth(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { medId, medicationName, rxcui, dose, unitStrength, unitType, frequency, route, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone, active } = await req.json()
+  const { medId, medicationName, rxcui, dose, doseUnit, unitStrength, unitType, frequency, route, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone, active } = await req.json()
   if (!medId) return NextResponse.json({ error: 'medId required' }, { status: 400 })
 
   const existing = await (prisma.patientMedication.findUnique as any)({ where: { id: medId }, select: { patientId: true } })
@@ -96,6 +97,7 @@ export async function PATCH(req: Request) {
   if (medicationName !== undefined) data.medicationName = medicationName?.trim()
   if (rxcui !== undefined) data.rxcui = rxcui || null
   if (dose !== undefined) data.dose = dose || null
+  if (doseUnit !== undefined) data.doseUnit = doseUnit || null
   if (unitStrength !== undefined) data.unitStrength = unitStrength || null
   if (unitType !== undefined) data.unitType = unitType || null
   if (frequency !== undefined) data.frequency = frequency || null

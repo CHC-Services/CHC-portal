@@ -22,6 +22,7 @@ export type MedicationDTO = {
   medicationName: string
   rxcui: string | null
   dose: string | null
+  doseUnit: string | null
   unitStrength: string | null
   unitType: string | null
   frequency: string | null
@@ -42,6 +43,7 @@ export type MedicationInput = {
   medicationName: string
   rxcui: string
   dose: string
+  doseUnit: string
   unitStrength: string
   unitType: string
   frequency: string
@@ -66,16 +68,21 @@ function parseAmount(s: string): { value: number; unit: string } | null {
 }
 
 // How many tablets/units of the on-hand strength make up the patient's
-// prescribed dose (e.g. dose "15mg" over unitStrength "10mg" -> 1.5). Returns
-// null rather than guessing if either side doesn't parse or units disagree
-// (e.g. mg vs mcg) — a wrong count here is a medication-safety issue.
-export function computeUnitsPerDose(dose: string | null | undefined, unitStrength: string | null | undefined): number | null {
+// prescribed dose (e.g. dose 15 doseUnit "mg" over unitStrength "10mg" ->
+// 1.5). Returns null rather than guessing if either side doesn't parse or
+// units disagree (e.g. mg vs mcg) — a wrong count here is a medication-safety issue.
+export function computeUnitsPerDose(
+  dose: string | null | undefined,
+  doseUnit: string | null | undefined,
+  unitStrength: string | null | undefined
+): number | null {
   if (!dose || !unitStrength) return null
-  const d = parseAmount(dose)
+  const d = parseFloat(dose)
+  if (!isFinite(d) || d <= 0) return null
   const u = parseAmount(unitStrength)
-  if (!d || !u) return null
-  if (d.unit && u.unit && d.unit !== u.unit) return null
-  return d.value / u.value
+  if (!u) return null
+  if (doseUnit && u.unit && doseUnit.toLowerCase() !== u.unit.toLowerCase()) return null
+  return d / u.value
 }
 
 function fmtUnits(n: number): string {
@@ -109,7 +116,7 @@ type MedicationListProps = {
 }
 
 const emptyForm: MedicationInput = {
-  medicationName: '', rxcui: '', dose: '', unitStrength: '', unitType: '', frequency: '', route: '', daySupply: '30',
+  medicationName: '', rxcui: '', dose: '', doseUnit: '', unitStrength: '', unitType: '', frequency: '', route: '', daySupply: '30',
   lastFillDate: '', rxNumber: '', refillsRemaining: '', pharmacyName: '', pharmacyAddress: '', pharmacyPhone: '',
 }
 
@@ -138,11 +145,172 @@ function fmtPhoneInput(val: string): string {
   return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`
 }
 
+// ─── Prescribed-administration dropdown option lists ───────────────────────
+// Dose unit: standard pharmacy units of measure. Frequency: ISMP recommends
+// spelling frequency out rather than using Latin-derived abbreviations (QD,
+// QOD, etc. are on ISMP's error-prone abbreviation list — easy to
+// misinterpret) — canonical value below IS the label, spelled out. Route:
+// common home-health administration routes.
+const DOSE_UNIT_OPTIONS = [
+  'mg', 'mcg', 'g', 'mL', 'L', 'unit', 'mEq', '%',
+  'tablet', 'capsule', 'puff', 'spray', 'drop', 'patch', 'application',
+]
+
+const FREQUENCY_OPTIONS = [
+  'Once daily', 'Twice daily', 'Three times daily', 'Four times daily',
+  'Every other day', 'At bedtime', 'Every morning', 'Before meals', 'After meals',
+  'As needed (PRN)', 'Every 4 hours', 'Every 6 hours', 'Every 8 hours', 'Every 12 hours',
+  'Weekly', 'Twice weekly', 'Monthly',
+]
+
+const ROUTE_OPTIONS = [
+  'By mouth (PO)', 'G-Tube', 'J-Tube', 'NG-Tube', 'Sublingual', 'Buccal',
+  'Rectal', 'Vaginal', 'Topical', 'Transdermal', 'Inhalation', 'Nebulizer',
+  'Intranasal', 'Ophthalmic (eye)', 'Otic (ear)',
+  'Intramuscular (IM)', 'Subcutaneous (SQ)', 'Intravenous (IV)',
+]
+
+// Normalizes a free-typed shorthand ("qd", "q.i.d.", "po") to its standardized
+// dropdown value, so typing a familiar clinical abbreviation into "Other"
+// still lands on the same consistent term everyone else picked from the list.
+// Keyed on the alias with punctuation/spaces stripped, lowercased.
+function normalizeKey(s: string): string {
+  return s.trim().toLowerCase().replace(/[.\s-]/g, '')
+}
+
+function buildAliasMap(pairs: [string[], string][]): Record<string, string> {
+  const map: Record<string, string> = {}
+  for (const [aliases, canonical] of pairs) {
+    for (const alias of aliases) map[normalizeKey(alias)] = canonical
+  }
+  return map
+}
+
+const FREQUENCY_ALIASES = buildAliasMap([
+  [['qd', 'od', 'once daily', 'daily'], 'Once daily'],
+  [['bid'], 'Twice daily'],
+  [['tid'], 'Three times daily'],
+  [['qid'], 'Four times daily'],
+  [['qod'], 'Every other day'],
+  [['qhs', 'hs'], 'At bedtime'],
+  [['qam'], 'Every morning'],
+  [['ac'], 'Before meals'],
+  [['pc'], 'After meals'],
+  [['prn'], 'As needed (PRN)'],
+  [['q4h', 'q4hr', 'q4hrs', 'q4'], 'Every 4 hours'],
+  [['q6h', 'q6hr', 'q6hrs', 'q6'], 'Every 6 hours'],
+  [['q8h', 'q8hr', 'q8hrs', 'q8'], 'Every 8 hours'],
+  [['q12h', 'q12hr', 'q12hrs', 'q12'], 'Every 12 hours'],
+  [['qwk', 'weekly'], 'Weekly'],
+  [['biw', '2xweek', '2xwk'], 'Twice weekly'],
+  [['qmo', 'monthly'], 'Monthly'],
+])
+
+const ROUTE_ALIASES = buildAliasMap([
+  [['po'], 'By mouth (PO)'],
+  [['gt', 'gtube'], 'G-Tube'],
+  [['jt', 'jtube'], 'J-Tube'],
+  [['ng', 'ngt', 'ngtube'], 'NG-Tube'],
+  [['sl'], 'Sublingual'],
+  [['pr'], 'Rectal'],
+  [['pv'], 'Vaginal'],
+  [['top'], 'Topical'],
+  [['td'], 'Transdermal'],
+  [['inh'], 'Inhalation'],
+  [['neb'], 'Nebulizer'],
+  [['ophth', 'eye'], 'Ophthalmic (eye)'],
+  [['otic', 'ear'], 'Otic (ear)'],
+  [['im'], 'Intramuscular (IM)'],
+  [['sq', 'subq', 'sc'], 'Subcutaneous (SQ)'],
+  [['iv'], 'Intravenous (IV)'],
+])
+
+const DOSE_UNIT_ALIASES = buildAliasMap([
+  [['mcg', 'ug', 'microgram', 'micrograms'], 'mcg'],
+  [['mg', 'milligram', 'milligrams'], 'mg'],
+  [['ml', 'milliliter', 'milliliters'], 'mL'],
+  [['unit', 'units'], 'unit'],
+  [['tab', 'tabs', 'tablet', 'tablets'], 'tablet'],
+  [['cap', 'caps', 'capsule', 'capsules'], 'capsule'],
+  [['puff', 'puffs'], 'puff'],
+  [['spray', 'sprays'], 'spray'],
+  [['drop', 'drops', 'gtt', 'gtts'], 'drop'],
+  [['patch', 'patches'], 'patch'],
+])
+
+// A <select> of preset values, with an "Other…" option that reveals a free
+// text input. Typing a recognized clinical shorthand into that text input
+// (e.g. "qd", "q.i.d.", "po") snaps back to the matching standardized preset
+// on blur, so a shortcut typed by habit still lands on the same term everyone
+// else picked from the dropdown.
+function DropdownOrOther({ value, onChange, options, aliases, otherPlaceholder, className, style }: {
+  value: string
+  onChange: (v: string) => void
+  options: string[]
+  aliases?: Record<string, string>
+  otherPlaceholder: string
+  className: string
+  style: React.CSSProperties
+}) {
+  const isPreset = value === '' || options.includes(value)
+  const [customMode, setCustomMode] = useState(!isPreset)
+
+  function handleBlur() {
+    const canonical = aliases?.[normalizeKey(value)]
+    if (canonical) {
+      onChange(canonical)
+      setCustomMode(false)
+    }
+  }
+
+  if (customMode) {
+    return (
+      <div className="inline-flex items-center gap-1">
+        <input
+          type="text"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          onBlur={handleBlur}
+          placeholder={otherPlaceholder}
+          className={className}
+          style={style}
+        />
+        <button
+          type="button"
+          onClick={() => { setCustomMode(false); onChange('') }}
+          title="Choose from list instead"
+          className="text-xs shrink-0"
+          style={{ color: theme.sage }}
+        >
+          ↩
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <select
+      value={value}
+      onChange={e => {
+        if (e.target.value === '__other__') { setCustomMode(true); onChange('') }
+        else onChange(e.target.value)
+      }}
+      className={className}
+      style={style}
+    >
+      <option value="">—</option>
+      {options.map(o => <option key={o} value={o}>{o}</option>)}
+      <option value="__other__">Other…</option>
+    </select>
+  )
+}
+
 function toFormValues(m: MedicationDTO): MedicationInput {
   return {
     medicationName: m.medicationName,
     rxcui: m.rxcui || '',
     dose: m.dose || '',
+    doseUnit: m.doseUnit || '',
     unitStrength: m.unitStrength || '',
     unitType: m.unitType || '',
     frequency: m.frequency || '',
@@ -182,7 +350,7 @@ function MedicationForm({ initial, onSubmit, onCancel, submitLabel, pharmacies =
   // phone numbers, on-hand dose/type) don't stretch across the whole row.
   const narrowCls = 'border rounded-lg p-2 text-sm focus:outline-none focus:ring-2'
   const inputStyle = { borderColor: theme.bg, color: theme.navy } as React.CSSProperties
-  const unitsPerDose = computeUnitsPerDose(form.dose, form.unitStrength)
+  const unitsPerDose = computeUnitsPerDose(form.dose, form.doseUnit, form.unitStrength)
 
   function handleMedicationNameChange(e: React.ChangeEvent<HTMLInputElement>) {
     const value = e.target.value
@@ -323,15 +491,40 @@ function MedicationForm({ initial, onSubmit, onCancel, submitLabel, pharmacies =
       <div>
         <label className="block text-[10px] uppercase tracking-wide mb-1" style={{ color: theme.sage }}>Prescribed Administration</label>
         <div className="flex flex-wrap items-center gap-1.5 text-sm" style={{ color: theme.navy }}>
-          <span><em>SIG:</em>Administer</span>
-          <input placeholder="Dose (e.g. 81mg)" value={form.dose} onChange={set('dose')} className={`${narrowCls} w-24`} style={inputStyle} />
-          <input placeholder="Frequency (e.g. twice daily)" value={form.frequency} onChange={set('frequency')} className={`${narrowCls} w-36`} style={inputStyle} />
+          <span><strong>SIG:</strong>Administer</span>
+          <input type="number" step="any" min="0" placeholder="dose" value={form.dose} onChange={set('dose')} className={`${narrowCls} w-16`} style={inputStyle} />
+          <DropdownOrOther
+            value={form.doseUnit}
+            onChange={v => setForm(f => ({ ...f, doseUnit: v }))}
+            options={DOSE_UNIT_OPTIONS}
+            aliases={DOSE_UNIT_ALIASES}
+            otherPlaceholder="unit"
+            className={`${narrowCls} w-20`}
+            style={inputStyle}
+          />
+          <DropdownOrOther
+            value={form.frequency}
+            onChange={v => setForm(f => ({ ...f, frequency: v }))}
+            options={FREQUENCY_OPTIONS}
+            aliases={FREQUENCY_ALIASES}
+            otherPlaceholder="frequency"
+            className={`${narrowCls} w-36`}
+            style={inputStyle}
+          />
           <span>via</span>
-          <input placeholder="Route (e.g. G-Tube)" value={form.route} onChange={set('route')} className={`${narrowCls} w-32`} style={inputStyle} />
+          <DropdownOrOther
+            value={form.route}
+            onChange={v => setForm(f => ({ ...f, route: v }))}
+            options={ROUTE_OPTIONS}
+            aliases={ROUTE_ALIASES}
+            otherPlaceholder="route"
+            className={`${narrowCls} w-32`}
+            style={inputStyle}
+          />
         </div>
         {unitsPerDose != null && (
           <p className="text-[10px] mt-1 font-semibold" style={{ color: theme.sage }}>
-            = {fmtUnits(unitsPerDose)} unit(s) per dose ({form.dose} ÷ {form.unitStrength})
+            = {fmtUnits(unitsPerDose)} unit(s) per dose ({form.dose}{form.doseUnit} ÷ {form.unitStrength})
           </p>
         )}
       </div>
@@ -551,8 +744,9 @@ function DrugFactsModal({ medicationName, facts, loading, onClose }: {
   )
 }
 
-function adminSentenceOf(med: Pick<MedicationDTO, 'medicationName' | 'dose' | 'frequency' | 'route'>): string | null {
-  const parts = [med.dose, med.frequency].filter(Boolean).join(' ')
+function adminSentenceOf(med: Pick<MedicationDTO, 'medicationName' | 'dose' | 'doseUnit' | 'frequency' | 'route'>): string | null {
+  const doseText = med.dose ? `${med.dose}${med.doseUnit || ''}` : null
+  const parts = [doseText, med.frequency].filter(Boolean).join(' ')
   if (!parts && !med.route) return null
   return `Administer ${med.medicationName}${parts ? ` ${parts}` : ''}${med.route ? ` via ${med.route}` : ''}.`
 }
@@ -640,7 +834,7 @@ function MedicationDetailModal({ med, onAdd, onEdit, onConfirmRefill, onOrderRef
     setFactsLoading(false)
   }
 
-  const unitsPerDose = med ? computeUnitsPerDose(med.dose, med.unitStrength) : null
+  const unitsPerDose = med ? computeUnitsPerDose(med.dose, med.doseUnit, med.unitStrength) : null
   const dueDate = med ? addDaysStr(med.lastFillDate.slice(0, 10), med.daySupply) : null
 
   return (

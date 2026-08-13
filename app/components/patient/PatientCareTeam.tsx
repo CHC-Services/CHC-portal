@@ -91,7 +91,7 @@ export default function PatientCareTeam({
           <div className="space-y-1.5 mb-2">
             {activeLinks.map(l => (
               <div key={l.id} className="flex items-center justify-between bg-[#F4F6F5] rounded-lg px-3 py-2">
-                <span className="text-sm text-[#2F3E4E] font-semibold">{l.nurse.lastName || l.nurse.displayName}</span>
+                <span className="text-sm text-[#2F3E4E] font-semibold">{formalName(l.nurse) || l.nurse.displayName}</span>
                 {canManageAssignment && (
                   <button onClick={() => onUnlink?.(l.nurse.id)} className="text-xs text-red-500 hover:text-red-700 font-semibold transition">
                     Unlink

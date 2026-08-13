@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, Fragment, useMemo } from 'react'
 import AdminNav from '../../components/AdminNav'
 import { calcMedicaidCycleInfo, payCycleDateLabel } from '../../../lib/medicaidPayCycle'
 import { formalName } from '../../../lib/formatName'
+import { excludedClaimIds as totalsExcludedClaimIds } from '../../../lib/claimTotals'
 import DateInput from '../../components/DateInput'
 
 const CLAIM_STAGES = [
@@ -1690,40 +1691,63 @@ export default function AdminClaimsPage() {
   }), [claims, medicaidClaims])
 
   // claimId values that are pointed to as an original by another claim's resubmissionOf
+  // — used to hide superseded rows from the visible list (a void reversal's
+  // resubmissionOf hides its original the same way, since the reversal alone
+  // stands in for it here; see supersededByTotals below for why financial
+  // totals need a different rule).
   const supersededClaimIds = useMemo(() => {
     const ids = new Set<string>()
     claims.forEach(c => { if (c.resubmissionOf) ids.add(c.resubmissionOf) })
     return ids
   }, [claims])
 
+  // claimId values excluded from financial TOTALS specifically — only claims
+  // superseded by a genuine resubmission. A voided original must stay IN the
+  // total: its reversal row carries every dollar field negated, and the two
+  // only net to zero when both are summed (see lib/claimTotals.ts).
+  const supersededByTotals = useMemo(() => totalsExcludedClaimIds(claims), [claims])
+
   // lookup map for walking resubmission chains
   const claimByClaimId = useMemo(() =>
     new Map(claims.filter(c => c.claimId).map(c => [c.claimId!, c]))
   , [claims])
 
+  function matchesClaimFilters(uc: UnifiedClaim): boolean {
+    const provName = uc._type === 'commercial' ? (uc.providerName || uc.nurse?.displayName || '') : (uc.nurse?.displayName || '')
+    const id = uc._type === 'commercial' ? (uc.claimId || '') : uc.patientCtrlNum
+    const payer = uc._type === 'commercial' ? (uc.primaryPayer || '') : 'Medicaid'
+    if (hideDemo && (uc._type === 'commercial' ? uc.nurse?.isDemo : uc.nurse?.isDemo)) return false
+    const matchSearch = !search ||
+      provName.toLowerCase().includes(search.toLowerCase()) ||
+      id.toLowerCase().includes(search.toLowerCase()) ||
+      payer.toLowerCase().includes(search.toLowerCase())
+    const matchStage = !filterStage || (uc._type === 'commercial' ? uc.claimStage === filterStage : false)
+    const matchYear = !filterYear || (uc.dosStart ? new Date(uc.dosStart).getUTCFullYear().toString() === filterYear : false)
+    return matchSearch && matchStage && matchYear
+  }
+
   const filteredAll: UnifiedClaim[] = useMemo(() => {
     return allClaims.filter(uc => {
       // never show superseded originals in the main list — they appear tucked under their resubmission
       if (uc._type === 'commercial' && supersededClaimIds.has(uc.claimId || '')) return false
-      const provName = uc._type === 'commercial' ? (uc.providerName || uc.nurse?.displayName || '') : (uc.nurse?.displayName || '')
-      const id = uc._type === 'commercial' ? (uc.claimId || '') : uc.patientCtrlNum
-      const payer = uc._type === 'commercial' ? (uc.primaryPayer || '') : 'Medicaid'
-      if (hideDemo && (uc._type === 'commercial' ? uc.nurse?.isDemo : uc.nurse?.isDemo)) return false
-      const matchSearch = !search ||
-        provName.toLowerCase().includes(search.toLowerCase()) ||
-        id.toLowerCase().includes(search.toLowerCase()) ||
-        payer.toLowerCase().includes(search.toLowerCase())
-      const matchStage = !filterStage || (uc._type === 'commercial' ? uc.claimStage === filterStage : false)
-      const matchYear = !filterYear || (uc.dosStart ? new Date(uc.dosStart).getUTCFullYear().toString() === filterYear : false)
-      return matchSearch && matchStage && matchYear
+      return matchesClaimFilters(uc)
     })
   }, [allClaims, search, filterStage, filterYear, hideDemo, supersededClaimIds])
 
-  const totalBilled = filteredAll.reduce((s, uc) =>
+  // Same filters as filteredAll, but with the totals-correct exclusion rule
+  // — this is what "Total Billed" etc. below are computed from, not filteredAll.
+  const totalsFilteredAll: UnifiedClaim[] = useMemo(() => {
+    return allClaims.filter(uc => {
+      if (uc._type === 'commercial' && supersededByTotals.has(uc.id)) return false
+      return matchesClaimFilters(uc)
+    })
+  }, [allClaims, search, filterStage, filterYear, hideDemo, supersededByTotals])
+
+  const totalBilled = totalsFilteredAll.reduce((s, uc) =>
     s + (uc._type === 'commercial' ? (Number(uc.totalBilled) || 0) : uc.totalCharge), 0)
-  const totalReimbursed = filteredAll.reduce((s, uc) =>
+  const totalReimbursed = totalsFilteredAll.reduce((s, uc) =>
     s + (uc._type === 'commercial' ? (Number(uc.totalReimbursed) || 0) : (Number(uc.paidAmount) || 0)), 0)
-  const totalBalance = filteredAll.reduce((s, uc) =>
+  const totalBalance = totalsFilteredAll.reduce((s, uc) =>
     s + (uc._type === 'commercial' ? (Number(uc.remainingBalance) || 0) : Math.max(0, Number(uc.totalCharge) - (Number(uc.paidAmount) || 0))), 0)
 
   const stages = [...new Set(claims.map(c => c.claimStage).filter(Boolean))] as string[]

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../lib/prisma'
 import { verifyToken } from '../../../../../lib/auth'
+import { sumActiveClaimField } from '../../../../../lib/claimTotals'
 
 function getNurseId(req: Request): string | null {
   const cookie = req.headers.get('cookie') || ''
@@ -18,8 +19,10 @@ export async function GET(req: Request) {
   const claims = await prisma.claim.findMany({
     where: { nurseId },
     select: {
+      id: true,
       claimId: true,
       resubmissionOf: true,
+      voidReversalOf: true,
       claimStage: true,
       totalBilled: true,
       hours: true,
@@ -59,14 +62,17 @@ export async function GET(req: Request) {
     }
   }
 
-  let totalBilled = 0, totalAllowed = 0, totalPaid = 0, paidHours = 0, paidReimbursed = 0
+  // Computed across the flat list (not the root loop below) so it correctly
+  // nets a void wherever it lands in a chain, and never double-counts a
+  // superseded resubmission — see lib/claimTotals.ts.
+  const totalBilled = sumActiveClaimField(claims, c => c.totalBilled)
+
+  let totalAllowed = 0, totalPaid = 0, paidHours = 0, paidReimbursed = 0
   const statusCounts = { submitted: 0, pending: 0, paid: 0, denied: 0 }
 
   for (const root of roots) {
     const chain = [root, ...(root.claimId ? (resubsByParent.get(root.claimId) ?? []) : [])]
 
-    // Financial totals
-    totalBilled += root.totalBilled ?? 0
     const bestAllowed = Math.max(...chain.map(c => (c.primaryAllowedAmt ?? 0) + (c.secondaryAllowedAmt ?? 0)))
     const bestPaid = Math.max(...chain.map(c => c.totalReimbursed ?? 0))
     totalAllowed += bestAllowed

@@ -8,6 +8,7 @@ import DateInput from '../../../components/DateInput'
 import { fmtPhoneInput } from '../../../../lib/formatPhone'
 import { shortInvoiceNumber } from '../../../../lib/formatInvoice'
 import { formalName } from '../../../../lib/formatName'
+import { activeClaims } from '../../../../lib/claimTotals'
 
 type Profile = Record<string, any>
 
@@ -1082,9 +1083,14 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
   const nurseClaims = claimsYear
     ? allNurseClaims.filter(c => c.dosStart && new Date(c.dosStart).getUTCFullYear().toString() === claimsYear)
     : allNurseClaims
-  const totalBilled = nurseClaims.reduce((s: number, c: any) => s + (c.totalBilled ?? 0), 0)
-  const paidReimbursement = nurseClaims.reduce((s: number, c: any) => s + (c.primaryPaidAmt ?? 0) + (c.secondaryPaidAmt ?? 0), 0)
-  const owedReimbursement = nurseClaims.reduce((s: number, c: any) => s + (c.remainingBalance ?? 0), 0)
+  // The claims table below still lists every row (full audit trail — original,
+  // resubmissions, void reversals). These stats must not: exclude claims
+  // superseded by a genuine resubmission so the same billed dollars aren't
+  // counted twice, but keep void-reversal pairs so they net to zero (see lib/claimTotals.ts).
+  const activeNurseClaims = activeClaims(nurseClaims)
+  const totalBilled = activeNurseClaims.reduce((s: number, c: any) => s + (c.totalBilled ?? 0), 0)
+  const paidReimbursement = activeNurseClaims.reduce((s: number, c: any) => s + (c.primaryPaidAmt ?? 0) + (c.secondaryPaidAmt ?? 0), 0)
+  const owedReimbursement = activeNurseClaims.reduce((s: number, c: any) => s + (c.remainingBalance ?? 0), 0)
 
   // ── Sorted time entries for proHours ──
   function sortedEntries(list: TimeEntry[]) {

@@ -1,13 +1,18 @@
 import { prisma } from './prisma'
 import { isMedicaidPayerName } from './medicaidPayCycle'
+import { activeClaims } from './claimTotals'
 
 // Shared financial aggregation for admin income reports and nurse tax
 // reports. Claim is the single source of truth for claim income (Medicaid +
 // Commercial) — MedicaidClaim is legacy/excluded, see prisma/schema.prisma's
 // AdminReport comment and the 2026-08-12 data-cleanup session. A claim's void
 // pattern in this codebase is a paired negative "-VOID" row that nets the
-// original to zero, not a flag to filter on — so every function here sums ALL
-// rows, voided or not, rather than excluding voidedAt.
+// original to zero, not a flag to filter on — so aggregateClaimIncome sums
+// every void-paired row, voided or not, rather than excluding voidedAt. It
+// does exclude claims superseded by a genuine resubmission though (via
+// lib/claimTotals.ts's activeClaims) — otherwise a corrected/resubmitted
+// claim that both sides recorded totalReimbursed on double-counts real
+// reimbursed income.
 
 export function getQuarter(monthIndex1: number): number {
   return Math.ceil(monthIndex1 / 3)
@@ -30,9 +35,13 @@ export type ClaimIncomeResult = {
 // contribute 0 either way since totalReimbursed is null/0 until paid).
 export async function aggregateClaimIncome(opts: { nurseId?: string; year: number }): Promise<ClaimIncomeResult> {
   const { nurseId, year } = opts
-  const claims = await (prisma.claim.findMany as any)({
+  const allClaims = await (prisma.claim.findMany as any)({
     where: nurseId ? { nurseId } : {},
     select: {
+      id: true,
+      claimId: true,
+      resubmissionOf: true,
+      voidReversalOf: true,
       primaryPayer: true,
       secondaryPayer: true,
       primaryPaidDate: true,
@@ -41,6 +50,7 @@ export async function aggregateClaimIncome(opts: { nurseId?: string; year: numbe
       totalReimbursed: true,
     },
   })
+  const claims: any[] = activeClaims(allClaims as any[])
 
   const monthly: Record<number, PeriodBucket> = {}
   const quarterly: Record<number, PeriodBucket> = {}

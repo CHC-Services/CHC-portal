@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import PortalMessages from '../../components/PortalMessages'
 import { payCycleDateLabel, calcMedicaidCycleInfo } from '../../../lib/medicaidPayCycle'
+import { activeClaims } from '../../../lib/claimTotals'
 import DateInput from '../../components/DateInput'
 
 // ── Search helper — checks every string/number field on a claim ──────────────
@@ -60,6 +61,7 @@ type Claim = {
   dateFullyFinalized: string | null
   checkReceivedDate: string | null
   resubmissionOf: string | null
+  voidReversalOf: string | null
   processingNotes: string | null
   updatedAt: string
 }
@@ -868,11 +870,13 @@ function NurseClaimsPageInner() {
     ? yearFilteredClaims.filter(c => claimMatchesSearch(c, searchQuery))
     : yearFilteredClaims
 
-  const resubIds = new Set(searchFilteredClaims.filter(c => c.resubmissionOf).map(c => c.resubmissionOf as string))
-  const activeClaims = searchFilteredClaims.filter(c => !c.claimId || !resubIds.has(c.claimId))
+  // Excludes claims superseded by a genuine resubmission only — a voided
+  // claim's reversal row stays alongside it so the two net to zero when
+  // summed (see lib/claimTotals.ts).
+  const activeFilteredClaims = activeClaims(searchFilteredClaims)
 
-  const totalBilled = activeClaims.reduce((s, c) => s + (c.totalBilled || 0), 0)
-  const totalReimbursed = activeClaims.reduce((s, c) => s + (c.totalReimbursed || 0), 0)
+  const totalBilled = activeFilteredClaims.reduce((s, c) => s + (c.totalBilled || 0), 0)
+  const totalReimbursed = activeFilteredClaims.reduce((s, c) => s + (c.totalReimbursed || 0), 0)
 
   function submitSearch() { setSearchQuery(searchInput) }
   function clearSearch() { setSearchInput(''); setSearchQuery('') }
@@ -1104,7 +1108,7 @@ function NurseClaimsPageInner() {
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-xs text-[#7A8F79]">
                   Showing results for <span className="font-semibold text-[#2F3E4E]">&ldquo;{searchQuery}&rdquo;</span>
-                  {' '}— {activeClaims.length} claim{activeClaims.length !== 1 ? 's' : ''} matched
+                  {' '}— {activeFilteredClaims.length} claim{activeFilteredClaims.length !== 1 ? 's' : ''} matched
                 </span>
                 <button onClick={clearSearch} className="text-[#C4622D] text-xs font-semibold hover:underline">Clear</button>
               </div>
@@ -1113,7 +1117,7 @@ function NurseClaimsPageInner() {
             <div className="grid grid-cols-3 gap-2 md:gap-4 mb-6">
               <div className="bg-white rounded-xl p-2.5 md:p-4 shadow-sm">
                 <p className="text-[9px] md:text-xs uppercase tracking-widest text-[#7A8F79] font-semibold leading-tight">Total Claims</p>
-                <p className="text-base md:text-2xl font-bold text-[#2F3E4E] mt-0.5">{activeClaims.length}</p>
+                <p className="text-base md:text-2xl font-bold text-[#2F3E4E] mt-0.5">{activeFilteredClaims.length}</p>
               </div>
               <div className="bg-white rounded-xl p-2.5 md:p-4 shadow-sm">
                 <p className="text-[9px] md:text-xs uppercase tracking-widest text-[#7A8F79] font-semibold leading-tight">Total Billed</p>

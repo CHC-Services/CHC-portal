@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../../lib/prisma'
 import { verifyToken } from '../../../../lib/auth'
+import { getNurseCalendarFeed } from '../../../../lib/calendarFeed'
 
 function getSession(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -12,25 +13,20 @@ export async function GET(req: Request) {
   const session = getSession(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const now = new Date()
-
-  // Global events — filter to those targeting this user's role (or visible to all)
-  const globalEvents = await (prisma.globalEvent as any).findMany({
-    where: { eventDate: { gte: now } },
-    orderBy: { eventDate: 'asc' },
-  })
-  const visible = globalEvents.filter((e: any) =>
-    e.targetRoles.length === 0 || e.targetRoles.includes(session.role)
-  )
-
-  // Personal reminders (nurses only)
-  let personalReminders: any[] = []
-  if (session.nurseProfileId) {
-    personalReminders = await (prisma.nurseReminder as any).findMany({
-      where: { nurseId: session.nurseProfileId, completed: false, dueDate: { gte: now } },
-      orderBy: { dueDate: 'asc' },
+  // Non-nurse roles (admin/provider/biller browsing /portal or /resources)
+  // still see role-targeted GlobalEvent broadcasts, just nothing patient-scoped.
+  if (!session.nurseProfileId) {
+    const now = new Date()
+    const globalEvents = await prisma.globalEvent.findMany({
+      where: { eventDate: { gte: now } },
+      orderBy: { eventDate: 'asc' },
     })
+    const items = globalEvents
+      .filter(e => e.targetRoles.length === 0 || e.targetRoles.includes(session.role))
+      .map(e => ({ id: e.id, source: 'globalEvent' as const, title: e.title, date: e.eventDate, category: e.category, description: e.description ?? undefined, editable: false }))
+    return NextResponse.json({ items })
   }
 
-  return NextResponse.json({ globalEvents: visible, personalReminders })
+  const items = await getNurseCalendarFeed(session.nurseProfileId, session)
+  return NextResponse.json({ items })
 }

@@ -47,7 +47,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const patient = await (prisma.patient.findUnique as any)({ where: { id } })
   if (!patient) return NextResponse.json({ error: 'Patient not found' }, { status: 404 })
 
-  return NextResponse.json({ patient: { ...patient, medicationRemindersOptIn: link.medicationRemindersOptIn } })
+  // Active nurses linked to this patient — sources the nurse picker on the
+  // family Schedule tab (assigning an already-authorized nurse to a shift).
+  const nurseLinks = await (prisma.nursePatient.findMany as any)({
+    where: { patientId: id, isActive: true },
+    select: { id: true, nurse: { select: { id: true, displayName: true, firstName: true, lastName: true } } },
+  })
+
+  return NextResponse.json({ patient: { ...patient, medicationRemindersOptIn: link.medicationRemindersOptIn }, nurseLinks })
 }
 
 // PATCH — update demographics/insurance/clinical fields, or this guardian's

@@ -8,10 +8,13 @@ import PatientInsurance from '../../../components/patient/PatientInsurance'
 import PatientMedications from '../../../components/patient/PatientMedications'
 import PatientDocuments from '../../../components/patient/PatientDocuments'
 import PatientOrders from '../../../components/patient/PatientOrders'
+import PatientSchedule from '../../../components/patient/PatientSchedule'
 import PatientNotifications from '../../../components/patient/PatientNotifications'
 import { DetailTab } from '../../../components/patient/PatientTabs'
 import { PatientFields } from '../../../components/patient/types'
 import { MedicationDTO, MedicationInput, PharmacyOption } from '../../../components/MedicationList'
+
+type NurseLink = { id: string; nurse: { id: string; displayName: string; firstName?: string; lastName?: string } }
 
 export default function FamilyPatientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -19,6 +22,7 @@ export default function FamilyPatientDetailPage({ params }: { params: Promise<{ 
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [data, setData] = useState<Partial<PatientFields>>({})
+  const [nurseLinks, setNurseLinks] = useState<NurseLink[]>([])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
@@ -33,6 +37,7 @@ export default function FamilyPatientDetailPage({ params }: { params: Promise<{ 
         if (!r.ok) { setNotFound(true); setLoading(false); return }
         const body = await r.json()
         setData(body.patient)
+        setNurseLinks(body.nurseLinks || [])
         setLoading(false)
       })
     fetch('/api/me', { credentials: 'include' })
@@ -220,6 +225,11 @@ export default function FamilyPatientDetailPage({ params }: { params: Promise<{ 
           canDeleteAny={false}
           uploaderId={guardianUserId}
         />
+      ),
+    },
+    {
+      key: 'schedule', label: 'Schedule', content: (
+        <PatientSchedule patientId={id} basePath="/api/family" availableNurses={nurseLinks.map(l => l.nurse)} />
       ),
     },
     {

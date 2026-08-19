@@ -163,6 +163,7 @@ model NurseProfile {
   enrollmentLogs      EnrollmentLog[]
   invoices            Invoice[]
   reminders           NurseReminder[]
+  shifts              Shift[]
   documents           NurseDocument[]
   invoiceActivities   InvoiceActivity[]
   caseAssignments     CaseAssignment[]
@@ -950,6 +951,64 @@ model Patient {
   medications   PatientMedication[]
   guardianLinks GuardianPatient[]
   documents     PatientDocument[]
+  shifts        Shift[]
+  appointments  Appointment[]
+}
+
+model Shift {
+  id        String  @id @default(uuid())
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  // Null nurseId = open/coverage-needed, claimable by any nurse linked to this patient.
+  nurseId String?
+  nurse   NurseProfile? @relation(fields: [nurseId], references: [id], onDelete: SetNull)
+
+  startTime DateTime
+  endTime   DateTime
+
+  // 'open' (never assigned) | 'coverage_needed' (was assigned, nurse released it) |
+  // 'assigned' | 'completed' | 'cancelled'. 'open' and 'coverage_needed' are both
+  // claimable — the distinction is informational only (why is this unclaimed).
+  status String @default("open")
+
+  notes String?
+
+  createdByUserId String
+  createdByRole   String // 'admin' | 'guardian' — case-management authority. Not 'nurse': nurses don't originate shifts, they claim/work them.
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([patientId])
+  @@index([nurseId])
+  @@index([startTime])
+  @@index([status])
+}
+
+model Appointment {
+  id        String  @id @default(uuid())
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  title     String
+  location  String?
+  provider  String? // free-text clinic/doctor name — no per-appointment provider FK exists
+  startTime DateTime
+  endTime   DateTime?
+  notes     String?
+
+  status String @default("scheduled") // 'scheduled' | 'completed' | 'cancelled' | 'no_show'
+
+  createdByUserId String
+  createdByRole   String // 'admin' | 'nurse' | 'guardian' — families are typically the ones arranging appointments directly with physicians
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([patientId])
+  @@index([startTime])
+  @@index([status])
 }
 
 model PatientPA {

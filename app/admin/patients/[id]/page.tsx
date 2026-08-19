@@ -8,6 +8,7 @@ import PatientMedications from '../../../components/patient/PatientMedications'
 import PatientDocuments from '../../../components/patient/PatientDocuments'
 import PatientOrders from '../../../components/patient/PatientOrders'
 import PatientCareTeam, { NurseLink, GuardianLink } from '../../../components/patient/PatientCareTeam'
+import PatientSchedule from '../../../components/patient/PatientSchedule'
 import PatientNotifications from '../../../components/patient/PatientNotifications'
 import PatientPriorAuthHistory, { PatientPA } from '../../../components/patient/PatientPriorAuthHistory'
 import { DetailTab } from '../../../components/patient/PatientTabs'
@@ -409,6 +410,11 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
           canDeleteAny
           uploaderId={adminUserId}
         />
+      ),
+    },
+    {
+      key: 'schedule', label: 'Schedule', content: (
+        <PatientSchedule patientId={id} basePath="/api/admin" availableNurses={nurses} />
       ),
     },
     {

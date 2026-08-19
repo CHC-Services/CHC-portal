@@ -1,46 +1,39 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
-type GlobalEvent = {
-  id: string
-  title: string
-  description?: string
-  eventDate: string
-  category: string
-  recurrence?: string
-}
-
-type PersonalReminder = {
-  id: string
-  title: string
-  category: string
-  dueDate: string
-  notes?: string
-}
-
 type CalendarItem = {
   id: string
+  source: 'globalEvent' | 'personalReminder' | 'shift' | 'appointment' | 'medication' | 'priorAuth' | 'claimReminder' | 'document'
   title: string
-  date: Date
-  description?: string
+  date: string
+  endDate?: string
+  patientId?: string
+  patientName?: string
   category: string
-  type: 'global' | 'personal'
-  recurrence?: string
+  description?: string
+  status?: string
+  editable: boolean
 }
 
 const CATEGORY_META: Record<string, { icon: string; color: string; label: string }> = {
-  tax:        { icon: '🧾', color: 'bg-amber-50 border-amber-200 text-amber-700', label: 'Tax Deadline' },
-  renewal:    { icon: '📄', color: 'bg-blue-50 border-blue-200 text-blue-700',   label: 'Renewal' },
-  compliance: { icon: '✅', color: 'bg-green-50 border-green-200 text-green-700', label: 'Compliance' },
-  general:    { icon: '📅', color: 'bg-[#F4F6F5] border-[#D9E1E8] text-[#2F3E4E]', label: 'Event' },
-  license:    { icon: '📄', color: 'bg-blue-50 border-blue-200 text-blue-700',   label: 'License' },
-  medicaid:   { icon: '🏥', color: 'bg-purple-50 border-purple-200 text-purple-700', label: 'Medicaid' },
-  bcbs:       { icon: '💳', color: 'bg-indigo-50 border-indigo-200 text-indigo-700', label: 'BCBS' },
-  npi:        { icon: '🔢', color: 'bg-gray-50 border-gray-200 text-gray-700',   label: 'NPI' },
-  insurance:  { icon: '🛡️', color: 'bg-red-50 border-red-200 text-red-700',     label: 'Insurance' },
+  tax:         { icon: '🧾', color: 'bg-amber-50 border-amber-200 text-amber-700', label: 'Tax Deadline' },
+  renewal:     { icon: '📄', color: 'bg-blue-50 border-blue-200 text-blue-700',   label: 'Renewal' },
+  compliance:  { icon: '✅', color: 'bg-green-50 border-green-200 text-green-700', label: 'Compliance' },
+  general:     { icon: '📅', color: 'bg-[#F4F6F5] border-[#D9E1E8] text-[#2F3E4E]', label: 'Event' },
+  license:     { icon: '📄', color: 'bg-blue-50 border-blue-200 text-blue-700',   label: 'License' },
+  medicaid:    { icon: '🏥', color: 'bg-purple-50 border-purple-200 text-purple-700', label: 'Medicaid' },
+  bcbs:        { icon: '💳', color: 'bg-indigo-50 border-indigo-200 text-indigo-700', label: 'BCBS' },
+  npi:         { icon: '🔢', color: 'bg-gray-50 border-gray-200 text-gray-700',   label: 'NPI' },
+  insurance:   { icon: '🛡️', color: 'bg-red-50 border-red-200 text-red-700',     label: 'Insurance' },
+  shift:       { icon: '🩺', color: 'bg-teal-50 border-teal-200 text-teal-700',   label: 'Shift' },
+  appointment: { icon: '📆', color: 'bg-sky-50 border-sky-200 text-sky-700',      label: 'Appointment' },
+  medication:  { icon: '💊', color: 'bg-pink-50 border-pink-200 text-pink-700',   label: 'Medication' },
+  priorAuth:   { icon: '📋', color: 'bg-orange-50 border-orange-200 text-orange-700', label: 'Prior Auth' },
+  claim:       { icon: '💵', color: 'bg-emerald-50 border-emerald-200 text-emerald-700', label: 'Claim' },
+  document:    { icon: '📁', color: 'bg-yellow-50 border-yellow-200 text-yellow-700', label: 'Document' },
 }
 
 function meta(category: string) {
@@ -55,49 +48,68 @@ function formatDate(date: Date) {
   return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
 }
 
+const FILTERS = ['all', 'global', 'personal', 'shift', 'appointment'] as const
+type Filter = (typeof FILTERS)[number]
+
+const FILTER_SOURCE: Partial<Record<Filter, CalendarItem['source']>> = {
+  global: 'globalEvent',
+  personal: 'personalReminder',
+  shift: 'shift',
+  appointment: 'appointment',
+}
+
+const FILTER_LABEL: Record<Filter, string> = {
+  all: 'All Events',
+  global: '📢 Shared Deadlines',
+  personal: '🔒 My Reminders',
+  shift: '🩺 Shifts',
+  appointment: '📆 Appointments',
+}
+
 export default function CalendarPage() {
   const router = useRouter()
   const [items, setItems] = useState<CalendarItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<'all' | 'global' | 'personal'>('all')
+  const [filter, setFilter] = useState<Filter>('all')
+  const [claimingId, setClaimingId] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetch('/api/nurse/calendar', { credentials: 'include' })
+  const load = useCallback(() => {
+    setLoading(true)
+    return fetch('/api/nurse/calendar', { credentials: 'include' })
       .then(r => {
         if (r.status === 401) { router.push('/login'); return null }
         return r.json()
       })
       .then(data => {
         if (!data) return
-        const global: CalendarItem[] = data.globalEvents.map((e: GlobalEvent) => ({
-          id: e.id,
-          title: e.title,
-          date: new Date(e.eventDate),
-          description: e.description,
-          category: e.category,
-          type: 'global' as const,
-          recurrence: e.recurrence,
-        }))
-        const personal: CalendarItem[] = data.personalReminders.map((r: PersonalReminder) => ({
-          id: r.id,
-          title: r.title,
-          date: new Date(r.dueDate),
-          description: r.notes,
-          category: r.category,
-          type: 'personal' as const,
-        }))
-        const merged = [...global, ...personal].sort((a, b) => a.date.getTime() - b.date.getTime())
-        setItems(merged)
+        setItems(data.items || [])
       })
       .finally(() => setLoading(false))
   }, [router])
 
-  const filtered = items.filter(i => filter === 'all' || i.type === filter)
+  useEffect(() => { load() }, [load])
+
+  async function claimShift(id: string) {
+    setClaimingId(id)
+    const res = await fetch(`/api/nurse/shifts/${id}/claim`, { method: 'POST', credentials: 'include' })
+    setClaimingId(null)
+    if (res.ok) load()
+  }
+
+  async function releaseShift(id: string) {
+    setClaimingId(id)
+    const res = await fetch(`/api/nurse/shifts/${id}/release`, { method: 'POST', credentials: 'include' })
+    setClaimingId(null)
+    if (res.ok) load()
+  }
+
+  const wantedSource = FILTER_SOURCE[filter]
+  const filtered = items.filter(i => filter === 'all' || i.source === wantedSource)
 
   // Group by month
   const grouped: Record<string, CalendarItem[]> = {}
   for (const item of filtered) {
-    const key = item.date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    const key = new Date(item.date).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
     if (!grouped[key]) grouped[key] = []
     grouped[key].push(item)
   }
@@ -112,13 +124,13 @@ export default function CalendarPage() {
             <span className="text-[#7A8F79] italic">my</span>Calendar
           </h1>
           <p className="text-sm text-[#7A8F79] mt-1">
-            Your upcoming deadlines, renewal dates, tax filings, and personal reminders.
+            Your upcoming deadlines, shifts, appointments, and personal reminders.
           </p>
         </div>
 
         {/* Filter tabs */}
-        <div className="flex gap-2 mb-6">
-          {(['all', 'global', 'personal'] as const).map(f => (
+        <div className="flex gap-2 mb-6 flex-wrap">
+          {FILTERS.map(f => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -128,7 +140,7 @@ export default function CalendarPage() {
                   : 'bg-white text-[#7A8F79] hover:bg-[#D9E1E8]'
               }`}
             >
-              {f === 'all' ? 'All Events' : f === 'global' ? '📢 Shared Deadlines' : '🔒 My Reminders'}
+              {FILTER_LABEL[f]}
             </button>
           ))}
           <Link
@@ -155,9 +167,12 @@ export default function CalendarPage() {
                 <div className="space-y-3">
                   {monthItems.map(item => {
                     const m = meta(item.category)
-                    const days = daysFromNow(item.date)
+                    const date = new Date(item.date)
+                    const days = daysFromNow(date)
                     const overdue = days < 0
                     const urgent = days >= 0 && days <= 14
+                    const isClaimableShift = item.source === 'shift' && (item.status === 'open' || item.status === 'coverage_needed')
+                    const isMyAssignedShift = item.source === 'shift' && item.status === 'assigned' && item.editable
                     return (
                       <div
                         key={item.id}
@@ -171,15 +186,20 @@ export default function CalendarPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="text-sm font-bold text-[#2F3E4E]">{item.title}</p>
-                            {item.type === 'global' && (
+                            {item.source === 'globalEvent' && (
                               <span className="text-[10px] bg-[#2F3E4E] text-white px-2 py-0.5 rounded-full uppercase tracking-wide font-semibold">Shared</span>
                             )}
-                            {item.recurrence && (
-                              <span className="text-[10px] bg-[#F4F6F5] text-[#7A8F79] px-2 py-0.5 rounded-full uppercase tracking-wide">Recurring</span>
+                            {isClaimableShift && (
+                              <span className="text-[10px] bg-teal-600 text-white px-2 py-0.5 rounded-full uppercase tracking-wide font-semibold">
+                                {item.status === 'coverage_needed' ? 'Coverage Needed' : 'Open'}
+                              </span>
                             )}
                           </div>
+                          {item.patientName && (
+                            <p className="text-xs text-[#2F3E4E] mt-0.5">{item.patientName}</p>
+                          )}
                           <p className={`text-xs mt-0.5 font-semibold ${overdue ? 'text-red-500' : urgent ? 'text-amber-600' : 'text-[#7A8F79]'}`}>
-                            {formatDate(item.date)}
+                            {formatDate(date)}
                             {days >= 0 && days <= 30 && ` · ${days === 0 ? 'Today' : `${days} day${days === 1 ? '' : 's'} away`}`}
                             {overdue && ` · Overdue by ${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'}`}
                           </p>
@@ -187,6 +207,24 @@ export default function CalendarPage() {
                             <p className="text-xs text-[#7A8F79] mt-1 leading-relaxed">{item.description}</p>
                           )}
                         </div>
+                        {isClaimableShift && (
+                          <button
+                            onClick={() => claimShift(item.id)}
+                            disabled={claimingId === item.id}
+                            className="shrink-0 self-center bg-[#2F3E4E] text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-[#7A8F79] transition disabled:opacity-50"
+                          >
+                            {claimingId === item.id ? 'Claiming…' : 'Claim'}
+                          </button>
+                        )}
+                        {isMyAssignedShift && (
+                          <button
+                            onClick={() => releaseShift(item.id)}
+                            disabled={claimingId === item.id}
+                            className="shrink-0 self-center border border-amber-300 text-amber-700 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-amber-50 transition disabled:opacity-50"
+                          >
+                            {claimingId === item.id ? 'Releasing…' : 'Release'}
+                          </button>
+                        )}
                       </div>
                     )
                   })}
@@ -199,4 +237,3 @@ export default function CalendarPage() {
     </div>
   )
 }
-

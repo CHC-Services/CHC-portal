@@ -6,6 +6,7 @@ import ProfileDemographicsCard from '../../components/profile/ProfileDemographic
 import ProfileBillingInfoCard from '../../components/profile/ProfileBillingInfoCard'
 import ProfileBankingCard from '../../components/profile/ProfileBankingCard'
 import MessagingPrefToggle from '../../components/MessagingPrefToggle'
+import SignatureCapture from '../../components/SignatureCapture'
 
 export default function AdminProfilePage() {
   const router = useRouter()
@@ -14,6 +15,37 @@ export default function AdminProfilePage() {
   const [visibleCards, setVisibleCards] = useState<string[]>(['demographics'])
   const [editing, setEditing] = useState(false)
   const [message, setMessage] = useState('')
+
+  // My Signature
+  const [signatureUrl, setSignatureUrl] = useState<string | null>(null)
+  const [signatureLoading, setSignatureLoading] = useState(true)
+  const [signatureSaving, setSignatureSaving] = useState(false)
+
+  function loadSignature() {
+    fetch('/api/admin/signature', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => setSignatureUrl(d.signatureUrl || null))
+      .finally(() => setSignatureLoading(false))
+  }
+
+  useEffect(() => { loadSignature() }, [])
+
+  async function saveSignature(dataUrl: string) {
+    setSignatureSaving(true)
+    const res = await fetch('/api/admin/signature', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ imageDataUrl: dataUrl }),
+    })
+    setSignatureSaving(false)
+    if (res.ok) loadSignature()
+  }
+
+  async function removeSignature() {
+    await fetch('/api/admin/signature', { method: 'DELETE', credentials: 'include' })
+    setSignatureUrl(null)
+  }
 
   useEffect(() => {
     fetch('/api/admin/profile', { credentials: 'include' })
@@ -84,6 +116,24 @@ export default function AdminProfilePage() {
           </form>
         )}
         {visibleCards.includes('banking') && <ProfileBankingCard data={profile} />}
+
+        {/* My Signature — used for authoring/signing Progress Notes as admin */}
+        <div className="bg-white rounded-xl shadow p-6 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E]">My Signature</p>
+            {signatureUrl && (
+              <button type="button" onClick={removeSignature} className="text-xs font-semibold text-red-500 hover:text-red-700 transition">
+                Remove
+              </button>
+            )}
+          </div>
+          {signatureLoading ? (
+            <p className="text-sm text-[#7A8F79]">Loading…</p>
+          ) : (
+            <SignatureCapture existingImageUrl={signatureUrl} onSave={saveSignature} saving={signatureSaving} />
+          )}
+        </div>
+
         <div className="bg-white rounded-xl shadow p-6">
           <p className="font-bold text-[#2F3E4E] text-sm mb-1">Messaging</p>
           <p className="text-xs text-[#7A8F79] leading-relaxed mb-4">Email alerts for new messages you receive on the portal.</p>

@@ -47,11 +47,20 @@ model User {
   // plain dot; see Message/MessageRecipient below).
   notifyNewMessage Boolean @default(true)
 
-  nurseProfile      NurseProfile?
-  guardianLinks     GuardianPatient[]
-  sentMessages      Message[]          @relation("MessageSender")
-  messageRecipients MessageRecipient[]
-  createdAt         DateTime           @default(now())
+  // Stored e-signature for non-nurse authors (currently: admin) on Progress
+  // Notes and their addenda. Nurses keep using NurseProfile.signatureImageKey
+  // — this is a deliberate asymmetry, not a duplicate, to avoid touching the
+  // already-shipped nurse e-sig feature.
+  signatureImageKey String?
+  signatureSavedAt  DateTime?
+
+  nurseProfile          NurseProfile?
+  guardianLinks         GuardianPatient[]
+  sentMessages          Message[]              @relation("MessageSender")
+  messageRecipients     MessageRecipient[]
+  authoredProgressNotes ProgressNote[]
+  progressNoteAddenda   ProgressNoteAddendum[]
+  createdAt             DateTime               @default(now())
 }
 
 model NurseProfile {
@@ -172,7 +181,6 @@ model NurseProfile {
   invoices            Invoice[]
   reminders           NurseReminder[]
   shifts              Shift[]
-  progressNotes       ProgressNote[]
   documents           NurseDocument[]
   invoiceActivities   InvoiceActivity[]
   caseAssignments     CaseAssignment[]
@@ -1028,8 +1036,9 @@ model ProgressNote {
   patientId String
   patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
-  authorNurseId String
-  authorNurse   NurseProfile @relation(fields: [authorNurseId], references: [id], onDelete: Cascade)
+  authorUserId String
+  authorUser   User   @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
+  authorRole   String // 'nurse' | 'admin' — denormalized, avoids a role join everywhere it's displayed/filtered
 
   shiftId String?
   shift   Shift? @relation(fields: [shiftId], references: [id], onDelete: SetNull)
@@ -1043,7 +1052,7 @@ model ProgressNote {
   shiftNotes      String? // required (non-empty) before signing — enforced in the sign route, not the schema
 
   signedAt          DateTime?
-  signatureImageKey String? // snapshot COPY of NurseProfile.signatureImageKey taken at sign time — never a live reference, so a later signature change doesn't alter history
+  signatureImageKey String? // snapshot COPY of the author's stored signature (NurseProfile or User, per authorRole) taken at sign time — never a live reference, so a later signature change doesn't alter history
 
   voidedAt       DateTime?
   voidedByUserId String?
@@ -1054,11 +1063,31 @@ model ProgressNote {
 
   vitals       ProgressNoteVital[]
   intakeOutput ProgressNoteIntakeOutput[]
+  addenda      ProgressNoteAddendum[]
 
   @@index([patientId])
-  @@index([authorNurseId])
+  @@index([authorUserId])
   @@index([shiftId])
   @@index([serviceDate])
+}
+
+// Appended, separately-signed corrections to an already-signed note — never
+// alters the original note's text or signature. Composed and signed as one
+// atomic action (not a draft/sign two-step like the main note itself).
+model ProgressNoteAddendum {
+  id             String       @id @default(uuid())
+  progressNoteId String
+  progressNote   ProgressNote @relation(fields: [progressNoteId], references: [id], onDelete: Cascade)
+
+  authorUserId String
+  authorUser   User   @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
+  authorRole   String // 'nurse' | 'admin'
+
+  text              String
+  signatureImageKey String
+  signedAt          DateTime @default(now())
+
+  @@index([progressNoteId])
 }
 
 model ProgressNoteVital {

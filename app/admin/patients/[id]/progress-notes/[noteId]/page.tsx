@@ -2,8 +2,9 @@
 
 import { useEffect, useState, use } from 'react'
 import Link from 'next/link'
+import ProgressNoteForm, { ProgressNoteDTO } from '../../../../../components/patient/ProgressNoteForm'
 import ProgressNoteView from '../../../../../components/patient/ProgressNoteView'
-import { ProgressNoteDTO } from '../../../../../components/patient/ProgressNoteForm'
+import ProgressNoteAddendumForm from '../../../../../components/patient/ProgressNoteAddendumForm'
 
 export default function AdminProgressNotePage({ params }: { params: Promise<{ id: string; noteId: string }> }) {
   const { id, noteId } = use(params)
@@ -11,6 +12,7 @@ export default function AdminProgressNotePage({ params }: { params: Promise<{ id
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [note, setNote] = useState<ProgressNoteDTO | null>(null)
+  const [isAuthor, setIsAuthor] = useState(false)
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null)
   const [voiding, setVoiding] = useState(false)
   const [voidReason, setVoidReason] = useState('')
@@ -23,6 +25,7 @@ export default function AdminProgressNotePage({ params }: { params: Promise<{ id
         if (!r.ok) { setNotFound(true); setLoading(false); return }
         const body = await r.json()
         setNote(body.note)
+        setIsAuthor(body.isAuthor)
         setSignatureUrl(body.signatureUrl)
         setLoading(false)
       })
@@ -57,6 +60,8 @@ export default function AdminProgressNotePage({ params }: { params: Promise<{ id
     )
   }
 
+  const isEditableDraft = isAuthor && !note.signedAt
+
   const voidAction = note.signedAt && !note.voidedAt ? (
     <div className="bg-white rounded-2xl shadow-sm p-6 space-y-3">
       {!showVoidForm ? (
@@ -88,7 +93,29 @@ export default function AdminProgressNotePage({ params }: { params: Promise<{ id
         </Link>
         <h1 className="text-2xl font-bold text-[#2F3E4E] mt-2 mb-5">Progress Note</h1>
 
-        <ProgressNoteView note={note} signatureUrl={signatureUrl} voidAction={voidAction} />
+        {isEditableDraft ? (
+          <ProgressNoteForm
+            note={note}
+            basePath="/api/admin"
+            profileHref="/admin/profile"
+            onSaved={updated => setNote(updated)}
+            onSigned={updated => { setNote(updated); load() }}
+          />
+        ) : (
+          <ProgressNoteView
+            note={note}
+            signatureUrl={signatureUrl}
+            voidAction={voidAction}
+            addendumAction={note.signedAt && !note.voidedAt ? (
+              <ProgressNoteAddendumForm
+                basePath="/api/admin"
+                noteId={note.id}
+                profileHref="/admin/profile"
+                onAdded={() => load()}
+              />
+            ) : undefined}
+          />
+        )}
       </div>
     </div>
   )

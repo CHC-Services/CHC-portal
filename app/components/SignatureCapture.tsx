@@ -26,7 +26,15 @@ export default function SignatureCapture({
 
   useEffect(() => {
     if (!redrawing) return
-    const timer = setTimeout(() => {
+
+    // Sizes the canvas's drawing buffer to match its current rendered box
+    // (device-pixel-ratio scaled) and (re)creates the pad against it. Must be
+    // re-run on every resize, not just once on mount — rotating the device
+    // changes the canvas's rendered width/height without this, which desyncs
+    // signature_pad's touch-to-canvas coordinate mapping from the actual
+    // pointer position (the classic symptom: the drawn line trails visibly
+    // off from where the finger actually is after rotating to landscape).
+    function setupPad(preserveData?: ReturnType<SignaturePad['toData']>) {
       const canvas = canvasRef.current
       if (!canvas) return
       const ratio = Math.max(window.devicePixelRatio || 1, 2)
@@ -34,17 +42,39 @@ export default function SignatureCapture({
       canvas.height = canvas.offsetHeight * ratio
       const ctx = canvas.getContext('2d')
       if (ctx) ctx.scale(ratio, ratio)
+
+      padRef.current?.off()
       const pad = new SignaturePad(canvas, {
         backgroundColor: 'rgba(0,0,0,0)',
         penColor: '#000000',
         minWidth: 1.5,
         maxWidth: 4,
       })
+      if (preserveData && preserveData.length > 0) pad.fromData(preserveData)
       pad.addEventListener('endStroke', () => setEmpty(pad.isEmpty()))
       padRef.current = pad
-      setEmpty(true)
-    }, 80)
-    return () => clearTimeout(timer)
+      setEmpty(pad.isEmpty())
+    }
+
+    const initialTimer = setTimeout(() => setupPad(), 80)
+
+    let resizeTimer: ReturnType<typeof setTimeout>
+    function handleResize() {
+      clearTimeout(resizeTimer)
+      // Debounced: orientation-change fires several resize events in quick
+      // succession while the viewport settles, and re-measuring mid-rotation
+      // would just re-desync again.
+      resizeTimer = setTimeout(() => setupPad(padRef.current?.toData()), 150)
+    }
+    window.addEventListener('resize', handleResize)
+    window.addEventListener('orientationchange', handleResize)
+
+    return () => {
+      clearTimeout(initialTimer)
+      clearTimeout(resizeTimer)
+      window.removeEventListener('resize', handleResize)
+      window.removeEventListener('orientationchange', handleResize)
+    }
   }, [redrawing])
 
   function clearPad() {

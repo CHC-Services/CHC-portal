@@ -16,11 +16,12 @@ function fmtDateTime(iso: string) {
 // admin's view page, family's view page, and the nurse's own view of an
 // already-signed note.
 export default function ProgressNoteView({
-  note, signatureUrl, voidAction,
+  note, signatureUrl, voidAction, addendumAction,
 }: {
-  note: ProgressNoteDTO & { authorNurse?: { displayName: string } }
+  note: ProgressNoteDTO
   signatureUrl?: string | null
   voidAction?: React.ReactNode
+  addendumAction?: React.ReactNode
 }) {
   return (
     <div className="space-y-5">
@@ -53,8 +54,8 @@ export default function ProgressNoteView({
             <p className="text-sm text-[#2F3E4E]">{note.totalHours ?? '—'}</p>
           </div>
         </div>
-        {note.authorNurse && (
-          <p className="text-xs text-[#7A8F79]">Authored by {note.authorNurse.displayName}</p>
+        {note.authorDisplayName && (
+          <p className="text-xs text-[#7A8F79]">Authored by {note.authorDisplayName}{note.authorRole === 'admin' ? ' (admin)' : ''}</p>
         )}
       </div>
 
@@ -154,6 +155,25 @@ export default function ProgressNoteView({
         </div>
       )}
 
+      {note.addenda.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">Addenda</p>
+          {note.addenda.map(a => (
+            <div key={a.id} className="bg-[#F4F6F5] border border-[#D9E1E8] rounded-2xl p-5 space-y-3">
+              <p className="text-xs font-semibold text-[#7A8F79]">
+                {a.authorDisplayName}{a.authorRole === 'admin' ? ' (admin)' : ''} — {fmtDateTime(a.signedAt)}
+              </p>
+              <p className="text-sm text-[#2F3E4E] whitespace-pre-wrap">{a.text}</p>
+              <div className="border border-[#D9E1E8] rounded-lg bg-white p-3 flex items-center justify-center max-w-xs">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={a.signatureUrl} alt="Addendum signature" className="max-h-20" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {addendumAction}
       {voidAction}
     </div>
   )

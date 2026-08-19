@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '../../../../lib/prisma'
 import { verifyToken } from '../../../../lib/auth'
 import { canViewProgressNote } from '../../../../lib/permissions'
+import { authorDisplayName } from '../../../../lib/progressNoteAuthor'
 
 function getSession(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -9,7 +10,7 @@ function getSession(req: Request) {
   return token ? verifyToken(token) : null
 }
 
-// Signed, non-voided notes only — drafts are the nurse's private working copy.
+// Signed, non-voided notes only — drafts are the author's private working copy.
 export async function GET(req: Request) {
   const session = getSession(req)
   if (!session || session.role !== 'guardian') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -23,8 +24,8 @@ export async function GET(req: Request) {
 
   const notes = await prisma.progressNote.findMany({
     where: { patientId, signedAt: { not: null } },
-    include: { authorNurse: { select: { displayName: true } } },
+    include: { authorUser: { select: { name: true, nurseProfile: { select: { displayName: true } } } } },
     orderBy: { serviceDate: 'desc' },
   })
-  return NextResponse.json({ notes })
+  return NextResponse.json({ notes: notes.map(n => ({ ...n, authorDisplayName: authorDisplayName(n) })) })
 }

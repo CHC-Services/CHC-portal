@@ -4,6 +4,7 @@ import { useEffect, useState, use } from 'react'
 import Link from 'next/link'
 import ProgressNoteForm, { ProgressNoteDTO } from '../../../../../components/patient/ProgressNoteForm'
 import ProgressNoteView from '../../../../../components/patient/ProgressNoteView'
+import ProgressNoteAddendumForm from '../../../../../components/patient/ProgressNoteAddendumForm'
 
 export default function NurseProgressNotePage({ params }: { params: Promise<{ id: string; noteId: string }> }) {
   const { id, noteId } = use(params)
@@ -58,11 +59,23 @@ export default function NurseProgressNotePage({ params }: { params: Promise<{ id
           <ProgressNoteForm
             note={note}
             basePath="/api/nurse"
+            profileHref="/nurse/profile"
             onSaved={updated => setNote(updated)}
             onSigned={updated => { setNote(updated); load() }}
           />
         ) : (
-          <ProgressNoteView note={note} signatureUrl={signatureUrl} />
+          <ProgressNoteView
+            note={note}
+            signatureUrl={signatureUrl}
+            addendumAction={isAuthor && note.signedAt && !note.voidedAt ? (
+              <ProgressNoteAddendumForm
+                basePath="/api/nurse"
+                noteId={note.id}
+                profileHref="/nurse/profile"
+                onAdded={() => load()}
+              />
+            ) : undefined}
+          />
         )}
       </div>
     </div>

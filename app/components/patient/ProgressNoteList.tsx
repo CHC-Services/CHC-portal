@@ -8,7 +8,7 @@ export type ProgressNoteSummary = {
   serviceDate: string
   signedAt: string | null
   voidedAt: string | null
-  authorNurse: { displayName: string }
+  authorDisplayName: string
 }
 
 function fmtDate(iso: string) {
@@ -64,7 +64,7 @@ export default function ProgressNoteList({
             <Link key={n.id} href={`${linkBase}/${n.id}`} className="flex items-center justify-between bg-[#F4F6F5] rounded-lg px-3 py-2 hover:bg-[#D9E1E8] transition">
               <div>
                 <p className="text-sm text-[#2F3E4E] font-semibold">{fmtDate(n.serviceDate)}</p>
-                <p className="text-xs text-[#7A8F79]">{n.authorNurse.displayName}</p>
+                <p className="text-xs text-[#7A8F79]">{n.authorDisplayName}</p>
               </div>
               {statusBadge(n)}
             </Link>

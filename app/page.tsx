@@ -158,6 +158,12 @@ export default async function Home() {
     nurseStats = await getNurseStats(user.nurseProfileId)
   }
 
+  let adminShowSignatureNudge = false
+  if (user?.role === 'admin') {
+    const adminUser = await prisma.user.findUnique({ where: { id: user.id }, select: { signatureImageKey: true } }).catch(() => null)
+    adminShowSignatureNudge = !adminUser?.signatureImageKey
+  }
+
   return (
     <div className="min-h-screen bg-[#D9E1E8]">
 
@@ -230,7 +236,14 @@ export default async function Home() {
       <div className="px-6 md:px-10 py-10 space-y-12 max-w-5xl mx-auto">
 
         {/* ── Nurse: e-signature nudge ── */}
-        {user?.role === 'nurse' && nurseStats?.showSignatureNudge && <SignatureNudgeBanner />}
+        {user?.role === 'nurse' && nurseStats?.showSignatureNudge && (
+          <SignatureNudgeBanner profileHref="/nurse/profile" exploreHref="/nurse/patients" />
+        )}
+
+        {/* ── Admin: e-signature nudge ── */}
+        {user?.role === 'admin' && adminShowSignatureNudge && (
+          <SignatureNudgeBanner profileHref="/admin/profile" exploreHref="/admin/patients" />
+        )}
 
         {/* ── Nurse: stats ── */}
         {user?.role === 'nurse' && nurseStats && (

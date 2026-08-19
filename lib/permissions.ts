@@ -108,23 +108,35 @@ export async function canViewProgressNote(session: Session, patientId: string) {
   return isLinkedToPatient(session, patientId)
 }
 
-// Only a nurse actively linked to the patient may start a note, and only for
-// themselves as author — this is the one place nurse has exclusive
-// authorship; admin/guardian never create clinical documentation on a
-// nurse's behalf.
+// Nurse (actively linked) OR admin (unconditional — matches isLinkedToPatient's
+// own admin branch, and the standing "admin never hits a real wall" principle)
+// may start a note.
 export async function canCreateProgressNote(session: Session, patientId: string): Promise<boolean> {
+  if (session.role === 'admin') return true
   if (session.role !== 'nurse' || !session.nurseProfileId) return false
   return isLinkedToPatient(session, patientId)
 }
 
-// Edit (including sign) is author-only, and only while still a draft.
-export async function canEditProgressNote(session: Session, note: { authorNurseId: string; signedAt: Date | null }): Promise<boolean> {
-  if (session.role !== 'nurse' || !session.nurseProfileId) return false
-  return note.authorNurseId === session.nurseProfileId && !note.signedAt
+// Edit (including sign, delete-while-draft) is author-only, and only while
+// still a draft — symmetric for nurse or admin authors. Nobody, including
+// admin, can reopen someone else's note; corrections to a signed note go
+// through an addendum instead (see canAddAddendum).
+export async function canEditProgressNote(session: Session, note: { authorUserId: string; signedAt: Date | null }): Promise<boolean> {
+  return note.authorUserId === session.id && !note.signedAt
 }
 
 // Admin-only escape hatch for genuine errors — marks a signed note voided
 // without altering its content, mirroring Claim's voidedAt convention.
 export async function canVoidProgressNote(session: Session): Promise<boolean> {
   return session.role === 'admin'
+}
+
+// Appending a signed addendum to an already-signed, non-voided note. Admin
+// always; the original author may also add a late addendum to their own
+// note (standard EMR "late entry" pattern) — never anyone else, never before
+// signing (that's just editing), never on a voided note.
+export async function canAddAddendum(session: Session, note: { authorUserId: string; signedAt: Date | null; voidedAt: Date | null }): Promise<boolean> {
+  if (!note.signedAt || note.voidedAt) return false
+  if (session.role === 'admin') return true
+  return note.authorUserId === session.id
 }

@@ -3,12 +3,15 @@ import { prisma } from '../../../../../lib/prisma'
 import { verifyToken } from '../../../../../lib/auth'
 import { canEditProgressNote, canViewProgressNote } from '../../../../../lib/permissions'
 import { getPresignedDownloadUrl } from '../../../../../lib/s3'
+import { authorDisplayName } from '../../../../../lib/progressNoteAuthor'
 
 function getSession(req: Request) {
   const cookie = req.headers.get('cookie') || ''
   const token = cookie.split('auth_token=').pop()?.split(';')[0]
   return token ? verifyToken(token) : null
 }
+
+const AUTHOR_SELECT = { select: { name: true, nurseProfile: { select: { displayName: true } } } } as const
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = getSession(req)
@@ -22,7 +25,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     include: {
       vitals: { orderBy: { sortOrder: 'asc' } },
       intakeOutput: { orderBy: { sortOrder: 'asc' } },
-      authorNurse: { select: { displayName: true } },
+      authorUser: AUTHOR_SELECT,
+      addenda: { include: { authorUser: AUTHOR_SELECT }, orderBy: { signedAt: 'asc' } },
     },
   })
   if (!note) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -34,7 +38,17 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     ? await getPresignedDownloadUrl(note.signatureImageKey, 900, { inline: true, contentType: 'image/png' })
     : null
 
-  return NextResponse.json({ note, isAuthor: note.authorNurseId === session.nurseProfileId, signatureUrl })
+  const addenda = await Promise.all(note.addenda.map(async a => ({
+    ...a,
+    authorDisplayName: authorDisplayName(a),
+    signatureUrl: await getPresignedDownloadUrl(a.signatureImageKey, 900, { inline: true, contentType: 'image/png' }),
+  })))
+
+  return NextResponse.json({
+    note: { ...note, authorDisplayName: authorDisplayName(note), addenda },
+    isAuthor: note.authorUserId === session.id,
+    signatureUrl,
+  })
 }
 
 // Draft-only, author-only. Replaces header fields and fully replaces the

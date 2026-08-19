@@ -420,7 +420,7 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
     },
     {
       key: 'progressNotes', label: 'Progress Notes', content: (
-        <ProgressNoteList patientId={id} basePath="/api/admin" linkBase={`/admin/patients/${id}/progress-notes`} canCreate={false} />
+        <ProgressNoteList patientId={id} basePath="/api/admin" linkBase={`/admin/patients/${id}/progress-notes`} canCreate />
       ),
     },
     {

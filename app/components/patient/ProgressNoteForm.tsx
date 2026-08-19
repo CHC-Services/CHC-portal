@@ -30,10 +30,20 @@ export type ProgressNoteIntakeOutputRow = {
   outputEmesis: string | null
 }
 
+export type ProgressNoteAddendumDTO = {
+  id: string
+  text: string
+  authorRole: string
+  authorDisplayName: string
+  signatureUrl: string
+  signedAt: string
+}
+
 export type ProgressNoteDTO = {
   id: string
   patientId: string
-  authorNurseId: string
+  authorUserId: string
+  authorRole: string
   serviceDate: string
   shiftStartTime: string | null
   shiftEndTime: string | null
@@ -47,7 +57,8 @@ export type ProgressNoteDTO = {
   voidReason: string | null
   vitals: ProgressNoteVitalRow[]
   intakeOutput: ProgressNoteIntakeOutputRow[]
-  authorNurse?: { displayName: string }
+  addenda: ProgressNoteAddendumDTO[]
+  authorDisplayName?: string
 }
 
 const O2_ROUTES = ['AirVo', 'HME', 'O2 Tank', 'Passy Muir', 'POC', 'Vent', 'Room Air']
@@ -65,10 +76,11 @@ function toDateInputValue(iso: string) {
 }
 
 export default function ProgressNoteForm({
-  note, basePath, onSaved, onSigned,
+  note, basePath, profileHref, onSaved, onSigned,
 }: {
   note: ProgressNoteDTO
-  basePath: string // '/api/nurse'
+  basePath: string // '/api/nurse' or '/api/admin'
+  profileHref: string // '/nurse/profile' or '/admin/profile' — where to set up a signature
   onSaved: (note: ProgressNoteDTO) => void
   onSigned: (note: ProgressNoteDTO) => void
 }) {
@@ -91,11 +103,11 @@ export default function ProgressNoteForm({
   const [signError, setSignError] = useState('')
 
   useEffect(() => {
-    fetch('/api/nurse/signature', { credentials: 'include' })
+    fetch(`${basePath}/signature`, { credentials: 'include' })
       .then(r => r.json())
       .then(d => setSignatureUrl(d.signatureUrl ?? null))
       .catch(() => setSignatureUrl(null))
-  }, [])
+  }, [basePath])
 
   async function checkSpelling(text: string): Promise<SpellcheckFlag[]> {
     const customTerms = await loadCustomTerms()
@@ -315,7 +327,7 @@ export default function ProgressNoteForm({
           <p className="text-xs text-[#7A8F79]">Checking for a stored signature…</p>
         ) : signatureUrl === null ? (
           <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-            You don&apos;t have a stored signature yet. <a href="/nurse/profile" className="font-semibold underline">Add one on your profile page</a> before signing.
+            You don&apos;t have a stored signature yet. <a href={profileHref} className="font-semibold underline">Add one on your profile page</a> before signing.
           </p>
         ) : !confirmingSign ? (
           <button

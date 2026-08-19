@@ -102,6 +102,7 @@ export async function POST(req: Request) {
       estPayCycle,
       depositDate,
       resubmissionOf:      parseStr(body.resubmissionOf),
+      remarkCodes:         parseStr(body.remarkCodes),
       processingNotes:     parseStr(body.processingNotes),
     },
     include: {

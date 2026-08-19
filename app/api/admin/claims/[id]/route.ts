@@ -68,6 +68,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if ('hours'               in body) data.hours               = parseNum(body.hours)
   if ('dateFullyFinalized'  in body) data.dateFullyFinalized  = parseDate(body.dateFullyFinalized)
   if ('checkReceivedDate'   in body) data.checkReceivedDate   = parseDate(body.checkReceivedDate)
+  if ('remarkCodes'         in body) data.remarkCodes         = parseStr(body.remarkCodes)
   if ('processingNotes'     in body) data.processingNotes     = parseStr(body.processingNotes)
 
   if (Object.keys(data).length === 0) {

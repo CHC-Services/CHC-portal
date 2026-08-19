@@ -732,6 +732,7 @@ model Claim {
   depositDate DateTime?
 
   // Notes
+  remarkCodes     String? // CARC/RARC remark codes from the EOB, entered by admin; shown to the nurse on their claim
   processingNotes String?
 
   // Resubmission tracking

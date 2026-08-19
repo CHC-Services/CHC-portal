@@ -38,6 +38,7 @@ type SearchMatch = {
   address: string | null
   city: string | null
   state: string | null
+  matchToken: string
 }
 
 function fmtDob(dob: string) {
@@ -217,13 +218,13 @@ export default function MyPatients() {
     }
   }
 
-  async function handleLink(patientId: string) {
+  async function handleLink(matchToken: string) {
     setLinking(true); setError('')
     const res = await fetch('/api/nurse/patients', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ existingPatientId: patientId }),
+      body: JSON.stringify({ matchToken }),
     })
     setLinking(false)
     if (res.ok) { await loadPatients(); closeModal() }
@@ -395,7 +396,7 @@ export default function MyPatients() {
                         <p className="text-xs text-[#7A8F79] mb-1">DOB: {fmtDob(m.dob)}</p>
                         <p className="text-xs text-[#7A8F79] mb-3">{m.insuranceType} — {m.insuranceId}</p>
                         {m.address && <p className="text-xs text-[#7A8F79] mb-3">{m.address}{m.city ? `, ${m.city}` : ''}{m.state ? `, ${m.state}` : ''}</p>}
-                        <button onClick={() => handleLink(m.id)} disabled={linking}
+                        <button onClick={() => handleLink(m.matchToken)} disabled={linking}
                           className="w-full bg-[#7A8F79] text-white py-1.5 rounded-lg text-sm font-semibold hover:bg-[#2F3E4E] transition disabled:opacity-50">
                           {linking ? 'Linking…' : 'Link to This Patient'}
                         </button>

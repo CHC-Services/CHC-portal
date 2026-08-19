@@ -11,9 +11,9 @@ type CarcCode = {
 }
 
 // Standalone CARC/RARC reference lookup — a button that opens a search modal
-// against /api/carc-codes. Not tied to any specific claim's data (no field on
-// Claim persists which codes apply to it yet); this is a quick "what does
-// this code on the EOB mean" tool for staff working claims by hand.
+// against /api/carc-codes. Not tied to any specific claim's data — Claim.remarkCodes
+// is where admin records which codes actually apply to a given claim; this is a
+// quick "what does this code on the EOB mean" tool for staff working claims by hand.
 export default function CarcLookupModal({ showAdminTools }: { showAdminTools?: boolean }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')

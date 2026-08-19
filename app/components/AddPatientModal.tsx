@@ -11,6 +11,7 @@ type SearchMatch = {
   dob: string
   insuranceType: string
   insuranceId: string
+  matchToken: string
 }
 
 type Step = 'search' | 'found' | 'newform'
@@ -82,13 +83,13 @@ export default function AddPatientModal({
     }
   }
 
-  async function linkExisting(patientId: string, firstName: string, lastName: string) {
+  async function linkExisting(patientId: string, firstName: string, lastName: string, matchToken: string) {
     setLinking(true)
     const res = await fetch('/api/nurse/patients', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ existingPatientId: patientId }),
+      body: JSON.stringify({ matchToken }),
     })
     setLinking(false)
     if (res.ok) {
@@ -179,7 +180,7 @@ export default function AddPatientModal({
                       <p className="font-semibold text-sm text-[#2F3E4E]">{m.lastName}, {m.firstName}</p>
                       <p className="text-xs text-[#7A8F79]">{m.accountNumber} · DOB: {m.dob} · {m.insuranceType} · {m.insuranceId}</p>
                     </div>
-                    <button onClick={() => linkExisting(m.id, m.firstName, m.lastName)} disabled={linking}
+                    <button onClick={() => linkExisting(m.id, m.firstName, m.lastName, m.matchToken)} disabled={linking}
                       className="shrink-0 bg-[#7A8F79] text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-[#2F3E4E] transition disabled:opacity-50">
                       {linking ? '…' : 'Link'}
                     </button>

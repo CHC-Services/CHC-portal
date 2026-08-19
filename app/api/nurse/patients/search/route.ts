@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../lib/prisma'
-import { verifyToken } from '../../../../../lib/auth'
+import { verifyToken, signPatientMatchToken } from '../../../../../lib/auth'
 
 export async function POST(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -23,5 +23,13 @@ export async function POST(req: Request) {
     },
   })
 
-  return NextResponse.json({ matches })
+  // Each match gets its own short-lived token proving *this* nurse's search matched
+  // *this* patient, so the link endpoint can require proof of a real match instead of
+  // trusting a bare patientId.
+  const matchesWithToken = matches.map((m: any) => ({
+    ...m,
+    matchToken: signPatientMatchToken(session.nurseProfileId!, m.id),
+  }))
+
+  return NextResponse.json({ matches: matchesWithToken })
 }

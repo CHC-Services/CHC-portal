@@ -18,17 +18,34 @@ export async function GET(req: Request) {
   const q = new URL(req.url).searchParams.get('q')?.trim() || ''
   if (q.length < 1) return NextResponse.json([])
 
-  const codes = await (prisma.carcCode.findMany as any)({
+  const LIMIT = 50
+
+  // Code matches (exact or prefix) take priority over description-text matches —
+  // with ~1,600 codes in the reference table, a broad word like "claim" can match
+  // hundreds of descriptions and would otherwise bury the specific code someone
+  // actually searched for once a single result set got cut off at the limit.
+  const codeMatches = await (prisma.carcCode.findMany as any)({
     where: {
       OR: [
         { code: { equals: q, mode: 'insensitive' } },
         { code: { startsWith: q, mode: 'insensitive' } },
-        { description: { contains: q, mode: 'insensitive' } },
       ],
     },
-    orderBy: { active: 'desc' },
-    take: 25,
+    take: LIMIT,
   })
+
+  let codes = codeMatches
+  if (codes.length < LIMIT) {
+    const excludeIds = codes.map((c: any) => c.id)
+    const descMatches = await (prisma.carcCode.findMany as any)({
+      where: {
+        id: { notIn: excludeIds },
+        description: { contains: q, mode: 'insensitive' },
+      },
+      take: LIMIT - codes.length,
+    })
+    codes = [...codes, ...descMatches]
+  }
 
   const active = sortByCarcCode(codes.filter((c: any) => c.active))
   const inactive = sortByCarcCode(codes.filter((c: any) => !c.active))

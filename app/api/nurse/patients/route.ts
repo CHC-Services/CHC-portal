@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../../lib/prisma'
-import { verifyToken } from '../../../../lib/auth'
+import { verifyToken, verifyPatientMatchToken } from '../../../../lib/auth'
 import { flattenMedication } from '../../../../lib/pharmacyLookup'
 
 function auth(req: Request) {
@@ -59,10 +59,17 @@ export async function POST(req: Request) {
 
   const body = await req.json()
 
-  // Link to existing patient
-  if (body.existingPatientId) {
+  // Link to existing patient — requires proof of a real 3-factor search match
+  // (a matchToken from /api/nurse/patients/search), not just a client-supplied ID.
+  if (body.matchToken) {
+    const match = verifyPatientMatchToken(body.matchToken)
+    if (!match || match.nurseId !== session.nurseProfileId) {
+      return NextResponse.json({ error: 'Invalid or expired match. Please search again.' }, { status: 400 })
+    }
+    const patientId = match.patientId
+
     const existing = await (prisma.nursePatient.findUnique as any)({
-      where: { nurseId_patientId: { nurseId: session.nurseProfileId!, patientId: body.existingPatientId } },
+      where: { nurseId_patientId: { nurseId: session.nurseProfileId!, patientId } },
     })
     if (existing) {
       if (!existing.isActive) {
@@ -77,7 +84,7 @@ export async function POST(req: Request) {
       data: {
         id: crypto.randomUUID(),
         nurseId: session.nurseProfileId!,
-        patientId: body.existingPatientId,
+        patientId,
       },
     })
     return NextResponse.json({ ok: true, linked: true })

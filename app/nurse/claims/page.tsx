@@ -16,7 +16,7 @@ function claimMatchesSearch(c: Claim, q: string): boolean {
     c.claimId, c.providerName, c.claimStage,
     c.primaryPayer, c.primaryPaidTo,
     c.secondaryPayer, c.secondaryPaidTo,
-    c.processingNotes, c.resubmissionOf,
+    c.processingNotes, c.resubmissionOf, c.remarkCodes,
     c.totalBilled      != null ? c.totalBilled.toString()      : null,
     c.totalReimbursed  != null ? c.totalReimbursed.toString()  : null,
     c.remainingBalance != null ? c.remainingBalance.toString() : null,
@@ -63,6 +63,7 @@ type Claim = {
   checkReceivedDate: string | null
   resubmissionOf: string | null
   voidReversalOf: string | null
+  remarkCodes: string | null
   processingNotes: string | null
   updatedAt: string
 }
@@ -426,7 +427,15 @@ function ClaimRow({ primary: c, chain, eobDocs, onClaimPaid }: ClaimGroup & { eo
             </div>
           )}
 
-          {/* Row 4 — Comments (future: auto-populated CARC/RARC codes) — hidden until populated */}
+          {/* Row 4 — Remark codes from the EOB, entered by admin */}
+          {c.remarkCodes && (
+            <div className="pt-3 border-t border-[#D9E1E8] flex items-baseline gap-1.5">
+              <p className="text-[10px] text-[#7A8F79] font-semibold uppercase tracking-wide whitespace-nowrap">Remark Codes:</p>
+              <p className="text-sm text-[#2F3E4E]">{c.remarkCodes}</p>
+            </div>
+          )}
+
+          {/* Row 5 — Comments */}
           {c.processingNotes && (
             <div className="pt-3 border-t border-[#D9E1E8] flex items-baseline gap-1.5">
               <p className="text-[10px] text-[#7A8F79] font-semibold uppercase tracking-wide whitespace-nowrap">Comments:</p>
@@ -961,38 +970,38 @@ function NurseClaimsPageInner() {
 
       <div className="max-w-4xl mx-auto">
 
-        <div className="mb-6 flex items-start justify-between gap-3 flex-wrap">
-          <div>
-            <h1 className="text-3xl font-bold text-[#2F3E4E]">
-              <span className="text-[#7A8F79] italic">my</span>Claims
-            </h1>
-            <p className="text-sm text-[#7A8F79] mt-1">View the status of your submitted billing claims.</p>
-          </div>
-          <CarcLookupModal />
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-[#2F3E4E]">
+            <span className="text-[#7A8F79] italic">my</span>Claims
+          </h1>
+          <p className="text-sm text-[#7A8F79] mt-1">View the status of your submitted billing claims.</p>
         </div>
 
         {/* Tab switcher */}
-        <div className="flex border-b border-[#D9E1E8] mb-6">
-          <button
-            onClick={() => setActiveTab('claims')}
-            className={`px-5 py-2.5 text-sm font-semibold transition border-b-2 -mb-px ${
-              activeTab === 'claims'
-                ? 'border-[#2F3E4E] text-[#2F3E4E]'
-                : 'border-transparent text-[#7A8F79] hover:text-[#2F3E4E]'
-            }`}
-          >
-            Claims
-          </button>
-          <button
-            onClick={() => setActiveTab('paylog')}
-            className={`px-5 py-2.5 text-sm font-semibold transition border-b-2 -mb-px ${
-              activeTab === 'paylog'
-                ? 'border-[#2F3E4E] text-[#2F3E4E]'
-                : 'border-transparent text-[#7A8F79] hover:text-[#2F3E4E]'
-            }`}
-          >
-            Medicaid Pay Log
-          </button>
+        <div className="flex items-center justify-between gap-3 flex-wrap border-b border-[#D9E1E8] mb-6">
+          <div className="flex">
+            <button
+              onClick={() => setActiveTab('claims')}
+              className={`px-5 py-2.5 text-sm font-semibold transition border-b-2 -mb-px ${
+                activeTab === 'claims'
+                  ? 'border-[#2F3E4E] text-[#2F3E4E]'
+                  : 'border-transparent text-[#7A8F79] hover:text-[#2F3E4E]'
+              }`}
+            >
+              Claims
+            </button>
+            <button
+              onClick={() => setActiveTab('paylog')}
+              className={`px-5 py-2.5 text-sm font-semibold transition border-b-2 -mb-px ${
+                activeTab === 'paylog'
+                  ? 'border-[#2F3E4E] text-[#2F3E4E]'
+                  : 'border-transparent text-[#7A8F79] hover:text-[#2F3E4E]'
+              }`}
+            >
+              Medicaid Pay Log
+            </button>
+          </div>
+          <CarcLookupModal />
         </div>
 
         <PortalMessages priority="Claims" />

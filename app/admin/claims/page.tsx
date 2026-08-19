@@ -55,6 +55,7 @@ type CommercialClaim = {
   estPayCycle: number | null
   depositDate: string | null
   resubmissionOf: string | null
+  remarkCodes: string | null
   processingNotes: string | null
   voidedAt: string | null
   voidReversalOf: string | null
@@ -122,6 +123,7 @@ type CommercialFormState = {
   dateFullyFinalized: string
   checkReceivedDate: string
   resubmissionOf: string
+  remarkCodes: string
   processingNotes: string
 }
 
@@ -326,6 +328,7 @@ function initCommercialForm(c: CommercialClaim): CommercialFormState {
     dateFullyFinalized: toDateStr(c.dateFullyFinalized),
     checkReceivedDate: toDateStr(c.checkReceivedDate),
     resubmissionOf: c.resubmissionOf || '',
+    remarkCodes: c.remarkCodes || '',
     processingNotes: c.processingNotes || '',
   }
 }
@@ -445,6 +448,7 @@ function ClaimDetailModal({
             dateFullyFinalized: f.dateFullyFinalized || null,
             checkReceivedDate: f.checkReceivedDate || null,
             resubmissionOf: f.resubmissionOf || null,
+            remarkCodes: f.remarkCodes || null,
             processingNotes: f.processingNotes || null,
           }),
         })
@@ -862,6 +866,15 @@ function ClaimDetailModal({
                       placeholder="Original claim ID"
                       value={cForm.resubmissionOf}
                       onChange={e => setCForm(f => ({ ...f, resubmissionOf: e.target.value }))}
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className={lbl}>Remark Codes</label>
+                    <input
+                      className={inp}
+                      placeholder="e.g. CO-45, N130"
+                      value={cForm.remarkCodes}
+                      onChange={e => setCForm(f => ({ ...f, remarkCodes: e.target.value }))}
                     />
                   </div>
                   <div className="col-span-4">
@@ -2480,6 +2493,11 @@ export default function AdminClaimsPage() {
                           ? `$${(Number(addForm.primaryAllowedAmt) / Number(addForm.hours)).toFixed(2)}`
                           : '—'}
                       </div>
+                    </div>
+                    <div className="col-span-2">
+                      <label className={lbl}>Remark Codes</label>
+                      <input type="text" value={addForm.remarkCodes || ''} onChange={e => setAddForm(f => ({ ...f, remarkCodes: e.target.value }))}
+                        placeholder="e.g. CO-45, N130" className={fi} />
                     </div>
                     <div className="col-span-2">
                       <label className={lbl}>Processing Notes</label>

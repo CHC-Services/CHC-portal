@@ -99,3 +99,32 @@ export async function canEditAppointment(session: Session, patientId: string) {
 export async function canCancelAppointment(session: Session, patientId: string) {
   return isLinkedToPatient(session, patientId)
 }
+
+// Progress Notes — the first real "authored clinical record" in this app.
+// Any linked nurse (not just the author), linked guardian, or admin can read
+// notes for a patient — clinical history should be visible to the whole care
+// team, not just whoever wrote each entry.
+export async function canViewProgressNote(session: Session, patientId: string) {
+  return isLinkedToPatient(session, patientId)
+}
+
+// Only a nurse actively linked to the patient may start a note, and only for
+// themselves as author — this is the one place nurse has exclusive
+// authorship; admin/guardian never create clinical documentation on a
+// nurse's behalf.
+export async function canCreateProgressNote(session: Session, patientId: string): Promise<boolean> {
+  if (session.role !== 'nurse' || !session.nurseProfileId) return false
+  return isLinkedToPatient(session, patientId)
+}
+
+// Edit (including sign) is author-only, and only while still a draft.
+export async function canEditProgressNote(session: Session, note: { authorNurseId: string; signedAt: Date | null }): Promise<boolean> {
+  if (session.role !== 'nurse' || !session.nurseProfileId) return false
+  return note.authorNurseId === session.nurseProfileId && !note.signedAt
+}
+
+// Admin-only escape hatch for genuine errors — marks a signed note voided
+// without altering its content, mirroring Claim's voidedAt convention.
+export async function canVoidProgressNote(session: Session): Promise<boolean> {
+  return session.role === 'admin'
+}

@@ -29,6 +29,12 @@ const CARDS = [
     icon: '🪪',
   },
   {
+    href: '/admin/system/spellcheck-terms',
+    title: 'Dictionary Terms',
+    description: 'Review and remove medical spellcheck terms nurses have added.',
+    icon: '📖',
+  },
+  {
     href: '/admin/ideas',
     title: 'Ideas',
     description: 'Feature requests and improvement ideas.',

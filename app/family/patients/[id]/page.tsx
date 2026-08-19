@@ -10,6 +10,7 @@ import PatientDocuments from '../../../components/patient/PatientDocuments'
 import PatientOrders from '../../../components/patient/PatientOrders'
 import PatientSchedule from '../../../components/patient/PatientSchedule'
 import PatientNotifications from '../../../components/patient/PatientNotifications'
+import ProgressNoteList from '../../../components/patient/ProgressNoteList'
 import { DetailTab } from '../../../components/patient/PatientTabs'
 import { PatientFields } from '../../../components/patient/types'
 import { MedicationDTO, MedicationInput, PharmacyOption } from '../../../components/MedicationList'
@@ -230,6 +231,11 @@ export default function FamilyPatientDetailPage({ params }: { params: Promise<{ 
     {
       key: 'schedule', label: 'Schedule', content: (
         <PatientSchedule patientId={id} basePath="/api/family" availableNurses={nurseLinks.map(l => l.nurse)} />
+      ),
+    },
+    {
+      key: 'progressNotes', label: 'Progress Notes', content: (
+        <ProgressNoteList patientId={id} basePath="/api/family" linkBase={`/family/patients/${id}/progress-notes`} canCreate={false} />
       ),
     },
     {

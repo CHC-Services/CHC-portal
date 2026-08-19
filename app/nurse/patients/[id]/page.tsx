@@ -10,6 +10,7 @@ import PatientOrders from '../../../components/patient/PatientOrders'
 import PatientCareTeam, { NurseLink, GuardianLink } from '../../../components/patient/PatientCareTeam'
 import PatientNotifications from '../../../components/patient/PatientNotifications'
 import PatientPriorAuthHistory, { PatientPA } from '../../../components/patient/PatientPriorAuthHistory'
+import ProgressNoteList from '../../../components/patient/ProgressNoteList'
 import { DetailTab } from '../../../components/patient/PatientTabs'
 import { PatientFields } from '../../../components/patient/types'
 import { MedicationDTO, MedicationInput, PharmacyOption } from '../../../components/MedicationList'
@@ -255,6 +256,11 @@ export default function NursePatientDetailPage({ params }: { params: Promise<{ i
           canDeleteAny
           uploaderId={nurseUserId}
         />
+      ),
+    },
+    {
+      key: 'progressNotes', label: 'Progress Notes', content: (
+        <ProgressNoteList patientId={id} basePath="/api/nurse" linkBase={`/nurse/patients/${id}/progress-notes`} canCreate={!merged.isLocked} />
       ),
     },
     {

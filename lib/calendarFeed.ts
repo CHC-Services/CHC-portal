@@ -3,7 +3,7 @@ import { medicationDueDate } from './medicationReminders'
 
 export type CalendarItem = {
   id: string
-  source: 'globalEvent' | 'personalReminder' | 'shift' | 'appointment' | 'medication' | 'priorAuth' | 'claimReminder' | 'document'
+  source: 'globalEvent' | 'personalReminder' | 'shift' | 'appointment' | 'medication' | 'priorAuth' | 'claimReminder' | 'document' | 'progressNote'
   title: string
   date: Date
   endDate?: Date
@@ -30,7 +30,7 @@ export async function getNurseCalendarFeed(nurseProfileId: string, session: { id
   const patientIds = links.map(l => l.patientId)
   const patientName = Object.fromEntries(links.map(l => [l.patientId, `${l.patient.firstName} ${l.patient.lastName}`]))
 
-  const [globalEvents, personalReminders, myShifts, openShifts, appointments, meds, pas, claimReminders, documents] = await Promise.all([
+  const [globalEvents, personalReminders, myShifts, openShifts, appointments, meds, pas, claimReminders, documents, progressNotes] = await Promise.all([
     prisma.globalEvent.findMany({ where: { eventDate: { gte: now } }, orderBy: { eventDate: 'asc' } })
       .then(rows => rows.filter(e => e.targetRoles.length === 0 || e.targetRoles.includes(session.role))),
     prisma.nurseReminder.findMany({ where: { nurseId: nurseProfileId, completed: false, dueDate: { gte: now } }, orderBy: { dueDate: 'asc' } }),
@@ -41,6 +41,7 @@ export async function getNurseCalendarFeed(nurseProfileId: string, session: { id
     patientIds.length ? prisma.patientPA.findMany({ where: { patientId: { in: patientIds }, paEndDate: { not: null } } }) : [],
     prisma.claimReminder.findMany({ where: { nurseId: nurseProfileId, completed: false, dueDate: { gte: now } } }),
     patientIds.length ? prisma.patientDocument.findMany({ where: { patientId: { in: patientIds }, expiresAt: { not: null, gte: now } } }) : [],
+    patientIds.length ? prisma.progressNote.findMany({ where: { patientId: { in: patientIds }, signedAt: { not: null }, voidedAt: null } }) : [],
   ])
 
   const items: CalendarItem[] = [
@@ -52,6 +53,7 @@ export async function getNurseCalendarFeed(nurseProfileId: string, session: { id
     ...pas.map(p => ({ id: p.id, source: 'priorAuth' as const, title: `PA Expiring: ${p.paNumber}`, date: new Date(p.paEndDate!), patientId: p.patientId, patientName: patientName[p.patientId], category: 'priorAuth', editable: false })),
     ...claimReminders.map(c => ({ id: c.id, source: 'claimReminder' as const, title: c.reason, date: c.dueDate, category: 'claim', editable: false })),
     ...documents.map(d => ({ id: d.id, source: 'document' as const, title: `Expiring: ${d.title}`, date: d.expiresAt!, patientId: d.patientId, patientName: patientName[d.patientId], category: 'document', editable: false })),
+    ...progressNotes.map(n => ({ id: n.id, source: 'progressNote' as const, title: 'Progress Note', date: n.serviceDate, patientId: n.patientId, patientName: patientName[n.patientId], category: 'progressNote', editable: false })),
   ]
 
   return items.sort((a, b) => a.date.getTime() - b.date.getTime())

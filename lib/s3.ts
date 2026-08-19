@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3'
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, CopyObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { createPresignedPost } from '@aws-sdk/s3-presigned-post'
 
@@ -45,6 +45,18 @@ export async function objectExists(key: string): Promise<boolean> {
   } catch {
     return false
   }
+}
+
+/** Copy an existing private object to a new key (e.g. snapshotting a nurse's
+ * current signature into a specific signed document at the moment of signing,
+ * so a later signature change doesn't alter that document's history). */
+export async function copyS3Object(sourceKey: string, destKey: string): Promise<void> {
+  await s3.send(new CopyObjectCommand({
+    Bucket: BUCKET,
+    CopySource: `${BUCKET}/${encodeURIComponent(sourceKey)}`,
+    Key: destKey,
+    ServerSideEncryption: 'AES256',
+  }))
 }
 
 /** Permanently delete an object from S3. */

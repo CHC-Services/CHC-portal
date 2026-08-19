@@ -172,6 +172,7 @@ model NurseProfile {
   invoices            Invoice[]
   reminders           NurseReminder[]
   shifts              Shift[]
+  progressNotes       ProgressNote[]
   documents           NurseDocument[]
   invoiceActivities   InvoiceActivity[]
   caseAssignments     CaseAssignment[]
@@ -961,6 +962,7 @@ model Patient {
   documents     PatientDocument[]
   shifts        Shift[]
   appointments  Appointment[]
+  progressNotes ProgressNote[]
 }
 
 model Shift {
@@ -987,6 +989,8 @@ model Shift {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  progressNotes ProgressNote[]
 
   @@index([patientId])
   @@index([nurseId])
@@ -1017,6 +1021,111 @@ model Appointment {
   @@index([patientId])
   @@index([startTime])
   @@index([status])
+}
+
+model ProgressNote {
+  id        String  @id @default(uuid())
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  authorNurseId String
+  authorNurse   NurseProfile @relation(fields: [authorNurseId], references: [id], onDelete: Cascade)
+
+  shiftId String?
+  shift   Shift? @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+
+  serviceDate    DateTime
+  shiftStartTime String? // clock time as entered, e.g. "08:00 AM" — not a full DateTime
+  shiftEndTime   String?
+  totalHours     Float?
+
+  arrivalFindings String?
+  shiftNotes      String? // required (non-empty) before signing — enforced in the sign route, not the schema
+
+  signedAt          DateTime?
+  signatureImageKey String? // snapshot COPY of NurseProfile.signatureImageKey taken at sign time — never a live reference, so a later signature change doesn't alter history
+
+  voidedAt       DateTime?
+  voidedByUserId String?
+  voidReason     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  vitals       ProgressNoteVital[]
+  intakeOutput ProgressNoteIntakeOutput[]
+
+  @@index([patientId])
+  @@index([authorNurseId])
+  @@index([shiftId])
+  @@index([serviceDate])
+}
+
+model ProgressNoteVital {
+  id             String       @id @default(uuid())
+  progressNoteId String
+  progressNote   ProgressNote @relation(fields: [progressNoteId], references: [id], onDelete: Cascade)
+  sortOrder      Int          @default(0)
+
+  time       String?
+  temp       String?
+  hr         String?
+  rr         String?
+  skin       String?
+  o2Flow     String?
+  o2Route    String? // 'AirVo' | 'HME' | 'O2 Tank' | 'Passy Muir' | 'POC' | 'Vent' | 'Room Air'
+  o2Percent  String?
+  lungSounds String?
+  txNeeded   String? // 'Yes' | 'No'
+  suction    String?
+
+  @@index([progressNoteId])
+}
+
+model ProgressNoteIntakeOutput {
+  id             String       @id @default(uuid())
+  progressNoteId String
+  progressNote   ProgressNote @relation(fields: [progressNoteId], references: [id], onDelete: Cascade)
+  sortOrder      Int          @default(0)
+
+  time         String?
+  intakeType   String?
+  intakeAmt    String?
+  intakeRoute  String? // 'Oral' | 'G-Tube' | 'J-Tube' | 'GJ-Split' | 'NG-Tube' | 'IV'
+  outputUrine  String?
+  outputBM     String?
+  outputEmesis String?
+
+  @@index([progressNoteId])
+}
+
+// Snapshot-on-every-save version history — mirrors ClaimAuditLog's proven
+// pattern exactly (plain progressNoteId string, no relation; full-record JSON,
+// not a diff). Only fires while the note is a draft — once signed, there are
+// no more saves to log, so the log naturally becomes "draft history."
+model ProgressNoteRevision {
+  id             String   @id @default(uuid())
+  progressNoteId String
+  snapshot       Json
+  savedAt        DateTime @default(now())
+  savedBy        String
+
+  @@index([progressNoteId])
+  @@index([savedAt])
+}
+
+// Global custom medical-term dictionary backing lib/medicalSpellcheck.ts —
+// supplements the bundled base English Hunspell dictionary so clinical/device
+// terms and drug names stop getting flagged with no suggestion. Shared across
+// all nurses (like a word processor's custom dictionary), not per-user.
+model SpellcheckTerm {
+  id            String   @id @default(uuid())
+  term          String   @unique
+  source        String // 'seed' | 'nurse-added'
+  addedByUserId String?
+  createdAt     DateTime @default(now())
+
+  @@index([source])
 }
 
 model PatientPA {

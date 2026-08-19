@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import Image from 'next/image'
 import RotatingQuote from './components/RotatingQuote'
+import SignatureNudgeBanner from './components/SignatureNudgeBanner'
 // import HomeDefinition from './components/HomeDefinition'
 
 async function getUser() {
@@ -18,7 +19,7 @@ async function getNurseStats(nurseProfileId: string) {
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
   try {
-    const [monthData, allData] = await Promise.all([
+    const [monthData, allData, profile] = await Promise.all([
       (prisma.timeEntry as any).aggregate({
         where: { nurseId: nurseProfileId, workDate: { gte: startOfMonth } },
         _sum: { hours: true },
@@ -27,6 +28,10 @@ async function getNurseStats(nurseProfileId: string) {
       (prisma.timeEntry as any).aggregate({
         where: { nurseId: nurseProfileId },
         _sum: { hours: true },
+      }),
+      prisma.nurseProfile.findUnique({
+        where: { id: nurseProfileId },
+        select: { onboardingComplete: true, signatureImageKey: true },
       }),
     ])
 
@@ -47,9 +52,10 @@ async function getNurseStats(nurseProfileId: string) {
       submissionsThisMonth: (monthData._count ?? 0) as number,
       totalHours: (allData._sum.hours ?? 0) as number,
       upcomingReminders,
+      showSignatureNudge: !!profile?.onboardingComplete && !profile?.signatureImageKey,
     }
   } catch {
-    return { hoursThisMonth: 0, submissionsThisMonth: 0, totalHours: 0, upcomingReminders: [] }
+    return { hoursThisMonth: 0, submissionsThisMonth: 0, totalHours: 0, upcomingReminders: [], showSignatureNudge: false }
   }
 }
 
@@ -222,6 +228,9 @@ export default async function Home() {
       </div>
 
       <div className="px-6 md:px-10 py-10 space-y-12 max-w-5xl mx-auto">
+
+        {/* ── Nurse: e-signature nudge ── */}
+        {user?.role === 'nurse' && nurseStats?.showSignatureNudge && <SignatureNudgeBanner />}
 
         {/* ── Nurse: stats ── */}
         {user?.role === 'nurse' && nurseStats && (

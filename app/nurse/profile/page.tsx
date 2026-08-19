@@ -7,6 +7,7 @@ import MessagingPrefToggle from '../../components/MessagingPrefToggle'
 import ProfileDemographicsCard from '../../components/profile/ProfileDemographicsCard'
 import ProfileBillingInfoCard from '../../components/profile/ProfileBillingInfoCard'
 import ProfileBankingCard from '../../components/profile/ProfileBankingCard'
+import SignatureCapture from '../../components/SignatureCapture'
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -42,6 +43,37 @@ export default function ProfilePage() {
   // until the fetch below resolves, so nothing flashes/disappears on load
   const [visibleCards, setVisibleCards] = useState<string[]>(['demographics', 'billing_info'])
   const setField = (k: string, v: any) => setProfile((p: any) => ({ ...p, [k]: v }))
+
+  // My Signature
+  const [signatureUrl, setSignatureUrl] = useState<string | null>(null)
+  const [signatureLoading, setSignatureLoading] = useState(true)
+  const [signatureSaving, setSignatureSaving] = useState(false)
+
+  function loadSignature() {
+    fetch('/api/nurse/signature', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => setSignatureUrl(d.signatureUrl || null))
+      .finally(() => setSignatureLoading(false))
+  }
+
+  useEffect(() => { loadSignature() }, [])
+
+  async function saveSignature(dataUrl: string) {
+    setSignatureSaving(true)
+    const res = await fetch('/api/nurse/signature', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ imageDataUrl: dataUrl }),
+    })
+    setSignatureSaving(false)
+    if (res.ok) loadSignature()
+  }
+
+  async function removeSignature() {
+    await fetch('/api/nurse/signature', { method: 'DELETE', credentials: 'include' })
+    setSignatureUrl(null)
+  }
 
   useEffect(() => {
     fetch('/api/nurse/profile')
@@ -232,6 +264,23 @@ export default function ProfilePage() {
             </form>
           )}
           {visibleCards.includes('banking') && <ProfileBankingCard data={profile} />}
+
+          {/* My Signature — reusable drawn e-signature for future signing flows */}
+          <div className="bg-white rounded-xl shadow p-6 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E]">My Signature</p>
+              {signatureUrl && (
+                <button type="button" onClick={removeSignature} className="text-xs font-semibold text-red-500 hover:text-red-700 transition">
+                  Remove
+                </button>
+              )}
+            </div>
+            {signatureLoading ? (
+              <p className="text-sm text-[#7A8F79]">Loading…</p>
+            ) : (
+              <SignatureCapture existingImageUrl={signatureUrl} onSave={saveSignature} saving={signatureSaving} />
+            )}
+          </div>
 
           {/* 2FA */}
           <div className="bg-white rounded-xl shadow p-6">

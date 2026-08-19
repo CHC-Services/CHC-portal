@@ -110,6 +110,14 @@ model NurseProfile {
   agreementSignature  String?
   agreementIp         String?
 
+  // Reusable drawn e-signature — captured once (profile page or dashboard
+  // prompt), reused by future signing flows (Progress Notes, etc.). Consumers
+  // that need a document's signature to stay immutable after the fact should
+  // snapshot/copy this image at the moment of signing, not reference it live —
+  // this field is "the nurse's current signature," not a historical record.
+  signatureImageKey String?
+  signatureSavedAt  DateTime?
+
   // Legacy
   billingInfo String?
 

@@ -66,7 +66,6 @@ export async function POST(req: Request) {
       npiNumber:          profile.npiNumber || '1234567890',
       medicaidNumber:     profile.medicaidNumber || 'MD-2026-TN884',
       bankName:           profile.bankName || 'First National Bank',
-      providerAliases:    profile.providerAliases.length ? profile.providerAliases : ['TN', 'Test Nurse'],
     },
   })
 

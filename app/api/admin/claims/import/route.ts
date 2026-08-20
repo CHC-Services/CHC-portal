@@ -53,21 +53,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'No rows provided' }, { status: 400 })
   }
 
-  // ── 1. Load nurse profiles for name matching ──────────────────────────────
+  // ── 1. Load nurse profiles for account-number matching ────────────────────
+  // Exact match against NurseProfile.accountNumber (bare digits, e.g.
+  // "26001" — no "#" prefix) instead of free-text provider name/alias
+  // matching — immune to capitalization, name changes, and typos in a name.
   const profiles = await prisma.nurseProfile.findMany({
-    select: { id: true, displayName: true, firstName: true, lastName: true, providerAliases: true },
+    where: { accountNumber: { not: null } },
+    select: { id: true, accountNumber: true },
   })
+  const byAccountNumber = new Map(profiles.map(p => [p.accountNumber!.trim(), p.id]))
 
-  function findNurseId(providerName: string): string | null {
-    if (!providerName) return null
-    const lower = providerName.toLowerCase().trim()
-    const match = profiles.find(p => {
-      const full = `${p.firstName || ''} ${p.lastName || ''}`.toLowerCase().trim()
-      const display = (p.displayName || '').toLowerCase().trim()
-      const aliases = (p.providerAliases || []).map((a: string) => a.toLowerCase().trim())
-      return full === lower || display === lower || aliases.includes(lower)
-    })
-    return match?.id ?? null
+  function findNurseId(accountNumber: string): string | null {
+    if (!accountNumber) return null
+    return byAccountNumber.get(accountNumber.trim()) ?? null
   }
 
   // ── 2. Parse every row into typed data ────────────────────────────────────
@@ -79,11 +77,17 @@ export async function POST(req: Request) {
 
   const parsed: RowData[] = []
   let skipped = 0
+  const unmatchedAccountNumbers = new Set<string>()
 
   for (const row of rows) {
     const providerName = row['Provider Name'] || ''
-    const nurseId = findNurseId(providerName)
-    if (!nurseId) { skipped++; continue }
+    const accountNumber = row['Nurse Account #'] || ''
+    const nurseId = findNurseId(accountNumber)
+    if (!nurseId) {
+      skipped++
+      if (accountNumber.trim()) unmatchedAccountNumbers.add(accountNumber.trim())
+      continue
+    }
 
     parsed.push({
       nurseId,
@@ -198,5 +202,5 @@ export async function POST(req: Request) {
   // and any updated rows whose submitDate may now qualify)
   runClaimReminders().catch(() => {})
 
-  return NextResponse.json({ ok: true, created, updated, skipped, affectedNurseIds })
+  return NextResponse.json({ ok: true, created, updated, skipped, affectedNurseIds, unmatchedAccountNumbers: [...unmatchedAccountNumbers] })
 }

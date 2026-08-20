@@ -115,60 +115,6 @@ function Field({
   )
 }
 
-function AliasEditor({ aliases, onChange }: { aliases: string[]; onChange: (a: string[]) => void }) {
-  const [input, setInput] = useState('')
-
-  function add() {
-    const val = input.trim()
-    if (!val || aliases.includes(val)) return
-    onChange([...aliases, val])
-    setInput('')
-  }
-
-  function remove(alias: string) {
-    onChange(aliases.filter(a => a !== alias))
-  }
-
-  return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap gap-2 min-h-[2rem]">
-        {aliases.length === 0 && (
-          <span className="text-xs text-[#7A8F79] italic">No aliases set — this provider will see no claims.</span>
-        )}
-        {aliases.map(alias => (
-          <span key={alias} className="flex items-center gap-1.5 bg-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-3 py-1 rounded-full">
-            {alias}
-            <button
-              type="button"
-              onClick={() => remove(alias)}
-              className="text-[#7A8F79] hover:text-red-500 transition text-base leading-none"
-            >
-              ×
-            </button>
-          </span>
-        ))}
-      </div>
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add() } }}
-          placeholder="e.g. Janine or JCST"
-          className="flex-1 border border-[#D9E1E8] px-3 py-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-        />
-        <button
-          type="button"
-          onClick={add}
-          className="bg-[#7A8F79] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#2F3E4E] transition"
-        >
-          Add
-        </button>
-      </div>
-    </div>
-  )
-}
-
 const ROLE_OPTIONS = [
   { value: 'nurse',    label: 'Nurse — Healthcare caregiver' },
   { value: 'biller',   label: 'Biller — Third-party billing access' },
@@ -2044,31 +1990,8 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
       {activeTab === 'claims' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
-          {/* Col 1: Claims Access Aliases */}
-          <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
-            <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79] pb-2 border-b border-[#D9E1E8]">
-              Claims Access — Provider Aliases
-            </h2>
-            <p className="text-xs text-[#7A8F79]">
-              This provider will see any claim where the Provider Name in the CSV matches one of these aliases exactly.
-            </p>
-            <AliasEditor
-              aliases={profile.providerAliases || []}
-              onChange={(aliases) => setProfile({ ...profile, providerAliases: aliases })}
-            />
-            <p className="text-xs text-[#7A8F79] italic">Changes are saved with the Save Profile button.</p>
-            <button
-              type="button"
-              onClick={save}
-              disabled={saving}
-              className="w-full bg-[#2F3E4E] text-white py-2 rounded-lg hover:bg-[#7A8F79] transition text-sm font-semibold disabled:opacity-50"
-            >
-              {saving ? 'Saving…' : 'Save Aliases'}
-            </button>
-          </div>
-
-          {/* Col 2+3: Metric cards */}
-          <div className="lg:col-span-2 grid grid-cols-2 gap-4">
+          {/* Metric cards */}
+          <div className="lg:col-span-3 grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white rounded-xl shadow-sm p-6 text-center">
               <p className="text-3xl font-bold text-[#2F3E4E]">{nurseClaims.length}</p>
               <p className="text-xs text-[#7A8F79] mt-1 font-semibold uppercase tracking-wide">Total Claims</p>

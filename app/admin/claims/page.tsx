@@ -1232,7 +1232,7 @@ export default function AdminClaimsPage() {
   const [medicaidClaims, setMedicaidClaims] = useState<MedicaidClaimRow[]>([])
   const [loading, setLoading] = useState(true)
   const [importing, setImporting] = useState(false)
-  const [importResult, setImportResult] = useState<{ created: number; updated: number; skipped: number; error?: string } | null>(null)
+  const [importResult, setImportResult] = useState<{ created: number; updated: number; skipped: number; unmatchedAccountNumbers: string[]; error?: string } | null>(null)
   const [search, setSearch] = useState('')
   const [filterStage, setFilterStage] = useState('')
   const [filterYear, setFilterYear] = useState('')
@@ -1258,7 +1258,7 @@ export default function AdminClaimsPage() {
   const [showReminderList, setShowReminderList] = useState(false)
 
   // Nurse roster for provider autocomplete
-  type NurseOption = { id: string; displayName: string; firstName?: string; lastName?: string; providerAliases: string[] }
+  type NurseOption = { id: string; displayName: string; firstName?: string; lastName?: string }
   const [nurses, setNurses] = useState<NurseOption[]>([])
 
   // Add Claim modal
@@ -1457,7 +1457,7 @@ export default function AdminClaimsPage() {
     fetch('/api/admin/nurses', { credentials: 'include' })
       .then(r => r.json())
       .then((data: any[]) => {
-        if (Array.isArray(data)) setNurses(data.map(n => ({ id: n.id, displayName: n.displayName, firstName: n.firstName, lastName: n.lastName, providerAliases: n.providerAliases || [] })))
+        if (Array.isArray(data)) setNurses(data.map(n => ({ id: n.id, displayName: n.displayName, firstName: n.firstName, lastName: n.lastName })))
       })
       .catch(() => {})
     fetch('/api/admin/medicaid/status-codes', { credentials: 'include' })
@@ -1568,8 +1568,7 @@ export default function AdminClaimsPage() {
     if (!val.trim()) { setProviderSuggestions([]); return }
     const q = val.toLowerCase()
     const matches = nurses.filter(n =>
-      (formalName(n) || n.displayName).toLowerCase().includes(q) ||
-      n.providerAliases.some(a => a.toLowerCase().includes(q))
+      (formalName(n) || n.displayName).toLowerCase().includes(q)
     ).slice(0, 6)
     setProviderSuggestions(matches)
   }
@@ -1605,11 +1604,12 @@ export default function AdminClaimsPage() {
     setAddError(null)
 
     if (!addForm.providerName?.trim()) { setAddError('Provider name is required.'); setAdding(false); return }
+    if (!selectedNurseId) { setAddError('Select a nurse from the suggestions list.'); setAdding(false); return }
     const res = await fetch('/api/admin/claims', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify(addForm),
+      body: JSON.stringify({ ...addForm, nurseId: selectedNurseId }),
     })
     const data = await res.json()
     if (!res.ok) { setAddError(data.error || 'Failed to create claim.'); setAdding(false); return }
@@ -1633,6 +1633,7 @@ export default function AdminClaimsPage() {
     let totalSkipped = 0
     let batchError: string | null = null
     const allAffectedNurseIds = new Set<string>()
+    const allUnmatchedAccountNumbers = new Set<string>()
 
     for (let i = 0; i < rows.length; i += BATCH_SIZE) {
       const batch = rows.slice(i, i + BATCH_SIZE)
@@ -1653,6 +1654,7 @@ export default function AdminClaimsPage() {
         totalUpdated += data.updated || 0
         totalSkipped += data.skipped || 0
         ;(data.affectedNurseIds || []).forEach((id: string) => allAffectedNurseIds.add(id))
+        ;(data.unmatchedAccountNumbers || []).forEach((n: string) => allUnmatchedAccountNumbers.add(n))
       } catch {
         batchError = `Network error on batch ${Math.floor(i / BATCH_SIZE) + 1}`
         break
@@ -1670,8 +1672,8 @@ export default function AdminClaimsPage() {
 
     setImportResult(
       batchError
-        ? { created: totalCreated, updated: totalUpdated, skipped: totalSkipped, error: batchError }
-        : { created: totalCreated, updated: totalUpdated, skipped: totalSkipped }
+        ? { created: totalCreated, updated: totalUpdated, skipped: totalSkipped, unmatchedAccountNumbers: [...allUnmatchedAccountNumbers], error: batchError }
+        : { created: totalCreated, updated: totalUpdated, skipped: totalSkipped, unmatchedAccountNumbers: [...allUnmatchedAccountNumbers] }
     )
     setImporting(false)
     if (fileRef.current) fileRef.current.value = ''
@@ -1851,7 +1853,10 @@ export default function AdminClaimsPage() {
             {importResult.created > 0 && <span className="text-green-700 font-semibold">{importResult.created} created</span>}
             {importResult.updated > 0 && <span className="text-blue-700 font-semibold">{importResult.updated} updated</span>}
             {importResult.skipped > 0 && (
-              <span className="text-red-600 font-semibold">{importResult.skipped} skipped — provider name not matched</span>
+              <span className="text-red-600 font-semibold">
+                {importResult.skipped} skipped — nurse account # not matched
+                {importResult.unmatchedAccountNumbers.length > 0 && ` (${importResult.unmatchedAccountNumbers.join(', ')})`}
+              </span>
             )}
             {importResult.error && (
               <span className="text-red-700 font-semibold">Error: {importResult.error}</span>
@@ -2302,9 +2307,6 @@ export default function AdminClaimsPage() {
                               className={`w-full text-left px-4 py-2.5 text-sm transition ${i === activeSuggestionIdx ? 'bg-[#2F3E4E] text-white' : 'hover:bg-[#f4f6f8]'}`}
                             >
                               <span className="font-semibold">{formalName(n) || n.displayName}</span>
-                              {n.providerAliases.length > 0 && (
-                                <span className={`text-xs ml-2 ${i === activeSuggestionIdx ? 'text-[#D9E1E8]' : 'text-[#7A8F79]'}`}>{n.providerAliases.join(', ')}</span>
-                              )}
                             </button>
                           ))}
                         </div>

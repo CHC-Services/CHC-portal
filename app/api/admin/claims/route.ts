@@ -40,24 +40,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'providerName is required' }, { status: 400 })
   }
 
-  // Resolve nurseId by matching provider name against aliases (same as CSV import)
-  let nurseId: string | null = body.nurseId || null
+  // nurseId must be supplied directly — the admin claims UI resolves it from
+  // the provider-name autocomplete selection. No name-matching fallback:
+  // that's what used to make a typo'd or renamed provider silently attach to
+  // the wrong nurse (or fail to attach at all).
+  const nurseId: string | null = body.nurseId || null
   if (!nurseId) {
-    const profiles = await prisma.nurseProfile.findMany({
-      select: { id: true, displayName: true, firstName: true, lastName: true, providerAliases: true },
-    })
-    const lower = body.providerName.toLowerCase().trim()
-    const match = profiles.find(p => {
-      const full = `${p.firstName || ''} ${p.lastName || ''}`.toLowerCase().trim()
-      const display = (p.displayName || '').toLowerCase().trim()
-      const aliases = (p.providerAliases || []).map((a: string) => a.toLowerCase().trim())
-      return full === lower || display === lower || aliases.includes(lower)
-    })
-    nurseId = match?.id || null
-  }
-
-  if (!nurseId) {
-    return NextResponse.json({ error: `No provider matched "${body.providerName}". Check the name or set up a provider alias.` }, { status: 422 })
+    return NextResponse.json({ error: 'nurseId is required — select a nurse from the suggestions list.' }, { status: 400 })
   }
 
   const primaryPayer = parseStr(body.primaryPayer)

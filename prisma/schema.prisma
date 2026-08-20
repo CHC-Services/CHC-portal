@@ -130,9 +130,6 @@ model NurseProfile {
   // Legacy
   billingInfo String?
 
-  // Provider aliases for claim matching (e.g. ["Janine", "JCST"])
-  providerAliases String[] @default([])
-
   // Notification preferences — reminders
   receiveNotifications  Boolean @default(true) // weekly hour submission reminder (legacy)
   notifyBillingReminder Boolean @default(true) // billing-related reminders

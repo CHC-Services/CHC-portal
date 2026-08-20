@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../lib/prisma'
 import { verifyToken } from '../../../../../lib/auth'
 
-// Lightweight endpoint — just what's needed for CSV import provider matching
+// Lightweight endpoint — nurse profile basics.
 export async function GET(req: Request) {
   const cookie = req.headers.get('cookie') || ''
   const token = cookie.split('auth_token=').pop()?.split(';')[0]
@@ -17,7 +17,6 @@ export async function GET(req: Request) {
       displayName: true,
       firstName: true,
       lastName: true,
-      providerAliases: true,
       notifyNewClaim: true,
     },
   })

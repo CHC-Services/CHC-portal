@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import RotatingQuote from '../components/RotatingQuote'
+import WhatsNewCard from '../components/WhatsNewCard'
 import { CARE_QUOTES } from '../../lib/careQuotes'
 import { calculateAge } from '../../lib/patientAge'
 import { medicationReminderDate } from '../../lib/medicationReminders'
@@ -185,6 +186,8 @@ export default function FamilyDashboardPage() {
           </div>
           <RotatingQuote quotes={CARE_QUOTES} variant="header" className="flex-1 max-w-md hidden sm:flex" />
         </div>
+
+        <WhatsNewCard roleKey="guardian" />
 
         {loading ? (
           <p className="text-sm text-[#7A8F79] text-center py-12">Loading…</p>

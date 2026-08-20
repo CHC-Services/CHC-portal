@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import RotatingQuote from './components/RotatingQuote'
 import SignatureNudgeBanner from './components/SignatureNudgeBanner'
+import WhatsNewCard from './components/WhatsNewCard'
 // import HomeDefinition from './components/HomeDefinition'
 
 async function getUser() {
@@ -234,6 +235,9 @@ export default async function Home() {
       </div>
 
       <div className="px-6 md:px-10 py-10 space-y-12 max-w-5xl mx-auto">
+
+        {/* ── What's New ── */}
+        {user?.role === 'nurse' && <WhatsNewCard roleKey="nurse" />}
 
         {/* ── Nurse: e-signature nudge ── */}
         {user?.role === 'nurse' && nurseStats?.showSignatureNudge && (

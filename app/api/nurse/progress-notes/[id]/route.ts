@@ -30,7 +30,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     },
   })
   if (!note) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  if (!(await canViewProgressNote(session, note.patientId))) {
+  // Own-authorship is a standing exception to the usual link requirement —
+  // otherwise a nurse loses access to notes she personally wrote the moment
+  // she's unassigned from a case, even though the record still exists. See
+  // /nurse/my-notes for the archive this makes reachable.
+  const isOwnNote = note.authorUserId === session.id
+  if (!isOwnNote && !(await canViewProgressNote(session, note.patientId))) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
@@ -46,7 +51,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   return NextResponse.json({
     note: { ...note, authorDisplayName: authorDisplayName(note), addenda },
-    isAuthor: note.authorUserId === session.id,
+    isAuthor: isOwnNote,
     signatureUrl,
   })
 }

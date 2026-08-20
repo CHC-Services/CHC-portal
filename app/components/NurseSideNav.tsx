@@ -14,6 +14,7 @@ const links = [
   { href: '/nurse/invoices',  label: 'Invoices'  },
   { href: '/nurse/tax-report', label: 'Tax Summary' },
   { href: '/nurse/documents', label: 'Documents' },
+  { href: '/nurse/my-notes', label: 'Notes' },
   { href: '/nurse/messaging', label: 'Messaging' },
   { href: '/nurse/profile',    label: 'Profile'    },
   { href: '/care',             label: 'Wellness'       },

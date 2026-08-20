@@ -1,15 +1,21 @@
 'use client'
 
-import { useEffect, useState, use } from 'react'
+import { useEffect, useState, use, Suspense } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import ProgressNoteForm, { ProgressNoteDTO } from '../../../../../components/patient/ProgressNoteForm'
 import ProgressNoteView from '../../../../../components/patient/ProgressNoteView'
 import ProgressNoteAddendumForm from '../../../../../components/patient/ProgressNoteAddendumForm'
 
-export default function NurseProgressNotePage({ params }: { params: Promise<{ id: string; noteId: string }> }) {
-  const { id, noteId } = use(params)
+function NurseProgressNoteInner({ id, noteId }: { id: string; noteId: string }) {
   const router = useRouter()
+  // Arriving from /nurse/my-notes means this patient's case may no longer be
+  // linked to this nurse — "back to patient" would 404 for her in that case,
+  // so the back link (and the post-delete redirect) point at the archive
+  // instead whenever that's where she came from.
+  const fromArchive = useSearchParams().get('from') === 'archive'
+  const backHref = fromArchive ? '/nurse/my-notes' : `/nurse/patients/${id}`
+  const backLabel = fromArchive ? '← My Notes' : '← Back to patient'
 
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -30,7 +36,7 @@ export default function NurseProgressNotePage({ params }: { params: Promise<{ id
       })
   }
 
-  useEffect(() => { load() }, [noteId])
+  useEffect(() => { load() }, [noteId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) {
     return <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6 pl-0 md:pl-0"><p className="text-sm text-[#7A8F79]">Loading…</p></div>
@@ -41,7 +47,7 @@ export default function NurseProgressNotePage({ params }: { params: Promise<{ id
       <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6 pl-0 md:pl-0">
         <div className="bg-white rounded-xl shadow-sm p-8 text-center max-w-md mx-auto">
           <p className="text-[#2F3E4E] font-semibold">Progress note not found</p>
-          <Link href={`/nurse/patients/${id}`} className="inline-block mt-4 text-sm font-semibold text-[#7A8F79] hover:text-[#2F3E4E]">← Back to patient</Link>
+          <Link href={backHref} className="inline-block mt-4 text-sm font-semibold text-[#7A8F79] hover:text-[#2F3E4E]">{backLabel}</Link>
         </div>
       </div>
     )
@@ -52,8 +58,8 @@ export default function NurseProgressNotePage({ params }: { params: Promise<{ id
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6 pl-0 md:pl-0">
       <div className="max-w-5xl mx-auto">
-        <Link href={`/nurse/patients/${id}`} className="text-sm font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">
-          ← Back to patient
+        <Link href={backHref} className="text-sm font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">
+          {backLabel}
         </Link>
         <h1 className="text-2xl font-bold text-[#2F3E4E] mt-2 mb-5">Progress Note</h1>
 
@@ -64,7 +70,7 @@ export default function NurseProgressNotePage({ params }: { params: Promise<{ id
             profileHref="/nurse/profile"
             onSaved={updated => setNote(updated)}
             onSigned={updated => { setNote(updated); load() }}
-            onDeleted={() => router.push(`/nurse/patients/${id}`)}
+            onDeleted={() => router.push(backHref)}
           />
         ) : (
           <ProgressNoteView
@@ -83,5 +89,14 @@ export default function NurseProgressNotePage({ params }: { params: Promise<{ id
         )}
       </div>
     </div>
+  )
+}
+
+export default function NurseProgressNotePage({ params }: { params: Promise<{ id: string; noteId: string }> }) {
+  const { id, noteId } = use(params)
+  return (
+    <Suspense>
+      <NurseProgressNoteInner id={id} noteId={noteId} />
+    </Suspense>
   )
 }

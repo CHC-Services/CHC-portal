@@ -121,7 +121,7 @@ export async function canCreateProgressNote(session: Session, patientId: string)
 // still a draft — symmetric for nurse or admin authors. Nobody, including
 // admin, can reopen someone else's note; corrections to a signed note go
 // through an addendum instead (see canAddAddendum).
-export async function canEditProgressNote(session: Session, note: { authorUserId: string; signedAt: Date | null }): Promise<boolean> {
+export async function canEditProgressNote(session: Session, note: { authorUserId: string | null; signedAt: Date | null }): Promise<boolean> {
   return note.authorUserId === session.id && !note.signedAt
 }
 
@@ -135,7 +135,7 @@ export async function canVoidProgressNote(session: Session): Promise<boolean> {
 // always; the original author may also add a late addendum to their own
 // note (standard EMR "late entry" pattern) — never anyone else, never before
 // signing (that's just editing), never on a voided note.
-export async function canAddAddendum(session: Session, note: { authorUserId: string; signedAt: Date | null; voidedAt: Date | null }): Promise<boolean> {
+export async function canAddAddendum(session: Session, note: { authorUserId: string | null; signedAt: Date | null; voidedAt: Date | null }): Promise<boolean> {
   if (!note.signedAt || note.voidedAt) return false
   if (session.role === 'admin') return true
   return note.authorUserId === session.id

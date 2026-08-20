@@ -5,7 +5,7 @@ import { getQuickAccessIdentity } from '../../../../../lib/nurseQuickAccess'
 // Draft-only, own-notes-only — a signed note 404s here even though it's
 // fully visible/editable-as-signed through the real app. That's deliberate:
 // this credential can create/edit/sign, never read back a completed note.
-function isEditableDraft(note: { authorUserId: string; signedAt: Date | null }, userId: string) {
+function isEditableDraft(note: { authorUserId: string | null; signedAt: Date | null }, userId: string) {
   return note.authorUserId === userId && !note.signedAt
 }
 

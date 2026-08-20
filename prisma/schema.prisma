@@ -1037,9 +1037,10 @@ model ProgressNote {
   patientId String
   patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
-  authorUserId String
-  authorUser   User   @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
+  authorUserId String?
+  authorUser   User?  @relation(fields: [authorUserId], references: [id], onDelete: SetNull)
   authorRole   String // 'nurse' | 'admin' — denormalized, avoids a role join everywhere it's displayed/filtered
+  authorDisplayNameSnapshot String? // frozen at sign time — survives the author's account being deleted later (see lib/progressNoteAuthor.ts)
 
   shiftId String?
   shift   Shift? @relation(fields: [shiftId], references: [id], onDelete: SetNull)
@@ -1082,9 +1083,10 @@ model ProgressNoteAddendum {
   progressNoteId String
   progressNote   ProgressNote @relation(fields: [progressNoteId], references: [id], onDelete: Cascade)
 
-  authorUserId String
-  authorUser   User   @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
+  authorUserId String?
+  authorUser   User?  @relation(fields: [authorUserId], references: [id], onDelete: SetNull)
   authorRole   String // 'nurse' | 'admin'
+  authorDisplayNameSnapshot String? // frozen at creation — addenda are signed atomically already
 
   text              String
   signatureImageKey String

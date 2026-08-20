@@ -18,9 +18,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   }
   const { id } = await params
 
-  const note = await prisma.progressNote.findUnique({ where: { id }, select: { patientId: true, signedAt: true } })
+  const note = await prisma.progressNote.findUnique({ where: { id }, select: { patientId: true, signedAt: true, authorUserId: true } })
   if (!note || !note.signedAt) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  if (!(await canViewProgressNote(session, note.patientId))) {
+  // Own-authorship stands in for the usual link requirement — see the
+  // matching note in [id]/route.ts.
+  const isOwnNote = note.authorUserId === session.id
+  if (!isOwnNote && !(await canViewProgressNote(session, note.patientId))) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 

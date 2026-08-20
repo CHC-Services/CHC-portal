@@ -31,7 +31,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const user = await prisma.user.findUnique({
     where: { id: session.id },
-    select: { signatureImageKey: true },
+    select: { signatureImageKey: true, name: true },
   })
   if (!user?.signatureImageKey) {
     return NextResponse.json({ error: 'No stored signature on file — add one on your profile page first', requiresSignatureSetup: true }, { status: 400 })
@@ -47,6 +47,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       progressNoteId: id,
       authorUserId: session.id,
       authorRole: 'admin',
+      authorDisplayNameSnapshot: user.name,
       text: cleaned,
       signatureImageKey,
     },

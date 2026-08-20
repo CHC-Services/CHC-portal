@@ -190,6 +190,7 @@ model NurseProfile {
   nursePatients       NursePatient[]
   routedForms         RoutedForm[]
   medicaidPayWeekLogs MedicaidPayWeekLog[]
+  quickAccessTokens   NurseQuickAccessToken[]
 }
 
 // Admin-configurable matrix of which profile "cards" (Demographics, Billing
@@ -1143,6 +1144,25 @@ model ProgressNoteRevision {
 
   @@index([progressNoteId])
   @@index([savedAt])
+}
+
+// A separate, narrowly-scoped credential for the /quick-notes home-screen
+// shortcut (app/quick-notes/page.tsx) — conceptually an "app password," not
+// a session. Verified by lib/nurseQuickAccess.ts entirely outside the normal
+// cookie/JWT auth path; grants only create/edit/sign on the issuing nurse's
+// own drafts and a read of their own active-patient list, nothing else.
+model NurseQuickAccessToken {
+  id          String  @id @default(uuid())
+  nurseId     String
+  nurse       NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
+  tokenHash   String  @unique // SHA-256 — see lib/nurseQuickAccess.ts for why not bcrypt
+  deviceLabel String
+
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+
+  @@index([nurseId])
 }
 
 // Global custom medical-term dictionary backing lib/medicalSpellcheck.ts —

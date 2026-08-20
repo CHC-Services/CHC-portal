@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AdminNav from '../../../components/AdminNav'
 import DateInput from '../../../components/DateInput'
+import NurseQuickAccessTokensCard from '../../../components/admin/NurseQuickAccessTokensCard'
 import { fmtPhoneInput } from '../../../../lib/formatPhone'
 import { shortInvoiceNumber } from '../../../../lib/formatInvoice'
 import { formalName } from '../../../../lib/formatName'
@@ -1743,6 +1744,8 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                 </div>
               )}
             </Section>
+
+            <NurseQuickAccessTokensCard nurseId={id} />
 
           </div>
         </div>

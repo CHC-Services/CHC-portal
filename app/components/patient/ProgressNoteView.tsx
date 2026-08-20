@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { ProgressNoteDTO } from './ProgressNoteForm'
 
 const th = 'px-1.5 py-1 text-left text-[10px] font-bold uppercase tracking-wide text-[#7A8F79] whitespace-nowrap'
@@ -16,15 +17,41 @@ function fmtDateTime(iso: string) {
 // admin's view page, family's view page, and the nurse's own view of an
 // already-signed note.
 export default function ProgressNoteView({
-  note, signatureUrl, voidAction, addendumAction,
+  note, basePath, signatureUrl, voidAction, addendumAction,
 }: {
   note: ProgressNoteDTO
+  basePath: string // '/api/nurse', '/api/admin', or '/api/family'
   signatureUrl?: string | null
   voidAction?: React.ReactNode
   addendumAction?: React.ReactNode
 }) {
+  const [loadingPdf, setLoadingPdf] = useState(false)
+
+  async function printPdf() {
+    setLoadingPdf(true)
+    const res = await fetch(`${basePath}/progress-notes/${note.id}/pdf`, { credentials: 'include' })
+    setLoadingPdf(false)
+    if (res.ok) {
+      const { url } = await res.json()
+      window.open(url, '_blank')
+    }
+  }
+
   return (
     <div className="space-y-5">
+      {note.signedAt && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={printPdf}
+            disabled={loadingPdf}
+            className="text-xs font-semibold text-[#7A8F79] border border-[#D9E1E8] px-3 py-1.5 rounded-lg hover:border-[#7A8F79] hover:text-[#2F3E4E] transition disabled:opacity-40"
+          >
+            {loadingPdf ? 'Preparing PDF…' : '🖨 Print / Download PDF'}
+          </button>
+        </div>
+      )}
+
       {note.voidedAt && (
         <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
           <p className="text-sm font-bold text-red-700">Voided</p>

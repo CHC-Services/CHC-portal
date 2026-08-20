@@ -2,12 +2,14 @@
 
 import { useEffect, useState, use } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import ProgressNoteForm, { ProgressNoteDTO } from '../../../../../components/patient/ProgressNoteForm'
 import ProgressNoteView from '../../../../../components/patient/ProgressNoteView'
 import ProgressNoteAddendumForm from '../../../../../components/patient/ProgressNoteAddendumForm'
 
 export default function NurseProgressNotePage({ params }: { params: Promise<{ id: string; noteId: string }> }) {
   const { id, noteId } = use(params)
+  const router = useRouter()
 
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -62,10 +64,12 @@ export default function NurseProgressNotePage({ params }: { params: Promise<{ id
             profileHref="/nurse/profile"
             onSaved={updated => setNote(updated)}
             onSigned={updated => { setNote(updated); load() }}
+            onDeleted={() => router.push(`/nurse/patients/${id}`)}
           />
         ) : (
           <ProgressNoteView
             note={note}
+            basePath="/api/nurse"
             signatureUrl={signatureUrl}
             addendumAction={isAuthor && note.signedAt && !note.voidedAt ? (
               <ProgressNoteAddendumForm

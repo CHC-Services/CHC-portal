@@ -47,7 +47,7 @@ export default function FamilyProgressNotePage({ params }: { params: Promise<{ i
         </Link>
         <h1 className="text-2xl font-bold text-[#2F3E4E] mt-2 mb-5">Progress Note</h1>
 
-        <ProgressNoteView note={note} signatureUrl={signatureUrl} />
+        <ProgressNoteView note={note} basePath="/api/family" signatureUrl={signatureUrl} />
       </div>
     </div>
   )

@@ -1058,6 +1058,8 @@ model ProgressNote {
   voidedByUserId String?
   voidReason     String?
 
+  pdfS3Key String? // cached rendered PDF (lib/progressNotePdf.ts) — cleared/regenerated on sign, addendum, or void
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

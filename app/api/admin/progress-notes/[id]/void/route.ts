@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../../lib/prisma'
 import { verifyToken } from '../../../../../../lib/auth'
 import { canVoidProgressNote } from '../../../../../../lib/permissions'
+import { invalidateProgressNotePdf } from '../../../../../../lib/progressNotePdf'
 
 function getSession(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -29,6 +30,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     where: { id },
     data: { voidedAt: new Date(), voidedByUserId: session.id, voidReason: reason || null },
   })
+
+  await invalidateProgressNotePdf(id)
 
   return NextResponse.json({ note: voided })
 }

@@ -4,6 +4,7 @@ import { verifyToken } from '../../../../../../lib/auth'
 import { canAddAddendum } from '../../../../../../lib/permissions'
 import { copyS3Object, getPresignedDownloadUrl } from '../../../../../../lib/s3'
 import { authorDisplayName } from '../../../../../../lib/progressNoteAuthor'
+import { invalidateProgressNotePdf } from '../../../../../../lib/progressNotePdf'
 
 function getSession(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -54,6 +55,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     },
     include: { authorUser: { select: { name: true, nurseProfile: { select: { displayName: true } } } } },
   })
+
+  await invalidateProgressNotePdf(id)
 
   const signatureUrl = await getPresignedDownloadUrl(signatureImageKey, 900, { inline: true, contentType: 'image/png' })
 

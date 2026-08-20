@@ -76,13 +76,14 @@ function toDateInputValue(iso: string) {
 }
 
 export default function ProgressNoteForm({
-  note, basePath, profileHref, onSaved, onSigned,
+  note, basePath, profileHref, onSaved, onSigned, onDeleted,
 }: {
   note: ProgressNoteDTO
   basePath: string // '/api/nurse' or '/api/admin'
   profileHref: string // '/nurse/profile' or '/admin/profile' — where to set up a signature
   onSaved: (note: ProgressNoteDTO) => void
   onSigned: (note: ProgressNoteDTO) => void
+  onDeleted: () => void
 }) {
   const [serviceDate, setServiceDate] = useState(toDateInputValue(note.serviceDate))
   const [shiftStartTime, setShiftStartTime] = useState(note.shiftStartTime || '')
@@ -101,6 +102,9 @@ export default function ProgressNoteForm({
   const [confirmingSign, setConfirmingSign] = useState(false)
   const [signing, setSigning] = useState(false)
   const [signError, setSignError] = useState('')
+
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     fetch(`${basePath}/signature`, { credentials: 'include' })
@@ -166,6 +170,13 @@ export default function ProgressNoteForm({
       const body = await res.json().catch(() => ({}))
       setSignError(body.error || 'Failed to sign.')
     }
+  }
+
+  async function deleteDraft() {
+    setDeleting(true)
+    const res = await fetch(`${basePath}/progress-notes/${note.id}`, { method: 'DELETE', credentials: 'include' })
+    setDeleting(false)
+    if (res.ok) onDeleted()
   }
 
   return (
@@ -352,6 +363,24 @@ export default function ProgressNoteForm({
               <button type="button" onClick={() => setConfirmingSign(false)} className="border border-[#D9E1E8] text-[#7A8F79] px-6 py-2 rounded-xl text-sm font-semibold hover:bg-white transition">
                 Cancel
               </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm p-6 space-y-3">
+        {!confirmingDelete ? (
+          <button type="button" onClick={() => setConfirmingDelete(true)} className="text-xs font-semibold text-red-600 border border-red-200 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100 transition">
+            Delete Draft
+          </button>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-xs text-red-600">Permanently deletes this draft — it can&apos;t be undone.</p>
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={deleteDraft} disabled={deleting} className="bg-red-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-red-700 transition disabled:opacity-50">
+                {deleting ? 'Deleting…' : 'Confirm Delete'}
+              </button>
+              <button type="button" onClick={() => setConfirmingDelete(false)} className="text-sm text-[#7A8F79] hover:text-[#2F3E4E] transition">Cancel</button>
             </div>
           </div>
         )}

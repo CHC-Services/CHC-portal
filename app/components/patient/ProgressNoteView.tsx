@@ -2,13 +2,11 @@
 
 import { useState } from 'react'
 import { ProgressNoteDTO } from './ProgressNoteForm'
+import { formatServiceDate as fmtDate } from '../../../lib/localDate'
 
 const th = 'px-1.5 py-1 text-left text-[10px] font-bold uppercase tracking-wide text-[#7A8F79] whitespace-nowrap'
 const td = 'px-1.5 py-1 text-xs text-[#2F3E4E] whitespace-nowrap'
 
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
 function fmtDateTime(iso: string) {
   return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
@@ -105,6 +103,10 @@ export default function ProgressNoteView({
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Total Hours</p>
             <p className="text-sm text-[#2F3E4E]">{note.totalHours ?? '—'}</p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Location</p>
+            <p className="text-sm text-[#2F3E4E]">{note.location || '—'}</p>
           </div>
         </div>
         {note.authorDisplayName && (

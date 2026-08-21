@@ -23,6 +23,7 @@ export type QuickNoteDTO = {
   shiftStartTime: string | null
   shiftEndTime: string | null
   totalHours: number | null
+  location: string | null
   arrivalFindings: string | null
   shiftNotes: string | null
   signedAt: string | null
@@ -54,6 +55,7 @@ export default function QuickNoteForm({
   const [shiftStartTime, setShiftStartTime] = useState(note.shiftStartTime || '')
   const [shiftEndTime, setShiftEndTime] = useState(note.shiftEndTime || '')
   const [totalHours, setTotalHours] = useState(note.totalHours != null ? String(note.totalHours) : '')
+  const [location, setLocation] = useState(note.location || 'Home')
   const [arrivalFindings, setArrivalFindings] = useState(note.arrivalFindings || '')
   const [shiftNotes, setShiftNotes] = useState(note.shiftNotes || '')
   const [vitals, setVitals] = useState<VitalRow[]>(note.vitals.length ? note.vitals : [{ ...EMPTY_VITAL }])
@@ -88,6 +90,7 @@ export default function QuickNoteForm({
         shiftStartTime: shiftStartTime || null,
         shiftEndTime: shiftEndTime || null,
         totalHours: totalHours === '' ? null : Number(totalHours),
+        location: location || null,
         arrivalFindings: arrivalFindings || null,
         shiftNotes: shiftNotes || null,
         vitals,
@@ -144,6 +147,10 @@ export default function QuickNoteForm({
           <div>
             <label className={lbl}>Total Hours</label>
             <input type="number" step="0.25" className={inp} value={totalHours} onChange={e => setTotalHours(e.target.value)} />
+          </div>
+          <div>
+            <label className={lbl}>Location</label>
+            <input className={inp} value={location} onChange={e => setLocation(e.target.value)} />
           </div>
         </div>
       </div>

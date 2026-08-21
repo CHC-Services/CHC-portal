@@ -48,6 +48,7 @@ export type ProgressNoteDTO = {
   shiftStartTime: string | null
   shiftEndTime: string | null
   totalHours: number | null
+  location: string | null
   arrivalFindings: string | null
   shiftNotes: string | null
   signedAt: string | null
@@ -89,6 +90,7 @@ export default function ProgressNoteForm({
   const [shiftStartTime, setShiftStartTime] = useState(note.shiftStartTime || '')
   const [shiftEndTime, setShiftEndTime] = useState(note.shiftEndTime || '')
   const [totalHours, setTotalHours] = useState(note.totalHours != null ? String(note.totalHours) : '')
+  const [location, setLocation] = useState(note.location || 'Home')
   const [arrivalFindings, setArrivalFindings] = useState(note.arrivalFindings || '')
   const [shiftNotes, setShiftNotes] = useState(note.shiftNotes || '')
   const [vitals, setVitals] = useState<ProgressNoteVitalRow[]>(note.vitals.length ? note.vitals : [{ ...EMPTY_VITAL }])
@@ -145,6 +147,7 @@ export default function ProgressNoteForm({
         shiftStartTime: shiftStartTime || null,
         shiftEndTime: shiftEndTime || null,
         totalHours: totalHours === '' ? null : Number(totalHours),
+        location: location || null,
         arrivalFindings: arrivalFindings || null,
         shiftNotes: shiftNotes || null,
         vitals,
@@ -175,7 +178,7 @@ export default function ProgressNoteForm({
       if (!suppressAutosaveRef.current) { dirtyRef.current = false; saveDraftRef.current() }
     }, 2500)
     return () => clearTimeout(timer)
-  }, [serviceDate, shiftStartTime, shiftEndTime, totalHours, arrivalFindings, shiftNotes, vitals, intakeOutput])
+  }, [serviceDate, shiftStartTime, shiftEndTime, totalHours, location, arrivalFindings, shiftNotes, vitals, intakeOutput])
 
   // Backstop for long stretches of continuous typing that never pause long
   // enough for the debounce above to fire.
@@ -231,6 +234,10 @@ export default function ProgressNoteForm({
           <div>
             <label className={lbl}>Total Hours</label>
             <input type="number" step="0.25" className="w-24 border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" value={totalHours} onChange={e => setTotalHours(e.target.value)} />
+          </div>
+          <div>
+            <label className={lbl}>Location</label>
+            <input className="w-full border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" value={location} onChange={e => setLocation(e.target.value)} />
           </div>
         </div>
       </div>

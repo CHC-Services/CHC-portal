@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { formatServiceDate as fmtDate } from '../../../lib/localDate'
 
 export type ProgressNoteSummary = {
   id: string
@@ -9,10 +10,6 @@ export type ProgressNoteSummary = {
   signedAt: string | null
   voidedAt: string | null
   authorDisplayName: string
-}
-
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 function statusBadge(note: ProgressNoteSummary) {

@@ -1046,6 +1046,7 @@ model ProgressNote {
   shiftStartTime String? // clock time as entered, e.g. "08:00 AM" — not a full DateTime
   shiftEndTime   String?
   totalHours     Float?
+  location       String? @default("Home") // where the shift took place — free text, defaults to "Home" but editable per note
 
   arrivalFindings String?
   shiftNotes      String? // required (non-empty) before signing — enforced in the sign route, not the schema

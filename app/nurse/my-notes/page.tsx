@@ -1,9 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { todayLocalDateString } from '../../../lib/localDate'
+import { todayLocalDateString, formatServiceDate } from '../../../lib/localDate'
 
 type MyNote = {
   id: string
@@ -22,8 +21,13 @@ type PickerPatient = {
   accountNumber: string
 }
 
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+type SortCol = 'default' | 'patient' | 'date' | 'account' | 'status'
+
+// Draft = 0, Signed = 1, Voided = 2 — a voided note was signed first, so it
+// still counts as "completed" alongside signed notes, just flagged after.
+function statusRank(n: MyNote) {
+  if (!n.signedAt) return 0
+  return n.voidedAt ? 2 : 1
 }
 
 function statusBadge(note: MyNote) {
@@ -41,6 +45,37 @@ export default function MyNotesPage() {
   const router = useRouter()
   const [notes, setNotes] = useState<MyNote[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Default view: drafts on top, then everything else newest-to-oldest by
+  // service date. Clicking a column header switches to a plain sort by that
+  // column instead — see handleSort/sorted below.
+  const [sortCol, setSortCol] = useState<SortCol>('default')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  function handleSort(col: SortCol) {
+    if (col === sortCol) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortCol(col); setSortDir('asc') }
+  }
+
+  const sorted = [...notes].sort((a, b) => {
+    if (sortCol === 'default') {
+      const rankA = statusRank(a) === 0 ? 0 : 1
+      const rankB = statusRank(b) === 0 ? 0 : 1
+      if (rankA !== rankB) return rankA - rankB
+      return b.serviceDate.localeCompare(a.serviceDate)
+    }
+    let cmp = 0
+    if (sortCol === 'patient') cmp = a.patientName.localeCompare(b.patientName)
+    else if (sortCol === 'date') cmp = a.serviceDate.localeCompare(b.serviceDate)
+    else if (sortCol === 'account') cmp = a.patientAccountNumber.localeCompare(b.patientAccountNumber, undefined, { numeric: true })
+    else if (sortCol === 'status') cmp = statusRank(a) - statusRank(b)
+    return sortDir === 'asc' ? cmp : -cmp
+  })
+
+  function SortIcon({ col }: { col: SortCol }) {
+    if (sortCol !== col) return <span className="ml-1 opacity-30">↕</span>
+    return <span className="ml-1">{sortDir === 'asc' ? '↑' : '↓'}</span>
+  }
 
   const [pickerOpen, setPickerOpen] = useState(false)
   const [patients, setPatients] = useState<PickerPatient[]>([])
@@ -95,7 +130,7 @@ export default function MyNotesPage() {
 
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6 pl-0 md:pl-0">
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <h1 className="text-2xl font-bold text-[#2F3E4E] mb-1">
           <span className="text-[#7A8F79] italic">my</span>Notes
         </h1>
@@ -118,23 +153,44 @@ export default function MyNotesPage() {
           ) : notes.length === 0 ? (
             <p className="text-sm text-[#7A8F79] italic">You haven&apos;t authored any progress notes yet.</p>
           ) : (
-            <div className="space-y-1.5">
-              {notes.map(n => (
-                <Link
-                  key={n.id}
-                  href={`/nurse/patients/${n.patientId}/progress-notes/${n.id}?from=archive`}
-                  className="flex items-center justify-between bg-[#F4F6F5] rounded-lg px-3 py-2 hover:bg-[#D9E1E8] transition"
-                >
-                  <div>
-                    <p className="text-sm text-[#2F3E4E] font-semibold">{n.patientName}</p>
-                    <p className="text-xs text-[#7A8F79]">
-                      {fmtDate(n.serviceDate)} · {n.patientAccountNumber}
-                      {!n.activeCase && ' · No longer an active case'}
-                    </p>
-                  </div>
-                  {statusBadge(n)}
-                </Link>
-              ))}
+            <div className="overflow-x-auto -mx-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
+                    {([
+                      { col: 'patient', label: 'Patient' },
+                      { col: 'date', label: 'Service Date' },
+                      { col: 'account', label: 'Account #' },
+                      { col: 'status', label: 'Status' },
+                    ] as const).map(({ col, label }) => (
+                      <th
+                        key={col}
+                        onClick={() => handleSort(col)}
+                        className="py-2 px-6 text-left cursor-pointer select-none hover:text-[#2F3E4E] transition whitespace-nowrap"
+                      >
+                        {label}<SortIcon col={col} />
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {sorted.map((n, i) => (
+                    <tr
+                      key={n.id}
+                      onClick={() => router.push(`/nurse/patients/${n.patientId}/progress-notes/${n.id}?from=archive`)}
+                      className={`border-b border-[#D9E1E8] last:border-0 cursor-pointer hover:bg-[#D9E1E8] transition ${i % 2 === 1 ? 'bg-[#F4F6F5]' : ''}`}
+                    >
+                      <td className="py-2 px-6 font-semibold text-[#2F3E4E] whitespace-nowrap">
+                        {n.patientName}
+                        {!n.activeCase && <span className="ml-1.5 text-[10px] font-normal italic text-[#7A8F79]">(no longer active)</span>}
+                      </td>
+                      <td className="py-2 px-6 text-[#7A8F79] whitespace-nowrap">{formatServiceDate(n.serviceDate)}</td>
+                      <td className="py-2 px-6 text-[#7A8F79] whitespace-nowrap">{n.patientAccountNumber}</td>
+                      <td className="py-2 px-6 whitespace-nowrap">{statusBadge(n)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>

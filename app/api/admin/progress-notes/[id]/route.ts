@@ -65,6 +65,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if ('shiftStartTime' in body) data.shiftStartTime = body.shiftStartTime || null
   if ('shiftEndTime' in body) data.shiftEndTime = body.shiftEndTime || null
   if ('totalHours' in body) data.totalHours = body.totalHours === '' || body.totalHours === null ? null : Number(body.totalHours)
+  if ('location' in body) data.location = body.location || null
   if ('arrivalFindings' in body) data.arrivalFindings = body.arrivalFindings || null
   if ('shiftNotes' in body) data.shiftNotes = body.shiftNotes || null
 

@@ -4,6 +4,8 @@
 // external/`<style>` CSS, since that's the safest path through Puppeteer's
 // HTML-to-PDF renderer).
 
+import { formatServiceDate } from './localDate'
+
 const NAVY = '#2F3E4E'
 const SAGE = '#7A8F79'
 const BG = '#D9E1E8'
@@ -50,6 +52,7 @@ export interface ProgressNoteHtmlData {
   shiftStartTime: string | null
   shiftEndTime: string | null
   totalHours: number | null
+  location: string | null
   arrivalFindings: string | null
   shiftNotes: string | null
   signedAt: Date | string
@@ -59,9 +62,18 @@ export interface ProgressNoteHtmlData {
   vitals: ProgressNoteHtmlVital[]
   intakeOutput: ProgressNoteHtmlIO[]
   addenda: ProgressNoteHtmlAddendum[]
+  // Snapshotted from the canonical Patient record at export time — a
+  // point-in-time read for the printed packet, not stored on the note itself.
+  dxCode1: string | null
+  dxCode2: string | null
+  insuranceName: string | null
+  insuranceId: string | null
+  ins2Name: string | null
+  ins2Id: string | null
+  paNumber: string | null
 }
 
-const fmtDate = (d: Date | string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+const fmtDate = formatServiceDate
 const fmtDateTime = (d: Date | string) => new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 const cell = (v: string | null) => esc(v || '—')
@@ -132,6 +144,37 @@ export function buildProgressNoteHtml(data: ProgressNoteHtmlData): string {
       ${body}
     </div>`
 
+  // Same box styling as section() above, but two side by side — a 16px
+  // gutter between them, matching the 16px margin-bottom/gap used everywhere
+  // else in this template.
+  const twoColumnSection = (leftTitle: string, leftBody: string, rightTitle: string, rightBody: string) => `
+    <div style="display:flex;gap:16px;margin-bottom:16px">
+      <div style="flex:1;min-width:0;border:1px solid ${BG};border-radius:6px;padding:12px;break-inside:avoid">
+        <p style="margin:0 0 8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:${NAVY}">${leftTitle}</p>
+        ${leftBody}
+      </div>
+      <div style="flex:1;min-width:0;border:1px solid ${BG};border-radius:6px;padding:12px;break-inside:avoid">
+        <p style="margin:0 0 8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:${NAVY}">${rightTitle}</p>
+        ${rightBody}
+      </div>
+    </div>`
+
+  // Only shown when present — a patient without a secondary insurance or
+  // current PA shouldn't render a wall of "—" placeholders.
+  const detailRow = (label: string, value: string | null) => value ? `
+      <div style="margin-bottom:8px"><p style="margin:0;font-size:8px;text-transform:uppercase;color:${SAGE}">${label}</p><p style="margin:2px 0 0;font-size:11px;color:${NAVY}">${esc(value)}</p></div>` : ''
+
+  const patientDetailRows = [
+    detailRow('Dx 1', data.dxCode1),
+    detailRow('Dx 2', data.dxCode2),
+    detailRow('Primary Insurance', data.insuranceName),
+    detailRow('Primary Insurance ID', data.insuranceId),
+    detailRow('Secondary Insurance', data.ins2Name),
+    detailRow('Secondary Insurance ID', data.ins2Id),
+    detailRow('Current PA #', data.paNumber),
+  ].join('')
+  const patientDetailsBody = patientDetailRows || `<p style="font-size:11px;color:${SAGE};font-style:italic">No additional patient details on file.</p>`
+
   const voidedBanner = data.voidedAt ? `
     <div style="margin-bottom:16px;border:1px solid #fca5a5;background:#fef2f2;border-radius:6px;padding:12px">
       <p style="margin:0;font-size:11px;font-weight:700;color:#b91c1c">Voided</p>
@@ -169,15 +212,16 @@ export function buildProgressNoteHtml(data: ProgressNoteHtmlData): string {
 
     ${voidedBanner}
 
-    ${section('Shift Details', `
+    ${twoColumnSection('Shift Details', `
       <div style="display:flex;flex-wrap:wrap;gap:16px">
         <div><p style="margin:0;font-size:8px;text-transform:uppercase;color:${SAGE}">Service Date</p><p style="margin:2px 0 0;font-size:11px;color:${NAVY}">${fmtDate(data.serviceDate)}</p></div>
         <div><p style="margin:0;font-size:8px;text-transform:uppercase;color:${SAGE}">Shift Start</p><p style="margin:2px 0 0;font-size:11px;color:${NAVY}">${cell(data.shiftStartTime)}</p></div>
         <div><p style="margin:0;font-size:8px;text-transform:uppercase;color:${SAGE}">Shift End</p><p style="margin:2px 0 0;font-size:11px;color:${NAVY}">${cell(data.shiftEndTime)}</p></div>
         <div><p style="margin:0;font-size:8px;text-transform:uppercase;color:${SAGE}">Total Hours</p><p style="margin:2px 0 0;font-size:11px;color:${NAVY}">${data.totalHours ?? '—'}</p></div>
+        <div><p style="margin:0;font-size:8px;text-transform:uppercase;color:${SAGE}">Location</p><p style="margin:2px 0 0;font-size:11px;color:${NAVY}">${cell(data.location)}</p></div>
       </div>
       <p style="margin:8px 0 0;font-size:10px;color:${SAGE}">Authored by ${esc(data.authorDisplayName)}${data.authorRole === 'admin' ? ' (admin)' : ''}</p>
-    `)}
+    `, 'Patient Details', patientDetailsBody)}
 
     ${section('Vitals', vitalsTable(data.vitals))}
     ${section('Intake / Output', ioTable(data.intakeOutput))}

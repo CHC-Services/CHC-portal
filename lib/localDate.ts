@@ -9,3 +9,15 @@ export function todayLocalDateString(): string {
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
+
+// Displays a date-only value (a Progress Note's service date, stored as
+// UTC-midnight of the intended calendar day) as "Aug 21, 2026". Deliberately
+// reads UTC components (timeZone: 'UTC') rather than the viewer's local
+// timezone — for anyone in a US timezone, converting UTC-midnight to local
+// time rolls it back to the *previous* calendar day, showing a date one day
+// earlier than what's actually stored. Since this is a calendar day, not an
+// instant, formatting must read it back the same way it was written.
+export function formatServiceDate(value: string | Date): string {
+  const d = typeof value === 'string' ? new Date(value) : value
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+}

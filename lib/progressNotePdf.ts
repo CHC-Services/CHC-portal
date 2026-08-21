@@ -16,7 +16,13 @@ export async function getOrCreateProgressNotePdf(noteId: string): Promise<{ url:
   const note = await prisma.progressNote.findUnique({
     where: { id: noteId },
     include: {
-      patient: { select: { firstName: true, lastName: true, accountNumber: true } },
+      patient: { select: {
+        firstName: true, lastName: true, accountNumber: true,
+        dxCode1: true, dxCode2: true,
+        insuranceName: true, insuranceId: true,
+        ins2Name: true, ins2Id: true,
+        paNumber: true,
+      } },
       authorUser: AUTHOR_SELECT,
       vitals: { orderBy: { sortOrder: 'asc' } },
       intakeOutput: { orderBy: { sortOrder: 'asc' } },
@@ -57,6 +63,7 @@ export async function getOrCreateProgressNotePdf(noteId: string): Promise<{ url:
     shiftStartTime: note.shiftStartTime,
     shiftEndTime: note.shiftEndTime,
     totalHours: note.totalHours,
+    location: note.location,
     arrivalFindings: note.arrivalFindings,
     shiftNotes: note.shiftNotes,
     signedAt: note.signedAt,
@@ -66,6 +73,13 @@ export async function getOrCreateProgressNotePdf(noteId: string): Promise<{ url:
     vitals: note.vitals,
     intakeOutput: note.intakeOutput,
     addenda,
+    dxCode1: note.patient.dxCode1,
+    dxCode2: note.patient.dxCode2,
+    insuranceName: note.patient.insuranceName,
+    insuranceId: note.patient.insuranceId,
+    ins2Name: note.patient.ins2Name,
+    ins2Id: note.patient.ins2Id,
+    paNumber: note.patient.paNumber,
   })
 
   const pdfBuffer = await generatePdfFromHtml(html, {

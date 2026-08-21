@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import QuickNoteForm, { QuickNoteDTO } from '../components/QuickNoteForm'
+import { todayLocalDateString } from '../../lib/localDate'
 
 type Patient = { id: string; label: string }
 type Draft = { id: string; serviceDate: string; patientLabel: string }
@@ -51,7 +52,7 @@ function QuickNotesApp() {
 
   async function createNote(patientId: string) {
     setCreating(true)
-    const res = await fetch('/api/quick-notes/notes', { method: 'POST', headers: headers(), body: JSON.stringify({ patientId }) })
+    const res = await fetch('/api/quick-notes/notes', { method: 'POST', headers: headers(), body: JSON.stringify({ patientId, serviceDate: todayLocalDateString() }) })
     setCreating(false)
     if (res.ok) {
       const { note } = await res.json()

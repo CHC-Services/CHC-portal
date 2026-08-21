@@ -118,7 +118,7 @@ function ioTable(rows: ProgressNoteHtmlIO[]): string {
 function signatureBlock(name: string, role: string, signatureUrl: string, signedAt: Date | string): string {
   return `
     <div style="margin-top:8px">
-      <img src="${signatureUrl}" alt="Signature" style="max-height:70px;display:block" />
+      <img src="${signatureUrl}" alt="Signature" style="max-height:36px;max-width:160px;width:auto;height:auto;display:block" />
       <p style="margin:6px 0 0;font-size:10px;color:${SAGE}">
         Signed electronically by <strong style="color:${NAVY}">${esc(name)}${role === 'admin' ? ' (admin)' : ''}</strong> on ${fmtDateTime(signedAt)}
       </p>
@@ -146,7 +146,7 @@ export function buildProgressNoteHtml(data: ProgressNoteHtmlData): string {
           <strong style="color:${NAVY}">${esc(a.authorDisplayName)}${a.authorRole === 'admin' ? ' (admin)' : ''}</strong> — ${fmtDateTime(a.signedAt)}
         </p>
         <p style="margin:0 0 8px;font-size:11px;color:${NAVY};white-space:pre-wrap">${esc(a.text)}</p>
-        <img src="${a.signatureUrl}" alt="Addendum signature" style="max-height:56px;display:block" />
+        <img src="${a.signatureUrl}" alt="Addendum signature" style="max-height:30px;max-width:130px;width:auto;height:auto;display:block" />
       </div>`).join('')}` : ''
 
   return `

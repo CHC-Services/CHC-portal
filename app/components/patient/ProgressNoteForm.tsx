@@ -204,10 +204,7 @@ export default function ProgressNoteForm({
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm p-6 space-y-3">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">Vitals</p>
-          <button type="button" onClick={() => setVitals(rows => [...rows, { ...EMPTY_VITAL }])} className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">+ Add Row</button>
-        </div>
+        <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">Vitals</p>
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
@@ -260,13 +257,11 @@ export default function ProgressNoteForm({
             </tbody>
           </table>
         </div>
+        <button type="button" onClick={() => setVitals(rows => [...rows, { ...EMPTY_VITAL }])} className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">+ Add Row</button>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm p-6 space-y-3">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">Intake / Output</p>
-          <button type="button" onClick={() => setIntakeOutput(rows => [...rows, { ...EMPTY_IO }])} className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">+ Add Row</button>
-        </div>
+        <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">Intake / Output</p>
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
@@ -306,6 +301,7 @@ export default function ProgressNoteForm({
             </tbody>
           </table>
         </div>
+        <button type="button" onClick={() => setIntakeOutput(rows => [...rows, { ...EMPTY_IO }])} className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">+ Add Row</button>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">

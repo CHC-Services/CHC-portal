@@ -24,7 +24,7 @@ export async function GET(req: Request) {
 
   const notes = await prisma.progressNote.findMany({
     where: { patientId, signedAt: { not: null } },
-    include: { authorUser: { select: { name: true, nurseProfile: { select: { displayName: true } } } } },
+    include: { authorUser: { select: { name: true, nurseProfile: { select: { firstName: true, lastName: true, displayName: true, credentials: true } } } } },
     orderBy: { serviceDate: 'desc' },
   })
   return NextResponse.json({ notes: notes.map(n => ({ ...n, authorDisplayName: authorDisplayName(n) })) })

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, use } from 'react'
 import { useRouter } from 'next/navigation'
+import { todayLocalDateString } from '../../../../../../lib/localDate'
 
 // Creates a fresh draft note, then hands off to the [noteId] editor page.
 export default function NewProgressNotePage({ params }: { params: Promise<{ id: string }> }) {
@@ -16,7 +17,7 @@ export default function NewProgressNotePage({ params }: { params: Promise<{ id: 
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ patientId: id }),
+      body: JSON.stringify({ patientId: id, serviceDate: todayLocalDateString() }),
     })
       .then(r => r.json())
       .then(d => {

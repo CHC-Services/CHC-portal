@@ -9,7 +9,7 @@ export async function POST(req: Request) {
   const identity = await getQuickAccessIdentity(req)
   if (!identity) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { patientId } = await req.json()
+  const { patientId, serviceDate } = await req.json()
   if (!patientId) return NextResponse.json({ error: 'patientId required' }, { status: 400 })
 
   const link = await prisma.nursePatient.findUnique({
@@ -22,7 +22,7 @@ export async function POST(req: Request) {
       patientId,
       authorUserId: identity.userId,
       authorRole: 'nurse',
-      serviceDate: new Date(),
+      serviceDate: serviceDate ? new Date(serviceDate) : new Date(),
     },
   })
 

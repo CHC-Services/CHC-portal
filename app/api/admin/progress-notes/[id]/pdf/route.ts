@@ -3,6 +3,11 @@ import { prisma } from '../../../../../../lib/prisma'
 import { verifyToken } from '../../../../../../lib/auth'
 import { getOrCreateProgressNotePdf } from '../../../../../../lib/progressNotePdf'
 
+// Puppeteer launching headless Chromium + rendering can run past Vercel's
+// default serverless timeout — same reason app/api/admin/claims/import/route.ts
+// needed this (requires Vercel Pro or higher).
+export const maxDuration = 60
+
 function getSession(req: Request) {
   const cookie = req.headers.get('cookie') || ''
   const token = cookie.split('auth_token=').pop()?.split(';')[0]

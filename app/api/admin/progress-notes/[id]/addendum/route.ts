@@ -51,7 +51,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       text: cleaned,
       signatureImageKey,
     },
-    include: { authorUser: { select: { name: true, nurseProfile: { select: { displayName: true } } } } },
+    include: { authorUser: { select: { name: true, nurseProfile: { select: { firstName: true, lastName: true, displayName: true, credentials: true } } } } },
   })
 
   await invalidateProgressNotePdf(id)

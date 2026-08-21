@@ -10,7 +10,7 @@ function getSession(req: Request) {
   return token ? verifyToken(token) : null
 }
 
-const AUTHOR_INCLUDE = { authorUser: { select: { name: true, nurseProfile: { select: { displayName: true } } } } } as const
+const AUTHOR_INCLUDE = { authorUser: { select: { name: true, nurseProfile: { select: { firstName: true, lastName: true, displayName: true, credentials: true } } } } } as const
 
 // All notes for a patient, including voided — admin sees everything.
 export async function GET(req: Request) {

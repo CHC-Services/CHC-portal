@@ -50,7 +50,7 @@ export default function ProgressNoteList({
       <div className="flex items-center justify-between">
         <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">Progress Notes</p>
         {canCreate && (
-          <Link href={`${linkBase}/new`} className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">
+          <Link href={`${linkBase}/new`} className="bg-[#2F3E4E] text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-[#7A8F79] transition shadow-sm">
             + New Note
           </Link>
         )}

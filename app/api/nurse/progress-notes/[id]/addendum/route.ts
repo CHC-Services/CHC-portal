@@ -4,6 +4,7 @@ import { verifyToken } from '../../../../../../lib/auth'
 import { canAddAddendum } from '../../../../../../lib/permissions'
 import { copyS3Object, getPresignedDownloadUrl } from '../../../../../../lib/s3'
 import { authorDisplayName } from '../../../../../../lib/progressNoteAuthor'
+import { signedName } from '../../../../../../lib/formatName'
 import { invalidateProgressNotePdf } from '../../../../../../lib/progressNotePdf'
 
 function getSession(req: Request) {
@@ -34,7 +35,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const profile = await prisma.nurseProfile.findUnique({
     where: { id: session.nurseProfileId },
-    select: { signatureImageKey: true, displayName: true },
+    select: { signatureImageKey: true, firstName: true, lastName: true, displayName: true, credentials: true },
   })
   if (!profile?.signatureImageKey) {
     return NextResponse.json({ error: 'No stored signature on file — add one on your profile page first', requiresSignatureSetup: true }, { status: 400 })
@@ -50,11 +51,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       progressNoteId: id,
       authorUserId: session.id,
       authorRole: 'nurse',
-      authorDisplayNameSnapshot: profile.displayName,
+      authorDisplayNameSnapshot: signedName(profile),
       text: cleaned,
       signatureImageKey,
     },
-    include: { authorUser: { select: { name: true, nurseProfile: { select: { displayName: true } } } } },
+    include: { authorUser: { select: { name: true, nurseProfile: { select: { firstName: true, lastName: true, displayName: true, credentials: true } } } } },
   })
 
   await invalidateProgressNotePdf(id)

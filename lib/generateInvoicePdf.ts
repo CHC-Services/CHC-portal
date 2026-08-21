@@ -14,6 +14,10 @@ export async function generatePdfFromHtml(html: string, options: {
   displayHeaderFooter?: boolean
   headerTemplate?: string
   footerTemplate?: string
+  // Per-side overrides on top of the computed default (e.g. extra left
+  // clearance for hole-punching/binders) — omit any side to keep the default
+  // for that side. Existing callers that don't pass this see no change.
+  margin?: { top?: string; bottom?: string; left?: string; right?: string }
 } = {}): Promise<Buffer> {
   const isLocal = !process.env.AWS_LAMBDA_FUNCTION_NAME && !process.env.VERCEL
 
@@ -38,15 +42,16 @@ export async function generatePdfFromHtml(html: string, options: {
     const page = await browser.newPage()
     await page.setContent(html, { waitUntil: 'load' })
     const withHeaderFooter = !!options.displayHeaderFooter
+    const baseMargin = withHeaderFooter
+      // A running header/footer needs more room than the tight default
+      // margin, or Chromium overlaps it with the page content.
+      ? { top: '0.6in', bottom: '0.5in', left: '0.25in', right: '0.25in' }
+      : { top: '0.25in', bottom: '0.25in', left: '0.25in', right: '0.25in' }
     const pdf = await page.pdf({
       format: 'letter',
       landscape: !!options.landscape,
       printBackground: true,
-      // A running header/footer needs more room than the tight default
-      // margin, or Chromium overlaps it with the page content.
-      margin: withHeaderFooter
-        ? { top: '0.6in', bottom: '0.5in', left: '0.25in', right: '0.25in' }
-        : { top: '0.25in', bottom: '0.25in', left: '0.25in', right: '0.25in' },
+      margin: { ...baseMargin, ...options.margin },
       displayHeaderFooter: withHeaderFooter,
       headerTemplate: options.headerTemplate,
       footerTemplate: options.footerTemplate,

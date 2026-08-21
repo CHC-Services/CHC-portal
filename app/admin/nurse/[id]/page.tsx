@@ -50,6 +50,8 @@ function Field({
   type = 'text',
   sensitive = false,
   editing = true,
+  maxLength,
+  placeholder,
 }: {
   label: string
   field: string
@@ -58,6 +60,8 @@ function Field({
   type?: string
   sensitive?: boolean
   editing?: boolean
+  maxLength?: number
+  placeholder?: string
 }) {
   const [show, setShow] = useState(false)
   const value = profile[field] || ''
@@ -94,6 +98,8 @@ function Field({
           <input
             type={sensitive && !show ? 'password' : type}
             value={value}
+            maxLength={maxLength}
+            placeholder={placeholder}
             onChange={(e) => {
               const val = type === 'tel' ? fmtPhoneInput(e.target.value) : e.target.value
               setProfile({ ...profile, [field]: val })
@@ -1126,16 +1132,16 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
 
             {/* Individual Provider Information */}
             <Section title="Individual Provider Information" editing={editingProfile} onEdit={() => setEditingProfile(true)}>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid gap-3" style={{ gridTemplateColumns: '1fr 3.5rem 1fr 5.5rem' }}>
                 <Field label="First Name"     field="firstName"     profile={profile} setProfile={setProfile} editing={editingProfile} />
-                <Field label="MI"             field="middleInitial" profile={profile} setProfile={setProfile} editing={editingProfile} />
+                <Field label="MI"             field="middleInitial" profile={profile} setProfile={setProfile} editing={editingProfile} maxLength={2} />
                 <Field label="Last Name"      field="lastName"      profile={profile} setProfile={setProfile} editing={editingProfile} />
+                <Field label="Credentials"    field="credentials"   profile={profile} setProfile={setProfile} editing={editingProfile} maxLength={10} placeholder="LPN/RN" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Phone"          field="phone"         profile={profile} setProfile={setProfile} editing={editingProfile} type="tel" />
                 <Field label="Email"          field="user.email"    profile={profile} setProfile={setProfile} editing={editingProfile} type="email" />
               </div>
-              <Field label="Credentials (e.g. RN, LPN)" field="credentials" profile={profile} setProfile={setProfile} editing={editingProfile} />
               <Field label="Home Address"     field="address"       profile={profile} setProfile={setProfile} editing={editingProfile} />
               <div className="grid grid-cols-3 gap-3">
                 <Field label="City"           field="city"          profile={profile} setProfile={setProfile} editing={editingProfile} />

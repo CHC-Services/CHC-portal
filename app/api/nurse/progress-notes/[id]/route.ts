@@ -11,7 +11,7 @@ function getSession(req: Request) {
   return token ? verifyToken(token) : null
 }
 
-const AUTHOR_SELECT = { select: { name: true, nurseProfile: { select: { displayName: true } } } } as const
+const AUTHOR_SELECT = { select: { name: true, nurseProfile: { select: { firstName: true, lastName: true, displayName: true, credentials: true } } } } as const
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = getSession(req)

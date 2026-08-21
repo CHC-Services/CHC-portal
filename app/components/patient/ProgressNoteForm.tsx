@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { lbl } from './types'
 import SpellCheckButton, { SpellcheckFlag } from '../SpellCheckButton'
 import { checkText } from '../../../lib/medicalSpellcheck'
@@ -106,6 +106,15 @@ export default function ProgressNoteForm({
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
+  // Refs so the debounce timer and the backstop interval below always call
+  // the *latest* saveDraft/field values, not whatever was captured when they
+  // were first set up.
+  const mountedRef = useRef(false)
+  const dirtyRef = useRef(false)
+  const suppressAutosaveRef = useRef(false)
+  const saveDraftRef = useRef<() => Promise<void>>(async () => {})
+  useEffect(() => { suppressAutosaveRef.current = saving || signing || deleting }, [saving, signing, deleting])
+
   useEffect(() => {
     fetch(`${basePath}/signature`, { credentials: 'include' })
       .then(r => r.json())
@@ -153,6 +162,29 @@ export default function ProgressNoteForm({
       setError(body.error || 'Failed to save.')
     }
   }
+
+  useEffect(() => { saveDraftRef.current = saveDraft })
+
+  // Debounced autosave — saves shortly after the nurse pauses typing, so a
+  // draft isn't lost if she has to step away and comes back to a timed-out
+  // session. Skipped on the very first render (nothing's changed yet).
+  useEffect(() => {
+    if (!mountedRef.current) { mountedRef.current = true; return }
+    dirtyRef.current = true
+    const timer = setTimeout(() => {
+      if (!suppressAutosaveRef.current) { dirtyRef.current = false; saveDraftRef.current() }
+    }, 2500)
+    return () => clearTimeout(timer)
+  }, [serviceDate, shiftStartTime, shiftEndTime, totalHours, arrivalFindings, shiftNotes, vitals, intakeOutput])
+
+  // Backstop for long stretches of continuous typing that never pause long
+  // enough for the debounce above to fire.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (dirtyRef.current && !suppressAutosaveRef.current) { dirtyRef.current = false; saveDraftRef.current() }
+    }, 30000)
+    return () => clearInterval(interval)
+  }, [])
 
   async function signAndLock() {
     setSigning(true); setSignError('')

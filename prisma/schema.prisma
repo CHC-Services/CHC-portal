@@ -1066,11 +1066,26 @@ model ProgressNote {
   vitals       ProgressNoteVital[]
   intakeOutput ProgressNoteIntakeOutput[]
   addenda      ProgressNoteAddendum[]
+  voiceEntries ProgressNoteVoiceEntry[]
 
   @@index([patientId])
   @@index([authorUserId])
   @@index([shiftId])
   @@index([serviceDate])
+}
+
+// "Micro-Charting" — a nurse dictates one of these per care event throughout
+// the shift (via the quick-notes phone shortcut), each saved the instant it's
+// transcribed. At end of shift these get compiled (lib/bedrockClient.ts) into
+// one professionally-worded block that prepopulates shiftNotes above.
+model ProgressNoteVoiceEntry {
+  id             String       @id @default(uuid())
+  progressNoteId String
+  progressNote   ProgressNote @relation(fields: [progressNoteId], references: [id], onDelete: Cascade)
+  rawText        String // transcribed text for this one dictated entry
+  recordedAt     DateTime     @default(now()) // the authoritative chronological key — entries are always saved the instant they're captured, so creation order === chronological order
+
+  @@index([progressNoteId])
 }
 
 // Appended, separately-signed corrections to an already-signed note — never

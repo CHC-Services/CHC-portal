@@ -19,6 +19,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     include: {
       vitals: { orderBy: { sortOrder: 'asc' } },
       intakeOutput: { orderBy: { sortOrder: 'asc' } },
+      voiceEntries: { orderBy: { recordedAt: 'asc' } },
       patient: { select: { firstName: true, lastName: true } },
     },
   })

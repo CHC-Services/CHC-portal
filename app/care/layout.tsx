@@ -7,7 +7,7 @@ export default async function CareLayout({ children }: { children: React.ReactNo
 
   return (
     <div
-      className="flex gap-2 items-start min-h-screen"
+      className="flex gap-4 items-start min-h-screen"
       style={{ background: 'linear-gradient(160deg, #dce8dc 0%, #e6ecee 55%, #d2dde5 100%)' }}
     >
       {user?.role === 'guardian' ? <FamilySideNav /> : (user?.role === 'nurse' || user?.role === 'provider') ? <NurseSideNav /> : null}

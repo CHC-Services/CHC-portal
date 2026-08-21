@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 // Mirrors ProgressNoteForm.tsx's flowsheet fields, but wired to /api/quick-notes/*
 // with a header token instead of cookie session auth — kept as its own
@@ -17,6 +17,8 @@ type IORow = {
   outputUrine: string | null; outputBM: string | null; outputEmesis: string | null
 }
 
+export type VoiceEntryDTO = { id: string; rawText: string; recordedAt: string }
+
 export type QuickNoteDTO = {
   id: string
   patientLabel: string
@@ -29,7 +31,18 @@ export type QuickNoteDTO = {
   signedAt: string | null
   vitals: VitalRow[]
   intakeOutput: IORow[]
+  voiceEntries: VoiceEntryDTO[]
 }
+
+// Micro-Charting's per-recording state machine — 'recording' while the mic is
+// live, 'transcribing' while Transcribe Medical's job is polled, 'ready' once
+// she can glance-and-confirm the just-saved entry's text (or redo it),
+// 'error' on failure. There's only ever one of these active at a time.
+type PendingEntry =
+  | { phase: 'recording' }
+  | { phase: 'transcribing' }
+  | { phase: 'ready'; entry: VoiceEntryDTO }
+  | { phase: 'error'; message: string }
 
 const O2_ROUTES = ['AirVo', 'HME', 'O2 Tank', 'Passy Muir', 'POC', 'Vent', 'Room Air']
 const TX_NEEDED = ['Yes', 'No']
@@ -70,8 +83,114 @@ export default function QuickNoteForm({
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
+  // Micro-Charting state
+  const [voiceEntries, setVoiceEntries] = useState<VoiceEntryDTO[]>(note.voiceEntries)
+  const [pending, setPending] = useState<PendingEntry | null>(null)
+  const [compiling, setCompiling] = useState(false)
+  const [compileError, setCompileError] = useState('')
+  const [compilePreview, setCompilePreview] = useState<string | null>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+  const mountedRef = useRef(true)
+  useEffect(() => () => { mountedRef.current = false }, [])
+
   function headers() {
+    return { 'X-Quick-Access-Token': token }
+  }
+  function jsonHeaders() {
     return { 'Content-Type': 'application/json', 'X-Quick-Access-Token': token }
+  }
+
+  async function startRecording() {
+    setPending({ phase: 'recording' })
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    const recorder = new MediaRecorder(stream)
+    chunksRef.current = []
+    recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+    recorder.onstop = () => {
+      stream.getTracks().forEach(t => t.stop())
+      const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' })
+      uploadAndTranscribe(blob)
+    }
+    mediaRecorderRef.current = recorder
+    recorder.start()
+  }
+
+  function stopRecording() {
+    mediaRecorderRef.current?.stop()
+  }
+
+  async function uploadAndTranscribe(blob: Blob) {
+    setPending({ phase: 'transcribing' })
+    try {
+      const form = new FormData()
+      form.append('audio', blob, 'entry.webm')
+      const startRes = await fetch(`/api/quick-notes/notes/${note.id}/voice-entries/start`, {
+        method: 'POST',
+        headers: headers(),
+        body: form,
+      })
+      if (!startRes.ok) throw new Error()
+      const { jobId } = await startRes.json()
+      await pollStatus(jobId)
+    } catch {
+      if (mountedRef.current) setPending({ phase: 'error', message: "Didn't catch that — try again." })
+    }
+  }
+
+  async function pollStatus(jobId: string) {
+    while (mountedRef.current) {
+      await new Promise(r => setTimeout(r, 2000))
+      const res = await fetch(`/api/quick-notes/notes/${note.id}/voice-entries/status/${jobId}`, { headers: headers() })
+      if (!res.ok) { if (mountedRef.current) setPending({ phase: 'error', message: "Didn't catch that — try again." }); return }
+      const body = await res.json()
+      if (body.status === 'IN_PROGRESS') continue
+      if (body.status === 'FAILED') { if (mountedRef.current) setPending({ phase: 'error', message: body.error || 'Transcription failed.' }); return }
+      // COMPLETED
+      setVoiceEntries(rows => [...rows, body.entry])
+      if (mountedRef.current) setPending({ phase: 'ready', entry: body.entry })
+      return
+    }
+  }
+
+  function dismissPending() {
+    setPending(null)
+  }
+
+  async function redoPending() {
+    if (pending?.phase === 'ready') {
+      await deleteEntry(pending.entry.id)
+    }
+    setPending(null)
+    startRecording()
+  }
+
+  async function deleteEntry(entryId: string) {
+    setVoiceEntries(rows => rows.filter(e => e.id !== entryId))
+    await fetch(`/api/quick-notes/notes/${note.id}/voice-entries/${entryId}`, { method: 'DELETE', headers: headers() })
+  }
+
+  async function runCompile() {
+    setCompiling(true); setCompileError('')
+    const res = await fetch(`/api/quick-notes/notes/${note.id}/compile`, { method: 'POST', headers: headers() })
+    setCompiling(false)
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      setCompileError(body.error || 'Failed to compile.')
+      return
+    }
+    const { compiledText } = await res.json()
+    if (!shiftNotes.trim()) {
+      setShiftNotes(compiledText)
+    } else {
+      setCompilePreview(compiledText)
+    }
+  }
+
+  function acceptCompile(mode: 'replace' | 'append') {
+    if (compilePreview == null) return
+    setShiftNotes(prev => mode === 'replace' ? compilePreview : `${prev}\n\n${compilePreview}`)
+    setCompilePreview(null)
   }
 
   function updateVital(i: number, field: keyof VitalRow, value: string) {
@@ -85,7 +204,7 @@ export default function QuickNoteForm({
     setSaving(true); setError(''); setSaved(false)
     const res = await fetch(`/api/quick-notes/notes/${note.id}`, {
       method: 'PATCH',
-      headers: headers(),
+      headers: jsonHeaders(),
       body: JSON.stringify({
         shiftStartTime: shiftStartTime || null,
         shiftEndTime: shiftEndTime || null,
@@ -153,6 +272,79 @@ export default function QuickNoteForm({
             <input className={inp} value={location} onChange={e => setLocation(e.target.value)} />
           </div>
         </div>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm p-5 space-y-3">
+        <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">Micro-Charting</p>
+
+        {pending == null && (
+          <button type="button" onClick={startRecording} className="bg-[#2F3E4E] text-white px-5 py-2 rounded-xl font-semibold hover:bg-[#7A8F79] transition">
+            🎙 Record Entry
+          </button>
+        )}
+        {pending?.phase === 'recording' && (
+          <button type="button" onClick={stopRecording} className="bg-red-600 text-white px-5 py-2 rounded-xl font-semibold hover:bg-red-700 transition">
+            ■ Stop Recording
+          </button>
+        )}
+        {pending?.phase === 'transcribing' && (
+          <p className="text-sm text-[#7A8F79] italic">Transcribing…</p>
+        )}
+        {pending?.phase === 'ready' && (
+          <div className="border border-[#D9E1E8] bg-[#F4F6F5] rounded-lg p-3 space-y-2">
+            <p className="text-sm text-[#2F3E4E]">{pending.entry.rawText}</p>
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={dismissPending} className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E]">✓ Looks good</button>
+              <button type="button" onClick={redoPending} className="text-xs font-semibold text-red-600">🔁 Re-record</button>
+            </div>
+          </div>
+        )}
+        {pending?.phase === 'error' && (
+          <div className="border border-red-200 bg-red-50 rounded-lg p-3 space-y-2">
+            <p className="text-sm text-red-600">{pending.message}</p>
+            <button type="button" onClick={startRecording} className="text-xs font-semibold text-red-600">Try Again</button>
+          </div>
+        )}
+
+        {voiceEntries.length > 0 && (
+          <div className="space-y-1.5">
+            {voiceEntries.map(e => (
+              <div key={e.id} className="flex items-start justify-between gap-2 bg-[#F4F6F5] rounded-lg px-3 py-2">
+                <div>
+                  <p className="text-xs font-semibold text-[#7A8F79]">
+                    {new Date(e.recordedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                  <p className="text-sm text-[#2F3E4E]">{e.rawText}</p>
+                </div>
+                <button type="button" onClick={() => deleteEntry(e.id)} className="text-red-500 text-xs shrink-0">✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="pt-2 border-t border-[#D9E1E8] space-y-2">
+          <button
+            type="button"
+            onClick={runCompile}
+            disabled={compiling || voiceEntries.length === 0}
+            className="bg-[#2F3E4E] text-white px-5 py-2 rounded-xl font-semibold hover:bg-[#7A8F79] transition disabled:opacity-50"
+          >
+            {compiling ? 'Compiling…' : 'Compile'}
+          </button>
+          {compileError && <p className="text-red-500 text-sm bg-red-50 rounded-lg px-3 py-2">{compileError}</p>}
+        </div>
+
+        {compilePreview != null && (
+          <div className="border border-[#D9E1E8] bg-[#F4F6F5] rounded-lg p-3 space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Compiled Result</p>
+            <p className="text-sm text-[#2F3E4E] whitespace-pre-wrap">{compilePreview}</p>
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={() => acceptCompile('replace')} className="text-xs font-semibold text-white bg-[#2F3E4E] px-3 py-1.5 rounded-lg hover:bg-[#7A8F79] transition">Replace Shift Notes</button>
+              <button type="button" onClick={() => acceptCompile('append')} className="text-xs font-semibold text-[#2F3E4E] border border-[#D9E1E8] px-3 py-1.5 rounded-lg hover:border-[#7A8F79] transition">Append</button>
+              <button type="button" onClick={() => setCompilePreview(null)} className="text-xs text-[#7A8F79]">Discard</button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm p-5 space-y-3">

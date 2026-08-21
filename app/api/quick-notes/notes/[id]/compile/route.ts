@@ -1,0 +1,41 @@
+import { NextResponse } from 'next/server'
+import { prisma } from '../../../../../../lib/prisma'
+import { getQuickAccessIdentity } from '../../../../../../lib/nurseQuickAccess'
+import { compileVoiceEntries } from '../../../../../../lib/bedrockClient'
+
+function isEditableDraft(note: { authorUserId: string | null; signedAt: Date | null }, userId: string) {
+  return note.authorUserId === userId && !note.signedAt
+}
+
+// Bedrock calls are typically fast, but add maxDuration defensively per this
+// project's established Puppeteer-PDF precedent (app/api/admin/claims/import/route.ts,
+// the progress-note PDF routes) — anything that calls out to a third-party
+// service can occasionally run past Vercel's default serverless timeout.
+export const maxDuration = 30
+
+// Micro-Charting's end-of-shift compile — ONE Bedrock call over every voice
+// entry in this note together (never per-entry), so cross-entry references
+// resolve correctly. Returns the compiled text only — never writes it to
+// the note itself; the client decides what to do with it (fill empty Shift
+// Notes, or show a replace/append/discard choice if it already has content).
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const identity = await getQuickAccessIdentity(req)
+  if (!identity) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { id } = await params
+
+  const note = await prisma.progressNote.findUnique({ where: { id } })
+  if (!note || !isEditableDraft(note, identity.userId)) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
+  const entries = await prisma.progressNoteVoiceEntry.findMany({
+    where: { progressNoteId: id },
+    orderBy: { recordedAt: 'asc' },
+  })
+  if (entries.length === 0) {
+    return NextResponse.json({ error: 'No voice entries recorded yet for this note.' }, { status: 400 })
+  }
+
+  const compiledText = await compileVoiceEntries(entries)
+  return NextResponse.json({ compiledText })
+}

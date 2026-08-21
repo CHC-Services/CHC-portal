@@ -59,6 +59,13 @@ export async function copyS3Object(sourceKey: string, destKey: string): Promise<
   }))
 }
 
+/** Reads a private object's full contents as a UTF-8 string — for small JSON
+ * outputs (e.g. a Transcribe job result), not large files. */
+export async function getObjectText(key: string): Promise<string> {
+  const res = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: key }))
+  return res.Body!.transformToString('utf-8')
+}
+
 /** Permanently delete an object from S3. */
 export async function deleteFromS3(key: string): Promise<void> {
   await s3.send(new DeleteObjectCommand({

@@ -26,7 +26,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   try {
     const { url } = await getOrCreateProgressNotePdf(id)
     return NextResponse.json({ url })
-  } catch {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  } catch (err) {
+    console.error(`Failed to generate PDF for progress note ${id}:`, err)
+    return NextResponse.json({ error: 'Failed to generate PDF. Please try again.' }, { status: 500 })
   }
 }

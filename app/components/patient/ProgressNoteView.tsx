@@ -26,21 +26,46 @@ export default function ProgressNoteView({
   addendumAction?: React.ReactNode
 }) {
   const [loadingPdf, setLoadingPdf] = useState(false)
+  const [pdfError, setPdfError] = useState('')
 
   async function printPdf() {
     setLoadingPdf(true)
-    const res = await fetch(`${basePath}/progress-notes/${note.id}/pdf`, { credentials: 'include' })
-    setLoadingPdf(false)
-    if (res.ok) {
+    setPdfError('')
+    // Open the tab synchronously, before the await — most browsers (Safari
+    // especially) only allow window.open without popup-blocking when it's
+    // called directly inside a click handler. Doing it after the fetch
+    // resolves gets silently blocked (window.open just returns null, no
+    // error thrown) — which is exactly the "button did something, then
+    // nothing happened" symptom this is fixing.
+    const tab = window.open('', '_blank')
+    try {
+      const res = await fetch(`${basePath}/progress-notes/${note.id}/pdf`, { credentials: 'include' })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        tab?.close()
+        setPdfError(body.error || 'Failed to generate PDF. Please try again.')
+        return
+      }
       const { url } = await res.json()
-      window.open(url, '_blank')
+      if (tab) {
+        tab.location.href = url
+      } else {
+        // Popup was blocked even with the synchronous open (strict blocker
+        // settings) — fall back to navigating the current tab.
+        window.location.href = url
+      }
+    } catch {
+      tab?.close()
+      setPdfError('Failed to generate PDF. Please try again.')
+    } finally {
+      setLoadingPdf(false)
     }
   }
 
   return (
     <div className="space-y-5">
       {note.signedAt && (
-        <div className="flex justify-end">
+        <div className="flex flex-col items-end gap-1.5">
           <button
             type="button"
             onClick={printPdf}
@@ -49,6 +74,7 @@ export default function ProgressNoteView({
           >
             {loadingPdf ? 'Preparing PDF…' : '🖨 Print / Download PDF'}
           </button>
+          {pdfError && <p className="text-xs text-red-600">{pdfError}</p>}
         </div>
       )}
 

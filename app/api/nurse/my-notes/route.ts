@@ -29,6 +29,8 @@ export async function GET(req: Request) {
       signedAt: true,
       voidedAt: true,
       patientId: true,
+      shiftNotes: true,
+      arrivalFindings: true,
       patient: { select: { firstName: true, lastName: true, accountNumber: true } },
     },
     orderBy: { serviceDate: 'desc' },
@@ -51,6 +53,8 @@ export async function GET(req: Request) {
       patientName: `${n.patient.firstName} ${n.patient.lastName}`,
       patientAccountNumber: n.patient.accountNumber,
       activeCase: activePatientIds.has(n.patientId),
+      shiftNotes: n.shiftNotes,
+      arrivalFindings: n.arrivalFindings,
     })),
   })
 }

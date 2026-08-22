@@ -74,8 +74,8 @@ function QuickNotesApp() {
     return (
       <div className="min-h-screen bg-[#D9E1E8] flex items-center justify-center p-6">
         <div className="bg-white rounded-2xl shadow-sm p-8 text-center max-w-sm">
-          <p className="text-[#2F3E4E] font-semibold mb-1">This shortcut is no longer valid</p>
-          <p className="text-sm text-[#7A8F79] mb-4">It may have been revoked. Log in normally to keep working, or set up a new shortcut from your profile page.</p>
+          <p className="text-[#2F3E4E] font-semibold mb-1">This shortcut is no longer active</p>
+          <p className="text-sm text-[#7A8F79] mb-4">Please delete this icon from your home screen. Log in below, then go to <strong>myNotes</strong> to reconnect a new one.</p>
           <Link href="/login" className="inline-block bg-[#2F3E4E] text-white text-sm font-semibold px-5 py-2 rounded-xl hover:bg-[#7A8F79] transition">Go to Login</Link>
         </div>
       </div>

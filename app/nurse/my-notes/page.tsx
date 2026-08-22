@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { todayLocalDateString, formatServiceDate } from '../../../lib/localDate'
+import MicroChargingDevices from '../../components/nurse/MicroChargingDevices'
 
 type MyNote = {
   id: string
@@ -13,6 +14,8 @@ type MyNote = {
   patientName: string
   patientAccountNumber: string
   activeCase: boolean
+  shiftNotes: string | null
+  arrivalFindings: string | null
 }
 
 type PickerPatient = {
@@ -22,12 +25,19 @@ type PickerPatient = {
 }
 
 type SortCol = 'default' | 'patient' | 'date' | 'account' | 'status'
+type StatusFilter = 'all' | 'draft' | 'signed' | 'voided'
 
 // Draft = 0, Signed = 1, Voided = 2 — a voided note was signed first, so it
 // still counts as "completed" alongside signed notes, just flagged after.
 function statusRank(n: MyNote) {
   if (!n.signedAt) return 0
   return n.voidedAt ? 2 : 1
+}
+
+function statusOf(n: MyNote): Exclude<StatusFilter, 'all'> {
+  if (n.voidedAt) return 'voided'
+  if (n.signedAt) return 'signed'
+  return 'draft'
 }
 
 function statusBadge(note: MyNote) {
@@ -46,6 +56,32 @@ export default function MyNotesPage() {
   const [notes, setNotes] = useState<MyNote[]>([])
   const [loading, setLoading] = useState(true)
 
+  // Search/filter — client-side over the already-fetched list (this is one
+  // nurse's own archive, not worth server-side search complexity at this
+  // scale). Search checks note content (shiftNotes/arrivalFindings); patient
+  // and status are exact-match dropdowns, kept separate per Alex's request.
+  const [searchText, setSearchText] = useState('')
+  const [patientFilter, setPatientFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+
+  const patientOptions = useMemo(
+    () => [...new Set(notes.map(n => n.patientName))].sort((a, b) => a.localeCompare(b)),
+    [notes],
+  )
+
+  const filtered = useMemo(() => {
+    const q = searchText.trim().toLowerCase()
+    return notes.filter(n => {
+      if (patientFilter && n.patientName !== patientFilter) return false
+      if (statusFilter !== 'all' && statusOf(n) !== statusFilter) return false
+      if (q) {
+        const haystack = `${n.shiftNotes || ''} ${n.arrivalFindings || ''}`.toLowerCase()
+        if (!haystack.includes(q)) return false
+      }
+      return true
+    })
+  }, [notes, searchText, patientFilter, statusFilter])
+
   // Default view: drafts on top, then everything else newest-to-oldest by
   // service date. Clicking a column header switches to a plain sort by that
   // column instead — see handleSort/sorted below.
@@ -57,7 +93,7 @@ export default function MyNotesPage() {
     else { setSortCol(col); setSortDir('asc') }
   }
 
-  const sorted = [...notes].sort((a, b) => {
+  const sorted = [...filtered].sort((a, b) => {
     if (sortCol === 'default') {
       const rankA = statusRank(a) === 0 ? 0 : 1
       const rankB = statusRank(b) === 0 ? 0 : 1
@@ -128,6 +164,8 @@ export default function MyNotesPage() {
     }
   }
 
+  const selectClass = 'w-full border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]'
+
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6 pl-0 md:pl-0">
       <div className="max-w-6xl">
@@ -135,6 +173,41 @@ export default function MyNotesPage() {
           <span className="text-[#7A8F79] italic">my</span>Notes
         </h1>
         <p className="text-sm text-[#7A8F79] mb-5">Every Progress Note you&apos;ve authored, including patients you&apos;re no longer actively assigned to.</p>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+          <div className="bg-white rounded-2xl shadow-sm p-6 space-y-3">
+            <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">Search &amp; Filter</p>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Search Note Content</label>
+              <input
+                value={searchText}
+                onChange={e => setSearchText(e.target.value)}
+                placeholder="e.g. &quot;fell&quot;, &quot;emesis&quot;…"
+                className={selectClass}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Patient</label>
+                <select value={patientFilter} onChange={e => setPatientFilter(e.target.value)} className={selectClass}>
+                  <option value="">All Patients</option>
+                  {patientOptions.map(name => <option key={name} value={name}>{name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Status</label>
+                <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as StatusFilter)} className={selectClass}>
+                  <option value="all">All Statuses</option>
+                  <option value="draft">Draft</option>
+                  <option value="signed">Signed</option>
+                  <option value="voided">Voided</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <MicroChargingDevices />
+        </div>
 
         <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
           <div className="flex items-center justify-between">
@@ -152,6 +225,8 @@ export default function MyNotesPage() {
             <p className="text-sm text-[#7A8F79]">Loading…</p>
           ) : notes.length === 0 ? (
             <p className="text-sm text-[#7A8F79] italic">You haven&apos;t authored any progress notes yet.</p>
+          ) : sorted.length === 0 ? (
+            <p className="text-sm text-[#7A8F79] italic">No notes match your search/filters.</p>
           ) : (
             <div className="overflow-x-auto -mx-6">
               <table className="w-full text-sm">

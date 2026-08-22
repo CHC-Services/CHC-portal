@@ -75,55 +75,6 @@ export default function ProfilePage() {
     setSignatureUrl(null)
   }
 
-  // Quick-Access Shortcuts (home-screen Progress Note shortcut — see /quick-notes)
-  type QuickAccessToken = { id: string; deviceLabel: string; createdAt: string; lastUsedAt: string | null; revokedAt: string | null }
-  const [tokens, setTokens] = useState<QuickAccessToken[]>([])
-  const [tokensLoading, setTokensLoading] = useState(true)
-  const [newDeviceLabel, setNewDeviceLabel] = useState('')
-  const [creatingToken, setCreatingToken] = useState(false)
-  const [justCreatedUrl, setJustCreatedUrl] = useState<string | null>(null)
-  const [copyMsg, setCopyMsg] = useState('')
-
-  function loadTokens() {
-    fetch('/api/nurse/quick-access-tokens', { credentials: 'include' })
-      .then(r => r.json())
-      .then(d => setTokens(d.tokens || []))
-      .finally(() => setTokensLoading(false))
-  }
-
-  useEffect(() => { loadTokens() }, [])
-
-  async function createToken() {
-    if (!newDeviceLabel.trim()) return
-    setCreatingToken(true)
-    const res = await fetch('/api/nurse/quick-access-tokens', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ deviceLabel: newDeviceLabel.trim() }),
-    })
-    setCreatingToken(false)
-    if (res.ok) {
-      const { token } = await res.json()
-      setJustCreatedUrl(`${window.location.origin}/quick-notes?t=${token}`)
-      setNewDeviceLabel('')
-      loadTokens()
-    }
-  }
-
-  async function revokeToken(id: string) {
-    await fetch(`/api/nurse/quick-access-tokens/${id}`, { method: 'DELETE', credentials: 'include' })
-    loadTokens()
-  }
-
-  function copyUrl() {
-    if (!justCreatedUrl) return
-    navigator.clipboard.writeText(justCreatedUrl).then(() => {
-      setCopyMsg('Copied!')
-      setTimeout(() => setCopyMsg(''), 2000)
-    })
-  }
-
   useEffect(() => {
     fetch('/api/nurse/profile')
       .then((r) => {
@@ -328,61 +279,6 @@ export default function ProfilePage() {
               <p className="text-sm text-[#7A8F79]">Loading…</p>
             ) : (
               <SignatureCapture existingImageUrl={signatureUrl} onSave={saveSignature} saving={signatureSaving} />
-            )}
-          </div>
-
-          {/* Quick-Access Shortcuts — home-screen shortcut straight to New Progress
-              Note / My Drafts. A separate, narrowly-scoped credential, not your
-              login — it can't read anything except your own drafts. */}
-          <div className="bg-white rounded-xl shadow p-6 space-y-3">
-            <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E]">Quick-Access Shortcuts</p>
-            <p className="text-xs text-[#7A8F79] leading-relaxed">
-              Create a link for your phone&apos;s home screen that jumps straight to starting or continuing a Progress Note —
-              skips normal login, but can only create/edit/sign your own draft notes for your active patients. Nothing else.
-            </p>
-
-            {justCreatedUrl && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
-                <p className="text-xs font-semibold text-amber-800">Save this link now — you won&apos;t be able to see it again (only revoke and create a new one).</p>
-                <p className="text-xs font-mono text-[#2F3E4E] break-all bg-white rounded px-2 py-1.5 border border-[#D9E1E8]">{justCreatedUrl}</p>
-                <div className="flex items-center gap-3">
-                  <button type="button" onClick={copyUrl} className="text-xs font-semibold text-white bg-[#2F3E4E] px-3 py-1.5 rounded-lg hover:bg-[#7A8F79] transition">Copy Link</button>
-                  {copyMsg && <span className="text-xs text-green-600 font-medium">{copyMsg}</span>}
-                  <button type="button" onClick={() => setJustCreatedUrl(null)} className="text-xs text-[#7A8F79] ml-auto">Done</button>
-                </div>
-                <p className="text-[10px] text-amber-700">Open this link on your phone, then use your browser&apos;s &quot;Add to Home Screen.&quot;</p>
-              </div>
-            )}
-
-            <div className="flex items-center gap-2">
-              <input
-                className="flex-1 border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-                placeholder="Device name (e.g. My iPhone)"
-                value={newDeviceLabel}
-                onChange={e => setNewDeviceLabel(e.target.value)}
-              />
-              <button type="button" onClick={createToken} disabled={creatingToken || !newDeviceLabel.trim()} className="text-sm font-semibold text-white bg-[#2F3E4E] px-4 py-2 rounded-lg hover:bg-[#7A8F79] transition disabled:opacity-50 whitespace-nowrap">
-                {creatingToken ? 'Creating…' : '+ Create'}
-              </button>
-            </div>
-
-            {!tokensLoading && tokens.length > 0 && (
-              <div className="space-y-1.5 pt-1">
-                {tokens.map(t => (
-                  <div key={t.id} className="flex items-center justify-between bg-[#F4F6F5] rounded-lg px-3 py-2">
-                    <div>
-                      <p className="text-sm text-[#2F3E4E] font-semibold">{t.deviceLabel}{t.revokedAt ? ' (revoked)' : ''}</p>
-                      <p className="text-xs text-[#7A8F79]">
-                        Created {new Date(t.createdAt).toLocaleDateString()}
-                        {t.lastUsedAt ? ` · Last used ${new Date(t.lastUsedAt).toLocaleDateString()}` : ' · Never used'}
-                      </p>
-                    </div>
-                    {!t.revokedAt && (
-                      <button type="button" onClick={() => revokeToken(t.id)} className="text-xs font-semibold text-red-500 hover:text-red-700 transition">Revoke</button>
-                    )}
-                  </div>
-                ))}
-              </div>
             )}
           </div>
 

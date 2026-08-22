@@ -97,9 +97,9 @@ export default function MicroChargingDevices() {
           {tokens.map(t => (
             <div key={t.id} className="flex items-center justify-between bg-[#F4F6F5] rounded-lg px-3 py-2 gap-2">
               <div>
-                <p className="text-sm text-[#2F3E4E] font-semibold">{t.deviceLabel}{t.revokedAt ? ' (disconnected)' : ''}</p>
+                <p className="text-sm text-[#2F3E4E] font-semibold">{t.revokedAt ? 'Disconnected Device' : t.deviceLabel}</p>
                 <p className="text-xs text-[#7A8F79]">
-                  {t.revokedAt ? 'Disconnected' : t.lastUsedAt ? `Last used ${new Date(t.lastUsedAt).toLocaleDateString()}` : 'Never used'}
+                  {t.revokedAt ? '' : t.lastUsedAt ? `Last used ${new Date(t.lastUsedAt).toLocaleDateString()}` : 'Never used'}
                 </p>
               </div>
               {t.revokedAt ? (

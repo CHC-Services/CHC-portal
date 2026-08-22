@@ -175,7 +175,7 @@ export default function MyNotesPage() {
         <p className="text-sm text-[#7A8F79] mb-5">Every Progress Note you&apos;ve authored, including patients you&apos;re no longer actively assigned to.</p>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
-          <div className="bg-white rounded-2xl shadow-sm p-6 space-y-3">
+          <div className="order-2 lg:order-1 bg-white rounded-2xl shadow-sm p-6 space-y-3">
             <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">Search &amp; Filter</p>
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Search Note Content</label>
@@ -206,7 +206,9 @@ export default function MyNotesPage() {
             </div>
           </div>
 
-          <MicroChargingDevices />
+          <div className="order-1 lg:order-2">
+            <MicroChargingDevices />
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">

@@ -127,6 +127,28 @@ export default function MicroChargingDevices() {
             </div>
           ))}
 
+          {setupUrl && (
+            <div className="border border-amber-200 bg-amber-50 rounded-lg p-4 space-y-3">
+              <p className="text-sm font-semibold text-amber-800">You&apos;re connected — one more step</p>
+              <a
+                href={setupUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-center bg-[#2F3E4E] text-white text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-[#7A8F79] transition"
+              >
+                Open Micro-Charting
+              </a>
+              <div className="text-xs text-amber-700 space-y-1">
+                <p className="font-semibold">To save it to your home screen:</p>
+                <ol className="list-decimal list-inside space-y-0.5">
+                  {instructions.steps.map((s, i) => <li key={i}>{s}</li>)}
+                </ol>
+              </div>
+              <p className="text-[10px] text-amber-700">If you lose this later, just come back here and tap &quot;Reconnect&quot; — no need to start over.</p>
+              <button type="button" onClick={() => setSetupUrl(null)} className="text-xs font-semibold text-amber-800 hover:text-amber-900 transition">Done</button>
+            </div>
+          )}
+
           <button
             type="button"
             disabled={connectingId === 'new'}
@@ -135,28 +157,6 @@ export default function MicroChargingDevices() {
           >
             {connectingId === 'new' ? 'Connecting…' : '+ Connect Additional Device'}
           </button>
-        </div>
-      )}
-
-      {setupUrl && (
-        <div className="border border-[#D9E1E8] bg-[#F4F6F5] rounded-lg p-4 space-y-3">
-          <p className="text-sm font-semibold text-[#2F3E4E]">You&apos;re connected — one more step</p>
-          <a
-            href={setupUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block text-center bg-[#2F3E4E] text-white text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-[#7A8F79] transition"
-          >
-            Open Micro-Charting
-          </a>
-          <div className="text-xs text-[#7A8F79] space-y-1">
-            <p className="font-semibold">To save it to your home screen:</p>
-            <ol className="list-decimal list-inside space-y-0.5">
-              {instructions.steps.map((s, i) => <li key={i}>{s}</li>)}
-            </ol>
-          </div>
-          <p className="text-[10px] text-[#7A8F79]">If you lose this later, just come back here and tap &quot;Reconnect&quot; — no need to start over.</p>
-          <button type="button" onClick={() => setSetupUrl(null)} className="text-xs text-[#7A8F79]">Done</button>
         </div>
       )}
     </div>

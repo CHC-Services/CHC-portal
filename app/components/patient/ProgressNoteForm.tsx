@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { lbl } from './types'
+import { computeShiftHours } from '../../../lib/parseClockTime'
 import SpellCheckButton, { SpellcheckFlag } from '../SpellCheckButton'
 import { checkText } from '../../../lib/medicalSpellcheck'
 import { loadCustomTerms, addCustomTerm } from '../../../lib/spellcheckClient'
@@ -89,7 +90,9 @@ export default function ProgressNoteForm({
   const [serviceDate, setServiceDate] = useState(toDateInputValue(note.serviceDate))
   const [shiftStartTime, setShiftStartTime] = useState(note.shiftStartTime || '')
   const [shiftEndTime, setShiftEndTime] = useState(note.shiftEndTime || '')
-  const [totalHours, setTotalHours] = useState(note.totalHours != null ? String(note.totalHours) : '')
+  // Fully derived from Shift Start/End, not independent state — one less
+  // thing for her to fill out (or get wrong) manually.
+  const totalHours = computeShiftHours(shiftStartTime, shiftEndTime)
   const [location, setLocation] = useState(note.location || 'Home')
   const [arrivalFindings, setArrivalFindings] = useState(note.arrivalFindings || '')
   const [shiftNotes, setShiftNotes] = useState(note.shiftNotes || '')
@@ -146,7 +149,7 @@ export default function ProgressNoteForm({
         serviceDate: new Date(serviceDate).toISOString(),
         shiftStartTime: shiftStartTime || null,
         shiftEndTime: shiftEndTime || null,
-        totalHours: totalHours === '' ? null : Number(totalHours),
+        totalHours,
         location: location || null,
         arrivalFindings: arrivalFindings || null,
         shiftNotes: shiftNotes || null,
@@ -178,7 +181,7 @@ export default function ProgressNoteForm({
       if (!suppressAutosaveRef.current) { dirtyRef.current = false; saveDraftRef.current() }
     }, 2500)
     return () => clearTimeout(timer)
-  }, [serviceDate, shiftStartTime, shiftEndTime, totalHours, location, arrivalFindings, shiftNotes, vitals, intakeOutput])
+  }, [serviceDate, shiftStartTime, shiftEndTime, location, arrivalFindings, shiftNotes, vitals, intakeOutput])
 
   // Backstop for long stretches of continuous typing that never pause long
   // enough for the debounce above to fire.
@@ -233,7 +236,7 @@ export default function ProgressNoteForm({
           </div>
           <div>
             <label className={lbl}>Total Hours</label>
-            <input type="number" step="0.25" className="w-24 border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" value={totalHours} onChange={e => setTotalHours(e.target.value)} />
+            <p className="text-sm font-bold text-[#2F3E4E] p-2">{totalHours ?? '—'}</p>
           </div>
           <div>
             <label className={lbl}>Location</label>

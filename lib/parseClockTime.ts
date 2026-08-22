@@ -8,8 +8,8 @@ export function parseClockTimeToMinutes(raw: string | null | undefined): number 
   if (!raw) return null
   const s = raw.trim().toLowerCase()
 
-  // 24-hour military, e.g. "1730", "17:30"
-  let m = s.match(/^(\d{1,2}):?(\d{2})$/)
+  // 24-hour military, e.g. "1730", "17:30", "17 30"
+  let m = s.match(/^(\d{1,2})[:\s]?(\d{2})$/)
   if (m) {
     const h = parseInt(m[1], 10)
     const min = parseInt(m[2], 10)
@@ -28,6 +28,20 @@ export function parseClockTimeToMinutes(raw: string | null | undefined): number 
   }
 
   return null
+}
+
+/** Total Hours, computed from free-text Shift Start/End using the same
+ * flexible parsing as above (12-hour, 24-hour/military, with or without a
+ * colon/space separator — "8:00a", "0800", "8A", "08 00", "8AM" all parse).
+ * Returns null if either time can't be read, so the field can show a "—"
+ * rather than a wrong number. A shift crossing midnight (end time
+ * numerically earlier than start) is treated as ending the next day. */
+export function computeShiftHours(startRaw: string | null | undefined, endRaw: string | null | undefined): number | null {
+  const startMin = parseClockTimeToMinutes(startRaw)
+  const endMinRaw = parseClockTimeToMinutes(endRaw)
+  if (startMin == null || endMinRaw == null) return null
+  const endMin = endMinRaw <= startMin ? endMinRaw + 24 * 60 : endMinRaw
+  return Math.round(((endMin - startMin) / 60) * 100) / 100
 }
 
 /** Merges newly-extracted rows into an existing table's rows, sorted

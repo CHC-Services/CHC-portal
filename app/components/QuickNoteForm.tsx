@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { mergeRowsByTime } from '../../lib/parseClockTime'
+import { mergeRowsByTime, computeShiftHours } from '../../lib/parseClockTime'
+import { formatServiceDate } from '../../lib/localDate'
 
 // Mirrors ProgressNoteForm.tsx's flowsheet fields, but wired to /api/quick-notes/*
 // with a header token instead of cookie session auth — kept as its own
@@ -23,6 +24,7 @@ export type VoiceEntryDTO = { id: string; rawText: string; recordedAt: string }
 export type QuickNoteDTO = {
   id: string
   patientLabel: string
+  serviceDate: string
   shiftStartTime: string | null
   shiftEndTime: string | null
   totalHours: number | null
@@ -68,7 +70,9 @@ export default function QuickNoteForm({
 }) {
   const [shiftStartTime, setShiftStartTime] = useState(note.shiftStartTime || '')
   const [shiftEndTime, setShiftEndTime] = useState(note.shiftEndTime || '')
-  const [totalHours, setTotalHours] = useState(note.totalHours != null ? String(note.totalHours) : '')
+  // Fully derived from Shift Start/End, not independent state — one less
+  // thing for her to fill out (or get wrong) manually.
+  const totalHours = computeShiftHours(shiftStartTime, shiftEndTime)
   const [location, setLocation] = useState(note.location || 'Home')
   const [arrivalFindings, setArrivalFindings] = useState(note.arrivalFindings || '')
   const [shiftNotes, setShiftNotes] = useState(note.shiftNotes || '')
@@ -239,7 +243,7 @@ export default function QuickNoteForm({
       body: JSON.stringify({
         shiftStartTime: shiftStartTime || null,
         shiftEndTime: shiftEndTime || null,
-        totalHours: totalHours === '' ? null : Number(totalHours),
+        totalHours,
         location: location || null,
         arrivalFindings: arrivalFindings || null,
         shiftNotes: shiftNotes || null,
@@ -287,6 +291,10 @@ export default function QuickNoteForm({
         <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">{note.patientLabel}</p>
         <div className="grid grid-cols-3 gap-3">
           <div>
+            <label className={lbl}>Service Date</label>
+            <p className="text-sm font-bold text-[#2F3E4E] p-2">{formatServiceDate(note.serviceDate)}</p>
+          </div>
+          <div>
             <label className={lbl}>Shift Start</label>
             <input className={inp} placeholder="08:00 AM" value={shiftStartTime} onChange={e => setShiftStartTime(e.target.value)} />
           </div>
@@ -296,7 +304,7 @@ export default function QuickNoteForm({
           </div>
           <div>
             <label className={lbl}>Total Hours</label>
-            <input type="number" step="0.25" className={inp} value={totalHours} onChange={e => setTotalHours(e.target.value)} />
+            <p className="text-sm font-bold text-[#2F3E4E] p-2">{totalHours ?? '—'}</p>
           </div>
           <div>
             <label className={lbl}>Location</label>

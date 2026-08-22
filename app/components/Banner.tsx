@@ -92,17 +92,17 @@ export default function Banner({ user: initialUser }: BannerProps) {
             <Link href="/nurse" onClick={() => setMenuOpen(false)} className={`lg:hidden transition ${pathname === "/nurse" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Dashboard
             </Link>
-            <Link href="/calendar" onClick={() => setMenuOpen(false)} className={`lg:hidden transition ${pathname === "/calendar" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
-                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Calendar
-            </Link>
-            <Link href="/nurse/patients" onClick={() => setMenuOpen(false)} className={`lg:hidden transition ${pathname === "/nurse/patients" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
-                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Patients
-            </Link>
             <Link href="/nurse/hours" onClick={() => setMenuOpen(false)} className={`lg:hidden transition ${pathname === "/nurse/hours" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Hours
             </Link>
             <Link href="/nurse/claims" onClick={() => setMenuOpen(false)} className={`lg:hidden transition ${pathname === "/nurse/claims" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Claims
+            </Link>
+            <Link href="/nurse/patients" onClick={() => setMenuOpen(false)} className={`lg:hidden transition ${pathname === "/nurse/patients" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Patients
+            </Link>
+            <Link href="/nurse/claims?tab=paylog" onClick={() => setMenuOpen(false)} className={`lg:hidden transition ${pathname === "/nurse/claims" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Payments
             </Link>
             <Link href="/nurse/invoices" onClick={() => setMenuOpen(false)} className={`lg:hidden transition ${pathname === "/nurse/invoices" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Invoices
@@ -113,11 +113,17 @@ export default function Banner({ user: initialUser }: BannerProps) {
             <Link href="/nurse/documents" onClick={() => setMenuOpen(false)} className={`lg:hidden transition ${pathname === "/nurse/documents" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Documents
             </Link>
+            <Link href="/nurse/my-notes" onClick={() => setMenuOpen(false)} className={`lg:hidden transition ${pathname === "/nurse/my-notes" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Notes
+            </Link>
+            <Link href="/nurse/messaging" onClick={() => setMenuOpen(false)} className={`lg:hidden transition ${pathname === "/nurse/messaging" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
+                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Messaging
+            </Link>
             <Link href="/nurse/profile" onClick={() => setMenuOpen(false)} className={`lg:hidden transition ${pathname === "/nurse/profile" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
                 <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Profile
             </Link>
             <Link href="/nurse/appearance" onClick={() => setMenuOpen(false)} className={`lg:hidden transition ${pathname === "/nurse/appearance" ? "underline underline-offset-4" : "hover:text-[#7A8F79]"}`}>
-                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Appearance
+                <span style={{color:'#7A8F79', fontStyle: 'italic'}}>my</span>Settings
             </Link>
         </>
     ) : role === 'admin' ? (

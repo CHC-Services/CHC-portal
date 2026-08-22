@@ -70,7 +70,7 @@ const EMPTY_VITAL: ProgressNoteVitalRow = { time: null, temp: null, hr: null, rr
 const EMPTY_IO: ProgressNoteIntakeOutputRow = { time: null, intakeType: null, intakeAmt: null, intakeRoute: null, outputUrine: null, outputBM: null, outputEmesis: null }
 
 const cellInp = 'w-full min-w-[4.5rem] border border-[#D9E1E8] rounded px-1.5 py-1 text-xs text-[#2F3E4E] focus:outline-none focus:ring-1 focus:ring-[#7A8F79]'
-const th = 'px-1.5 py-1 text-left text-[10px] font-bold uppercase tracking-wide text-[#7A8F79] whitespace-nowrap'
+const th = 'px-1.5 py-1 text-left whitespace-nowrap'
 
 function toDateInputValue(iso: string) {
   return iso ? iso.slice(0, 10) : ''
@@ -247,7 +247,7 @@ export default function ProgressNoteForm({
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="border-b border-[#D9E1E8]">
+              <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
                 <th className={th}>Time</th>
                 <th className={th}>Temp</th>
                 <th className={th}>HR</th>
@@ -304,7 +304,7 @@ export default function ProgressNoteForm({
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="border-b border-[#D9E1E8]">
+              <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
                 <th className={th}>Time</th>
                 <th className={th}>Intake Type</th>
                 <th className={th}>Intake Amt</th>

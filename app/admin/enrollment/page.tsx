@@ -656,11 +656,11 @@ export default function EnrollmentPage() {
           ) : (
             <table className="w-full text-xs text-[#2F3E4E]">
               <thead>
-                <tr className="bg-[#2F3E4E] text-white text-left">
+                <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8] text-left">
                   {cols.map(col => (
-                    <th key={col.label} className={`px-3 py-2 font-semibold whitespace-nowrap ${col.cls}`}>
+                    <th key={col.label} className={`px-3 py-2 whitespace-nowrap ${col.cls}`}>
                       {col.key ? (
-                        <button onClick={() => toggleSort(col.key!)} className="flex items-center gap-1 hover:text-[#7A8F79] transition">
+                        <button onClick={() => toggleSort(col.key!)} className="flex items-center gap-1 hover:text-[#2F3E4E] transition">
                           {col.label}
                           <span className="text-[10px]">
                             {sortField === col.key ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}

@@ -31,7 +31,7 @@ export default function FamilyPatientsPage() {
 
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6 pl-0 md:pl-0">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-6xl">
         <h1 className="text-2xl font-bold text-[#2F3E4E] mb-1">
           <span className="text-[#7A8F79] italic">my</span>Patients
         </h1>

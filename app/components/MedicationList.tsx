@@ -827,9 +827,9 @@ function MedicationTable({ medications, onSelect }: { medications: MedicationDTO
     <div className="overflow-x-auto rounded-xl border" style={{ borderColor: theme.bg }}>
       <table className="w-full border-collapse">
         <thead>
-          <tr style={{ background: theme.offWhite }}>
+          <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
             {tableHeaders.map(h => (
-              <th key={h} className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap" style={{ color: theme.sage }}>
+              <th key={h} className="px-3 py-2 text-left whitespace-nowrap">
                 {h}
               </th>
             ))}

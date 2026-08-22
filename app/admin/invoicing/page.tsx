@@ -495,7 +495,7 @@ export default function AdminInvoicingPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[700px]">
               <thead>
-                <tr className="text-[#7A8F79] text-[10px] uppercase tracking-wide border-b border-[#D9E1E8]">
+                <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
                   <th className="text-left py-2 pr-3">Invoice #</th>
                   <th className="text-left py-2 pr-3">Provider</th>
                   <th className="text-left py-2 pr-3">Sent</th>
@@ -1014,7 +1014,7 @@ export default function AdminInvoicingPage() {
                 </h2>
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-[#7A8F79] text-[10px] uppercase tracking-wide border-b border-[#D9E1E8]">
+                    <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
                       <th className="text-left py-1.5 pr-4">Month</th>
                       <th className="text-right py-1.5 pr-4">Invoiced</th>
                       <th className="text-right py-1.5 pr-4">Collected</th>
@@ -1074,7 +1074,7 @@ export default function AdminInvoicingPage() {
                     </h2>
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="text-[#7A8F79] text-[10px] uppercase tracking-wide border-b border-[#D9E1E8]">
+                        <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
                           <th className="text-left py-1.5 pr-4">Month</th>
                           <th className="text-right py-1.5 pr-4">Medicaid</th>
                           <th className="text-right py-1.5 pr-4">Commercial</th>

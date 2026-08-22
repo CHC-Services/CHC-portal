@@ -72,11 +72,11 @@ export default function ProfileCardsSettingsPage() {
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-[#F4F6F5]">
-                  <tr>
-                    <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] px-4 py-3">Card</th>
+                <thead>
+                  <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
+                    <th className="text-left px-4 py-3">Card</th>
                     {ROLES.map(role => (
-                      <th key={role} className="text-center text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] px-4 py-3">
+                      <th key={role} className="text-center px-4 py-3">
                         {ROLE_LABELS[role]}
                       </th>
                     ))}

@@ -115,13 +115,13 @@ export default function EmailLogPage() {
           ) : (
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-[#f4f6f5] border-b border-[#D9E1E8]">
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest text-[#7A8F79]">Date / Time</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest text-[#7A8F79]">Recipient</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest text-[#7A8F79]">Category</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest text-[#7A8F79]">Subject</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest text-[#7A8F79]">Status</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-widest text-[#7A8F79]">Body</th>
+                <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
+                  <th className="px-4 py-3 text-left">Date / Time</th>
+                  <th className="px-4 py-3 text-left">Recipient</th>
+                  <th className="px-4 py-3 text-left">Category</th>
+                  <th className="px-4 py-3 text-left">Subject</th>
+                  <th className="px-4 py-3 text-left">Status</th>
+                  <th className="px-4 py-3 text-center">Body</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#D9E1E8]">

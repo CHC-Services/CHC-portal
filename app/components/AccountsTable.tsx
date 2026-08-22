@@ -83,7 +83,7 @@ export default function AccountsTable({ accounts, loading }: { accounts: Account
   const th = (key: SortKey, label: string) => (
     <th
       onClick={() => toggleSort(key)}
-      className="text-left text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] px-3 py-2 cursor-pointer select-none hover:text-[#2F3E4E] transition"
+      className="text-left px-3 py-2 cursor-pointer select-none hover:text-[#2F3E4E] transition"
     >
       {label} {sortKey === key && (sortDir === 'asc' ? '▲' : '▼')}
     </th>
@@ -107,10 +107,10 @@ export default function AccountsTable({ accounts, loading }: { accounts: Account
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-[#F4F6F5]">
-              <tr>
+            <thead>
+              <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
                 {th('name', 'Name')}
-                <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] px-3 py-2">Email</th>
+                <th className="text-left px-3 py-2">Email</th>
                 {th('role', 'Role')}
                 {th('createdAt', 'Created')}
                 {th('lastLoginAt', 'Last Login')}

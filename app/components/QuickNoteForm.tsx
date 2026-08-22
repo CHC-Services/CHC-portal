@@ -54,7 +54,7 @@ const EMPTY_IO: IORow = { time: null, intakeType: null, intakeAmt: null, intakeR
 const inp = 'w-full border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]'
 const lbl = 'block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1'
 const cellInp = 'w-full min-w-[4.5rem] border border-[#D9E1E8] rounded px-1.5 py-1 text-xs text-[#2F3E4E] focus:outline-none focus:ring-1 focus:ring-[#7A8F79]'
-const th = 'px-1.5 py-1 text-left text-[10px] font-bold uppercase tracking-wide text-[#7A8F79] whitespace-nowrap'
+const th = 'px-1.5 py-1 text-left whitespace-nowrap'
 
 export default function QuickNoteForm({
   token, note, onSaved, onSigned, onDeleted,
@@ -355,7 +355,7 @@ export default function QuickNoteForm({
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="border-b border-[#D9E1E8]">
+              <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
                 <th className={th}>Time</th><th className={th}>Temp</th><th className={th}>HR</th><th className={th}>RR</th>
                 <th className={th}>Skin</th><th className={th}>O2 Flow</th><th className={th}>O2 Route</th><th className={th}>O2 %</th>
                 <th className={th}>Lung Sounds</th><th className={th}>Tx Needed</th><th className={th}>Suction</th><th className={th}></th>
@@ -403,7 +403,7 @@ export default function QuickNoteForm({
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="border-b border-[#D9E1E8]">
+              <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
                 <th className={th}>Time</th><th className={th}>Intake Type</th><th className={th}>Intake Amt</th><th className={th}>Intake Route</th>
                 <th className={th}>Output Urine</th><th className={th}>Output BM</th><th className={th}>Output Emesis</th><th className={th}></th>
               </tr>

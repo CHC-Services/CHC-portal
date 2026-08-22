@@ -238,14 +238,14 @@ export default function LoginLogPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#D9E1E8] bg-[#F4F6F5]">
-                <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wide text-[#7A8F79] whitespace-nowrap">Date / Time (ET)</th>
-                <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wide text-[#7A8F79]">Type</th>
-                <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wide text-[#7A8F79]">Email</th>
-                <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wide text-[#7A8F79]">Initials</th>
-                <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wide text-[#7A8F79] whitespace-nowrap">Account #</th>
-                <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wide text-[#7A8F79]">Result</th>
-                <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wide text-[#7A8F79]">IP</th>
+              <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
+                <th className="text-left px-4 py-2.5 whitespace-nowrap">Date / Time (ET)</th>
+                <th className="text-left px-4 py-2.5">Type</th>
+                <th className="text-left px-4 py-2.5">Email</th>
+                <th className="text-left px-4 py-2.5">Initials</th>
+                <th className="text-left px-4 py-2.5 whitespace-nowrap">Account #</th>
+                <th className="text-left px-4 py-2.5">Result</th>
+                <th className="text-left px-4 py-2.5">IP</th>
                 <th className="px-4 py-2.5" />
               </tr>
             </thead>

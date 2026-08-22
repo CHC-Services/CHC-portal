@@ -57,7 +57,7 @@ function NurseProgressNoteInner({ id, noteId }: { id: string; noteId: string }) 
 
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6 pl-0 md:pl-0">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-6xl">
         <Link href={backHref} className="text-sm font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">
           {backLabel}
         </Link>

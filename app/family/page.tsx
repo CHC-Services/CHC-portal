@@ -176,7 +176,7 @@ export default function FamilyDashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6 pl-0 md:pl-0">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-6xl">
         <div className="flex items-start justify-between gap-6 mb-6">
           <div>
             <h1 className="text-2xl font-bold text-[#2F3E4E] mb-1">

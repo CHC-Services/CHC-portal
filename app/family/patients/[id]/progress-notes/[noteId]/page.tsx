@@ -41,7 +41,7 @@ export default function FamilyProgressNotePage({ params }: { params: Promise<{ i
 
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6 pl-0 md:pl-0">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-6xl">
         <Link href={`/family/patients/${id}`} className="text-sm font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">
           ← Back to patient
         </Link>

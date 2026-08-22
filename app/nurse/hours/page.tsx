@@ -230,7 +230,7 @@ export default function MyHours() {
   const priorMonthName = new Date(priorMonthYear, priorMonth).toLocaleString('default', { month: 'long' })
 
   return (
-    <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6 pl-0 md:pl-0">
+    <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6 pl-0 md:pl-0 max-w-6xl">
 
       <div className="mb-5">
         <h1 className="text-3xl font-bold text-[#2F3E4E]">

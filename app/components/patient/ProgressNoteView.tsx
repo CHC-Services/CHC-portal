@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { ProgressNoteDTO } from './ProgressNoteForm'
 import { formatServiceDate as fmtDate } from '../../../lib/localDate'
 
-const th = 'px-1.5 py-1 text-left text-[10px] font-bold uppercase tracking-wide text-[#7A8F79] whitespace-nowrap'
+const th = 'px-1.5 py-1 text-left whitespace-nowrap'
 const td = 'px-1.5 py-1 text-xs text-[#2F3E4E] whitespace-nowrap'
 
 function fmtDateTime(iso: string) {
@@ -119,7 +119,7 @@ export default function ProgressNoteView({
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="border-b border-[#D9E1E8]">
+              <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
                 <th className={th}>Time</th>
                 <th className={th}>Temp</th>
                 <th className={th}>HR</th>
@@ -159,7 +159,7 @@ export default function ProgressNoteView({
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="border-b border-[#D9E1E8]">
+              <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
                 <th className={th}>Time</th>
                 <th className={th}>Intake Type</th>
                 <th className={th}>Intake Amt</th>

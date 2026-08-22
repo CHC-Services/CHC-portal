@@ -205,12 +205,12 @@ export default function PatientOrders({
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
-                  <th className="text-left font-semibold py-2 px-3">Order Title</th>
-                  <th className="text-left font-semibold py-2 px-3">Date</th>
-                  <th className="text-left font-semibold py-2 px-3">End Date</th>
-                  <th className="text-left font-semibold py-2 px-3">Specialty</th>
-                  <th className="text-left font-semibold py-2 px-3">Provider</th>
-                  <th className="text-left font-semibold py-2 px-3">Order Notes</th>
+                  <th className="text-left py-2 px-3">Order Title</th>
+                  <th className="text-left py-2 px-3">Date</th>
+                  <th className="text-left py-2 px-3">End Date</th>
+                  <th className="text-left py-2 px-3">Specialty</th>
+                  <th className="text-left py-2 px-3">Provider</th>
+                  <th className="text-left py-2 px-3">Order Notes</th>
                   <th className="py-2 px-3"></th>
                 </tr>
               </thead>

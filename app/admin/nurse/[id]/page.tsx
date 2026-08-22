@@ -2048,7 +2048,7 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
               <div className="overflow-x-auto">
                 <table className="w-full text-xs min-w-[900px] text-[#2F3E4E]">
                   <thead>
-                    <tr className="text-[#7A8F79] uppercase tracking-wide border-b border-[#D9E1E8]">
+                    <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
                       <th className="text-left py-2 pr-3">Claim ID</th>
                       <th className="text-left py-2 pr-3">DOS Start</th>
                       <th className="text-left py-2 pr-3">DOS Stop</th>
@@ -2653,11 +2653,11 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                     <div className="rounded-xl overflow-hidden border border-[#D9E1E8]">
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="bg-[#f4f6f8]">
-                            <th className="text-left px-4 py-2 text-xs font-semibold text-[#7A8F79] uppercase tracking-wide">Date</th>
-                            <th className="text-left px-4 py-2 text-xs font-semibold text-[#7A8F79] uppercase tracking-wide">Plan</th>
-                            <th className="text-left px-4 py-2 text-xs font-semibold text-[#7A8F79] uppercase tracking-wide hidden sm:table-cell">Description</th>
-                            <th className="text-right px-4 py-2 text-xs font-semibold text-[#7A8F79] uppercase tracking-wide">Fee</th>
+                          <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
+                            <th className="text-left px-4 py-2">Date</th>
+                            <th className="text-left px-4 py-2">Plan</th>
+                            <th className="text-left px-4 py-2 hidden sm:table-cell">Description</th>
+                            <th className="text-right px-4 py-2">Fee</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -3023,11 +3023,11 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
                   <div className="rounded-xl overflow-hidden border border-[#D9E1E8]">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="bg-[#f4f6f8]">
-                          <th className="text-left px-4 py-2 text-xs font-semibold text-[#7A8F79] uppercase tracking-wide">Date</th>
-                          <th className="text-left px-4 py-2 text-xs font-semibold text-[#7A8F79] uppercase tracking-wide">Plan</th>
-                          <th className="text-left px-4 py-2 text-xs font-semibold text-[#7A8F79] uppercase tracking-wide hidden sm:table-cell">Description</th>
-                          <th className="text-right px-4 py-2 text-xs font-semibold text-[#7A8F79] uppercase tracking-wide">Fee</th>
+                        <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
+                          <th className="text-left px-4 py-2">Date</th>
+                          <th className="text-left px-4 py-2">Plan</th>
+                          <th className="text-left px-4 py-2 hidden sm:table-cell">Description</th>
+                          <th className="text-right px-4 py-2">Fee</th>
                         </tr>
                       </thead>
                       <tbody>

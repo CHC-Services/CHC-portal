@@ -23,7 +23,7 @@ export default function PatientDetailShell({
 
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6 pl-0 md:pl-0">
-      <div className={`${isWide ? 'max-w-6xl' : 'max-w-2xl'} mx-auto`}>
+      <div className={isWide ? 'max-w-6xl' : 'max-w-2xl'}>
         <Link href={backHref} className="text-sm font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">
           {backLabel}
         </Link>

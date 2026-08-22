@@ -95,7 +95,7 @@ export default function NurseTaxReportPage() {
   const showClaims = showMedicaid || showCommercial
 
   return (
-    <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8 pl-0 md:pl-0">
+    <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6 pl-0 md:pl-0">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-[#2F3E4E]">
           <span className="text-[#7A8F79] italic">my</span>Tax Summary
@@ -105,7 +105,7 @@ export default function NurseTaxReportPage() {
 
       <PortalMessages priority="General" />
 
-      <div className="max-w-3xl space-y-4">
+      <div className="max-w-6xl space-y-4">
         {/* Year selector */}
         <div className="flex items-center gap-3">
           <button onClick={() => setYear(y => y - 1)} className="bg-white border border-[#D9E1E8] px-3 py-1.5 rounded-lg text-sm font-semibold text-[#2F3E4E] hover:border-[#7A8F79] transition">← {year - 1}</button>
@@ -152,7 +152,7 @@ export default function NurseTaxReportPage() {
                 <h2 className="text-sm font-semibold text-[#2F3E4E] uppercase tracking-widest mb-3 pb-2 border-b border-[#D9E1E8]">Income Billed Through Service</h2>
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-[#7A8F79] text-[10px] uppercase tracking-wide border-b border-[#D9E1E8]">
+                    <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
                       <th className="text-left py-1.5 pr-4">Month</th>
                       {showMedicaid && <th className="text-right py-1.5 pr-4">Medicaid</th>}
                       {showCommercial && <th className="text-right py-1.5 pr-4">Commercial</th>}

@@ -916,7 +916,7 @@ function NurseClaimsPageInner() {
   }
 
   return (
-    <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8 pl-0 md:pl-0">
+    <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6 pl-0 md:pl-0">
 
       {/* ── Compact sticky bar (mobile only, shown when search+year scrolls off) ── */}
       {showStickyBar && (
@@ -968,7 +968,7 @@ function NurseClaimsPageInner() {
         </div>
       )}
 
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl">
 
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-[#2F3E4E]">

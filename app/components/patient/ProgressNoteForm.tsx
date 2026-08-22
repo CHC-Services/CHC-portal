@@ -296,7 +296,9 @@ export default function ProgressNoteForm({
             </tbody>
           </table>
         </div>
-        <button type="button" onClick={() => setVitals(rows => [...rows, { ...EMPTY_VITAL }])} className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">+ Add Row</button>
+        <div className="flex justify-end">
+          <button type="button" onClick={() => setVitals(rows => [...rows, { ...EMPTY_VITAL }])} className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">+ Add Row</button>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm p-6 space-y-3">
@@ -340,7 +342,9 @@ export default function ProgressNoteForm({
             </tbody>
           </table>
         </div>
-        <button type="button" onClick={() => setIntakeOutput(rows => [...rows, { ...EMPTY_IO }])} className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">+ Add Row</button>
+        <div className="flex justify-end">
+          <button type="button" onClick={() => setIntakeOutput(rows => [...rows, { ...EMPTY_IO }])} className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">+ Add Row</button>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">

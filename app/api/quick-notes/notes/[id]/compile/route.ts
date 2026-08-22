@@ -15,9 +15,11 @@ export const maxDuration = 30
 
 // Micro-Charting's end-of-shift compile — ONE Bedrock call over every voice
 // entry in this note together (never per-entry), so cross-entry references
-// resolve correctly. Returns the compiled text only — never writes it to
-// the note itself; the client decides what to do with it (fill empty Shift
-// Notes, or show a replace/append/discard choice if it already has content).
+// resolve correctly. Returns the compiled narrative plus extracted Vitals/
+// Intake-Output rows — never writes any of it to the note itself; the
+// client decides what to do with it (narrative: fill empty Shift Notes, or
+// show a replace/append/discard choice if it already has content; rows:
+// shown for review, merged into the existing tables only if she accepts).
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const identity = await getQuickAccessIdentity(req)
   if (!identity) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -36,6 +38,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: 'No voice entries recorded yet for this note.' }, { status: 400 })
   }
 
-  const compiledText = await compileVoiceEntries(entries)
-  return NextResponse.json({ compiledText })
+  const result = await compileVoiceEntries(entries)
+  return NextResponse.json(result)
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { mergeRowsByTime } from '../../lib/parseClockTime'
 
 // Mirrors ProgressNoteForm.tsx's flowsheet fields, but wired to /api/quick-notes/*
 // with a header token instead of cookie session auth — kept as its own
@@ -89,6 +90,8 @@ export default function QuickNoteForm({
   const [compiling, setCompiling] = useState(false)
   const [compileError, setCompileError] = useState('')
   const [compilePreview, setCompilePreview] = useState<string | null>(null)
+  const [extractedVitals, setExtractedVitals] = useState<VitalRow[]>([])
+  const [extractedIO, setExtractedIO] = useState<IORow[]>([])
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const mountedRef = useRef(true)
@@ -179,12 +182,40 @@ export default function QuickNoteForm({
       setCompileError(body.error || 'Failed to compile.')
       return
     }
-    const { compiledText } = await res.json()
+    const { narrative, vitals, intakeOutput } = await res.json()
     if (!shiftNotes.trim()) {
-      setShiftNotes(compiledText)
+      setShiftNotes(narrative)
     } else {
-      setCompilePreview(compiledText)
+      setCompilePreview(narrative)
     }
+
+    // Extracted table rows always go through review, even into empty
+    // tables — a wrong number in a structured field reads as an established
+    // fact, not prose she's already reading critically, so this doesn't get
+    // the same "auto-fill when empty" shortcut the narrative gets.
+    if (vitals?.length) {
+      setExtractedVitals(vitals.map((v: Record<string, string | undefined>) => ({
+        time: v.time ?? null, temp: v.temp ?? null, hr: v.hr ?? null, rr: v.rr ?? null, skin: v.skin ?? null,
+        o2Flow: v.o2Flow ?? null, o2Route: v.o2Route ?? null, o2Percent: v.o2Percent ?? null,
+        lungSounds: v.lungSounds ?? null, txNeeded: v.txNeeded ?? null, suction: v.suction ?? null,
+      })))
+    }
+    if (intakeOutput?.length) {
+      setExtractedIO(intakeOutput.map((r: Record<string, string | undefined>) => ({
+        time: r.time ?? null, intakeType: r.intakeType ?? null, intakeAmt: r.intakeAmt ?? null, intakeRoute: r.intakeRoute ?? null,
+        outputUrine: r.outputUrine ?? null, outputBM: r.outputBM ?? null, outputEmesis: r.outputEmesis ?? null,
+      })))
+    }
+  }
+
+  function acceptExtractedRows() {
+    if (extractedVitals.length) setVitals(rows => mergeRowsByTime(rows, extractedVitals))
+    if (extractedIO.length) setIntakeOutput(rows => mergeRowsByTime(rows, extractedIO))
+    setExtractedVitals([]); setExtractedIO([])
+  }
+
+  function discardExtractedRows() {
+    setExtractedVitals([]); setExtractedIO([])
   }
 
   function acceptCompile(mode: 'replace' | 'append') {
@@ -345,12 +376,43 @@ export default function QuickNoteForm({
             </div>
           </div>
         )}
+
+        {(extractedVitals.length > 0 || extractedIO.length > 0) && (
+          <div className="border border-[#D9E1E8] bg-[#F4F6F5] rounded-lg p-3 space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Extracted Vitals &amp; Intake/Output — Review Before Adding</p>
+            <div className="space-y-1">
+              {extractedVitals.map((v, i) => (
+                <p key={`v${i}`} className="text-sm text-[#2F3E4E]">
+                  {v.time || '—'} — {[
+                    v.temp && `Temp ${v.temp}`, v.hr && `HR ${v.hr}`, v.rr && `RR ${v.rr}`, v.skin && `Skin ${v.skin}`,
+                    v.o2Flow && `O2 Flow ${v.o2Flow}`, v.o2Route && `O2 Route ${v.o2Route}`, v.o2Percent && `O2 % ${v.o2Percent}`,
+                    v.lungSounds && `Lung Sounds ${v.lungSounds}`, v.txNeeded && `Tx Needed ${v.txNeeded}`, v.suction && `Suction ${v.suction}`,
+                  ].filter(Boolean).join(', ')}
+                </p>
+              ))}
+              {extractedIO.map((r, i) => (
+                <p key={`io${i}`} className="text-sm text-[#2F3E4E]">
+                  {r.time || '—'} — {[
+                    r.intakeType && `Intake ${r.intakeType} ${r.intakeAmt || ''}`.trim(), r.intakeRoute && `via ${r.intakeRoute}`,
+                    r.outputUrine && `Urine ${r.outputUrine}`, r.outputBM && `BM ${r.outputBM}`, r.outputEmesis && `Emesis ${r.outputEmesis}`,
+                  ].filter(Boolean).join(', ')}
+                </p>
+              ))}
+            </div>
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={acceptExtractedRows} className="text-xs font-semibold text-white bg-[#2F3E4E] px-3 py-1.5 rounded-lg hover:bg-[#7A8F79] transition">Add to Tables</button>
+              <button type="button" onClick={discardExtractedRows} className="text-xs text-[#7A8F79]">Discard</button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm p-5 space-y-3">
         <div className="flex items-center justify-between">
           <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">Vitals</p>
-          <button type="button" onClick={() => setVitals(rows => [...rows, { ...EMPTY_VITAL }])} className="text-xs font-semibold text-[#7A8F79]">+ Add Row</button>
+          <div className="flex justify-end">
+            <button type="button" onClick={() => setVitals(rows => [...rows, { ...EMPTY_VITAL }])} className="text-xs font-semibold text-[#7A8F79]">+ Add Row</button>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
@@ -398,7 +460,9 @@ export default function QuickNoteForm({
       <div className="bg-white rounded-2xl shadow-sm p-5 space-y-3">
         <div className="flex items-center justify-between">
           <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">Intake / Output</p>
-          <button type="button" onClick={() => setIntakeOutput(rows => [...rows, { ...EMPTY_IO }])} className="text-xs font-semibold text-[#7A8F79]">+ Add Row</button>
+          <div className="flex justify-end">
+            <button type="button" onClick={() => setIntakeOutput(rows => [...rows, { ...EMPTY_IO }])} className="text-xs font-semibold text-[#7A8F79]">+ Add Row</button>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">

@@ -97,8 +97,8 @@ function QuickNotesApp() {
   }
 
   return (
-    <div className="min-h-screen bg-[#D9E1E8] p-4">
-      <div className="max-w-2xl mx-auto space-y-4">
+    <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6">
+      <div className="max-w-6xl space-y-4">
         <h1 className="text-xl font-bold text-[#2F3E4E] pt-2">myProgress Notes</h1>
 
         {activeNote ? (

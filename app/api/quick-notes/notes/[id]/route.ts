@@ -43,6 +43,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const body = await req.json()
   const data: Record<string, any> = {}
+  if ('serviceDate' in body) data.serviceDate = new Date(body.serviceDate)
   if ('shiftStartTime' in body) data.shiftStartTime = body.shiftStartTime || null
   if ('shiftEndTime' in body) data.shiftEndTime = body.shiftEndTime || null
   if ('totalHours' in body) data.totalHours = body.totalHours === '' || body.totalHours === null ? null : Number(body.totalHours)

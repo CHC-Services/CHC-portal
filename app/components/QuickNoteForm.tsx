@@ -2,7 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { mergeRowsByTime, computeShiftHours } from '../../lib/parseClockTime'
-import { formatServiceDate } from '../../lib/localDate'
+
+function toDateInputValue(iso: string) {
+  return iso ? iso.slice(0, 10) : ''
+}
 
 // Mirrors ProgressNoteForm.tsx's flowsheet fields, but wired to /api/quick-notes/*
 // with a header token instead of cookie session auth — kept as its own
@@ -68,6 +71,7 @@ export default function QuickNoteForm({
   onSigned: () => void
   onDeleted: () => void
 }) {
+  const [serviceDate, setServiceDate] = useState(toDateInputValue(note.serviceDate))
   const [shiftStartTime, setShiftStartTime] = useState(note.shiftStartTime || '')
   const [shiftEndTime, setShiftEndTime] = useState(note.shiftEndTime || '')
   // Fully derived from Shift Start/End, not independent state — one less
@@ -241,6 +245,7 @@ export default function QuickNoteForm({
       method: 'PATCH',
       headers: jsonHeaders(),
       body: JSON.stringify({
+        serviceDate: new Date(serviceDate).toISOString(),
         shiftStartTime: shiftStartTime || null,
         shiftEndTime: shiftEndTime || null,
         totalHours,
@@ -292,7 +297,7 @@ export default function QuickNoteForm({
         <div className="grid grid-cols-3 gap-3">
           <div>
             <label className={lbl}>Service Date</label>
-            <p className="text-sm font-bold text-[#2F3E4E] p-2">{formatServiceDate(note.serviceDate)}</p>
+            <input type="date" className={inp} value={serviceDate} onChange={e => setServiceDate(e.target.value)} />
           </div>
           <div>
             <label className={lbl}>Shift Start</label>

@@ -5,8 +5,7 @@ import { canViewProgressNote } from '../../../../../../lib/permissions'
 import { getOrCreateProgressNotePdf } from '../../../../../../lib/progressNotePdf'
 
 // Puppeteer launching headless Chromium + rendering can run past Vercel's
-// default serverless timeout — same reason app/api/admin/claims/import/route.ts
-// needed this (requires Vercel Pro or higher).
+// default serverless timeout (requires Vercel Pro or higher).
 export const maxDuration = 60
 
 function getSession(req: Request) {

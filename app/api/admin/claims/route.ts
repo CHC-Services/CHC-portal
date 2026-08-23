@@ -3,6 +3,7 @@ import { prisma } from '../../../../lib/prisma'
 import { verifyToken } from '../../../../lib/auth'
 import { runClaimReminders } from '../../../../lib/runClaimReminders'
 import { deriveCommercialClaimCycle } from '../../../../lib/medicaidPayCycle'
+import { queueClaimNotification } from '../../../../lib/queueClaimNotification'
 
 function adminOnly(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -101,6 +102,10 @@ export async function POST(req: Request) {
 
   // Check if this new claim (or any existing ones) now qualify for a prompt-pay reminder
   runClaimReminders().catch(() => {})
+
+  // Notify the nurse — as "paid" if this claim was entered already-finalized
+  // (e.g. a historical claim), otherwise as a new claim. Never both.
+  queueClaimNotification(claim, claim.claimStage === 'Paid' ? 'paid' : 'created').catch(() => {})
 
   return NextResponse.json({ ok: true, claim })
 }

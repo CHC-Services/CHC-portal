@@ -249,6 +249,9 @@ export async function POST(req: Request) {
           { claimId: 'CLM-0040', dosStart: new Date('2026-03-01T00:00:00Z'), dosStop: new Date('2026-03-31T00:00:00Z'), totalBilled: 850 },
           { claimId: 'CLM-0041', dosStart: new Date('2026-04-01T00:00:00Z'), dosStop: new Date('2026-04-15T00:00:00Z'), totalBilled: 425 },
         ],
+        paidClaims: [
+          { claimId: 'CLM-0038', totalReimbursed: 612.50, paidDate: new Date('2026-04-10T00:00:00Z') },
+        ],
         documents: [
           { documentTitle: 'EOB March 2026', category: 'EOB' },
           { documentTitle: 'Remittance Advice', category: 'Other' },

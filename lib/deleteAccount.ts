@@ -6,7 +6,7 @@ import { prisma } from './prisma'
 // NurseProfile relation that isn't onDelete: Cascade, so it must be deleted
 // first; NurseProfile itself must be deleted before User (NurseProfile.user
 // is Restrict-by-default). Every other NurseProfile relation (Claim, Invoice,
-// NurseDocument, MedicaidClaim, NursePatient, etc.) cascades automatically.
+// NurseDocument, NursePatient, etc.) cascades automatically.
 //
 // Any role can now carry a NurseProfile row, not just nurses — the profile
 // cards feature lazily creates one for admin/guardian/biller accounts on

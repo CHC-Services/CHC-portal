@@ -28,6 +28,10 @@
     {
       "path": "/api/cron/hours-summary",
       "schedule": "0 17 * * 3"
+    },
+    {
+      "path": "/api/cron/notification-flush",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

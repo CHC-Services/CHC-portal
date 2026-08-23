@@ -181,7 +181,6 @@ model NurseProfile {
   documents           NurseDocument[]
   invoiceActivities   InvoiceActivity[]
   caseAssignments     CaseAssignment[]
-  medicaidClaims      MedicaidClaim[]
   campaignEnrollments CampaignEnrollment[]
   providerCredits     ProviderCredit[]
   nursePatients       NursePatient[]
@@ -832,34 +831,6 @@ model CaseAssignment {
   @@unique([caseId, nurseId])
   @@index([caseId])
   @@index([nurseId])
-}
-
-model MedicaidClaim {
-  id             String    @id @default(uuid())
-  nurseId        String
-  patientCtrlNum String
-  payerCtrlNum   String?
-  dosStart       DateTime
-  dosStop        DateTime
-  totalCharge    Float
-  paidAmount     Float?
-  processedDate  DateTime?
-  estPayCycle    Int?
-  depositDate    DateTime?
-  statusCodes    String[]  @default([])
-  notes          String?
-
-  // Void tracking — see Claim.voidedAt/voidReversalOf for the same pattern.
-  voidedAt       DateTime?
-  voidReversalOf String?
-
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-
-  nurse NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
-
-  @@index([nurseId])
-  @@index([dosStart])
 }
 
 model MedicaidStatusCode {

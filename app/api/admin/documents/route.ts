@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { prisma } from '../../../../lib/prisma'
 import { verifyToken } from '../../../../lib/auth'
 import { uploadToS3 } from '../../../../lib/s3'
-import { sendNewDocumentAlert } from '../../../../lib/sendEmail'
 
 function adminOnly(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -86,29 +85,15 @@ export async function POST(req: Request) {
     },
   })
 
-  const nurseProfile = await prisma.nurseProfile.findUnique({
-    where: { id: nurseId },
-    include: { user: { select: { email: true } } },
-  })
+  const nurseProfile = await prisma.nurseProfile.findUnique({ where: { id: nurseId } })
   if (nurseProfile?.notifyNewDocument) {
-    const bulkSetting = await prisma.systemSetting.findUnique({ where: { key: 'bulkImportMode' } })
-    if (bulkSetting?.value === 'true') {
-      await prisma.pendingNotification.create({
-        data: {
-          nurseId,
-          type: 'document',
-          payload: { documentTitle: title, category },
-        },
-      })
-    } else if (nurseProfile.user?.email) {
-      sendNewDocumentAlert({
-        nurseEmail: nurseProfile.user.email,
-        nurseName: nurseProfile.displayName,
-        documentTitle: title,
-        category,
-        uploadedAt: doc.createdAt,
-      }).catch(() => {})
-    }
+    await prisma.pendingNotification.create({
+      data: {
+        nurseId,
+        type: 'document',
+        payload: { documentTitle: title, category },
+      },
+    })
   }
 
   return NextResponse.json({ ok: true, document: doc })

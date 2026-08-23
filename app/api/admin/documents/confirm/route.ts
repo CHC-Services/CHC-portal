@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../lib/prisma'
 import { verifyToken } from '../../../../../lib/auth'
-import { sendNewDocumentAlert } from '../../../../../lib/sendEmail'
 import { objectExists } from '../../../../../lib/s3'
 
 function adminOnly(req: Request) {
@@ -75,34 +74,20 @@ export async function POST(req: Request) {
     })
   ))
 
-  // Check global bulk import mode
-  const bulkSetting = await prisma.systemSetting.findUnique({ where: { key: 'bulkImportMode' } })
-  const bulkMode = bulkSetting?.value === 'true'
-
-  // Send (or queue) notification for each affected nurse
+  // Queue a notification for each affected nurse — always batched now (see
+  // lib/flushNurseNotifications.ts), never sent immediately.
   const profiles = await prisma.nurseProfile.findMany({
     where: { id: { in: targets } },
-    include: { user: { select: { email: true } } },
   })
   for (const nurseProfile of profiles) {
     if (!nurseProfile.notifyNewDocument) continue
-    if (bulkMode) {
-      await prisma.pendingNotification.create({
-        data: {
-          nurseId: nurseProfile.id,
-          type: 'document',
-          payload: { documentTitle: title, category: category || 'General' },
-        },
-      })
-    } else if (nurseProfile.user?.email) {
-      sendNewDocumentAlert({
-        nurseEmail: nurseProfile.user.email,
-        nurseName: nurseProfile.displayName,
-        documentTitle: title,
-        category: category || 'General',
-        uploadedAt: docs[0].createdAt,
-      }).catch(() => {})
-    }
+    await prisma.pendingNotification.create({
+      data: {
+        nurseId: nurseProfile.id,
+        type: 'document',
+        payload: { documentTitle: title, category: category || 'General', claimId: claimId ?? null },
+      },
+    })
   }
 
   return NextResponse.json({ ok: true, count: docs.length })

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../lib/prisma'
 import { verifyToken } from '../../../../../lib/auth'
 import { deriveCommercialClaimCycle } from '../../../../../lib/medicaidPayCycle'
+import { queueClaimNotification } from '../../../../../lib/queueClaimNotification'
 
 function adminOnly(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -103,6 +104,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       savedBy: session.id,
     },
   })
+
+  // Notify the nurse on a genuine transition into Paid — not on every save,
+  // and not if it was already Paid before this edit.
+  if (data.claimStage === 'Paid' && existing.claimStage !== 'Paid') {
+    queueClaimNotification(claim, 'paid').catch(() => {})
+  }
 
   return NextResponse.json({ ok: true, claim })
 }

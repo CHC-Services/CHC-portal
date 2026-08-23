@@ -62,29 +62,6 @@ type CommercialClaim = {
   nurse: { displayName: string; firstName?: string; lastName?: string; accountNumber: string | null; isDemo: boolean }
 }
 
-type MedicaidClaimRow = {
-  id: string
-  nurseId: string
-  patientCtrlNum: string
-  payerCtrlNum: string | null
-  dosStart: string | null
-  dosStop: string | null
-  totalCharge: number
-  paidAmount: number | null
-  processedDate: string | null
-  estPayCycle: number | null
-  depositDate: string | null
-  statusCodes: string[]
-  notes: string | null
-  voidedAt: string | null
-  voidReversalOf: string | null
-  nurse?: { displayName: string; firstName?: string; lastName?: string; accountNumber?: string | null; isDemo?: boolean }
-}
-
-type UnifiedClaim =
-  | (CommercialClaim & { _type: 'commercial' })
-  | (MedicaidClaimRow & { _type: 'medicaid' })
-
 type AuditLog = {
   id: string
   claimType: string
@@ -125,20 +102,6 @@ type CommercialFormState = {
   resubmissionOf: string
   remarkCodes: string
   processingNotes: string
-}
-
-type MedicaidFormState = {
-  patientCtrlNum: string
-  payerCtrlNum: string
-  dosStart: string
-  dosStop: string
-  totalCharge: string
-  paidAmount: string
-  processedDate: string
-  estPayCycle: string
-  depositDate: string
-  statusCodes: string[]
-  notes: string
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -198,34 +161,6 @@ function StageBadge({ stage }: { stage: string | null }) {
     s === 'check wait' ? 'bg-red-800 text-gray-100' :
     'bg-gray-900 text-gray-200'
   return <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${color}`}>{stage}</span>
-}
-
-// Parse CSV — handles quoted fields containing commas
-function parseCSV(text: string): Record<string, string>[] {
-  const lines = text.trim().split(/\r?\n/)
-  if (lines.length < 2) return []
-
-  function splitLine(line: string): string[] {
-    const result: string[] = []
-    let cur = ''
-    let inQuotes = false
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i]
-      if (ch === '"') { inQuotes = !inQuotes }
-      else if (ch === ',' && !inQuotes) { result.push(cur.trim()); cur = '' }
-      else { cur += ch }
-    }
-    result.push(cur.trim())
-    return result
-  }
-
-  const headers = splitLine(lines[0]).map(h => h.trim())
-  return lines.slice(1).map(line => {
-    const vals = splitLine(line)
-    const row: Record<string, string> = {}
-    headers.forEach((h, i) => { row[h] = vals[i] ?? '' })
-    return row
-  })
 }
 
 type ClaimGroup = { primary: CommercialClaim; originals: CommercialClaim[] }
@@ -333,22 +268,6 @@ function initCommercialForm(c: CommercialClaim): CommercialFormState {
   }
 }
 
-function initMedicaidForm(c: MedicaidClaimRow): MedicaidFormState {
-  return {
-    patientCtrlNum: c.patientCtrlNum || '',
-    payerCtrlNum: c.payerCtrlNum || '',
-    dosStart: toDateStr(c.dosStart),
-    dosStop: toDateStr(c.dosStop),
-    totalCharge: String(c.totalCharge),
-    paidAmount: c.paidAmount != null ? String(c.paidAmount) : '',
-    processedDate: toDateStr(c.processedDate),
-    estPayCycle: c.estPayCycle != null ? String(c.estPayCycle) : '',
-    depositDate: toDateStr(c.depositDate),
-    statusCodes: [...(c.statusCodes || [])],
-    notes: c.notes || '',
-  }
-}
-
 // ─── ClaimDetailModal ─────────────────────────────────────────────────────────
 
 function ClaimDetailModal({
@@ -356,20 +275,18 @@ function ClaimDetailModal({
   eobDocs,
   uploading,
   deletingId,
-  medicaidStatusCodes,
   onClose,
   onSaved,
   onEobUpload,
   onEobDelete,
   onReloadClaims,
 }: {
-  claim: UnifiedClaim
+  claim: CommercialClaim
   eobDocs: EobDoc[]
   uploading: boolean
   deletingId: string | null
-  medicaidStatusCodes: { code: string; description: string }[]
   onClose: () => void
-  onSaved: (updated: UnifiedClaim) => void
+  onSaved: (updated: CommercialClaim) => void
   onEobUpload: (file: File) => void
   onEobDelete: (docId: string) => void
   onReloadClaims: () => void
@@ -382,19 +299,12 @@ function ClaimDetailModal({
   const [voiding, setVoiding] = useState(false)
   const [voidError, setVoidError] = useState('')
   const [voidDate, setVoidDate] = useState('')
-  const [mCodeInput, setMCodeInput] = useState('')
-  const [mCodeSuggestions, setMCodeSuggestions] = useState<{ code: string; description: string }[]>([])
 
   const [cForm, setCForm] = useState<CommercialFormState>(() =>
-    initCommercialForm(claim as CommercialClaim)
-  )
-  const [mForm, setMForm] = useState<MedicaidFormState>(() =>
-    initMedicaidForm(claim as MedicaidClaimRow)
+    initCommercialForm(claim)
   )
   const [originalJSON] = useState(() =>
-    claim._type === 'commercial'
-      ? JSON.stringify(initCommercialForm(claim as CommercialClaim))
-      : JSON.stringify(initMedicaidForm(claim as MedicaidClaimRow))
+    JSON.stringify(initCommercialForm(claim))
   )
 
   // Refs mirror the latest form state so an unmount cleanup (fired when the parent
@@ -402,87 +312,56 @@ function ClaimDetailModal({
   // whatever was typed, instead of silently discarding it.
   const cFormRef = useRef(cForm)
   cFormRef.current = cForm
-  const mFormRef = useRef(mForm)
-  mFormRef.current = mForm
   const savedOnceRef = useRef(false)
 
   async function performSave(): Promise<boolean> {
     if (savedOnceRef.current) return true
     savedOnceRef.current = true
-    const changed = claim._type === 'commercial'
-      ? JSON.stringify(cFormRef.current) !== originalJSON
-      : JSON.stringify(mFormRef.current) !== originalJSON
+    const changed = JSON.stringify(cFormRef.current) !== originalJSON
     if (!changed) return true
     try {
-      if (claim._type === 'commercial') {
-        const f = cFormRef.current
-        const res = await fetch(`/api/admin/claims/${claim.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            claimId: f.claimId || null,
-            providerName: f.providerName || null,
-            dosStart: f.dosStart || null,
-            dosStop: f.dosStop || null,
-            totalBilled: f.totalBilled || null,
-            hours: f.hours || null,
-            claimStage: f.claimStage || null,
-            submitDate: f.submitDate || null,
-            primaryPayer: f.primaryPayer || null,
-            primaryAllowedAmt: f.primaryAllowedAmt || null,
-            primaryCO: f.primaryCO || null,
-            primaryPaidAmt: f.primaryPaidAmt || null,
-            primaryPaidDate: f.primaryPaidDate || null,
-            primaryPaidTo: f.primaryPaidTo || null,
-            primaryCheckNum: f.primaryCheckNum || null,
-            secondaryPayer: f.secondaryPayer || null,
-            secondaryAllowedAmt: f.secondaryAllowedAmt || null,
-            secondaryCO: f.secondaryCO || null,
-            secondaryPaidAmt: f.secondaryPaidAmt || null,
-            secondaryPaidDate: f.secondaryPaidDate || null,
-            secondaryPaidTo: f.secondaryPaidTo || null,
-            secondaryCheckNum: f.secondaryCheckNum || null,
-            totalReimbursed: f.totalReimbursed || null,
-            remainingBalance: f.remainingBalance || null,
-            dateFullyFinalized: f.dateFullyFinalized || null,
-            checkReceivedDate: f.checkReceivedDate || null,
-            resubmissionOf: f.resubmissionOf || null,
-            remarkCodes: f.remarkCodes || null,
-            processingNotes: f.processingNotes || null,
-          }),
-        })
-        if (res.ok) {
-          onSaved({ ...claim, ...f } as unknown as UnifiedClaim)
-          return true
-        }
-        return false
-      } else {
-        const f = mFormRef.current
-        const res = await fetch(`/api/admin/medicaid/claims/${claim.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            patientCtrlNum: f.patientCtrlNum,
-            payerCtrlNum: f.payerCtrlNum || null,
-            dosStart: f.dosStart || null,
-            dosStop: f.dosStop || null,
-            totalCharge: f.totalCharge,
-            paidAmount: f.paidAmount || null,
-            processedDate: f.processedDate || null,
-            estPayCycle: f.estPayCycle || null,
-            depositDate: f.depositDate || null,
-            statusCodes: f.statusCodes,
-            notes: f.notes || null,
-          }),
-        })
-        if (res.ok) {
-          onSaved({ ...claim, ...f, statusCodes: f.statusCodes } as unknown as UnifiedClaim)
-          return true
-        }
-        return false
+      const f = cFormRef.current
+      const res = await fetch(`/api/admin/claims/${claim.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          claimId: f.claimId || null,
+          providerName: f.providerName || null,
+          dosStart: f.dosStart || null,
+          dosStop: f.dosStop || null,
+          totalBilled: f.totalBilled || null,
+          hours: f.hours || null,
+          claimStage: f.claimStage || null,
+          submitDate: f.submitDate || null,
+          primaryPayer: f.primaryPayer || null,
+          primaryAllowedAmt: f.primaryAllowedAmt || null,
+          primaryCO: f.primaryCO || null,
+          primaryPaidAmt: f.primaryPaidAmt || null,
+          primaryPaidDate: f.primaryPaidDate || null,
+          primaryPaidTo: f.primaryPaidTo || null,
+          primaryCheckNum: f.primaryCheckNum || null,
+          secondaryPayer: f.secondaryPayer || null,
+          secondaryAllowedAmt: f.secondaryAllowedAmt || null,
+          secondaryCO: f.secondaryCO || null,
+          secondaryPaidAmt: f.secondaryPaidAmt || null,
+          secondaryPaidDate: f.secondaryPaidDate || null,
+          secondaryPaidTo: f.secondaryPaidTo || null,
+          secondaryCheckNum: f.secondaryCheckNum || null,
+          totalReimbursed: f.totalReimbursed || null,
+          remainingBalance: f.remainingBalance || null,
+          dateFullyFinalized: f.dateFullyFinalized || null,
+          checkReceivedDate: f.checkReceivedDate || null,
+          resubmissionOf: f.resubmissionOf || null,
+          remarkCodes: f.remarkCodes || null,
+          processingNotes: f.processingNotes || null,
+        }),
+      })
+      if (res.ok) {
+        onSaved({ ...claim, ...f } as unknown as CommercialClaim)
+        return true
       }
+      return false
     } catch {
       return false
     }
@@ -502,10 +381,7 @@ function ClaimDetailModal({
     setVoidError('')
     // Flush any unsaved edits to the original before voiding it.
     await performSave()
-    const url = claim._type === 'commercial'
-      ? `/api/admin/claims/${claim.id}/void`
-      : `/api/admin/medicaid/claims/${claim.id}/void`
-    const res = await fetch(url, {
+    const res = await fetch(`/api/admin/claims/${claim.id}/void`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -534,59 +410,27 @@ function ClaimDetailModal({
     function onKey(e: KeyboardEvent) { if (e.key === 'Escape') handleClose() }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [cForm, mForm, originalJSON, saveStatus])
+  }, [cForm, originalJSON, saveStatus])
 
   useEffect(() => {
     if (activeTab !== 'history') return
     setAuditLoading(true)
-    const param = claim._type === 'commercial' ? `commercialId=${claim.id}` : `medicaidId=${claim.id}`
-    fetch(`/api/admin/claims/audit?${param}`, { credentials: 'include' })
+    fetch(`/api/admin/claims/audit?commercialId=${claim.id}`, { credentials: 'include' })
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setAuditLogs(data) })
       .catch(() => {})
       .finally(() => setAuditLoading(false))
   }, [activeTab])
 
-  // Auto-calculate pay cycle and deposit date from Proc Date
-  useEffect(() => {
-    if (claim._type !== 'medicaid' || !mForm.processedDate) return
-    const info = calcMedicaidCycleInfo(mForm.processedDate)
-    if (!info) return
-    setMForm(f => ({ ...f, estPayCycle: String(info.cycle), depositDate: info.depositDateStr }))
-  }, [mForm.processedDate])
-
-  function handleMCodeInput(val: string) {
-    setMCodeInput(val)
-    if (!val.trim()) { setMCodeSuggestions([]); return }
-    const q = val.toLowerCase()
-    setMCodeSuggestions(medicaidStatusCodes.filter(c =>
-      c.code.toLowerCase().includes(q) || c.description.toLowerCase().includes(q)
-    ).slice(0, 6))
-  }
-
-  function addMCode(code: string) {
-    if (!mForm.statusCodes.includes(code)) setMForm(f => ({ ...f, statusCodes: [...f.statusCodes, code] }))
-    setMCodeInput('')
-    setMCodeSuggestions([])
-  }
-
-  function removeMCode(code: string) {
-    setMForm(f => ({ ...f, statusCodes: f.statusCodes.filter(c => c !== code) }))
-  }
-
   const inp = 'w-full border border-[#D9E1E8] rounded-lg px-2 py-1.5 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]'
   const dateInp = 'border border-[#D9E1E8] rounded-lg px-2 py-1.5 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] max-w-[145px] w-full'
   const lbl = 'block text-xs font-semibold text-[#2F3E4E] mb-0.5'
   const sec = 'text-xs font-bold uppercase tracking-widest text-[#7A8F79] mb-2 border-t border-[#D9E1E8] pt-3'
 
-  const isMed = claim._type === 'commercial' && isMedicaidPayer(cForm.primaryPayer)
-  const isSecondaryMed = claim._type === 'commercial' && !isMed && isMedicaidPayer(cForm.secondaryPayer)
+  const isMed = isMedicaidPayer(cForm.primaryPayer)
+  const isSecondaryMed = !isMed && isMedicaidPayer(cForm.secondaryPayer)
 
-  const tabs: Array<'details' | 'eobs' | 'history'> = [
-    'details',
-    ...(claim._type === 'commercial' ? ['eobs' as const] : []),
-    'history',
-  ]
+  const tabs: Array<'details' | 'eobs' | 'history'> = ['details', 'eobs', 'history']
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 overflow-y-auto py-4 px-3">
@@ -596,13 +440,8 @@ function ClaimDetailModal({
         <div className="flex items-center justify-between px-4 py-3 border-b border-[#D9E1E8]">
           <div className="flex items-center gap-3 flex-wrap">
             <h2 className="text-base font-bold text-[#2F3E4E]">
-              {claim._type === 'commercial'
-                ? (cForm.providerName || claim.providerName || 'Claim')
-                : (claim.nurse ? (formalName(claim.nurse) || claim.nurse.displayName) : 'Medicaid Claim')}
+              {cForm.providerName || claim.providerName || 'Claim'}
             </h2>
-            {claim._type === 'medicaid' && (
-              <span className="text-xs font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">Medicaid</span>
-            )}
             {claim.voidedAt && (
               <span className="text-xs font-semibold text-gray-600 bg-gray-200 px-2 py-0.5 rounded-full">VOIDED</span>
             )}
@@ -614,18 +453,16 @@ function ClaimDetailModal({
             {saveStatus === 'error' && <span className="text-xs text-red-500">Error saving</span>}
           </div>
           <div className="flex items-center gap-2">
-            {claim._type === 'commercial' && (
-              <select
-                value={cForm.claimStage}
-                onChange={e => setCForm(f => ({ ...f, claimStage: e.target.value }))}
-                className="text-xs border border-[#D9E1E8] rounded-lg px-2 py-1.5 text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] bg-white"
-              >
-                <option value="">— Stage —</option>
-                {CLAIM_STAGES.map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-            )}
+            <select
+              value={cForm.claimStage}
+              onChange={e => setCForm(f => ({ ...f, claimStage: e.target.value }))}
+              className="text-xs border border-[#D9E1E8] rounded-lg px-2 py-1.5 text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] bg-white"
+            >
+              <option value="">— Stage —</option>
+              {CLAIM_STAGES.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
             {!claim.voidedAt && !claim.voidReversalOf && (
               <button
                 onClick={() => { setVoidDate(new Date().toISOString().slice(0, 10)); setShowVoidConfirm(true) }}
@@ -646,7 +483,7 @@ function ClaimDetailModal({
               <p className="text-xs text-[#7A8F79] leading-relaxed mb-3">
                 This creates a new offsetting entry for{' '}
                 <span className="font-semibold text-[#2F3E4E]">
-                  {claim._type === 'commercial' ? fmt(-(cForm.totalBilled ? parseFloat(cForm.totalBilled) : 0), '$') : fmt(-(mForm.totalCharge ? parseFloat(mForm.totalCharge) : 0), '$')}
+                  {fmt(-(cForm.totalBilled ? parseFloat(cForm.totalBilled) : 0), '$')}
                 </span>{' '}
                 that cancels this claim&rsquo;s total out of reimbursement/submission calculations.
               </p>
@@ -655,7 +492,7 @@ function ClaimDetailModal({
               </p>
               <div className="mb-4">
                 <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">
-                  Void Date {(claim._type === 'medicaid' || isMed || isSecondaryMed) && <span className="text-[#7A8F79] font-normal">(determines which pay cycle the reversal lands in)</span>}
+                  Void Date {(isMed || isSecondaryMed) && <span className="text-[#7A8F79] font-normal">(determines which pay cycle the reversal lands in)</span>}
                 </label>
                 <DateInput
                   value={voidDate}
@@ -699,8 +536,8 @@ function ClaimDetailModal({
         {/* Tab Content */}
         <div className="px-4 py-3 max-h-[75vh] overflow-y-auto">
 
-          {/* ── Details: Commercial ── */}
-          {activeTab === 'details' && claim._type === 'commercial' && (
+          {/* ── Details ── */}
+          {activeTab === 'details' && (
             <div className="space-y-4">
               <div>
                 <p className={sec}>Claim Info</p>
@@ -886,108 +723,8 @@ function ClaimDetailModal({
             </div>
           )}
 
-          {/* ── Details: Medicaid ── */}
-          {activeTab === 'details' && claim._type === 'medicaid' && (
-            <div className="space-y-4">
-              <div>
-                <p className={sec}>Claim Details</p>
-                <div className="grid grid-cols-4 gap-3">
-                  <div className="col-span-2">
-                    <label className={lbl}>Patient Ctrl #</label>
-                    <input className={inp} value={mForm.patientCtrlNum} onChange={e => setMForm(f => ({ ...f, patientCtrlNum: e.target.value }))} />
-                  </div>
-                  <div className="col-span-2">
-                    <label className={lbl}>Payer Ctrl #</label>
-                    <input className={inp} value={mForm.payerCtrlNum} onChange={e => setMForm(f => ({ ...f, payerCtrlNum: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label className={lbl}>DOS Start</label>
-                    <DateInput className={dateInp} value={mForm.dosStart} onChange={e => setMForm(f => ({ ...f, dosStart: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label className={lbl}>DOS Stop</label>
-                    <DateInput className={dateInp} value={mForm.dosStop} onChange={e => setMForm(f => ({ ...f, dosStop: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label className={lbl}>Total Charge</label>
-                    <input type="number" step="0.01" className={inp} value={mForm.totalCharge} onChange={e => setMForm(f => ({ ...f, totalCharge: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label className={lbl}>Paid Amount</label>
-                    <input type="number" step="0.01" className={inp} value={mForm.paidAmount} onChange={e => setMForm(f => ({ ...f, paidAmount: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label className={lbl}>Proc Date <span className="text-[#7A8F79] font-normal normal-case text-[10px]">(auto-calcs cycle)</span></label>
-                    <DateInput className={dateInp} value={mForm.processedDate} onChange={e => setMForm(f => ({ ...f, processedDate: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label className={lbl}>Pay Cycle # <span className="text-[#7A8F79] font-normal normal-case text-[10px]">(derived, not editable)</span></label>
-                    <p className="text-sm font-semibold text-[#2F3E4E] py-1.5">
-                      {mForm.estPayCycle || (mForm.processedDate ? '—' : 'Set Proc Date to calculate')}
-                    </p>
-                  </div>
-                  <div>
-                    <label className={lbl}>Deposit Date <span className="text-[#7A8F79] font-normal normal-case text-[10px]">(derived, not editable)</span></label>
-                    <p className="text-sm font-semibold text-[#2F3E4E] py-1.5">
-                      {mForm.depositDate
-                        ? `Thu · ${new Date(mForm.depositDate + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}`
-                        : (mForm.processedDate ? '—' : 'Set Proc Date to calculate')}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <p className={sec}>Status Codes</p>
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Type code or description…"
-                    value={mCodeInput}
-                    onChange={e => handleMCodeInput(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        const match = medicaidStatusCodes.find(c => c.code.toLowerCase() === mCodeInput.toLowerCase())
-                        if (match) addMCode(match.code)
-                        else if (mCodeInput.trim()) addMCode(mCodeInput.trim().toUpperCase())
-                      }
-                    }}
-                    className={inp}
-                  />
-                  {mCodeSuggestions.length > 0 && (
-                    <div className="absolute z-10 mt-1 w-full bg-white border border-[#D9E1E8] rounded-xl shadow-lg overflow-hidden">
-                      {mCodeSuggestions.map(c => (
-                        <button key={c.code} type="button" onMouseDown={() => addMCode(c.code)}
-                          className="w-full text-left px-4 py-2.5 text-sm hover:bg-[#f4f6f8] transition">
-                          <span className="font-semibold text-[#2F3E4E]">{c.code}</span>
-                          <span className="text-[#7A8F79] text-xs ml-2 line-clamp-1">{c.description}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                {mForm.statusCodes.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {mForm.statusCodes.map(code => (
-                      <span key={code} className="flex items-center gap-1 bg-blue-50 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full">
-                        {code}
-                        <button type="button" onClick={() => removeMCode(code)} className="text-blue-400 hover:text-blue-700 leading-none ml-0.5">✕</button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <p className={sec}>Notes</p>
-                <textarea rows={3} className={`${inp} resize-none`} value={mForm.notes} onChange={e => setMForm(f => ({ ...f, notes: e.target.value }))} />
-              </div>
-            </div>
-          )}
-
           {/* ── EOBs Tab ── */}
-          {activeTab === 'eobs' && claim._type === 'commercial' && (
+          {activeTab === 'eobs' && (
             <div className="space-y-3">
               {eobDocs.length === 0 && (
                 <p className="text-sm text-[#7A8F79]">No EOBs uploaded for this claim.</p>
@@ -1096,7 +833,7 @@ function AdminClaimCard({
   onEobUpload,
   onOpenChain,
 }: {
-  uc: UnifiedClaim
+  uc: CommercialClaim
   eobs: EobDoc[]
   eobUploading: string | null
   isOpen: boolean
@@ -1104,20 +841,18 @@ function AdminClaimCard({
   onEobUpload: (file: File) => void
   onOpenChain: (id: string) => void
 }) {
-  const isMedicaid = uc._type === 'medicaid'
-  const c = !isMedicaid ? (uc as CommercialClaim) : null
-  const m = isMedicaid ? (uc as MedicaidClaimRow) : null
+  const c = uc
   // Real Medicaid claims live as commercial Claim rows with "Medicaid" as the
   // payer, not as separate MedicaidClaim records — badge on payer, not type.
-  const isMedicaidPayerClaim = isMedicaidPayer(c?.primaryPayer ?? null) || isMedicaidPayer(c?.secondaryPayer ?? null)
+  const isMedicaidPayerClaim = isMedicaidPayer(c.primaryPayer) || isMedicaidPayer(c.secondaryPayer)
 
-  const claimId = c?.claimId ?? m?.patientCtrlNum ?? null
-  const dosStart = c?.dosStart ?? m?.dosStart ?? null
-  const dosStop  = c?.dosStop  ?? m?.dosStop  ?? null
-  const billed   = c?.totalBilled != null ? c.totalBilled : (m ? m.totalCharge : null)
-  const reimb    = c?.totalReimbursed ?? m?.paidAmount ?? null
-  const stage    = c?.claimStage ?? null
-  const providerName = c?.providerName ?? uc.nurse?.displayName ?? null
+  const claimId = c.claimId
+  const dosStart = c.dosStart
+  const dosStop  = c.dosStop
+  const billed   = c.totalBilled
+  const reimb    = c.totalReimbursed
+  const stage    = c.claimStage
+  const providerName = c.providerName ?? uc.nurse?.displayName ?? null
 
   const isFinal = ['paid', 'denied', 'rejected', 'finalized'].includes((stage || '').toLowerCase())
   const dateLabel = isFinal ? 'Finalized' : 'Updated'
@@ -1139,7 +874,7 @@ function AdminClaimCard({
             {c?.resubmissionOf && (
               <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full whitespace-nowrap shrink-0">↻ Resub</span>
             )}
-            {(isMedicaid || isMedicaidPayerClaim) && (
+            {isMedicaidPayerClaim && (
               <span className="text-[10px] font-semibold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded-full shrink-0">Medicaid</span>
             )}
             {c?.depositDate && (
@@ -1155,19 +890,17 @@ function AdminClaimCard({
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0 ml-2">
-            {!isMedicaid && (
-              <label
-                className={`cursor-pointer text-[11px] px-1.5 py-0.5 rounded border border-dashed transition ${eobUploading === uc.id ? 'opacity-50 cursor-default text-[#7A8F79] border-[#D9E1E8]' : 'text-[#7A8F79] border-[#D9E1E8] hover:border-[#7A8F79] hover:text-[#2F3E4E]'}`}
-                onClick={e => e.stopPropagation()}
-              >
-                {eobUploading === uc.id ? '…' : '📎'}
-                <input type="file" className="hidden" disabled={eobUploading === uc.id}
-                  accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif"
-                  onChange={e => { const f = e.target.files?.[0]; if (f) onEobUpload(f); e.target.value = '' }}
-                />
-              </label>
-            )}
-            {!isMedicaid && eobs.length > 0 && (
+            <label
+              className={`cursor-pointer text-[11px] px-1.5 py-0.5 rounded border border-dashed transition ${eobUploading === uc.id ? 'opacity-50 cursor-default text-[#7A8F79] border-[#D9E1E8]' : 'text-[#7A8F79] border-[#D9E1E8] hover:border-[#7A8F79] hover:text-[#2F3E4E]'}`}
+              onClick={e => e.stopPropagation()}
+            >
+              {eobUploading === uc.id ? '…' : '📎'}
+              <input type="file" className="hidden" disabled={eobUploading === uc.id}
+                accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif"
+                onChange={e => { const f = e.target.files?.[0]; if (f) onEobUpload(f); e.target.value = '' }}
+              />
+            </label>
+            {eobs.length > 0 && (
               <button
                 className="text-xs text-green-700 hover:text-green-900 transition"
                 title={eobs[0].fileName}
@@ -1184,17 +917,14 @@ function AdminClaimCard({
                 🗂️{eobs.length > 1 && <span className="text-[10px] text-[#7A8F79] ml-0.5">+{eobs.length - 1}</span>}
               </button>
             )}
-            {!isMedicaid && <StageBadge stage={stage} />}
-            {isMedicaid && (m?.statusCodes || []).slice(0, 2).map(sc => (
-              <span key={sc} className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full font-semibold">{sc}</span>
-            ))}
+            <StageBadge stage={stage} />
             <span className="text-[#7A8F79] text-[10px]">▼</span>
           </div>
         </div>
 
         {/* Row 2: labels */}
         <div className="grid grid-cols-4 gap-2 items-end">
-          <div><p className="text-[10px] text-[#7A8F79] leading-tight">{isMedicaid ? 'Patient Ctrl #' : 'Claim ID'}</p></div>
+          <div><p className="text-[10px] text-[#7A8F79] leading-tight">Claim ID</p></div>
           <div><p className="text-[10px] text-[#7A8F79] leading-tight">Total Billed</p></div>
           <div><p className="text-[10px] text-[#7A8F79] leading-tight">Total Reimb.</p></div>
           <div className="text-right"><p className="text-xs font-semibold text-[#2F3E4E] leading-tight">{dateValue ? fmtDate(dateValue) : ''}</p></div>
@@ -1229,19 +959,14 @@ function AdminClaimCard({
 
 export default function AdminClaimsPage() {
   const [claims, setClaims] = useState<CommercialClaim[]>([])
-  const [medicaidClaims, setMedicaidClaims] = useState<MedicaidClaimRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [importing, setImporting] = useState(false)
-  const [importResult, setImportResult] = useState<{ created: number; updated: number; skipped: number; unmatchedAccountNumbers: string[]; error?: string } | null>(null)
   const [search, setSearch] = useState('')
   const [filterStage, setFilterStage] = useState('')
   const [filterYear, setFilterYear] = useState('')
   const [hideDemo, setHideDemo] = useState(true)
-  const fileRef = useRef<HTMLInputElement>(null)
 
   // Selected claim for detail modal
   const [selectedClaimId, setSelectedClaimId] = useState<string | null>(null)
-  const [selectedClaimType, setSelectedClaimType] = useState<'commercial' | 'medicaid' | null>(null)
 
   // Bulk import mode
   const [bulkMode, setBulkMode] = useState(false)
@@ -1276,9 +1001,6 @@ export default function AdminClaimsPage() {
   const [selectedNurseId, setSelectedNurseId] = useState<string | null>(null)
   const providerRef = useRef<HTMLDivElement>(null)
   const [activeSuggestionIdx, setActiveSuggestionIdx] = useState(0)
-
-  // Status codes (used by ClaimDetailModal only)
-  const [medicaidStatusCodes, setMedicaidStatusCodes] = useState<{ code: string; description: string }[]>([])
 
   // Date field refs for auto-advance
   const submitDateRef   = useRef<HTMLInputElement>(null)
@@ -1392,12 +1114,6 @@ export default function AdminClaimsPage() {
     setLoading(false)
   }
 
-  async function loadMedicaidClaims() {
-    const res = await fetch('/api/admin/medicaid/claims', { credentials: 'include' })
-    const data = await res.json()
-    if (Array.isArray(data)) setMedicaidClaims(data)
-  }
-
   async function loadReminders() {
     const res = await fetch('/api/admin/claims/reminders', { credentials: 'include' })
     if (res.ok) setReminders(await res.json())
@@ -1451,7 +1167,6 @@ export default function AdminClaimsPage() {
       .then((s: Record<string, string>) => { if (s.bulkImportMode === 'true') setBulkMode(true) })
       .catch(() => {})
     loadClaims()
-    loadMedicaidClaims()
     loadEobs()
     loadReminders()
     fetch('/api/admin/nurses', { credentials: 'include' })
@@ -1459,10 +1174,6 @@ export default function AdminClaimsPage() {
       .then((data: any[]) => {
         if (Array.isArray(data)) setNurses(data.map(n => ({ id: n.id, displayName: n.displayName, firstName: n.firstName, lastName: n.lastName })))
       })
-      .catch(() => {})
-    fetch('/api/admin/medicaid/status-codes', { credentials: 'include' })
-      .then(r => r.json())
-      .then((data: any[]) => { if (Array.isArray(data)) setMedicaidStatusCodes(data) })
       .catch(() => {})
   }, [])
 
@@ -1618,68 +1329,6 @@ export default function AdminClaimsPage() {
     setAdding(false)
   }
 
-  async function handleFileImport(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setImporting(true)
-    setImportResult(null)
-
-    const text = await file.text()
-    const rows = parseCSV(text)
-
-    const BATCH_SIZE = 10
-    let totalCreated = 0
-    let totalUpdated = 0
-    let totalSkipped = 0
-    let batchError: string | null = null
-    const allAffectedNurseIds = new Set<string>()
-    const allUnmatchedAccountNumbers = new Set<string>()
-
-    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-      const batch = rows.slice(i, i + BATCH_SIZE)
-      try {
-        const res = await fetch('/api/admin/claims/import', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ rows: batch }),
-        })
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}))
-          batchError = err.error || `Batch ${Math.floor(i / BATCH_SIZE) + 1} failed (${res.status})`
-          break
-        }
-        const data = await res.json()
-        totalCreated += data.created || 0
-        totalUpdated += data.updated || 0
-        totalSkipped += data.skipped || 0
-        ;(data.affectedNurseIds || []).forEach((id: string) => allAffectedNurseIds.add(id))
-        ;(data.unmatchedAccountNumbers || []).forEach((n: string) => allUnmatchedAccountNumbers.add(n))
-      } catch {
-        batchError = `Network error on batch ${Math.floor(i / BATCH_SIZE) + 1}`
-        break
-      }
-    }
-
-    if (!batchError && allAffectedNurseIds.size > 0 && !bulkMode) {
-      await fetch('/api/admin/notifications/flush', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ nurseIds: [...allAffectedNurseIds] }),
-      }).catch(() => {})
-    }
-
-    setImportResult(
-      batchError
-        ? { created: totalCreated, updated: totalUpdated, skipped: totalSkipped, unmatchedAccountNumbers: [...allUnmatchedAccountNumbers], error: batchError }
-        : { created: totalCreated, updated: totalUpdated, skipped: totalSkipped, unmatchedAccountNumbers: [...allUnmatchedAccountNumbers] }
-    )
-    setImporting(false)
-    if (fileRef.current) fileRef.current.value = ''
-    loadClaims()
-  }
-
   async function handleEdiUpload(files: FileList | File[]) {
     const arr = Array.from(files)
     if (!arr.length) return
@@ -1695,16 +1344,7 @@ export default function AdminClaimsPage() {
     if (!ediDryRun) loadClaims()
   }
 
-  // ── Merged + filtered claims ──────────────────────────────────────────────
-
-  const allClaims: UnifiedClaim[] = useMemo(() => [
-    ...claims.map(c => ({ ...c, _type: 'commercial' as const })),
-    ...medicaidClaims.map(c => ({ ...c, _type: 'medicaid' as const })),
-  ].sort((a, b) => {
-    const ad = a.dosStart ? new Date(a.dosStart).getTime() : 0
-    const bd = b.dosStart ? new Date(b.dosStart).getTime() : 0
-    return bd - ad
-  }), [claims, medicaidClaims])
+  // ── Filtered claims ─────────────────────────────────────────────────────
 
   // claimId values that are pointed to as an original by another claim's resubmissionOf
   // — used to hide superseded rows from the visible list (a void reversal's
@@ -1728,51 +1368,48 @@ export default function AdminClaimsPage() {
     new Map(claims.filter(c => c.claimId).map(c => [c.claimId!, c]))
   , [claims])
 
-  function matchesClaimFilters(uc: UnifiedClaim): boolean {
-    const provName = uc._type === 'commercial' ? (uc.providerName || uc.nurse?.displayName || '') : (uc.nurse?.displayName || '')
-    const id = uc._type === 'commercial' ? (uc.claimId || '') : uc.patientCtrlNum
-    const payer = uc._type === 'commercial' ? (uc.primaryPayer || '') : 'Medicaid'
-    if (hideDemo && (uc._type === 'commercial' ? uc.nurse?.isDemo : uc.nurse?.isDemo)) return false
+  function matchesClaimFilters(uc: CommercialClaim): boolean {
+    const provName = uc.providerName || uc.nurse?.displayName || ''
+    const id = uc.claimId || ''
+    const payer = uc.primaryPayer || ''
+    if (hideDemo && uc.nurse?.isDemo) return false
     const matchSearch = !search ||
       provName.toLowerCase().includes(search.toLowerCase()) ||
       id.toLowerCase().includes(search.toLowerCase()) ||
       payer.toLowerCase().includes(search.toLowerCase())
-    const matchStage = !filterStage || (uc._type === 'commercial' ? uc.claimStage === filterStage : false)
+    const matchStage = !filterStage || uc.claimStage === filterStage
     const matchYear = !filterYear || (uc.dosStart ? new Date(uc.dosStart).getUTCFullYear().toString() === filterYear : false)
     return matchSearch && matchStage && matchYear
   }
 
-  const filteredAll: UnifiedClaim[] = useMemo(() => {
-    return allClaims.filter(uc => {
+  const filteredAll: CommercialClaim[] = useMemo(() => {
+    return claims.filter(uc => {
       // never show superseded originals in the main list — they appear tucked under their resubmission
-      if (uc._type === 'commercial' && supersededClaimIds.has(uc.claimId || '')) return false
+      if (supersededClaimIds.has(uc.claimId || '')) return false
       return matchesClaimFilters(uc)
     })
-  }, [allClaims, search, filterStage, filterYear, hideDemo, supersededClaimIds])
+  }, [claims, search, filterStage, filterYear, hideDemo, supersededClaimIds])
 
   // Same filters as filteredAll, but with the totals-correct exclusion rule
   // — this is what "Total Billed" etc. below are computed from, not filteredAll.
-  const totalsFilteredAll: UnifiedClaim[] = useMemo(() => {
-    return allClaims.filter(uc => {
-      if (uc._type === 'commercial' && supersededByTotals.has(uc.id)) return false
+  const totalsFilteredAll: CommercialClaim[] = useMemo(() => {
+    return claims.filter(uc => {
+      if (supersededByTotals.has(uc.id)) return false
       return matchesClaimFilters(uc)
     })
-  }, [allClaims, search, filterStage, filterYear, hideDemo, supersededByTotals])
+  }, [claims, search, filterStage, filterYear, hideDemo, supersededByTotals])
 
-  const totalBilled = totalsFilteredAll.reduce((s, uc) =>
-    s + (uc._type === 'commercial' ? (Number(uc.totalBilled) || 0) : uc.totalCharge), 0)
-  const totalReimbursed = totalsFilteredAll.reduce((s, uc) =>
-    s + (uc._type === 'commercial' ? (Number(uc.totalReimbursed) || 0) : (Number(uc.paidAmount) || 0)), 0)
-  const totalBalance = totalsFilteredAll.reduce((s, uc) =>
-    s + (uc._type === 'commercial' ? (Number(uc.remainingBalance) || 0) : Math.max(0, Number(uc.totalCharge) - (Number(uc.paidAmount) || 0))), 0)
+  const totalBilled = totalsFilteredAll.reduce((s, uc) => s + (Number(uc.totalBilled) || 0), 0)
+  const totalReimbursed = totalsFilteredAll.reduce((s, uc) => s + (Number(uc.totalReimbursed) || 0), 0)
+  const totalBalance = totalsFilteredAll.reduce((s, uc) => s + (Number(uc.remainingBalance) || 0), 0)
 
   const stages = [...new Set(claims.map(c => c.claimStage).filter(Boolean))] as string[]
 
   // Opened claim for detail modal
   const openedClaim = useMemo(() => {
-    if (!selectedClaimId || !selectedClaimType) return null
-    return allClaims.find(c => c._type === selectedClaimType && c.id === selectedClaimId) || null
-  }, [selectedClaimId, selectedClaimType, allClaims])
+    if (!selectedClaimId) return null
+    return claims.find(c => c.id === selectedClaimId) || null
+  }, [selectedClaimId, claims])
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -1785,7 +1422,7 @@ export default function AdminClaimsPage() {
         <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
           <div>
             <h1 className="text-2xl font-bold text-[#2F3E4E]"><span className="text-[#7A8F79] italic">ad</span>Claims</h1>
-            <p className="text-sm text-[#7A8F79] mt-0.5">Import from CSV or manage claims below.</p>
+            <p className="text-sm text-[#7A8F79] mt-0.5">Manage claims below.</p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <CarcLookupModal showAdminTools />
@@ -1825,10 +1462,6 @@ export default function AdminClaimsPage() {
               </svg>
               Add Claim
             </button>
-            <input ref={fileRef} type="file" accept=".csv" onChange={handleFileImport} className="hidden" id="csv-upload" />
-            <label htmlFor="csv-upload" className="cursor-pointer bg-[#2F3E4E] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition">
-              {importing ? 'Importing…' : 'Import CSV'}
-            </label>
           </div>
         </div>
 
@@ -1843,24 +1476,6 @@ export default function AdminClaimsPage() {
           <div className="bg-green-50 border border-green-300 rounded-xl px-5 py-3 mb-4 flex items-center justify-between gap-3">
             <span className="text-green-700 font-semibold text-sm">✓ {bulkFlushMsg}</span>
             <button onClick={() => setBulkFlushMsg(null)} className="text-green-600 text-xs hover:text-green-800">✕</button>
-          </div>
-        )}
-
-        {/* Import result */}
-        {importResult && (
-          <div className={`border rounded-xl p-4 mb-4 text-sm flex flex-wrap gap-4 ${importResult.error ? 'bg-red-50 border-red-300 text-red-800' : 'bg-white border-[#7A8F79] text-[#2F3E4E]'}`}>
-            <span className="font-semibold">{importResult.error ? '⚠ Partial import' : '✓ Import complete'}</span>
-            {importResult.created > 0 && <span className="text-green-700 font-semibold">{importResult.created} created</span>}
-            {importResult.updated > 0 && <span className="text-blue-700 font-semibold">{importResult.updated} updated</span>}
-            {importResult.skipped > 0 && (
-              <span className="text-red-600 font-semibold">
-                {importResult.skipped} skipped — nurse account # not matched
-                {importResult.unmatchedAccountNumbers.length > 0 && ` (${importResult.unmatchedAccountNumbers.join(', ')})`}
-              </span>
-            )}
-            {importResult.error && (
-              <span className="text-red-700 font-semibold">Error: {importResult.error}</span>
-            )}
           </div>
         )}
 
@@ -1987,7 +1602,7 @@ export default function AdminClaimsPage() {
             {ediResult.unmatched.length > 0 && (
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-yellow-700 mb-2">
-                  Not found in portal — may need CSV import first
+                  Not found in portal — add the claim manually first
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {ediResult.unmatched.map(id => (
@@ -2122,22 +1737,22 @@ export default function AdminClaimsPage() {
         {/* Claims list */}
         {loading ? (
           <div className="text-center text-[#7A8F79] py-16">Loading…</div>
-        ) : allClaims.length === 0 ? (
+        ) : claims.length === 0 ? (
           <div className="bg-white rounded-xl p-12 text-center text-[#7A8F79] shadow-sm">
-            No claims yet. Import a CSV to get started.
+            No claims yet. Add one to get started.
           </div>
         ) : (
           <div className="space-y-2">
             {filteredAll.map(uc => {
-                  const eobs = uc._type === 'commercial' ? (eobMap[uc.id] || []) : []
-                  const isOpen = selectedClaimId === uc.id && selectedClaimType === uc._type
+                  const eobs = eobMap[uc.id] || []
+                  const isOpen = selectedClaimId === uc.id
 
                   // Build the resubmission chain (originals tucked under this card)
                   const chainColors = ['#D97706', '#EA580C', '#DC2626', '#991B1B']
                   const chainBgs   = ['#FFFBEB', '#FFF7ED', '#FEF2F2', '#FFF1F2']
                   const originals: CommercialClaim[] = []
-                  if (uc._type === 'commercial' && uc.resubmissionOf) {
-                    let cur: CommercialClaim = uc as CommercialClaim
+                  if (uc.resubmissionOf) {
+                    let cur: CommercialClaim = uc
                     const seen = new Set<string>()
                     while (cur.resubmissionOf && claimByClaimId.has(cur.resubmissionOf) && !seen.has(cur.resubmissionOf)) {
                       seen.add(cur.resubmissionOf)
@@ -2148,18 +1763,18 @@ export default function AdminClaimsPage() {
                   }
 
                   return (
-                    <Fragment key={`${uc._type}-${uc.id}`}>
+                    <Fragment key={uc.id}>
                       <AdminClaimCard
                         uc={uc}
                         eobs={eobs}
                         eobUploading={eobUploading}
                         isOpen={isOpen}
                         onToggle={() => {
-                          if (isOpen) { setSelectedClaimId(null); setSelectedClaimType(null) }
-                          else { setSelectedClaimId(uc.id); setSelectedClaimType(uc._type) }
+                          if (isOpen) { setSelectedClaimId(null) }
+                          else { setSelectedClaimId(uc.id) }
                         }}
-                        onEobUpload={file => handleEobUpload(uc as CommercialClaim, file)}
-                        onOpenChain={id => { setSelectedClaimId(id); setSelectedClaimType('commercial') }}
+                        onEobUpload={file => handleEobUpload(uc, file)}
+                        onOpenChain={id => { setSelectedClaimId(id) }}
                       />
 
                       {/* Resubmission chain: original claims tucked under card */}
@@ -2178,7 +1793,7 @@ export default function AdminClaimsPage() {
                               borderBottom: `1px solid ${color}55`,
                               boxShadow: `0 4px 10px -4px ${color}44`,
                             }}
-                            onClick={() => { setSelectedClaimId(orig.id); setSelectedClaimType('commercial') }}
+                            onClick={() => { setSelectedClaimId(orig.id) }}
                             title="Open original claim"
                           >
                             <span className="font-bold uppercase tracking-wide shrink-0 text-[10px]" style={{ color }}>
@@ -2202,21 +1817,16 @@ export default function AdminClaimsPage() {
       {/* Claim Detail Modal */}
       {openedClaim && (
         <ClaimDetailModal
-          key={`${openedClaim._type}-${openedClaim.id}`}
+          key={openedClaim.id}
           claim={openedClaim}
-          eobDocs={openedClaim._type === 'commercial' ? (eobMap[openedClaim.id] || []) : []}
+          eobDocs={eobMap[openedClaim.id] || []}
           uploading={eobUploading === selectedClaimId}
           deletingId={eobDeleting}
-          medicaidStatusCodes={medicaidStatusCodes}
-          onClose={() => { setSelectedClaimId(null); setSelectedClaimType(null) }}
+          onClose={() => { setSelectedClaimId(null) }}
           onSaved={updated => {
-            if (updated._type === 'commercial') {
-              setClaims(prev => prev.map(c => c.id === updated.id ? (updated as CommercialClaim) : c))
-            } else {
-              setMedicaidClaims(prev => prev.map(c => c.id === updated.id ? (updated as MedicaidClaimRow) : c))
-            }
+            setClaims(prev => prev.map(c => c.id === updated.id ? updated : c))
           }}
-          onEobUpload={file => handleEobUpload(openedClaim as CommercialClaim, file)}
+          onEobUpload={file => handleEobUpload(openedClaim, file)}
           onEobDelete={deleteEob}
           onReloadClaims={loadClaims}
         />

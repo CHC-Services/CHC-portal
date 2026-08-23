@@ -24,7 +24,7 @@
     "bcrypt": "^6.0.0",
     "dictionary-en": "^4.0.0",
     "jsonwebtoken": "^9.0.3",
-    "next": "16.1.6",
+    "next": "^16.3.2",
     "pdf-lib": "^1.17.1",
     "prisma": "^6.19.2",
     "puppeteer-core": "^25.4.0",

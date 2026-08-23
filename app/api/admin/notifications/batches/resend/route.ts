@@ -54,6 +54,10 @@ export async function POST(req: Request) {
         dosStop:  c.dosStop  ? new Date(c.dosStop)  : null,
         totalBilled: c.totalBilled,
       })),
+      // Historical batch entries don't distinguish "new" vs "paid" claims
+      // (that split was introduced after this audit trail was built) — a
+      // resent batch replays them all under "New Claims", same as before.
+      paidClaims: [],
       documents,
     })
 

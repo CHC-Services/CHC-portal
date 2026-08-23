@@ -1010,11 +1010,13 @@ export async function sendBulkImportSummary({
   nurseEmail,
   nurseName,
   claims,
+  paidClaims,
   documents,
 }: {
   nurseEmail: string
   nurseName: string
   claims: { claimId: string; dosStart: Date | null; dosStop: Date | null; totalBilled: number | null }[]
+  paidClaims: { claimId: string; totalReimbursed: number | null; paidDate: Date | null }[]
   documents: { documentTitle: string; category: string }[]
 }): Promise<boolean> {
   if (!process.env.RESEND_API_KEY) return false
@@ -1044,6 +1046,13 @@ export async function sendBulkImportSummary({
       <td style="padding:8px 0;font-size:13px;color:#2F3E4E;font-weight:600;text-align:right">${fmtMoney(c.totalBilled)}</td>
     </tr>`).join('')
 
+  const paidClaimRows = paidClaims.map(c => `
+    <tr style="border-bottom:1px solid #e5e7eb">
+      <td style="padding:8px 0;font-family:monospace;font-size:13px;color:#2F3E4E;font-weight:700">${c.claimId}</td>
+      <td style="padding:8px 16px;font-size:13px;color:#2F3E4E">${fmtDate(c.paidDate)}</td>
+      <td style="padding:8px 0;font-size:13px;color:#2F3E4E;font-weight:600;text-align:right">${fmtMoney(c.totalReimbursed)}</td>
+    </tr>`).join('')
+
   const docRows = documents.map(d => `
     <tr style="border-bottom:1px solid #e5e7eb">
       <td style="padding:8px 0;font-size:13px;font-weight:600;color:#2F3E4E">${d.documentTitle}</td>
@@ -1052,6 +1061,7 @@ export async function sendBulkImportSummary({
 
   const parts: string[] = []
   if (claims.length > 0) parts.push(`${claims.length} new claim${claims.length !== 1 ? 's' : ''}`)
+  if (paidClaims.length > 0) parts.push(`${paidClaims.length} claim${paidClaims.length !== 1 ? 's' : ''} paid`)
   if (documents.length > 0) parts.push(`${documents.length} new document${documents.length !== 1 ? 's' : ''}`)
 
   try {
@@ -1085,6 +1095,21 @@ export async function sendBulkImportSummary({
               </tr>
             </thead>
             <tbody>${claimRows}</tbody>
+          </table>` : ''}
+
+          ${paidClaims.length > 0 ? `
+          <h3 style="margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#7A8F79">
+            Claims Paid (${paidClaims.length})
+          </h3>
+          <table style="width:100%;border-collapse:collapse;margin-bottom:28px">
+            <thead>
+              <tr style="background:#F4F6F5;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#7A8F79">
+                <th style="padding:8px 0;text-align:left;font-weight:700">Claim ID</th>
+                <th style="padding:8px 16px;text-align:left;font-weight:700">Paid Date</th>
+                <th style="padding:8px 0;text-align:right;font-weight:700">Total Reimbursed</th>
+              </tr>
+            </thead>
+            <tbody>${paidClaimRows}</tbody>
           </table>` : ''}
 
           ${documents.length > 0 ? `

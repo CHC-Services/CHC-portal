@@ -7,10 +7,9 @@ function isEditableDraft(note: { authorUserId: string | null; signedAt: Date | n
   return note.authorUserId === userId && !note.signedAt
 }
 
-// Bedrock calls are typically fast, but add maxDuration defensively per this
-// project's established Puppeteer-PDF precedent (app/api/admin/claims/import/route.ts,
-// the progress-note PDF routes) — anything that calls out to a third-party
-// service can occasionally run past Vercel's default serverless timeout.
+// Bedrock calls are typically fast, but add maxDuration defensively — anything
+// that calls out to a third-party service can occasionally run past Vercel's
+// default serverless timeout.
 export const maxDuration = 30
 
 // Micro-Charting's end-of-shift compile — ONE Bedrock call over every voice

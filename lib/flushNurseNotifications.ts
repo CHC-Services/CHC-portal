@@ -1,6 +1,8 @@
 import { prisma } from './prisma'
 import { sendBulkImportSummary } from './sendEmail'
 
+const BATCH_WINDOW_MINUTES = 30
+
 // Shared per-nurse "group pending rows → suppress redundant ones → send one
 // combined email → record batch history → delete the queue" logic, reused by
 // both the manual admin flush route (Bulk Mode toggled off) and the cron
@@ -153,4 +155,30 @@ export async function flushNurseNotifications({
   })
 
   return { sent, skipped }
+}
+
+// Checks Bulk Mode and, if it's off, flushes any nurse whose oldest pending
+// item has aged past the batch window. Returns null (no-op) while Bulk Mode
+// is on. Shared by the daily cron backstop and by opportunistic calls below
+// — this project's Vercel plan (Hobby) only allows daily crons, so anything
+// closer to real 30-minute delivery has to come from piggybacking on actual
+// claim/EOB activity instead of polling on a schedule.
+export async function maybeAutoFlush(trigger: string): Promise<{ sent: number; skipped: number } | null> {
+  const bulkSetting = await prisma.systemSetting.findUnique({ where: { key: 'bulkImportMode' } })
+  if (bulkSetting?.value === 'true') return null
+  return flushNurseNotifications({ trigger, minAgeMinutes: BATCH_WINDOW_MINUTES })
+}
+
+let lastOpportunisticRun = 0
+const OPPORTUNISTIC_COOLDOWN_MS = 60_000
+
+// Fire-and-forget hook for claim/EOB routes — throttled so a burst of rapid
+// requests in one admin session doesn't each queue their own DB round-trip.
+// Never awaited by callers; failures are swallowed since this is a
+// best-effort nicety, not part of the request it's attached to.
+export function triggerOpportunisticFlush(): void {
+  const now = Date.now()
+  if (now - lastOpportunisticRun < OPPORTUNISTIC_COOLDOWN_MS) return
+  lastOpportunisticRun = now
+  maybeAutoFlush('opportunistic').catch(() => {})
 }

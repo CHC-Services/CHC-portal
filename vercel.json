@@ -31,7 +31,7 @@
     },
     {
       "path": "/api/cron/notification-flush",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 22 * * *"
     }
   ]
 }

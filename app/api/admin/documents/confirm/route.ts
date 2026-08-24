@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../lib/prisma'
 import { verifyToken } from '../../../../../lib/auth'
 import { objectExists } from '../../../../../lib/s3'
+import { triggerOpportunisticFlush } from '../../../../../lib/flushNurseNotifications'
 
 function adminOnly(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -89,6 +90,7 @@ export async function POST(req: Request) {
       },
     })
   }
+  triggerOpportunisticFlush()
 
   return NextResponse.json({ ok: true, count: docs.length })
 }

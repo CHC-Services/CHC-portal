@@ -3,6 +3,7 @@ import { prisma } from '../../../../../lib/prisma'
 import { verifyToken } from '../../../../../lib/auth'
 import { deriveCommercialClaimCycle } from '../../../../../lib/medicaidPayCycle'
 import { queueClaimNotification } from '../../../../../lib/queueClaimNotification'
+import { triggerOpportunisticFlush } from '../../../../../lib/flushNurseNotifications'
 
 function adminOnly(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -110,6 +111,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (data.claimStage === 'Paid' && existing.claimStage !== 'Paid') {
     queueClaimNotification(claim, 'paid').catch(() => {})
   }
+  triggerOpportunisticFlush()
 
   return NextResponse.json({ ok: true, claim })
 }

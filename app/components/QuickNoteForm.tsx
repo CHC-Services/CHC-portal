@@ -50,6 +50,7 @@ type PendingEntry =
   | { phase: 'ready'; entry: VoiceEntryDTO }
   | { phase: 'error'; message: string }
 
+const LOCATIONS = ['Home', 'School', 'Daycare', 'Facility', 'Community', 'Other']
 const O2_ROUTES = ['AirVo', 'HME', 'O2 Tank', 'Passy Muir', 'POC', 'Vent', 'Room Air']
 const TX_NEEDED = ['Yes', 'No']
 const INTAKE_ROUTES = ['Oral', 'G-Tube', 'J-Tube', 'GJ-Split', 'NG-Tube', 'IV']
@@ -294,26 +295,29 @@ export default function QuickNoteForm({
     <div className="space-y-4">
       <div className="bg-white rounded-2xl shadow-sm p-5 space-y-3">
         <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">{note.patientLabel}</p>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="flex flex-wrap items-end gap-3">
           <div>
             <label className={lbl}>Service Date</label>
-            <input type="date" className={inp} value={serviceDate} onChange={e => setServiceDate(e.target.value)} />
+            <input type="date" className={`${inp} w-[136px]`} value={serviceDate} onChange={e => setServiceDate(e.target.value)} />
           </div>
           <div>
             <label className={lbl}>Shift Start</label>
-            <input className={inp} placeholder="08:00 AM" value={shiftStartTime} onChange={e => setShiftStartTime(e.target.value)} />
+            <input className={`${inp} w-[104px]`} placeholder="08:00 AM" value={shiftStartTime} onChange={e => setShiftStartTime(e.target.value)} />
           </div>
           <div>
             <label className={lbl}>Shift End</label>
-            <input className={inp} placeholder="08:00 PM" value={shiftEndTime} onChange={e => setShiftEndTime(e.target.value)} />
+            <input className={`${inp} w-[104px]`} placeholder="08:00 PM" value={shiftEndTime} onChange={e => setShiftEndTime(e.target.value)} />
           </div>
           <div>
-            <label className={lbl}>Total Hours</label>
-            <p className="text-sm font-bold text-[#2F3E4E] p-2">{totalHours ?? '—'}</p>
+            <label className={lbl}>Ttl Hrs</label>
+            <p className="text-sm font-bold text-[#2F3E4E] p-2 w-16">{totalHours ?? '—'}</p>
           </div>
           <div>
             <label className={lbl}>Location</label>
-            <input className={inp} value={location} onChange={e => setLocation(e.target.value)} />
+            <select className={`${inp} w-36`} value={location} onChange={e => setLocation(e.target.value)}>
+              {/* Carries forward a pre-existing free-text location (from before this was a dropdown) as its own option, so opening an old note never silently swaps it for a different value on save. */}
+              {(LOCATIONS.includes(location) ? LOCATIONS : [location, ...LOCATIONS]).map(l => <option key={l} value={l}>{l}</option>)}
+            </select>
           </div>
         </div>
       </div>

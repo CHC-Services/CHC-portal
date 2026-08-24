@@ -99,6 +99,7 @@ export default function QuickNoteForm({
   const [compiling, setCompiling] = useState(false)
   const [compileError, setCompileError] = useState('')
   const [compilePreview, setCompilePreview] = useState<string | null>(null)
+  const [showCompileConfirm, setShowCompileConfirm] = useState(false)
   const [extractedVitals, setExtractedVitals] = useState<VitalRow[]>([])
   const [extractedIO, setExtractedIO] = useState<IORow[]>([])
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -182,7 +183,16 @@ export default function QuickNoteForm({
     await fetch(`/api/quick-notes/notes/${note.id}/voice-entries/${entryId}`, { method: 'DELETE', headers: headers() })
   }
 
+  function handleCompileClick() {
+    // Only worth a confirmation when there's existing Shift Notes content
+    // that a Replace could actually overwrite — an empty note has nothing at
+    // risk, so compile runs immediately (auto-fills with no extra click).
+    if (shiftNotes.trim()) setShowCompileConfirm(true)
+    else runCompile()
+  }
+
   async function runCompile() {
+    setShowCompileConfirm(false)
     setCompiling(true); setCompileError('')
     const res = await fetch(`/api/quick-notes/notes/${note.id}/compile`, { method: 'POST', headers: headers() })
     setCompiling(false)
@@ -371,14 +381,17 @@ export default function QuickNoteForm({
         )}
 
         <div className="pt-2 border-t border-[#D9E1E8] space-y-2">
-          <button
-            type="button"
-            onClick={runCompile}
-            disabled={compiling || voiceEntries.length === 0}
-            className="bg-[#2F3E4E] text-white px-5 py-2 rounded-xl font-semibold hover:bg-[#7A8F79] transition disabled:opacity-50"
-          >
-            {compiling ? 'Compiling…' : 'Compile'}
-          </button>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-bold uppercase tracking-widest text-[#7A8F79]">End of Shift</p>
+            <button
+              type="button"
+              onClick={handleCompileClick}
+              disabled={compiling || voiceEntries.length === 0}
+              className="bg-[#2F3E4E] text-white px-5 py-2 rounded-xl font-semibold hover:bg-[#7A8F79] transition disabled:opacity-50"
+            >
+              {compiling ? 'Compiling…' : 'Compile'}
+            </button>
+          </div>
           {compileError && <p className="text-red-500 text-sm bg-red-50 rounded-lg px-3 py-2">{compileError}</p>}
         </div>
 
@@ -423,6 +436,29 @@ export default function QuickNoteForm({
           </div>
         )}
       </div>
+
+      {showCompileConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={() => setShowCompileConfirm(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6" onClick={e => e.stopPropagation()}>
+            <p className="text-sm font-bold text-[#2F3E4E] mb-2">Compile will regenerate your note</p>
+            <p className="text-xs text-[#7A8F79] leading-relaxed mb-3">
+              Shift Notes already has content. Compiling creates a fresh version from every entry you&apos;ve recorded so far — after it runs, you&apos;ll choose what to do with it:
+            </p>
+            <ul className="text-xs text-[#7A8F79] leading-relaxed mb-4 space-y-1.5 list-disc pl-4">
+              <li><strong className="text-[#2F3E4E]">Replace Shift Notes</strong> — overwrites what&apos;s currently there with the new compiled text.</li>
+              <li><strong className="text-[#2F3E4E]">Append</strong> — adds the new text after what&apos;s already there, keeping your existing content.</li>
+            </ul>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setShowCompileConfirm(false)} className="flex-1 border border-[#D9E1E8] text-[#7A8F79] py-2 rounded-lg text-sm font-semibold hover:border-[#7A8F79] transition">
+                Cancel
+              </button>
+              <button type="button" onClick={runCompile} className="flex-1 bg-[#2F3E4E] text-white py-2 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition">
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl shadow-sm p-5 space-y-3">
         <div className="flex items-center justify-between">

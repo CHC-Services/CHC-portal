@@ -72,6 +72,8 @@ export default function MyNotesPage() {
   const [searchText, setSearchText] = useState('')
   const [patientFilter, setPatientFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
 
   const patientOptions = useMemo(
     () => [...new Set(notes.map(n => n.patientName))].sort((a, b) => a.localeCompare(b)),
@@ -83,13 +85,16 @@ export default function MyNotesPage() {
     return notes.filter(n => {
       if (patientFilter && n.patientName !== patientFilter) return false
       if (statusFilter !== 'all' && statusOf(n) !== statusFilter) return false
+      const serviceDay = n.serviceDate.slice(0, 10)
+      if (dateFrom && serviceDay < dateFrom) return false
+      if (dateTo && serviceDay > dateTo) return false
       if (q) {
         const haystack = `${n.shiftNotes || ''} ${n.arrivalFindings || ''}`.toLowerCase()
         if (!haystack.includes(q)) return false
       }
       return true
     })
-  }, [notes, searchText, patientFilter, statusFilter])
+  }, [notes, searchText, patientFilter, statusFilter, dateFrom, dateTo])
 
   // Default view: drafts on top, then everything else newest-to-oldest by
   // service date. Clicking a column header switches to a plain sort by that
@@ -211,6 +216,16 @@ export default function MyNotesPage() {
                   <option value="signed">Signed</option>
                   <option value="voided">Voided</option>
                 </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Service Date From</label>
+                <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className={selectClass} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Service Date To</label>
+                <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className={selectClass} />
               </div>
             </div>
           </div>

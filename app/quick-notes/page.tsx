@@ -9,8 +9,12 @@ import { todayLocalDateString } from '../../lib/localDate'
 type Patient = { id: string; label: string }
 type Draft = { id: string; serviceDate: string; patientLabel: string }
 
+// Reads UTC components, not local time — serviceDate is stored as UTC-
+// midnight of the intended calendar day (see lib/localDate.ts's
+// formatServiceDate), so converting to a US local timezone here would roll
+// it back to the previous day for anyone west of UTC.
 function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
 }
 
 function QuickNotesApp() {

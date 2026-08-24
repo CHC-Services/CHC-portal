@@ -31,9 +31,23 @@ const O2_ROUTES = ['AirVo', 'HME', 'O2 Tank', 'Passy Muir', 'POC', 'Vent', 'Room
 const TX_NEEDED = ['Yes', 'No']
 const INTAKE_ROUTES = ['Oral', 'G-Tube', 'J-Tube', 'GJ-Split', 'NG-Tube', 'IV']
 
-const SYSTEM_PROMPT = `You are helping a home health nurse turn her own raw, dictated shift notes into a professionally-worded clinical progress note. You will be given a list of short voice-dictated entries from one shift, each with the time it was recorded, already in chronological order.
+const ARRIVAL_CUE_PHRASES = [
+  'arrival findings', 'upon arrival', 'on arrival', 'at arrival',
+  'report received from', 'report provided by', 'writer received report',
+  'received report from', 'report given by', 'handoff from',
+]
 
-You must call the submit_compiled_note tool exactly once with three things: a narrative, a list of vitals rows, and a list of intake/output rows.
+const SYSTEM_PROMPT = `You are helping a home health nurse turn her own raw, dictated shift notes into a professionally-worded clinical progress note. You will be given a list of short voice-dictated entries from one shift, each with the time it was recorded and a tag of [ARRIVAL] or [SHIFT] showing which record button she pressed, already in chronological order.
+
+You must call the submit_compiled_note tool exactly once with four things: a narrative, an arrivalFindings text, a list of vitals rows, and a list of intake/output rows.
+
+## Splitting content between narrative and arrivalFindings
+
+Every entry tagged [ARRIVAL] belongs entirely in arrivalFindings, never in the narrative.
+
+For [SHIFT]-tagged entries, ALSO watch for any of these phrases appearing anywhere inside the entry's own text, regardless of the tag: ${ARRIVAL_CUE_PHRASES.map(p => `"${p}"`).join(', ')}. If one appears, move that portion of the entry (from the cue phrase to wherever the arrival-related content ends) into arrivalFindings instead of the narrative — a nurse who forgot to press the Arrival Finding button but said one of these phrases anyway still gets it routed correctly. The rest of that same entry, if any, still goes in the narrative as normal.
+
+arrivalFindings is plain prose — a one-time initial assessment, not a chronological log — so do NOT prefix it with per-entry timestamps the way the narrative is. If nothing qualifies for arrivalFindings, return an empty string; do not manufacture content to fill it.
 
 ## Narrative
 
@@ -44,7 +58,7 @@ Your job here has exactly two parts, and they must not blur together:
 2. NEVER add any clinical finding, observation, action, medication, quantity, time, or route that was not stated or clearly implied by what was actually dictated. If a word or phrase is genuinely ambiguous — no single reading is clearly favored by context — do not guess. Leave it as close to verbatim as possible and wrap your best-effort rendering in [unclear — please review] so the nurse notices and fixes it herself.
 
 Formatting rules for the narrative:
-- One line per entry, prefixed with its time in 24-hour military format (e.g. "1732 - ...").
+- One line per entry (or per remaining portion of an entry after any arrivalFindings split), prefixed with its time in 24-hour military format (e.g. "1732 - ...").
 - Exactly one blank line between entries.
 - Preserve every quantity, time, and route exactly as stated — do not round, estimate, or normalize units.
 - Use entries' relative references to each other (e.g. "after he was done throwing up") to resolve which earlier entry they refer to, but only within what was actually said across the entries — never invent a connection that isn't supported by the entries themselves.
@@ -64,7 +78,7 @@ This is the same "never invent, only what was actually said" rule as the narrati
 - For intake route, only use one of: ${INTAKE_ROUTES.join(', ')} — leave blank if what was said doesn't clearly match one of these.
 - If nothing in the shift's entries was actually a vital sign or intake/output event, return empty arrays for both — do not manufacture rows to have something to report.`
 
-export type CompileVoiceEntry = { recordedAt: Date; rawText: string }
+export type CompileVoiceEntry = { recordedAt: Date; rawText: string; entryType: string }
 
 export type ExtractedVitalRow = {
   time: string
@@ -79,6 +93,7 @@ export type ExtractedIntakeOutputRow = {
 }
 export type CompileResult = {
   narrative: string
+  arrivalFindings: string
   vitals: ExtractedVitalRow[]
   intakeOutput: ExtractedIntakeOutputRow[]
 }
@@ -87,7 +102,8 @@ function formatEntriesForPrompt(entries: CompileVoiceEntry[]): string {
   return entries
     .map(e => {
       const time = e.recordedAt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
-      return `[${time}] ${e.rawText}`
+      const tag = e.entryType === 'arrival' ? 'ARRIVAL' : 'SHIFT'
+      return `[${time}] [${tag}] ${e.rawText}`
     })
     .join('\n')
 }
@@ -98,6 +114,7 @@ const TOOL_SCHEMA = {
   type: 'object',
   properties: {
     narrative: { type: 'string', description: 'The compiled, professionally-worded shift note text.' },
+    arrivalFindings: { type: 'string', description: 'Plain-prose arrival findings, split out per the splitting rules. Empty string if none.' },
     vitals: {
       type: 'array',
       description: 'One row per distinct vitals reading actually dictated. Empty array if none.',
@@ -124,7 +141,7 @@ const TOOL_SCHEMA = {
       },
     },
   },
-  required: ['narrative', 'vitals', 'intakeOutput'],
+  required: ['narrative', 'arrivalFindings', 'vitals', 'intakeOutput'],
 }
 
 /** Sends one Converse call over every entry in a shift together. Returns the
@@ -157,6 +174,7 @@ export async function compileVoiceEntries(entries: CompileVoiceEntry[]): Promise
 
   return {
     narrative: input?.narrative || '',
+    arrivalFindings: input?.arrivalFindings || '',
     vitals: Array.isArray(input?.vitals) ? input.vitals : [],
     intakeOutput: Array.isArray(input?.intakeOutput) ? input.intakeOutput : [],
   }

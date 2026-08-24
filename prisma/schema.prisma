@@ -1055,6 +1055,7 @@ model ProgressNoteVoiceEntry {
   progressNote   ProgressNote @relation(fields: [progressNoteId], references: [id], onDelete: Cascade)
   rawText        String // transcribed text for this one dictated entry
   recordedAt     DateTime     @default(now()) // the authoritative chronological key — entries are always saved the instant they're captured, so creation order === chronological order
+  entryType      String       @default("shift") // 'shift' | 'arrival' — which button she pressed to record it; compile also phrase-detects arrival content inside a 'shift' entry regardless of this tag
 
   @@index([progressNoteId])
 }

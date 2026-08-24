@@ -22,7 +22,7 @@ type IORow = {
   outputUrine: string | null; outputBM: string | null; outputEmesis: string | null
 }
 
-export type VoiceEntryDTO = { id: string; rawText: string; recordedAt: string }
+export type VoiceEntryDTO = { id: string; rawText: string; recordedAt: string; entryType: string }
 
 export type QuickNoteDTO = {
   id: string
@@ -99,11 +99,13 @@ export default function QuickNoteForm({
   const [compiling, setCompiling] = useState(false)
   const [compileError, setCompileError] = useState('')
   const [compilePreview, setCompilePreview] = useState<string | null>(null)
+  const [arrivalPreview, setArrivalPreview] = useState<string | null>(null)
   const [showCompileConfirm, setShowCompileConfirm] = useState(false)
   const [extractedVitals, setExtractedVitals] = useState<VitalRow[]>([])
   const [extractedIO, setExtractedIO] = useState<IORow[]>([])
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
+  const recordingTypeRef = useRef<'shift' | 'arrival'>('shift')
   const mountedRef = useRef(true)
   useEffect(() => () => { mountedRef.current = false }, [])
 
@@ -114,7 +116,12 @@ export default function QuickNoteForm({
     return { 'Content-Type': 'application/json', 'X-Quick-Access-Token': token }
   }
 
-  async function startRecording() {
+  // Tracks which button started the in-flight recording, read by
+  // uploadAndTranscribe/pollStatus (both fire from later async callbacks,
+  // not the click itself). Preserved across "Try Again"/redo so a retry
+  // keeps the same type without her having to pick again.
+  async function startRecording(entryType?: 'shift' | 'arrival') {
+    if (entryType) recordingTypeRef.current = entryType
     setPending({ phase: 'recording' })
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
     const recorder = new MediaRecorder(stream)
@@ -154,7 +161,7 @@ export default function QuickNoteForm({
   async function pollStatus(jobId: string) {
     while (mountedRef.current) {
       await new Promise(r => setTimeout(r, 2000))
-      const res = await fetch(`/api/quick-notes/notes/${note.id}/voice-entries/status/${jobId}`, { headers: headers() })
+      const res = await fetch(`/api/quick-notes/notes/${note.id}/voice-entries/status/${jobId}?entryType=${recordingTypeRef.current}`, { headers: headers() })
       if (!res.ok) { if (mountedRef.current) setPending({ phase: 'error', message: "Didn't catch that — try again." }); return }
       const body = await res.json()
       if (body.status === 'IN_PROGRESS') continue
@@ -184,10 +191,11 @@ export default function QuickNoteForm({
   }
 
   function handleCompileClick() {
-    // Only worth a confirmation when there's existing Shift Notes content
-    // that a Replace could actually overwrite — an empty note has nothing at
-    // risk, so compile runs immediately (auto-fills with no extra click).
-    if (shiftNotes.trim()) setShowCompileConfirm(true)
+    // Only worth a confirmation when there's existing Shift Notes or Arrival
+    // Findings content that a Replace could actually overwrite — an empty
+    // note has nothing at risk, so compile runs immediately (auto-fills with
+    // no extra click).
+    if (shiftNotes.trim() || arrivalFindings.trim()) setShowCompileConfirm(true)
     else runCompile()
   }
 
@@ -201,11 +209,20 @@ export default function QuickNoteForm({
       setCompileError(body.error || 'Failed to compile.')
       return
     }
-    const { narrative, vitals, intakeOutput } = await res.json()
-    if (!shiftNotes.trim()) {
-      setShiftNotes(narrative)
-    } else {
-      setCompilePreview(narrative)
+    const { narrative, arrivalFindings: newArrivalFindings, vitals, intakeOutput } = await res.json()
+    if (narrative) {
+      if (!shiftNotes.trim()) {
+        setShiftNotes(narrative)
+      } else {
+        setCompilePreview(narrative)
+      }
+    }
+    if (newArrivalFindings) {
+      if (!arrivalFindings.trim()) {
+        setArrivalFindings(newArrivalFindings)
+      } else {
+        setArrivalPreview(newArrivalFindings)
+      }
     }
 
     // Extracted table rows always go through review, even into empty
@@ -241,6 +258,12 @@ export default function QuickNoteForm({
     if (compilePreview == null) return
     setShiftNotes(prev => mode === 'replace' ? compilePreview : `${prev}\n\n${compilePreview}`)
     setCompilePreview(null)
+  }
+
+  function acceptArrivalCompile(mode: 'replace' | 'append') {
+    if (arrivalPreview == null) return
+    setArrivalFindings(prev => mode === 'replace' ? arrivalPreview : `${prev}\n\n${arrivalPreview}`)
+    setArrivalPreview(null)
   }
 
   function updateVital(i: number, field: keyof VitalRow, value: string) {
@@ -336,9 +359,14 @@ export default function QuickNoteForm({
         <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">Micro-Charting</p>
 
         {pending == null && (
-          <button type="button" onClick={startRecording} className="bg-[#2F3E4E] text-white px-5 py-2 rounded-xl font-semibold hover:bg-[#7A8F79] transition">
-            🎙 Record Entry
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" onClick={() => startRecording('shift')} className="bg-[#2F3E4E] text-white px-5 py-2 rounded-xl font-semibold hover:bg-[#7A8F79] transition">
+              🎙 Record Shift Entry
+            </button>
+            <button type="button" onClick={() => startRecording('arrival')} className="border border-[#2F3E4E] text-[#2F3E4E] px-5 py-2 rounded-xl font-semibold hover:bg-[#F4F6F5] transition">
+              🎙 Record Arrival Finding
+            </button>
+          </div>
         )}
         {pending?.phase === 'recording' && (
           <button type="button" onClick={stopRecording} className="bg-red-600 text-white px-5 py-2 rounded-xl font-semibold hover:bg-red-700 transition">
@@ -350,6 +378,9 @@ export default function QuickNoteForm({
         )}
         {pending?.phase === 'ready' && (
           <div className="border border-[#D9E1E8] bg-[#F4F6F5] rounded-lg p-3 space-y-2">
+            {pending.entry.entryType === 'arrival' && (
+              <span className="inline-block text-[10px] font-semibold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded-full">Arrival Finding</span>
+            )}
             <p className="text-sm text-[#2F3E4E]">{pending.entry.rawText}</p>
             <div className="flex items-center gap-3">
               <button type="button" onClick={dismissPending} className="text-xs font-semibold text-white bg-green-600 px-3 py-1.5 rounded-lg hover:bg-green-700 transition">Looks Good</button>
@@ -360,7 +391,7 @@ export default function QuickNoteForm({
         {pending?.phase === 'error' && (
           <div className="border border-red-200 bg-red-50 rounded-lg p-3 space-y-2">
             <p className="text-sm text-red-600">{pending.message}</p>
-            <button type="button" onClick={startRecording} className="text-xs font-semibold text-red-600">Try Again</button>
+            <button type="button" onClick={() => startRecording()} className="text-xs font-semibold text-red-600">Try Again</button>
           </div>
         )}
 
@@ -369,8 +400,11 @@ export default function QuickNoteForm({
             {voiceEntries.map(e => (
               <div key={e.id} className="flex items-start justify-between gap-2 bg-[#F4F6F5] rounded-lg px-3 py-2">
                 <div>
-                  <p className="text-xs font-semibold text-[#7A8F79]">
+                  <p className="text-xs font-semibold text-[#7A8F79] flex items-center gap-1.5">
                     {new Date(e.recordedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                    {e.entryType === 'arrival' && (
+                      <span className="text-[10px] font-semibold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded-full">Arrival Finding</span>
+                    )}
                   </p>
                   <p className="text-sm text-[#2F3E4E]">{e.rawText}</p>
                 </div>
@@ -403,6 +437,18 @@ export default function QuickNoteForm({
               <button type="button" onClick={() => acceptCompile('replace')} className="text-xs font-semibold text-white bg-[#2F3E4E] px-3 py-1.5 rounded-lg hover:bg-[#7A8F79] transition">Replace Shift Notes</button>
               <button type="button" onClick={() => acceptCompile('append')} className="text-xs font-semibold text-[#2F3E4E] border border-[#D9E1E8] px-3 py-1.5 rounded-lg hover:border-[#7A8F79] transition">Append</button>
               <button type="button" onClick={() => setCompilePreview(null)} className="text-xs text-[#7A8F79]">Discard</button>
+            </div>
+          </div>
+        )}
+
+        {arrivalPreview != null && (
+          <div className="border border-purple-200 bg-purple-50 rounded-lg p-3 space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-purple-700">Compiled Arrival Finding <span className="normal-case font-normal text-purple-700">— review and edit before accepting</span></p>
+            <textarea rows={4} className={`${inp} resize-none bg-white`} value={arrivalPreview} onChange={e => setArrivalPreview(e.target.value)} />
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={() => acceptArrivalCompile('replace')} className="text-xs font-semibold text-white bg-purple-700 px-3 py-1.5 rounded-lg hover:bg-purple-800 transition">Replace Arrival Findings</button>
+              <button type="button" onClick={() => acceptArrivalCompile('append')} className="text-xs font-semibold text-purple-700 border border-purple-200 px-3 py-1.5 rounded-lg hover:border-purple-400 transition">Append</button>
+              <button type="button" onClick={() => setArrivalPreview(null)} className="text-xs text-purple-700">Discard</button>
             </div>
           </div>
         )}
@@ -442,10 +488,10 @@ export default function QuickNoteForm({
           <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6" onClick={e => e.stopPropagation()}>
             <p className="text-sm font-bold text-[#2F3E4E] mb-2">Compile will regenerate your note</p>
             <p className="text-xs text-[#7A8F79] leading-relaxed mb-3">
-              Shift Notes already has content. Compiling creates a fresh version from every entry you&apos;ve recorded so far — after it runs, you&apos;ll choose what to do with it:
+              Shift Notes and/or Arrival Findings already has content. Compiling creates a fresh version from every entry you&apos;ve recorded so far — after it runs, you&apos;ll choose what to do with each field:
             </p>
             <ul className="text-xs text-[#7A8F79] leading-relaxed mb-4 space-y-1.5 list-disc pl-4">
-              <li><strong className="text-[#2F3E4E]">Replace Shift Notes</strong> — overwrites what&apos;s currently there with the new compiled text.</li>
+              <li><strong className="text-[#2F3E4E]">Replace</strong> — overwrites what&apos;s currently there with the new compiled text.</li>
               <li><strong className="text-[#2F3E4E]">Append</strong> — adds the new text after what&apos;s already there, keeping your existing content.</li>
             </ul>
             <div className="flex gap-2">

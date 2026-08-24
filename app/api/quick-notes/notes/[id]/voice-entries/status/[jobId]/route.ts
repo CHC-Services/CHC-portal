@@ -15,6 +15,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const identity = await getQuickAccessIdentity(req)
   if (!identity) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id, jobId } = await params
+  const entryType = new URL(req.url).searchParams.get('entryType') === 'arrival' ? 'arrival' : 'shift'
 
   const note = await prisma.progressNote.findUnique({ where: { id } })
   if (!note || !isEditableDraft(note, identity.userId)) {
@@ -32,7 +33,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   }
 
   const entry = await prisma.progressNoteVoiceEntry.create({
-    data: { progressNoteId: id, rawText: result.text },
+    data: { progressNoteId: id, rawText: result.text, entryType },
   })
 
   return NextResponse.json({ status: 'COMPLETED', entry })

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import MicroChargingTimeSaved from './MicroChargingTimeSaved'
 
 // Replaces the old "Quick-Access Shortcuts" card on the Profile page — same
 // underlying token endpoints (app/api/nurse/quick-access-tokens/*,
@@ -101,7 +102,7 @@ export default function MicroChargingDevices() {
 
   return (
     <div className="bg-white rounded-2xl shadow-sm p-6 space-y-3">
-      <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">Micro-Charting Devices</p>
+      <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">Micro-Charting</p>
       <p className="text-xs text-[#7A8F79]">Connect up to {MAX_SLOTS} devices (e.g. a phone and a tablet) to dictate progress notes on the go, without logging in each time.</p>
 
       {error && <p className="text-red-500 text-sm bg-red-50 rounded-lg px-3 py-2">{error}</p>}
@@ -166,6 +167,8 @@ export default function MicroChargingDevices() {
           )}
         </div>
       )}
+
+      <MicroChargingTimeSaved />
     </div>
   )
 }

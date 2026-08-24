@@ -352,8 +352,8 @@ export default function QuickNoteForm({
           <div className="border border-[#D9E1E8] bg-[#F4F6F5] rounded-lg p-3 space-y-2">
             <p className="text-sm text-[#2F3E4E]">{pending.entry.rawText}</p>
             <div className="flex items-center gap-3">
-              <button type="button" onClick={dismissPending} className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E]">✓ Looks good</button>
-              <button type="button" onClick={redoPending} className="text-xs font-semibold text-red-600">🔁 Re-record</button>
+              <button type="button" onClick={dismissPending} className="text-xs font-semibold text-white bg-green-600 px-3 py-1.5 rounded-lg hover:bg-green-700 transition">Looks Good</button>
+              <button type="button" onClick={redoPending} className="text-xs font-semibold text-white bg-red-600 px-3 py-1.5 rounded-lg hover:bg-red-700 transition">Re-record</button>
             </div>
           </div>
         )}
@@ -381,7 +381,7 @@ export default function QuickNoteForm({
         )}
 
         <div className="pt-2 border-t border-[#D9E1E8] space-y-2">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-end gap-3">
             <p className="text-xs font-bold uppercase tracking-widest text-[#7A8F79]">End of Shift</p>
             <button
               type="button"

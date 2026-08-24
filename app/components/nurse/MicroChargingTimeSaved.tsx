@@ -41,7 +41,7 @@ export default function MicroChargingTimeSaved() {
         <>
           <p className="text-3xl font-bold text-[#2F3E4E]">{formatDuration(data.minutesSaved)}</p>
           <p className="text-xs text-[#7A8F79] leading-relaxed">
-            Estimated typing time saved across <strong className="text-[#2F3E4E]">{data.noteCount}</strong> note{data.noteCount !== 1 ? 's' : ''} dictated instead of typed — based on a standard 40 words/minute typing pace.
+            Est. of time saved with Micro- <strong className="text-[#2F3E4E]">{data.noteCount}</strong> note{data.noteCount !== 1 ? 's' : ''} dictated instead of typed.
           </p>
         </>
       )}

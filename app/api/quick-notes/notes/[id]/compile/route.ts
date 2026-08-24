@@ -37,6 +37,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: 'No voice entries recorded yet for this note.' }, { status: 400 })
   }
 
-  const result = await compileVoiceEntries(entries)
-  return NextResponse.json(result)
+  try {
+    const result = await compileVoiceEntries(entries)
+    return NextResponse.json(result)
+  } catch (err: any) {
+    console.error('[Micro-Charting compile error]', err)
+    const detail = err?.message || 'Unknown error'
+    return NextResponse.json({ error: `Compile failed: ${detail}` }, { status: 502 })
+  }
 }

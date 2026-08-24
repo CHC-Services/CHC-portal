@@ -384,8 +384,8 @@ export default function QuickNoteForm({
 
         {compilePreview != null && (
           <div className="border border-[#D9E1E8] bg-[#F4F6F5] rounded-lg p-3 space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Compiled Result</p>
-            <p className="text-sm text-[#2F3E4E] whitespace-pre-wrap">{compilePreview}</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Compiled Result <span className="normal-case font-normal text-[#7A8F79]">— review and edit before accepting</span></p>
+            <textarea rows={8} className={`${inp} resize-none bg-white`} value={compilePreview} onChange={e => setCompilePreview(e.target.value)} />
             <div className="flex items-center gap-3">
               <button type="button" onClick={() => acceptCompile('replace')} className="text-xs font-semibold text-white bg-[#2F3E4E] px-3 py-1.5 rounded-lg hover:bg-[#7A8F79] transition">Replace Shift Notes</button>
               <button type="button" onClick={() => acceptCompile('append')} className="text-xs font-semibold text-[#2F3E4E] border border-[#D9E1E8] px-3 py-1.5 rounded-lg hover:border-[#7A8F79] transition">Append</button>

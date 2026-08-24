@@ -6,6 +6,15 @@ import { todayLocalDateString, formatServiceDate } from '../../../lib/localDate'
 import MicroChargingDevices from '../../components/nurse/MicroChargingDevices'
 import MicroChargingTimeSaved from '../../components/nurse/MicroChargingTimeSaved'
 
+// Same UTC-read approach as formatServiceDate (see lib/localDate.ts) — the
+// stored value is a calendar day, not an instant, so weekday must be read
+// from UTC components too or it can roll back a day for US-timezone viewers.
+function formatServiceDateWithDay(value: string): string {
+  const d = new Date(value)
+  const weekday = d.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })
+  return `${weekday}, ${formatServiceDate(value)}`
+}
+
 type MyNote = {
   id: string
   serviceDate: string
@@ -266,7 +275,7 @@ export default function MyNotesPage() {
                         {n.patientName}
                         {!n.activeCase && <span className="ml-1.5 text-[10px] font-normal italic text-[#7A8F79]">(no longer active)</span>}
                       </td>
-                      <td className="py-2 px-6 text-[#7A8F79] whitespace-nowrap">{formatServiceDate(n.serviceDate)}</td>
+                      <td className="py-2 px-6 text-[#7A8F79] whitespace-nowrap">{formatServiceDateWithDay(n.serviceDate)}</td>
                       <td className="py-2 px-6 text-[#7A8F79] whitespace-nowrap">{n.patientAccountNumber}</td>
                       <td className="py-2 px-6 whitespace-nowrap">{statusBadge(n)}</td>
                     </tr>

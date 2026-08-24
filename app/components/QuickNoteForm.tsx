@@ -295,7 +295,7 @@ export default function QuickNoteForm({
     <div className="space-y-4">
       <div className="bg-white rounded-2xl shadow-sm p-5 space-y-3">
         <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">{note.patientLabel}</p>
-        <div className="flex flex-wrap items-end gap-3">
+        <div className="flex flex-wrap items-start gap-3">
           <div>
             <label className={lbl}>Service Date</label>
             <input type="date" className={`${inp} w-[136px]`} value={serviceDate} onChange={e => setServiceDate(e.target.value)} />

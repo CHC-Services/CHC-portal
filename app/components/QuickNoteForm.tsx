@@ -50,7 +50,18 @@ type PendingEntry =
   | { phase: 'ready'; entry: VoiceEntryDTO }
   | { phase: 'error'; message: string }
 
-const LOCATIONS = ['Home', 'School', 'Daycare', 'Facility', 'Community', 'Other']
+// Standard CMS Place of Service codes relevant to home health/private duty
+// visits, stored as the full "<code> - <description>" string (matches
+// billing convention — e.g. "12 - Home"). Flag to Alex: this is a curated
+// subset of the official CMS POS list, not the full ~50-code set — add more
+// here if a visit type comes up that isn't covered.
+const PLACES_OF_SERVICE = [
+  '12 - Home',
+  '03 - School',
+  '13 - Assisted Living Facility',
+  '14 - Group Home',
+  '99 - Other Place of Service',
+]
 const O2_ROUTES = ['AirVo', 'HME', 'O2 Tank', 'Passy Muir', 'POC', 'Vent', 'Room Air']
 const TX_NEEDED = ['Yes', 'No']
 const INTAKE_ROUTES = ['Oral', 'G-Tube', 'J-Tube', 'GJ-Split', 'NG-Tube', 'IV']
@@ -59,6 +70,11 @@ const EMPTY_VITAL: VitalRow = { time: null, temp: null, hr: null, rr: null, skin
 const EMPTY_IO: IORow = { time: null, intakeType: null, intakeAmt: null, intakeRoute: null, outputUrine: null, outputBM: null, outputEmesis: null }
 
 const inp = 'w-full border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]'
+// Same as `inp` but without w-full, for fields given an explicit width —
+// combining `inp` (which bakes in w-full) with a width utility is unreliable
+// since both are equal-specificity classes and whichever Tailwind happens to
+// generate later in the stylesheet wins, regardless of className order.
+const compactInp = 'border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]'
 const lbl = 'block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1'
 const cellInp = 'w-full min-w-[4.5rem] border border-[#D9E1E8] rounded px-1.5 py-1 text-xs text-[#2F3E4E] focus:outline-none focus:ring-1 focus:ring-[#7A8F79]'
 const th = 'px-1.5 py-1 text-left whitespace-nowrap'
@@ -78,7 +94,7 @@ export default function QuickNoteForm({
   // Fully derived from Shift Start/End, not independent state — one less
   // thing for her to fill out (or get wrong) manually.
   const totalHours = computeShiftHours(shiftStartTime, shiftEndTime)
-  const [location, setLocation] = useState(note.location || 'Home')
+  const [location, setLocation] = useState(note.location || '12 - Home')
   const [arrivalFindings, setArrivalFindings] = useState(note.arrivalFindings || '')
   const [shiftNotes, setShiftNotes] = useState(note.shiftNotes || '')
   const [vitals, setVitals] = useState<VitalRow[]>(note.vitals.length ? note.vitals : [{ ...EMPTY_VITAL }])
@@ -95,6 +111,8 @@ export default function QuickNoteForm({
 
   // Micro-Charting state
   const [voiceEntries, setVoiceEntries] = useState<VoiceEntryDTO[]>(note.voiceEntries)
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null)
+  const [editingText, setEditingText] = useState('')
   const [pending, setPending] = useState<PendingEntry | null>(null)
   const [compiling, setCompiling] = useState(false)
   const [compileError, setCompileError] = useState('')
@@ -173,7 +191,10 @@ export default function QuickNoteForm({
     }
   }
 
-  function dismissPending() {
+  async function dismissPending() {
+    if (pending?.phase === 'ready') {
+      await updateEntryText(pending.entry.id, pending.entry.rawText)
+    }
     setPending(null)
   }
 
@@ -188,6 +209,18 @@ export default function QuickNoteForm({
   async function deleteEntry(entryId: string) {
     setVoiceEntries(rows => rows.filter(e => e.id !== entryId))
     await fetch(`/api/quick-notes/notes/${note.id}/voice-entries/${entryId}`, { method: 'DELETE', headers: headers() })
+  }
+
+  // Fixes a mis-transcribed word without re-recording the whole clip — used
+  // both when accepting the just-recorded entry and when editing an older
+  // one already sitting in the list below.
+  async function updateEntryText(entryId: string, rawText: string) {
+    setVoiceEntries(rows => rows.map(e => e.id === entryId ? { ...e, rawText } : e))
+    await fetch(`/api/quick-notes/notes/${note.id}/voice-entries/${entryId}`, {
+      method: 'PATCH',
+      headers: jsonHeaders(),
+      body: JSON.stringify({ rawText }),
+    })
   }
 
   function handleCompileClick() {
@@ -327,30 +360,32 @@ export default function QuickNoteForm({
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-2xl shadow-sm p-5 space-y-3">
-        <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">{note.patientLabel}</p>
+        <div className="flex flex-wrap items-start gap-x-6 gap-y-1">
+          <p className="text-sm text-[#2F3E4E]"><span className="font-bold uppercase tracking-widest">Patient:</span> {note.patientLabel}</p>
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">POS:</span>
+            <select className={`${compactInp} w-auto`} value={location} onChange={e => setLocation(e.target.value)}>
+              {/* Carries forward a pre-existing value (from before this was a standardized POS list) as its own option, so opening an old note never silently swaps it for a different value on save. */}
+              {(PLACES_OF_SERVICE.includes(location) ? PLACES_OF_SERVICE : [location, ...PLACES_OF_SERVICE]).map(l => <option key={l} value={l}>{l}</option>)}
+            </select>
+          </div>
+        </div>
         <div className="flex flex-wrap items-start gap-3">
           <div>
             <label className={lbl}>Service Date</label>
-            <input type="date" className={`${inp} w-[136px]`} value={serviceDate} onChange={e => setServiceDate(e.target.value)} />
+            <input type="date" className={`${compactInp} w-[136px]`} value={serviceDate} onChange={e => setServiceDate(e.target.value)} />
           </div>
           <div>
             <label className={lbl}>Shift Start</label>
-            <input className={`${inp} w-[104px]`} placeholder="08:00 AM" value={shiftStartTime} onChange={e => setShiftStartTime(e.target.value)} />
+            <input className={`${compactInp} w-[92px]`} placeholder="08:00 AM" value={shiftStartTime} onChange={e => setShiftStartTime(e.target.value)} />
           </div>
           <div>
             <label className={lbl}>Shift End</label>
-            <input className={`${inp} w-[104px]`} placeholder="08:00 PM" value={shiftEndTime} onChange={e => setShiftEndTime(e.target.value)} />
+            <input className={`${compactInp} w-[92px]`} placeholder="08:00 PM" value={shiftEndTime} onChange={e => setShiftEndTime(e.target.value)} />
           </div>
           <div>
             <label className={lbl}>Ttl Hrs</label>
-            <p className="text-sm font-bold text-[#2F3E4E] p-2 w-16">{totalHours ?? '—'}</p>
-          </div>
-          <div>
-            <label className={lbl}>Location</label>
-            <select className={`${inp} w-36`} value={location} onChange={e => setLocation(e.target.value)}>
-              {/* Carries forward a pre-existing free-text location (from before this was a dropdown) as its own option, so opening an old note never silently swaps it for a different value on save. */}
-              {(LOCATIONS.includes(location) ? LOCATIONS : [location, ...LOCATIONS]).map(l => <option key={l} value={l}>{l}</option>)}
-            </select>
+            <p className="text-sm font-bold text-[#2F3E4E] p-2 w-14">{totalHours ?? '—'}</p>
           </div>
         </div>
       </div>
@@ -381,7 +416,13 @@ export default function QuickNoteForm({
             {pending.entry.entryType === 'arrival' && (
               <span className="inline-block text-[10px] font-semibold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded-full">Arrival Finding</span>
             )}
-            <p className="text-sm text-[#2F3E4E]">{pending.entry.rawText}</p>
+            <textarea
+              rows={3}
+              className={`${inp} resize-none bg-white`}
+              value={pending.entry.rawText}
+              onChange={e => setPending({ phase: 'ready', entry: { ...pending.entry, rawText: e.target.value } })}
+            />
+            <p className="text-[10px] text-[#7A8F79]">Fix a mis-transcribed word here, or Re-record if it&apos;s more than that.</p>
             <div className="flex items-center gap-3">
               <button type="button" onClick={dismissPending} className="text-xs font-semibold text-white bg-green-600 px-3 py-1.5 rounded-lg hover:bg-green-700 transition">Looks Good</button>
               <button type="button" onClick={redoPending} className="text-xs font-semibold text-white bg-red-600 px-3 py-1.5 rounded-lg hover:bg-red-700 transition">Re-record</button>
@@ -398,17 +439,38 @@ export default function QuickNoteForm({
         {voiceEntries.length > 0 && (
           <div className="space-y-1.5">
             {voiceEntries.map(e => (
-              <div key={e.id} className="flex items-start justify-between gap-2 bg-[#F4F6F5] rounded-lg px-3 py-2">
-                <div>
+              <div key={e.id} className="bg-[#F4F6F5] rounded-lg px-3 py-2 space-y-1.5">
+                <div className="flex items-start justify-between gap-2">
                   <p className="text-xs font-semibold text-[#7A8F79] flex items-center gap-1.5">
                     {new Date(e.recordedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                     {e.entryType === 'arrival' && (
                       <span className="text-[10px] font-semibold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded-full">Arrival Finding</span>
                     )}
                   </p>
-                  <p className="text-sm text-[#2F3E4E]">{e.rawText}</p>
+                  {editingEntryId !== e.id && (
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button type="button" onClick={() => { setEditingEntryId(e.id); setEditingText(e.rawText) }} className="text-[#7A8F79] text-xs hover:text-[#2F3E4E]">Edit</button>
+                      <button type="button" onClick={() => deleteEntry(e.id)} className="text-red-500 text-xs">✕</button>
+                    </div>
+                  )}
                 </div>
-                <button type="button" onClick={() => deleteEntry(e.id)} className="text-red-500 text-xs shrink-0">✕</button>
+                {editingEntryId === e.id ? (
+                  <div className="space-y-1.5">
+                    <textarea rows={3} className={`${inp} resize-none bg-white`} value={editingText} onChange={ev => setEditingText(ev.target.value)} />
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={async () => { await updateEntryText(e.id, editingText); setEditingEntryId(null) }}
+                        className="text-xs font-semibold text-white bg-[#2F3E4E] px-3 py-1 rounded-lg hover:bg-[#7A8F79] transition"
+                      >
+                        Save
+                      </button>
+                      <button type="button" onClick={() => setEditingEntryId(null)} className="text-xs text-[#7A8F79]">Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-[#2F3E4E]">{e.rawText}</p>
+                )}
               </div>
             ))}
           </div>

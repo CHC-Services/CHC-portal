@@ -12,7 +12,7 @@ type Session = {
 // (authorized clinical/work relationship). Guardian: GuardianPatient row exists
 // (no isActive field on that model — row presence is the signal; this is the
 // patient's case-management relationship, not a work-authorization one).
-async function isLinkedToPatient(session: Session, patientId: string): Promise<boolean> {
+export async function isLinkedToPatient(session: Session, patientId: string): Promise<boolean> {
   if (session.role === 'admin') return true
   if (session.role === 'nurse' && session.nurseProfileId) {
     const link = await prisma.nursePatient.findUnique({
@@ -28,6 +28,11 @@ async function isLinkedToPatient(session: Session, patientId: string): Promise<b
   }
   return false
 }
+
+// Alias for use at route/layout boundaries (e.g. app/patient/[id]/layout.tsx)
+// where "can this session access this patient at all" reads more clearly
+// than the internal helper name.
+export const canAccessPatient = isLinkedToPatient
 
 export async function canViewSchedule(session: Session, patientId: string) {
   return isLinkedToPatient(session, patientId)

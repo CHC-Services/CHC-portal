@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../../lib/prisma'
 import { verifyToken } from '../../../../lib/auth'
-import { getNurseCalendarFeed } from '../../../../lib/calendarFeed'
+import { getNurseCalendarFeed, parseDateRangeParams } from '../../../../lib/calendarFeed'
 
 function getSession(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -13,12 +13,14 @@ export async function GET(req: Request) {
   const session = getSession(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const range = parseDateRangeParams(new URL(req.url))
+
   // Non-nurse roles (admin/provider/biller browsing /portal or /resources)
   // still see role-targeted GlobalEvent broadcasts, just nothing patient-scoped.
   if (!session.nurseProfileId) {
     const now = new Date()
     const globalEvents = await prisma.globalEvent.findMany({
-      where: { eventDate: { gte: now } },
+      where: { eventDate: range.start || range.end ? { gte: range.start, lte: range.end } : { gte: now } },
       orderBy: { eventDate: 'asc' },
     })
     const items = globalEvents
@@ -27,6 +29,6 @@ export async function GET(req: Request) {
     return NextResponse.json({ items })
   }
 
-  const items = await getNurseCalendarFeed(session.nurseProfileId, session)
+  const items = await getNurseCalendarFeed(session.nurseProfileId, session, range)
   return NextResponse.json({ items })
 }

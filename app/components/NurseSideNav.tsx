@@ -7,6 +7,7 @@ import UnreadBadge from './messaging/UnreadBadge'
 
 const links = [
   { href: '/nurse',           label: 'Dashboard' },
+  { href: '/nurse/calendar',  label: 'Calendar'  },
   { href: '/nurse/hours',     label: 'Hours'     },
   { href: '/nurse/claims',    label: 'Claims'    },
   { href: '/nurse/patients',  label: 'Patients'  },

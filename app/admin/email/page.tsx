@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AdminNav from '../../components/AdminNav'
@@ -34,19 +34,6 @@ type NurseProfile = {
   lastName: string | null; npiNumber: string | null; phone: string | null
 }
 
-type PPSettings = {
-  'promptPay.reminderEnabled': string
-  'promptPay.triggerDays': string
-  'promptPay.fromEmail': string
-  'promptPay.toEmail': string
-  'promptPay.formUrl': string
-  'promptPay.formS3Key': string
-  'promptPay.formFileName': string
-  'promptPay.formLinkName': string
-  'promptPay.subjectTemplate': string
-  'promptPay.customNote': string
-}
-
 type LatestLog = {
   id: string
   sentAt: string
@@ -57,19 +44,6 @@ type LatestLog = {
 } | null
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const PP_DEFAULTS: PPSettings = {
-  'promptPay.reminderEnabled': 'true',
-  'promptPay.triggerDays': '28',
-  'promptPay.fromEmail': 'alerts@cominghomecare.com',
-  'promptPay.toEmail': 'support@cominghomecare.com',
-  'promptPay.formUrl': '',
-  'promptPay.formS3Key': '',
-  'promptPay.formFileName': '',
-  'promptPay.formLinkName': 'Prompt Pay Interest Form',
-  'promptPay.subjectTemplate': 'Prompt Pay Alert: Claim {claimId} — {provider} — Day 30 on {day30}',
-  'promptPay.customNote': '',
-}
-
 const MSG_CATEGORIES = ['General', 'Claims', 'Invoices', 'Events']
 const SYSTEM_AUDIENCES = [
   { value: 'All Users',      label: 'All Users',       desc: 'Every logged-in user' },
@@ -599,17 +573,6 @@ If you have any questions about your hours or billing, reply to this email and w
   const [wrSaved, setWrSaved] = useState(false)
   const [wrError, setWrError] = useState('')
 
-  // ── Prompt Pay settings state ────────────────────────────────────────────
-  const [pp, setPp] = useState<PPSettings>(PP_DEFAULTS)
-  const [ppSaving, setPpSaving] = useState(false)
-  const [ppSaved, setPpSaved] = useState(false)
-  const [ppError, setPpError] = useState('')
-  const [uploading, setUploading] = useState(false)
-  const [uploadMsg, setUploadMsg] = useState('')
-  const [testSending, setTestSending] = useState(false)
-  const [testMsg, setTestMsg] = useState('')
-  const fileRef = useRef<HTMLInputElement>(null)
-
   // ── Portal messages state ────────────────────────────────────────────────
   const [messages, setMessages] = useState<PortalMessage[]>([])
   const [msgLoading, setMsgLoading] = useState(true)
@@ -644,10 +607,6 @@ If you have any questions about your hours or billing, reply to this email and w
           body:      data['weeklyReminder.body']      || prev.body,
         }))
       })
-
-    fetch('/api/admin/prompt-pay-settings', { credentials: 'include' })
-      .then(r => r.ok ? r.json() : {})
-      .then((data: Partial<PPSettings>) => { setPp(prev => ({ ...prev, ...data })) })
 
     fetch('/api/admin/email/log/latest', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
@@ -710,11 +669,6 @@ If you have any questions about your hours or billing, reply to this email and w
     }
   }
 
-  // ── Prompt Pay helpers ───────────────────────────────────────────────────
-  function ppSet(key: keyof PPSettings, value: string) {
-    setPp(prev => ({ ...prev, [key]: value })); setPpSaved(false)
-  }
-
   async function saveWrSettings(e: React.FormEvent) {
     e.preventDefault(); setWrSaving(true); setWrError(''); setWrSaved(false)
     const res = await fetch('/api/admin/weekly-reminder-settings', {
@@ -729,58 +683,6 @@ If you have any questions about your hours or billing, reply to this email and w
     setWrSaving(false)
     if (res.ok) setWrSaved(true)
     else setWrError('Failed to save settings.')
-  }
-
-  async function savePpSettings(e: React.FormEvent) {
-    e.preventDefault(); setPpSaving(true); setPpError(''); setPpSaved(false)
-    const res = await fetch('/api/admin/prompt-pay-settings', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-      body: JSON.stringify({ settings: pp }),
-    })
-    setPpSaving(false)
-    if (res.ok) setPpSaved(true)
-    else setPpError('Failed to save settings.')
-  }
-
-  async function uploadForm(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]; if (!file) return
-    setUploading(true); setUploadMsg('')
-    const fd = new FormData(); fd.append('file', file)
-    const res = await fetch('/api/admin/prompt-pay-settings/upload', { method: 'POST', credentials: 'include', body: fd })
-    setUploading(false)
-    if (res.ok) {
-      const data = await res.json()
-      setPp(prev => ({ ...prev, 'promptPay.formS3Key': 'set', 'promptPay.formFileName': data.fileName, 'promptPay.formUrl': '' }))
-      setUploadMsg(`Uploaded: ${data.fileName}`)
-    } else {
-      const data = await res.json(); setUploadMsg(data.error || 'Upload failed.')
-    }
-    e.target.value = ''
-  }
-
-  async function deleteForm() {
-    if (!confirm('Remove the uploaded form? This cannot be undone.')) return
-    const res = await fetch('/api/admin/prompt-pay-settings/upload', { method: 'DELETE', credentials: 'include' })
-    if (res.ok) {
-      setPp(prev => ({ ...prev, 'promptPay.formS3Key': '', 'promptPay.formFileName': '' }))
-      setUploadMsg('Form removed.')
-    }
-  }
-
-  async function previewForm() {
-    const res = await fetch('/api/admin/prompt-pay-settings/upload', { credentials: 'include' })
-    const data = await res.json(); if (data.url) window.open(data.url, '_blank')
-  }
-
-  async function sendTestEmail() {
-    setTestSending(true); setTestMsg('')
-    const res = await fetch('/api/cron/claim-reminders-test', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-      body: JSON.stringify({ settings: pp }),
-    })
-    setTestSending(false)
-    if (res.ok) setTestMsg('Test email sent — check your inbox.')
-    else setTestMsg('Test send failed.')
   }
 
   // ── Portal message helpers ───────────────────────────────────────────────
@@ -829,9 +731,6 @@ If you have any questions about your hours or billing, reply to this email and w
     }
     return a
   }
-
-  const hasUploadedForm = !!pp['promptPay.formS3Key']
-  const hasExternalUrl  = !!pp['promptPay.formUrl'].trim()
 
   function fmtLog(iso: string) {
     return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
@@ -885,7 +784,6 @@ If you have any questions about your hours or billing, reply to this email and w
                       <option value="weekly_reminder">Weekly Hours Reminder</option>
                       <option value="doc_expiring">Doc Expiration (25 days)</option>
                       <option value="doc_expiring_urgent">Doc Expiration — Urgent (4 days)</option>
-                      <option value="prompt_pay">Prompt Pay Interest Alert</option>
                     </optgroup>
                     <optgroup label="Claims / Documents">
                       <option value="new_claim">New Claim Added</option>
@@ -1227,137 +1125,6 @@ If you have any questions about your hours or billing, reply to this email and w
                         {wrSaving ? 'Saving…' : 'Save Settings'}
                       </button>
                     </div>
-                  </div>
-                </div>
-              </form>
-
-              {/* ── Prompt Pay Reminder Settings ───────────────────────────── */}
-              <form onSubmit={savePpSettings}>
-                <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                  <div className="bg-[#2F3E4E] px-6 py-4 flex items-center justify-between">
-                    <div>
-                      <h2 className="text-base font-bold text-white">Prompt Pay Interest Reminders</h2>
-                      <p className="text-xs text-[#D9E1E8] mt-0.5">Automated alert sent when a claim reaches N days since Submit Date</p>
-                    </div>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <span className="text-xs font-semibold text-[#D9E1E8]">{pp['promptPay.reminderEnabled'] === 'true' ? 'Enabled' : 'Disabled'}</span>
-                      <div onClick={() => ppSet('promptPay.reminderEnabled', pp['promptPay.reminderEnabled'] === 'true' ? 'false' : 'true')}
-                        className={`relative w-10 h-5 rounded-full transition-colors cursor-pointer ${pp['promptPay.reminderEnabled'] === 'true' ? 'bg-[#7A8F79]' : 'bg-[#4a5568]'}`}>
-                        <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${pp['promptPay.reminderEnabled'] === 'true' ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                      </div>
-                    </label>
-                  </div>
-                  <div className="p-6 space-y-6">
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-widest text-[#7A8F79] mb-4">Alert Routing</p>
-                      <div className="grid grid-cols-3 gap-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Trigger Day</label>
-                          <div className="flex items-center gap-2">
-                            <input type="number" min="1" max="365" value={pp['promptPay.triggerDays']} onChange={e => ppSet('promptPay.triggerDays', e.target.value)}
-                              className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
-                            <span className="text-xs text-[#7A8F79] whitespace-nowrap">days after submit</span>
-                          </div>
-                          <p className="text-[11px] text-[#7A8F79] mt-1">Default: 28 (email fires, day 30 is deadline)</p>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">From Email</label>
-                          <input type="email" value={pp['promptPay.fromEmail']} onChange={e => ppSet('promptPay.fromEmail', e.target.value)} placeholder="alerts@cominghomecare.com"
-                            className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Send Alert To</label>
-                          <input type="email" value={pp['promptPay.toEmail']} onChange={e => ppSet('promptPay.toEmail', e.target.value)} placeholder="support@cominghomecare.com"
-                            className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="border-t border-[#D9E1E8] pt-5">
-                      <p className="text-xs font-bold uppercase tracking-widest text-[#7A8F79] mb-4">Email Content</p>
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Subject Line Template</label>
-                          <input type="text" value={pp['promptPay.subjectTemplate']} onChange={e => ppSet('promptPay.subjectTemplate', e.target.value)}
-                            className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
-                          <p className="text-[11px] text-[#7A8F79] mt-1">
-                            Variables: <code className="bg-gray-100 px-1 rounded">{'{claimId}'}</code> · <code className="bg-gray-100 px-1 rounded">{'{provider}'}</code> · <code className="bg-gray-100 px-1 rounded">{'{day30}'}</code>
-                          </p>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Custom Note <span className="font-normal text-[#7A8F79]">(optional — appended to email body)</span></label>
-                          <textarea value={pp['promptPay.customNote']} onChange={e => ppSet('promptPay.customNote', e.target.value)} rows={3}
-                            placeholder="e.g. Please file the interest form immediately and track in the portal."
-                            className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] resize-none" />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="border-t border-[#D9E1E8] pt-5">
-                      <p className="text-xs font-bold uppercase tracking-widest text-[#7A8F79] mb-4">Prompt Pay Interest Form</p>
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">Button / Link Name in Email</label>
-                          <input type="text" value={pp['promptPay.formLinkName']} onChange={e => ppSet('promptPay.formLinkName', e.target.value)} placeholder="Prompt Pay Interest Form"
-                            className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-[#2F3E4E] mb-1">
-                            Option A: External Link URL
-                            {hasUploadedForm && <span className="ml-2 text-amber-600 font-normal">(disabled — uploaded file takes priority)</span>}
-                          </label>
-                          <input type="url" value={pp['promptPay.formUrl']} onChange={e => ppSet('promptPay.formUrl', e.target.value)}
-                            placeholder="https://example.com/prompt-pay-interest-form.pdf" disabled={hasUploadedForm}
-                            className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] disabled:opacity-40 disabled:bg-gray-50" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-[#2F3E4E] mb-2">
-                            Option B: Upload Form File
-                            {hasExternalUrl && !hasUploadedForm && <span className="ml-2 text-amber-600 font-normal">(will override external URL)</span>}
-                          </label>
-                          {hasUploadedForm ? (
-                            <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-lg px-4 py-3">
-                              <span className="text-green-700 text-sm font-semibold flex-1 truncate">📎 {pp['promptPay.formFileName'] || 'Uploaded form'}</span>
-                              <button type="button" onClick={previewForm} className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] font-semibold transition">Preview</button>
-                              <span className="text-[#D9E1E8]">|</span>
-                              <label className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] font-semibold transition cursor-pointer">
-                                Replace
-                                <input ref={fileRef} type="file" accept=".pdf,.png,.jpg,.jpeg" className="hidden" onChange={uploadForm} disabled={uploading} />
-                              </label>
-                              <span className="text-[#D9E1E8]">|</span>
-                              <button type="button" onClick={deleteForm} className="text-xs text-red-400 hover:text-red-600 font-semibold transition">Remove</button>
-                            </div>
-                          ) : (
-                            <label className={`flex items-center gap-3 border-2 border-dashed border-[#D9E1E8] rounded-lg px-4 py-4 cursor-pointer hover:border-[#7A8F79] transition ${uploading ? 'opacity-50 cursor-default' : ''}`}>
-                              <span className="text-2xl">📤</span>
-                              <div>
-                                <p className="text-sm font-semibold text-[#2F3E4E]">{uploading ? 'Uploading…' : 'Upload PDF, PNG, or JPEG'}</p>
-                                <p className="text-xs text-[#7A8F79]">Max 50 MB · Stored securely in S3</p>
-                              </div>
-                              <input ref={fileRef} type="file" accept=".pdf,.png,.jpg,.jpeg" className="hidden" onChange={uploadForm} disabled={uploading} />
-                            </label>
-                          )}
-                          {uploadMsg && (
-                            <p className={`mt-2 text-xs font-semibold ${uploadMsg.includes('fail') || uploadMsg.includes('failed') ? 'text-red-500' : 'text-green-600'}`}>{uploadMsg}</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="border-t border-[#D9E1E8] pt-5 flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        {ppSaved && <span className="text-xs font-semibold text-green-600">✓ Settings saved</span>}
-                        {ppError && <span className="text-xs font-semibold text-red-500">{ppError}</span>}
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <button type="button" onClick={sendTestEmail} disabled={testSending}
-                          className="px-4 py-2 rounded-lg border border-[#D9E1E8] text-sm font-semibold text-[#7A8F79] hover:border-[#7A8F79] hover:text-[#2F3E4E] transition disabled:opacity-50">
-                          {testSending ? 'Sending…' : 'Send Test Email'}
-                        </button>
-                        <button type="submit" disabled={ppSaving}
-                          className="px-5 py-2 rounded-lg bg-[#2F3E4E] text-white text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-60">
-                          {ppSaving ? 'Saving…' : 'Save Settings'}
-                        </button>
-                      </div>
-                    </div>
-                    {testMsg && <p className={`text-xs font-semibold ${testMsg.includes('failed') ? 'text-red-500' : 'text-green-600'}`}>{testMsg}</p>}
                   </div>
                 </div>
               </form>

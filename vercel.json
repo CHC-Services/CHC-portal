@@ -14,10 +14,6 @@
       "schedule": "0 14 * * *"
     },
     {
-      "path": "/api/cron/claim-reminders",
-      "schedule": "0 5 * * *"
-    },
-    {
       "path": "/api/cron/backup-claims",
       "schedule": "0 3 * * *"
     },

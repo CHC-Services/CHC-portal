@@ -40,7 +40,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   // Upsert every claim from the snapshot
   for (const claim of snapshotClaims) {
-    const { id: cid, createdAt, updatedAt, nurseId, ...fields } = claim
+    // submitDateReminderSentAt is destructured out and discarded — older
+    // snapshots (from before the Prompt Pay reminder was removed) still
+    // carry it, but the column no longer exists on Claim, so it must not
+    // be spread into the restore payload.
+    const { id: cid, createdAt, updatedAt, nurseId, submitDateReminderSentAt: _dropped, ...fields } = claim
 
     // Parse date strings back to Date objects for DateTime fields
     const parseDate = (v: string | null | undefined) => (v ? new Date(v) : null)
@@ -54,7 +58,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       secondaryPaidDate:    parseDate(fields.secondaryPaidDate),
       dateFullyFinalized:   parseDate(fields.dateFullyFinalized),
       submitDate:           parseDate(fields.submitDate),
-      submitDateReminderSentAt: parseDate(fields.submitDateReminderSentAt),
     }
 
     await prisma.claim.upsert({

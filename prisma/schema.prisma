@@ -673,6 +673,11 @@ model CarcCode {
   @@index([active])
 }
 
+// Version history of generated "Prompt Pay Violation & Interest Request"
+// letters (app/api/admin/prompt-pay-letter) — the manual, on-demand NY
+// §3224-a letter tool, kept intact. Unrelated to the removed automated
+// Prompt Pay reminder email despite the shared name; that reminder's
+// uploaded form lived in SystemSetting keys, not here.
 model PromptPayDocument {
   id        String   @id @default(uuid())
   claimRef  String // claimId text e.g. "CLM-0042"
@@ -712,9 +717,6 @@ model Claim {
   hours        Float?
   claimStage   String?
   submitDate   DateTime? // date the claim was submitted to insurance
-
-  // Prompt Pay tracking
-  submitDateReminderSentAt DateTime? // set when the 28-day alert email fires
 
   // Primary Insurance
   primaryPayer      String?

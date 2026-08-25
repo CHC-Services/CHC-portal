@@ -26,7 +26,12 @@ export async function GET(req: Request) {
 
   const [nurses, subjectRow, bodyRow] = await Promise.all([
     (prisma.nurseProfile.findMany as any)({
-      where: { receiveNotifications: true, isDemo: false },
+      // user.role check matters: a NurseProfile row now gets lazily created
+      // for admin/guardian accounts too (shared profile-card backend, see
+      // lib/profileCardData.ts), so without this an admin/guardian who's
+      // simply visited their own Profile page would start getting the
+      // nurse hours-submission reminder.
+      where: { receiveNotifications: true, isDemo: false, user: { role: 'nurse' } },
       include: { user: { select: { email: true } } },
     }),
     (prisma.systemSetting.findUnique as any)({ where: { key: 'weeklyReminder.subject' } }),

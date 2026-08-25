@@ -44,8 +44,12 @@ export async function flushNurseNotifications({
   }
   if (nurseIds.length === 0) return { sent: 0, skipped: 0 }
 
+  // user.role check is defense-in-depth: nurseIds here only ever come from
+  // genuinely nurse-scoped PendingNotification rows today, but NurseProfile
+  // itself is no longer nurse-exclusive (see weekly-reminder's comment) —
+  // guard it here too so this can't silently start leaking the same way.
   const profiles = await prisma.nurseProfile.findMany({
-    where: { id: { in: nurseIds } },
+    where: { id: { in: nurseIds }, user: { role: 'nurse' } },
     include: { user: { select: { email: true } } },
   })
 

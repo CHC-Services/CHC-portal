@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../../lib/prisma'
 import { verifyToken } from '../../../../lib/auth'
-import { runClaimReminders } from '../../../../lib/runClaimReminders'
 import { deriveCommercialClaimCycle } from '../../../../lib/medicaidPayCycle'
 import { queueClaimNotification } from '../../../../lib/queueClaimNotification'
 import { triggerOpportunisticFlush } from '../../../../lib/flushNurseNotifications'
@@ -100,9 +99,6 @@ export async function POST(req: Request) {
       nurse: { select: { displayName: true, firstName: true, lastName: true, accountNumber: true, isDemo: true } },
     },
   })
-
-  // Check if this new claim (or any existing ones) now qualify for a prompt-pay reminder
-  runClaimReminders().catch(() => {})
 
   // Notify the nurse — as "paid" if this claim was entered already-finalized
   // (e.g. a historical claim), otherwise as a new claim. Never both.

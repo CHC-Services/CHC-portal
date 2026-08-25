@@ -28,6 +28,12 @@ const CARDS = [
     description: 'Direct messaging with providers.',
     icon: '💬',
   },
+  {
+    href: '/admin/comms/notifications',
+    title: 'Notifications',
+    description: 'Reference: every automated email/SMS the site sends, and who receives it.',
+    icon: '🔔',
+  },
 ]
 
 export default function CommsPage() {

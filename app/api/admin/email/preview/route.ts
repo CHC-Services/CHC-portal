@@ -18,7 +18,6 @@ import {
   sendNurseSharedDocumentAlert,
   sendBulkImportSummary,
   sendEdiSummaryEmail,
-  sendPromptPayReminder,
 } from '../../../../../lib/sendEmail'
 import { prisma } from '../../../../../lib/prisma'
 
@@ -277,22 +276,6 @@ export async function POST(req: Request) {
           claimsUnmatched: 1,
         },
         dryRun: false,
-      })
-      break
-    }
-
-    case 'prompt_pay': {
-      ok = await sendPromptPayReminder({
-        toEmail: to,
-        fromEmail: 'alerts@cominghomecare.com',
-        providerName: adminName,
-        claimId: 'CLM-PREVIEW-042',
-        submitDate: new Date('2026-03-23T00:00:00Z'),
-        day30: new Date('2026-04-22T00:00:00Z'),
-        formLinkName: 'Prompt Pay Interest Form',
-        formUrl: null,
-        subjectTemplate: 'Prompt Pay Alert: Claim {claimId} — {provider} — Day 30 on {day30}',
-        customNote: 'This is a preview of the Prompt Pay Interest alert email.',
       })
       break
     }

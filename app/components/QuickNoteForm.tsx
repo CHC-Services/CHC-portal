@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { mergeRowsByTime, computeShiftHours } from '../../lib/parseClockTime'
+import CaptureAudio from './CaptureAudio'
 
 function toDateInputValue(iso: string) {
   return iso ? iso.slice(0, 10) : ''
@@ -121,8 +122,6 @@ export default function QuickNoteForm({
   const [showCompileConfirm, setShowCompileConfirm] = useState(false)
   const [extractedVitals, setExtractedVitals] = useState<VitalRow[]>([])
   const [extractedIO, setExtractedIO] = useState<IORow[]>([])
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const chunksRef = useRef<Blob[]>([])
   const recordingTypeRef = useRef<'shift' | 'arrival'>('shift')
   const mountedRef = useRef(true)
   useEffect(() => () => { mountedRef.current = false }, [])
@@ -137,25 +136,16 @@ export default function QuickNoteForm({
   // Tracks which button started the in-flight recording, read by
   // uploadAndTranscribe/pollStatus (both fire from later async callbacks,
   // not the click itself). Preserved across "Try Again"/redo so a retry
-  // keeps the same type without her having to pick again.
-  async function startRecording(entryType?: 'shift' | 'arrival') {
+  // keeps the same type without her having to pick again. Actual mic/
+  // MediaRecorder ownership lives in CaptureAudio now — this just flips
+  // which UI phase is showing.
+  function startRecording(entryType?: 'shift' | 'arrival') {
     if (entryType) recordingTypeRef.current = entryType
     setPending({ phase: 'recording' })
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    const recorder = new MediaRecorder(stream)
-    chunksRef.current = []
-    recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
-    recorder.onstop = () => {
-      stream.getTracks().forEach(t => t.stop())
-      const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' })
-      uploadAndTranscribe(blob)
-    }
-    mediaRecorderRef.current = recorder
-    recorder.start()
   }
 
-  function stopRecording() {
-    mediaRecorderRef.current?.stop()
+  function handleCaptureSave(blob: Blob) {
+    uploadAndTranscribe(blob)
   }
 
   async function uploadAndTranscribe(blob: Blob) {
@@ -404,9 +394,7 @@ export default function QuickNoteForm({
           </div>
         )}
         {pending?.phase === 'recording' && (
-          <button type="button" onClick={stopRecording} className="bg-red-600 text-white px-5 py-2 rounded-xl font-semibold hover:bg-red-700 transition">
-            ■ Stop Recording
-          </button>
+          <CaptureAudio onSave={handleCaptureSave} onCancel={() => setPending(null)} />
         )}
         {pending?.phase === 'transcribing' && (
           <p className="text-sm text-[#7A8F79] italic">Transcribing…</p>

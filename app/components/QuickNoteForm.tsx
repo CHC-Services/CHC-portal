@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { mergeRowsByTime, computeShiftHours } from '../../lib/parseClockTime'
+import { O2_ROUTES, TX_NEEDED, INTAKE_ROUTES, PLACES_OF_SERVICE } from '../../lib/clinicalOptions'
 import CaptureAudio from './CaptureAudio'
 
 function toDateInputValue(iso: string) {
@@ -51,21 +52,6 @@ type PendingEntry =
   | { phase: 'ready'; entry: VoiceEntryDTO }
   | { phase: 'error'; message: string }
 
-// Standard CMS Place of Service codes relevant to home health/private duty
-// visits, stored as the full "<code> - <description>" string (matches
-// billing convention — e.g. "12 - Home"). Flag to Alex: this is a curated
-// subset of the official CMS POS list, not the full ~50-code set — add more
-// here if a visit type comes up that isn't covered.
-const PLACES_OF_SERVICE = [
-  '12 - Home',
-  '03 - School',
-  '13 - Assisted Living Facility',
-  '14 - Group Home',
-  '99 - Other Place of Service',
-]
-const O2_ROUTES = ['AirVo', 'HME', 'O2 Tank', 'Passy Muir', 'POC', 'Vent', 'Room Air']
-const TX_NEEDED = ['Yes', 'No']
-const INTAKE_ROUTES = ['Oral', 'G-Tube', 'J-Tube', 'GJ-Split', 'NG-Tube', 'IV']
 
 const EMPTY_VITAL: VitalRow = { time: null, temp: null, hr: null, rr: null, skin: null, o2Flow: null, o2Route: null, o2Percent: null, lungSounds: null, txNeeded: null, suction: null }
 const EMPTY_IO: IORow = { time: null, intakeType: null, intakeAmt: null, intakeRoute: null, outputUrine: null, outputBM: null, outputEmesis: null }

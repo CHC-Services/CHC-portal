@@ -6,6 +6,7 @@ import { computeShiftHours } from '../../../lib/parseClockTime'
 import SpellCheckButton, { SpellcheckFlag } from '../SpellCheckButton'
 import { checkText } from '../../../lib/medicalSpellcheck'
 import { loadCustomTerms, addCustomTerm } from '../../../lib/spellcheckClient'
+import { O2_ROUTES, TX_NEEDED, INTAKE_ROUTES } from '../../../lib/clinicalOptions'
 
 export type ProgressNoteVitalRow = {
   time: string | null
@@ -62,10 +63,6 @@ export type ProgressNoteDTO = {
   addenda: ProgressNoteAddendumDTO[]
   authorDisplayName?: string
 }
-
-const O2_ROUTES = ['AirVo', 'HME', 'O2 Tank', 'Passy Muir', 'POC', 'Vent', 'Room Air']
-const TX_NEEDED = ['Yes', 'No']
-const INTAKE_ROUTES = ['Oral', 'G-Tube', 'J-Tube', 'GJ-Split', 'NG-Tube', 'IV']
 
 const EMPTY_VITAL: ProgressNoteVitalRow = { time: null, temp: null, hr: null, rr: null, skin: null, o2Flow: null, o2Route: null, o2Percent: null, lungSounds: null, txNeeded: null, suction: null }
 const EMPTY_IO: ProgressNoteIntakeOutputRow = { time: null, intakeType: null, intakeAmt: null, intakeRoute: null, outputUrine: null, outputBM: null, outputEmesis: null }

@@ -1,4 +1,5 @@
 import { BedrockRuntimeClient, ConverseCommand } from '@aws-sdk/client-bedrock-runtime'
+import { O2_ROUTES, TX_NEEDED, INTAKE_ROUTES } from './clinicalOptions'
 
 // Micro-Charting's compile step — the ONE call that turns a shift's raw
 // dictated voice entries into professional clinical narrative, PLUS
@@ -24,12 +25,6 @@ const client = new BedrockRuntimeClient({
 // copy it directly from the console rather than guessing).
 const MODEL_ID = process.env.BEDROCK_MODEL_ID!
 
-// Matches the option lists in ProgressNoteForm.tsx/QuickNoteForm.tsx exactly
-// — told to the model so it maps dictated words onto the same values the
-// dropdowns use, rather than inventing its own phrasing for these fields.
-const O2_ROUTES = ['AirVo', 'HME', 'O2 Tank', 'Passy Muir', 'POC', 'Vent', 'Room Air']
-const TX_NEEDED = ['Yes', 'No']
-const INTAKE_ROUTES = ['Oral', 'G-Tube', 'J-Tube', 'GJ-Split', 'NG-Tube', 'IV']
 
 const ARRIVAL_CUE_PHRASES = [
   'arrival findings', 'upon arrival', 'on arrival', 'at arrival',

@@ -6,6 +6,7 @@ import UnreadBadge from './messaging/UnreadBadge'
 
 const links = [
   { href: '/family',            label: 'Dashboard' },
+  { href: '/family/calendar',   label: 'Calendar'  },
   { href: '/family/patients',   label: 'Patients'  },
   { href: '/family/reminders',  label: 'Reminders' },
   { href: '/family/documents',  label: 'Documents' },
@@ -13,7 +14,6 @@ const links = [
   { href: '/family/profile',    label: 'Profile'    },
   { href: '/family/medications', label: 'Medications', noPrefix: true },
   { href: '/family/insurance',   label: 'Insurances',  noPrefix: true },
-  { href: '/family/schedule',    label: 'Schedules',   noPrefix: true },
 ]
 
 const DIVIDERS_BEFORE = new Set(['Medications'])

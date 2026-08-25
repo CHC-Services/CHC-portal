@@ -14,12 +14,9 @@ const CATEGORY_LABEL: Record<string, string> = {
   shift: 'Shifts',
   appointment: 'Appointments',
   globalEvent: 'Announcements',
-  personalReminder: 'My Reminders',
   medication: 'Medication Refills',
   priorAuth: 'Prior Auth Expirations',
-  claimReminder: 'Claim Reminders',
   document: 'Document Expirations',
-  progressNote: 'Progress Notes',
 }
 
 function fmtTime(d: Date) {
@@ -29,7 +26,7 @@ function fmtDate(d: Date) {
   return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 }
 
-export default function NurseCalendarPage() {
+export default function FamilyCalendarPage() {
   const router = useRouter()
   const [view, setView] = useState<CalendarViewMode>('month')
   const [anchorDate, setAnchorDate] = useState(new Date())
@@ -39,11 +36,8 @@ export default function NurseCalendarPage() {
   const [items, setItems] = useState<CalendarItem[]>([])
   const [loading, setLoading] = useState(true)
 
-  const [selectedTypes, setSelectedTypes] = useState<Set<string> | null>(null) // null = all
-  const [notesFilter, setNotesFilter] = useState<'all' | 'with' | 'without'>('all')
-
+  const [selectedTypes, setSelectedTypes] = useState<Set<string> | null>(null)
   const [selectedItem, setSelectedItem] = useState<CalendarItem | null>(null)
-  const [actionBusy, setActionBusy] = useState(false)
 
   const customRange = useMemo(() => {
     if (view !== 'custom' || !customStart || !customEnd) return undefined
@@ -55,7 +49,7 @@ export default function NurseCalendarPage() {
   const load = useCallback(() => {
     setLoading(true)
     const params = new URLSearchParams({ start: range.start.toISOString(), end: range.end.toISOString() })
-    return fetch(`/api/nurse/calendar?${params}`, { credentials: 'include' })
+    return fetch(`/api/family/calendar?${params}`, { credentials: 'include' })
       .then(r => {
         if (r.status === 401) { router.push('/login'); return null }
         return r.json()
@@ -74,18 +68,10 @@ export default function NurseCalendarPage() {
 
   useEffect(() => { load() }, [load])
 
-  const presentTypes = useMemo(() => {
-    const s = new Set(items.map(i => i.category))
-    return Array.from(s)
-  }, [items])
+  const presentTypes = useMemo(() => Array.from(new Set(items.map(i => i.category))), [items])
 
   function matchesFilters(item: CalendarItem): boolean {
     if (selectedTypes && !selectedTypes.has(item.category)) return false
-    if (notesFilter !== 'all' && item.source === 'shift') {
-      const has = !!item.hasProgressNotes
-      if (notesFilter === 'with' && !has) return false
-      if (notesFilter === 'without' && has) return false
-    }
     return true
   }
 
@@ -99,7 +85,7 @@ export default function NurseCalendarPage() {
     return map
   }, [items])
 
-  const filtersActive = (selectedTypes !== null) || notesFilter !== 'all'
+  const filtersActive = selectedTypes !== null
   function isGreyedOut(key: string) {
     if (!filtersActive) return false
     const dayItems = byDay.get(key)
@@ -116,25 +102,13 @@ export default function NurseCalendarPage() {
     })
   }
 
-  async function claimShift(id: string) {
-    setActionBusy(true)
-    const res = await fetch(`/api/nurse/shifts/${id}/claim`, { method: 'POST', credentials: 'include' })
-    setActionBusy(false)
-    if (res.ok) { setSelectedItem(null); load() }
-  }
-  async function releaseShift(id: string) {
-    setActionBusy(true)
-    const res = await fetch(`/api/nurse/shifts/${id}/release`, { method: 'POST', credentials: 'include' })
-    setActionBusy(false)
-    if (res.ok) { setSelectedItem(null); load() }
-  }
-
-  const isClaimableShift = selectedItem?.source === 'shift' && (selectedItem.status === 'open' || selectedItem.status === 'coverage_needed')
-  const isMyAssignedShift = selectedItem?.source === 'shift' && selectedItem.status === 'assigned' && selectedItem.editable
+  const manageHref = selectedItem?.patientId && selectedItem.source === 'shift' ? `/patient/${selectedItem.patientId}/schedule`
+    : selectedItem?.patientId && selectedItem.source === 'appointment' ? `/patient/${selectedItem.patientId}/appointment`
+    : null
 
   return (
-    <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6 pl-0 md:pl-0">
+      <div className="max-w-5xl">
 
         <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
           <div>
@@ -142,15 +116,14 @@ export default function NurseCalendarPage() {
               <span className="text-[#7A8F79] italic">my</span>Calendar
             </h1>
             <p className="text-sm text-[#7A8F79] mt-1">
-              Your shifts, appointments, and deadlines across every patient.
+              Shifts, appointments, and deadlines across every patient you care for.
             </p>
           </div>
-          <Link href="/nurse/profile" className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">
-            + Add Personal Reminder →
+          <Link href="/family/reminders" className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">
+            + Add Reminder →
           </Link>
         </div>
 
-        {/* View mode switcher + navigation */}
         <CalendarViewSwitcher
           view={view}
           onViewChange={setView}
@@ -167,44 +140,25 @@ export default function NurseCalendarPage() {
           }
         />
 
-        {/* Filters */}
         {presentTypes.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm p-3 mb-4 flex items-center gap-4 flex-wrap">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[10px] uppercase tracking-wide font-bold text-[#7A8F79] mr-1">Type</span>
-              {presentTypes.map(cat => {
-                const active = selectedTypes === null || selectedTypes.has(cat)
-                return (
-                  <button
-                    key={cat}
-                    onClick={() => toggleType(cat)}
-                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition border ${
-                      active ? 'bg-[#2F3E4E] text-white border-[#2F3E4E]' : 'bg-white text-[#7A8F79] border-[#D9E1E8] opacity-60'
-                    }`}
-                  >
-                    {CATEGORY_LABEL[cat] || cat}
-                  </button>
-                )
-              })}
-              {selectedTypes !== null && (
-                <button onClick={() => setSelectedTypes(null)} className="text-[11px] text-[#7A8F79] hover:text-[#2F3E4E] underline ml-1">Reset</button>
-              )}
-            </div>
-            {presentTypes.includes('shift') && (
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] uppercase tracking-wide font-bold text-[#7A8F79] mr-1">Progress Notes</span>
-                {(['all', 'with', 'without'] as const).map(f => (
-                  <button
-                    key={f}
-                    onClick={() => setNotesFilter(f)}
-                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition ${
-                      notesFilter === f ? 'bg-[#7A8F79] text-white' : 'bg-[#F4F6F5] text-[#7A8F79] hover:bg-[#D9E1E8]'
-                    }`}
-                  >
-                    {f === 'all' ? 'All Shifts' : f === 'with' ? 'Has Notes' : 'No Notes'}
-                  </button>
-                ))}
-              </div>
+          <div className="bg-white rounded-xl shadow-sm p-3 mb-4 flex items-center gap-1.5 flex-wrap">
+            <span className="text-[10px] uppercase tracking-wide font-bold text-[#7A8F79] mr-1">Type</span>
+            {presentTypes.map(cat => {
+              const active = selectedTypes === null || selectedTypes.has(cat)
+              return (
+                <button
+                  key={cat}
+                  onClick={() => toggleType(cat)}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition border ${
+                    active ? 'bg-[#2F3E4E] text-white border-[#2F3E4E]' : 'bg-white text-[#7A8F79] border-[#D9E1E8] opacity-60'
+                  }`}
+                >
+                  {CATEGORY_LABEL[cat] || cat}
+                </button>
+              )
+            })}
+            {selectedTypes !== null && (
+              <button onClick={() => setSelectedTypes(null)} className="text-[11px] text-[#7A8F79] hover:text-[#2F3E4E] underline ml-1">Reset</button>
             )}
           </div>
         )}
@@ -226,7 +180,6 @@ export default function NurseCalendarPage() {
         )}
       </div>
 
-      {/* Detail modal */}
       {selectedItem && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" onClick={() => setSelectedItem(null)}>
           <div className="bg-white rounded-2xl shadow-lg p-6 max-w-sm w-full" onClick={e => e.stopPropagation()}>
@@ -240,17 +193,11 @@ export default function NurseCalendarPage() {
             {selectedItem.status && (
               <p className="text-[10px] uppercase tracking-wide font-semibold text-[#7A8F79] mt-2">{selectedItem.status.replace('_', ' ')}</p>
             )}
-
             <div className="flex items-center justify-end gap-2 mt-5">
-              {isClaimableShift && (
-                <button onClick={() => claimShift(selectedItem.id)} disabled={actionBusy} className="bg-[#2F3E4E] text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-[#7A8F79] transition disabled:opacity-50">
-                  {actionBusy ? 'Claiming…' : 'Claim Shift'}
-                </button>
-              )}
-              {isMyAssignedShift && (
-                <button onClick={() => releaseShift(selectedItem.id)} disabled={actionBusy} className="border border-amber-300 text-amber-700 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-amber-50 transition disabled:opacity-50">
-                  {actionBusy ? 'Releasing…' : 'Release'}
-                </button>
+              {manageHref && (
+                <Link href={manageHref} className="bg-[#2F3E4E] text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-[#7A8F79] transition">
+                  Manage →
+                </Link>
               )}
               <button onClick={() => setSelectedItem(null)} className="text-sm font-semibold text-[#7A8F79] hover:text-[#2F3E4E] px-4 py-2 transition">
                 Close

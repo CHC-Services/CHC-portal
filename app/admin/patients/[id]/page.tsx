@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, use } from 'react'
+import Link from 'next/link'
 import PatientDetailShell from '../../../components/patient/PatientDetailShell'
 import PatientDemographics from '../../../components/patient/PatientDemographics'
 import PatientInsurance from '../../../components/patient/PatientInsurance'
@@ -8,7 +9,6 @@ import PatientMedications from '../../../components/patient/PatientMedications'
 import PatientDocuments from '../../../components/patient/PatientDocuments'
 import PatientOrders from '../../../components/patient/PatientOrders'
 import PatientCareTeam, { NurseLink, GuardianLink } from '../../../components/patient/PatientCareTeam'
-import PatientSchedule from '../../../components/patient/PatientSchedule'
 import PatientNotifications from '../../../components/patient/PatientNotifications'
 import PatientPriorAuthHistory, { PatientPA } from '../../../components/patient/PatientPriorAuthHistory'
 import ProgressNoteList from '../../../components/patient/ProgressNoteList'
@@ -415,7 +415,14 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
     },
     {
       key: 'schedule', label: 'Schedule', content: (
-        <PatientSchedule patientId={id} basePath="/api/admin" availableNurses={nurses} />
+        <div className="bg-white rounded-2xl shadow-sm p-6 flex items-center justify-between flex-wrap gap-3">
+          <p className="text-sm text-[#7A8F79]">Manage this patient’s shifts, appointments, and calendar.</p>
+          <div className="flex gap-3">
+            <Link href={`/patient/${id}/calendar`} className="text-sm font-semibold text-[#2F3E4E] hover:text-[#7A8F79] transition">myCalendar →</Link>
+            <Link href={`/patient/${id}/schedule`} className="text-sm font-semibold text-[#2F3E4E] hover:text-[#7A8F79] transition">Manage Schedule →</Link>
+            <Link href={`/patient/${id}/appointment`} className="text-sm font-semibold text-[#2F3E4E] hover:text-[#7A8F79] transition">Manage Appointments →</Link>
+          </div>
+        </div>
       ),
     },
     {

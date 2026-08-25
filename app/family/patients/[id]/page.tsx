@@ -8,14 +8,11 @@ import PatientInsurance from '../../../components/patient/PatientInsurance'
 import PatientMedications from '../../../components/patient/PatientMedications'
 import PatientDocuments from '../../../components/patient/PatientDocuments'
 import PatientOrders from '../../../components/patient/PatientOrders'
-import PatientSchedule from '../../../components/patient/PatientSchedule'
 import PatientNotifications from '../../../components/patient/PatientNotifications'
 import ProgressNoteList from '../../../components/patient/ProgressNoteList'
 import { DetailTab } from '../../../components/patient/PatientTabs'
 import { PatientFields } from '../../../components/patient/types'
 import { MedicationDTO, MedicationInput, PharmacyOption } from '../../../components/MedicationList'
-
-type NurseLink = { id: string; nurse: { id: string; displayName: string; firstName?: string; lastName?: string } }
 
 export default function FamilyPatientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -23,7 +20,6 @@ export default function FamilyPatientDetailPage({ params }: { params: Promise<{ 
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [data, setData] = useState<Partial<PatientFields>>({})
-  const [nurseLinks, setNurseLinks] = useState<NurseLink[]>([])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
@@ -38,7 +34,6 @@ export default function FamilyPatientDetailPage({ params }: { params: Promise<{ 
         if (!r.ok) { setNotFound(true); setLoading(false); return }
         const body = await r.json()
         setData(body.patient)
-        setNurseLinks(body.nurseLinks || [])
         setLoading(false)
       })
     fetch('/api/me', { credentials: 'include' })
@@ -230,7 +225,14 @@ export default function FamilyPatientDetailPage({ params }: { params: Promise<{ 
     },
     {
       key: 'schedule', label: 'Schedule', content: (
-        <PatientSchedule patientId={id} basePath="/api/family" availableNurses={nurseLinks.map(l => l.nurse)} />
+        <div className="bg-white rounded-2xl shadow-sm p-6 flex items-center justify-between flex-wrap gap-3">
+          <p className="text-sm text-[#7A8F79]">Manage this patient’s shifts, appointments, and calendar.</p>
+          <div className="flex gap-3">
+            <Link href={`/patient/${id}/calendar`} className="text-sm font-semibold text-[#2F3E4E] hover:text-[#7A8F79] transition">myCalendar →</Link>
+            <Link href={`/patient/${id}/schedule`} className="text-sm font-semibold text-[#2F3E4E] hover:text-[#7A8F79] transition">Manage Schedule →</Link>
+            <Link href={`/patient/${id}/appointment`} className="text-sm font-semibold text-[#2F3E4E] hover:text-[#7A8F79] transition">Manage Appointments →</Link>
+          </div>
+        </div>
       ),
     },
     {

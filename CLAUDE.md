@@ -47,7 +47,7 @@ New migration files always go directly under `prisma/migrations/<name>/migration
 - Primary button: `bg-[#2F3E4E] text-white rounded-xl hover:bg-[#7A8F79]`
 
 ## Layout Architecture
-- **NurseSideNav** (`app/components/NurseSideNav.tsx`) — fixed floating panel, `lg:` only, mounted via `app/nurse/layout.tsx` (and `app/care/layout.tsx`). Links: myDashboard, myHours, myClaims, myPatients, myPayments (`/nurse/claims?tab=paylog`), myInvoices, myDocuments, myProfile, myWellness (`/care`), Settings.
+- **NurseSideNav** (`app/components/NurseSideNav.tsx`) — fixed floating panel, `lg:` only, mounted via `app/nurse/layout.tsx` (and `app/care/layout.tsx`). Links: myDashboard, myCalendar, myHours, myClaims, myPatients, myPayments (`/nurse/claims?tab=paylog`), myInvoices, myDocuments, myProfile, myWellness (`/care`), Settings.
 - Root layout adds `lg:pl-[calc(10vw+1.5rem)]` to page-wrap when role === nurse.
 - Nurse layout (`app/nurse/layout.tsx`) is a pass-through — just `<>{children}</>`.
 - Login redirects: nurse → `/nurse`, admin → `/admin`. `/portal` redirects all authenticated users.
@@ -110,8 +110,29 @@ Dropdown: `${firstName[0]}. ${lastName.slice(0,5)}` — admin sees account numbe
 
 **Casing**: NIH's RxTerms `DISPLAY_NAME` does NOT already follow "generic lowercase, brand capitalized" (verified live — brand names come back ALL CAPS, e.g. `TYLENOL`; generic names come back mixed-case with inline tall-man lettering, e.g. `Acetaminophen/diphenhydrAMINE`). `normalizeDrugName()` in `lib/drugNameLookup.ts` detects brand (source is all-caps) vs. generic (anything else) and title-cases or lowercases accordingly before caching/returning — this transform is necessary, not a passthrough.
 
+## CareCalendar — Phase 1 (completed 2026-08-25)
+"myCalendar" — a scheduling/communication hub visible to every nurse/guardian/admin linked to a patient's case. Extends existing `Shift`/`Appointment` models and `lib/calendarFeed.ts` rather than a from-scratch build.
+
+### Architecture
+- `lib/calendarFeed.ts` — `CalendarItem` union type (`source`: globalEvent/personalReminder/shift/appointment/medication/priorAuth/claimReminder/document/progressNote) + three feed functions: `getNurseCalendarFeed`, `getFamilyCalendarFeed` (fans out per-patient items over a guardian's links + role-filtered `GlobalEvent`s — the one real gap this phase closed, since family previously never saw broadcasts), `getPatientCalendarFeed` (one patient, reused by admin/family/nurse per-patient views). All three take an optional `{ start, end }` `DateRange`; `parseDateRangeParams(url)` reads `?start=&end=`.
+- `lib/calendarViewRange.ts` — `CalendarViewMode` (`day|week|month|lookahead|custom`), `computeViewRange`, `monthGridDays` (padded to whole weeks), `daysBetween`, `dateKey`, `shiftAnchor` (prev/next navigation).
+- `app/components/calendar/CalendarGrid.tsx` — shared grid renderer; month view is a real 7-column grid, day/week/look-ahead/custom share one day-section agenda layout. `isGreyedOut(key)` prop greys non-matching days rather than hiding them (filtering never changes the active view mode).
+- `app/components/calendar/CalendarViewSwitcher.tsx` — shared view-mode tabs + prev/today/next nav (or custom date pickers), used by every calendar page.
+- **Patient-scoped route family** (`app/patient/[id]/*`) — one role-agnostic URL family for shift/appointment editing and a per-patient calendar, modeled on `app/care/layout.tsx`'s "one URL, role-aware side nav" precedent. `layout.tsx` resolves the session, gates on `canAccessPatient` (`lib/permissions.ts`, alias for `isLinkedToPatient`), 404s otherwise, renders `NurseSideNav`/`FamilySideNav` (admin gets neither — matches existing admin pages). `schedule/page.tsx` and `appointment/page.tsx` are async server components computing `canManage` via `canCreateShift`/`canCreateAppointment` and passing it to `PatientSchedule.tsx` (now takes `section: 'shifts'|'appointments'|'both'` and `canManage` props, default `'both'`/`true` so the existing admin/family embeds are unaffected). `calendar/page.tsx` is a client component driving `CalendarGrid` off `getPatientCalendarFeed`, with type/nurse-name/has-progress-notes filters. A `?from=` param (set by the calendar page, read by schedule/appointment) round-trips back to the exact calendar view/date, mirroring the `fromArchive` pattern in progress-notes.
+- **Role-agnostic API layer** (`app/api/patient/[id]/{shifts,appointments,calendar}`) — new, used only by the routes above. Exists because the older per-role shift/appointment endpoints diverged too much to reuse directly (`/api/nurse/shifts` GET is cross-patient/unscoped with no POST at all — shift creation is admin/guardian-only). All authorization here defers to `lib/permissions.ts`'s already-role-generic functions (`canViewSchedule`, `canCreateShift`, `canEditShift`, `canAssignShift`, `canCancelShift`, `canCreateAppointment`, etc.) — the older `/api/{admin,family,nurse}/shifts` and `/appointments` endpoints are untouched and still used elsewhere.
+- **GlobalEvent as an audience-targeted layer** — `lib/eventAudience.ts`'s `EVENT_AUDIENCES` maps 4 friendly labels to `GlobalEvent.targetRoles` (`Personal (admin only)` → `['admin']`, `Providers` → `['nurse','provider']`, `Family/Caregivers` → `['guardian']`, `All Users` → `[]`, the field's existing "empty = everyone" convention — `'biller'` isn't covered by any non-"All Users" option, matching the 4 categories as specified). `app/admin/calendar/page.tsx` ("adCalendar") is a management view: same `CalendarGrid`/`CalendarViewSwitcher` as everyone else, but reads via `/api/admin/calendar` (no `?patientId=`) which returns every `GlobalEvent` unfiltered (author's view, not a recipient's), each item carrying `targetRoles` for display. "+ Add Event" picks an `EVENT_AUDIENCES` option instead of raw role checkboxes; `POST /api/admin/events` already accepted a raw `targetRoles` array, so no API change was needed there.
+
+### Nav wiring
+- Nurse: `app/nurse/calendar/page.tsx` (replaced the old unlinked `/calendar`), added to `NurseSideNav.tsx` and `Banner.tsx`'s mobile menu, right after Dashboard.
+- Family: `app/family/calendar/page.tsx` replaced the `/family/schedule` `ComingSoonCard` stub; `FamilySideNav.tsx` entry now reads "Calendar" with the `my` prefix (dropped `noPrefix`).
+- Admin: no separate nav entry — folded into the existing `adCalendar` (`/admin/calendar`) pill in `AdminNav.tsx`'s Comms group.
+
+### Deferred to Phase 2
+Recurring shift-schedule templates (4/8/12hr slots, daily/weekly/monthly recurrence, configurable shift-change times) — nothing in this codebase expands a template into repeating instances today; needs its own design pass (likely a `ShiftTemplate` model + materialization mechanism).
+
 ## What's Not Built Yet
 - Voice dictation feature linked to patients (architecture agreed, not started)
 - Parent account level for patient assignment (future role)
 - myHours: admin view of patient column shows account number (UI not yet updated on admin side)
 - Configurable role-based permissions system (canonical-data doc proposes a `can(user, action, resource)` authorization layer + admin Roles & Permissions settings UI — not started; today's auth is still per-route inline role checks, per the Auth pattern above)
+- CareCalendar Phase 2: recurring shift-schedule templates (see above)

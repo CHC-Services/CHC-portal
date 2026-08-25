@@ -50,11 +50,17 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 export default function PatientSchedule({
-  patientId, basePath, availableNurses,
+  patientId, basePath, availableNurses, section = 'both', canManage = true,
 }: {
   patientId: string
-  basePath: string // '/api/admin' or '/api/family'
+  basePath: string // '/api/admin', '/api/family', or '/api/patient/{id}' (role-agnostic)
   availableNurses: NurseOption[]
+  section?: 'shifts' | 'appointments' | 'both'
+  // Gates create/edit/cancel controls. Defaults true (existing admin/family
+  // embeds are unaffected) — the new shared /patient/[id]/schedule page
+  // passes this from lib/permissions.ts so e.g. a nurse without shift-create
+  // authority sees a read-only list instead of doomed-to-404 buttons.
+  canManage?: boolean
 }) {
   const [shifts, setShifts] = useState<Shift[]>([])
   const [appointments, setAppointments] = useState<Appointment[]>([])
@@ -166,15 +172,18 @@ export default function PatientSchedule({
     <div className="space-y-6">
 
       {/* Shifts */}
+      {(section === 'shifts' || section === 'both') && (
       <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
         <div className="flex items-center justify-between">
           <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">Shifts</p>
-          <button onClick={() => setAddingShift(a => !a)} className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">
-            {addingShift ? 'Cancel' : '+ New Shift'}
-          </button>
+          {canManage && (
+            <button onClick={() => setAddingShift(a => !a)} className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">
+              {addingShift ? 'Cancel' : '+ New Shift'}
+            </button>
+          )}
         </div>
 
-        {addingShift && (
+        {canManage && addingShift && (
           <form onSubmit={submitShift} className="space-y-3 bg-[#F4F6F5] rounded-xl p-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -220,10 +229,10 @@ export default function PatientSchedule({
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`text-[10px] uppercase tracking-wide font-semibold px-2 py-0.5 rounded-full ${STATUS_COLOR[s.status] || ''}`}>{STATUS_LABEL[s.status] || s.status}</span>
-                  {s.status === 'assigned' && (
+                  {canManage && s.status === 'assigned' && (
                     <button onClick={() => releaseShift(s.id)} className="text-xs text-amber-600 hover:text-amber-800 transition">Release</button>
                   )}
-                  {s.status !== 'completed' && (
+                  {canManage && s.status !== 'completed' && (
                     <button onClick={() => cancelShift(s.id)} className="text-xs text-red-500 hover:text-red-700 transition">Cancel</button>
                   )}
                 </div>
@@ -232,17 +241,21 @@ export default function PatientSchedule({
           </div>
         )}
       </div>
+      )}
 
       {/* Appointments */}
+      {(section === 'appointments' || section === 'both') && (
       <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
         <div className="flex items-center justify-between">
           <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">Appointments</p>
-          <button onClick={() => setAddingAppt(a => !a)} className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">
-            {addingAppt ? 'Cancel' : '+ New Appointment'}
-          </button>
+          {canManage && (
+            <button onClick={() => setAddingAppt(a => !a)} className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">
+              {addingAppt ? 'Cancel' : '+ New Appointment'}
+            </button>
+          )}
         </div>
 
-        {addingAppt && (
+        {canManage && addingAppt && (
           <form onSubmit={submitAppointment} className="space-y-3 bg-[#F4F6F5] rounded-xl p-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
@@ -291,7 +304,7 @@ export default function PatientSchedule({
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`text-[10px] uppercase tracking-wide font-semibold px-2 py-0.5 rounded-full ${STATUS_COLOR[a.status] || ''}`}>{a.status}</span>
-                  {a.status !== 'completed' && (
+                  {canManage && a.status !== 'completed' && (
                     <button onClick={() => cancelAppointment(a.id)} className="text-xs text-red-500 hover:text-red-700 transition">Cancel</button>
                   )}
                 </div>
@@ -300,6 +313,7 @@ export default function PatientSchedule({
           </div>
         )}
       </div>
+      )}
     </div>
   )
 }

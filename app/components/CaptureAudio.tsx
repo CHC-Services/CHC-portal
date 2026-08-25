@@ -114,8 +114,8 @@ export default function CaptureAudio({
     onCancel()
   }
 
-  const toggleBtn = 'w-full md:w-auto px-6 py-3 rounded-xl font-semibold transition text-white disabled:opacity-50'
-  const stopBtn = 'w-full md:w-auto px-6 py-3 rounded-xl font-semibold transition text-white bg-green-600 hover:bg-green-700 disabled:opacity-40 disabled:hover:bg-green-600'
+  const toggleBtn = 'w-full md:w-auto px-6 py-4 md:py-3 rounded-xl font-semibold transition text-white disabled:opacity-50'
+  const stopBtn = 'w-full md:w-auto px-6 py-4 md:py-3 rounded-xl font-semibold transition text-white bg-green-600 hover:bg-green-700 disabled:opacity-40 disabled:hover:bg-green-600'
 
   if (error) {
     return (
@@ -134,7 +134,11 @@ export default function CaptureAudio({
       <div className="flex flex-col md:flex-row md:items-center gap-2">
         {phase === 'recording' ? (
           <button type="button" onClick={pause} className={`${toggleBtn} bg-amber-500 hover:bg-amber-600`}>
-            ⏸ Pause
+            ⏸ Pause Recording
+          </button>
+        ) : phase === 'paused' ? (
+          <button type="button" onClick={beginOrResume} className={`${toggleBtn} bg-red-600 hover:bg-red-700`}>
+            ● Resume Recording
           </button>
         ) : (
           <button type="button" onClick={beginOrResume} disabled={phase === 'requesting'} className={`${toggleBtn} bg-red-600 hover:bg-red-700`}>
@@ -147,11 +151,9 @@ export default function CaptureAudio({
         <button
           type="button"
           onClick={handleCancelClick}
-          aria-label="Cancel"
-          title="Cancel"
-          className="shrink-0 w-14 h-14 rounded-full border-2 border-[#D9E1E8] text-[#7A8F79] hover:border-red-300 hover:text-red-500 transition flex items-center justify-center text-lg font-bold mx-auto md:mx-0"
+          className="w-full md:w-auto px-6 py-4 md:py-3 rounded-full border-2 border-[#D9E1E8] text-[#7A8F79] hover:border-red-300 hover:text-red-500 transition flex items-center justify-center gap-1.5 text-sm font-semibold"
         >
-          ✕
+          ✕ Cancel
         </button>
       </div>
 

@@ -3,6 +3,7 @@ import { getUserFromCookie } from '@/lib/getUserFromCookie'
 import { canCreateShift } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
 import PatientSchedule from '../../../components/patient/PatientSchedule'
+import PatientShiftTemplates from '../../../components/patient/PatientShiftTemplates'
 
 // Shift scheduling/editing for one patient — reached from that patient's
 // myCalendar entry or their role's patient-detail page. Authorization to
@@ -40,13 +41,16 @@ export default async function PatientSchedulePage({
           ? 'Create and manage this patient’s shifts.'
           : 'This patient’s shift schedule. Use your myCalendar to claim or release your own shifts.'}
       </p>
-      <PatientSchedule
-        patientId={patientId}
-        basePath={`/api/patient/${patientId}`}
-        availableNurses={availableNurses}
-        section="shifts"
-        canManage={canManage}
-      />
+      <div className="space-y-6">
+        <PatientShiftTemplates patientId={patientId} availableNurses={availableNurses} canManage={canManage} />
+        <PatientSchedule
+          patientId={patientId}
+          basePath={`/api/patient/${patientId}`}
+          availableNurses={availableNurses}
+          section="shifts"
+          canManage={canManage}
+        />
+      </div>
     </div>
   )
 }

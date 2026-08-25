@@ -71,7 +71,7 @@ export default function PatientDemographics({
           <Row label="Date of Birth" value={data.dob} />
           <Row label="Sex" value={data.gender} />
           <Row label="Phone" value={data.phone} />
-          <Row label="Minor" value={isMinorByAge ? 'Yes (by date of birth)' : null} />
+          <Row label="Minor" value={isMinorByAge ? 'Yes (via DOB)' : null} />
           {!isMinorByAge && <Row label="Guardian on File" value={data.isMinor ? 'Yes' : null} />}
           <Row label="High-Tech" value={data.highTech ? 'Yes' : null} />
           <Row label="Linked Specialties" value={data.linkedSpecialties && data.linkedSpecialties.length > 0 ? data.linkedSpecialties.join(', ') : null} />

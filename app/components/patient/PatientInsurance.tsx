@@ -21,6 +21,28 @@ function AdditionalCoverageView({ data }: { data: Partial<PatientFields> }) {
   )
 }
 
+// Paired field lists driving the Primary/Secondary swap — index i in one
+// array is the counterpart of index i in the other.
+const PRIMARY_FIELDS = ['insuranceType', 'insuranceId', 'insuranceName', 'insuranceGroup', 'insurancePlan', 'subscriberName', 'subscriberRelation', 'networkStatus', 'hasCaseRate', 'caseRateAmount', 'policyNotes'] as const
+const SECONDARY_FIELDS = ['ins2Type', 'ins2Id', 'ins2Name', 'ins2Group', 'ins2Plan', 'ins2SubscriberName', 'ins2SubscriberRelation', 'ins2NetworkStatus', 'ins2HasCaseRate', 'ins2CaseRateAmount', 'ins2PolicyNotes'] as const
+
+// Swaps every Primary field with its Secondary counterpart in place — lets
+// an admin/guardian reorder which policy bills first without retyping or
+// deleting anything. A blank counterpart just means that slot becomes empty
+// (e.g. swapping out a cancelled primary makes room to enter a brand-new one
+// while preserving it as secondary) — the two boolean fields default to
+// `false` rather than `null` to match their checkbox controls.
+function swapPrimarySecondary(data: Partial<PatientFields>, setField: (k: string, v: any) => void) {
+  PRIMARY_FIELDS.forEach((pKey, i) => {
+    const sKey = SECONDARY_FIELDS[i]
+    const pVal = (data as any)[pKey]
+    const sVal = (data as any)[sKey]
+    const isBoolField = pKey === 'hasCaseRate'
+    setField(pKey, sVal ?? (isBoolField ? false : (pKey === 'insuranceType' ? '' : null)))
+    setField(sKey, pVal ?? (isBoolField ? false : null))
+  })
+}
+
 function AdditionalCoverageForm({ data, setField }: { data: Partial<PatientFields>; setField: (k: string, v: any) => void }) {
   const [open, setOpen] = useState(!!(data.ins2Type || data.ins2Id))
   return (
@@ -108,6 +130,17 @@ export default function PatientInsurance({
   onEdit: () => void
   setField: (k: string, v: any) => void
 }) {
+  // Bumped on every swap so AdditionalCoverageForm (which tracks its own
+  // open/closed state locally) remounts and re-derives that state from the
+  // freshly-swapped data, instead of staying collapsed on newly-arrived
+  // secondary coverage.
+  const [swapVersion, setSwapVersion] = useState(0)
+
+  function handleSwap() {
+    swapPrimarySecondary(data, setField)
+    setSwapVersion(v => v + 1)
+  }
+
   if (readOnly || !editing) {
     return (
       <div className="bg-white rounded-2xl shadow-sm p-6 space-y-5">
@@ -137,12 +170,25 @@ export default function PatientInsurance({
 
   return (
     <div className="bg-white rounded-2xl shadow-sm p-6 space-y-5">
+      <div className="flex items-center justify-between gap-3 bg-[#F4F6F5] rounded-xl px-4 py-3">
+        <p className="text-xs text-[#7A8F79] leading-relaxed">
+          Swaps every Primary and Secondary field at once — nothing is deleted, so you can reorder billing priority or make room for a brand-new policy without retyping what&apos;s already on file.
+        </p>
+        <button
+          type="button"
+          onClick={handleSwap}
+          className="shrink-0 border border-[#D9E1E8] bg-white text-[#2F3E4E] text-xs font-semibold px-3 py-2 rounded-lg hover:border-[#7A8F79] hover:text-[#7A8F79] transition inline-flex items-center gap-1.5"
+        >
+          ⇄ Swap Primary / Secondary
+        </button>
+      </div>
       <div>
         <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-3 pb-1 border-b border-[#D9E1E8]">Primary Insurance</p>
         <div className="space-y-3">
           <div>
             <label className={lbl}>Insurance Type</label>
             <select value={data.insuranceType || ''} onChange={e => setField('insuranceType', e.target.value)} className={inp}>
+              <option value="">— Select —</option>
               <option>Medicaid</option><option>Commercial</option><option>Medicare</option><option>Other</option>
             </select>
           </div>
@@ -189,7 +235,7 @@ export default function PatientInsurance({
         </div>
       </div>
 
-      <AdditionalCoverageForm data={data} setField={setField} />
+      <AdditionalCoverageForm key={swapVersion} data={data} setField={setField} />
 
       <div>
         <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-3 pb-1 border-b border-[#D9E1E8]">Clinical / Billing</p>

@@ -423,7 +423,7 @@ export default function QuickNoteForm({
                   </p>
                   {editingEntryId !== e.id && (
                     <div className="flex items-center gap-2 shrink-0">
-                      <button type="button" onClick={() => { setEditingEntryId(e.id); setEditingText(e.rawText) }} className="text-[#7A8F79] text-xs hover:text-[#2F3E4E]">Edit</button>
+                      <button type="button" onClick={() => { setEditingEntryId(e.id); setEditingText(e.rawText) }} className="text-xs font-semibold text-white bg-orange-500 px-3 py-1 rounded-full hover:bg-orange-600 transition">Edit</button>
                       <button type="button" onClick={() => deleteEntry(e.id)} className="text-red-500 text-xs">✕</button>
                     </div>
                   )}

@@ -17,13 +17,10 @@ export default function PatientDetailShell({
 }) {
   const [activeTab, setActiveTab] = useState<DetailTab>(initialTab)
   const active = tabs.find(t => t.key === activeTab) ?? tabs[0]
-  // Medications and Orders render wide data tables — give them more room
-  // than the narrow form-style tabs (Demographics/Insurance/etc).
-  const isWide = active?.key === 'medications' || active?.key === 'orders' || active?.key === 'progressNotes'
 
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6 pl-0 md:pl-0">
-      <div className={isWide ? 'max-w-6xl' : 'max-w-2xl'}>
+      <div className="max-w-6xl">
         <Link href={backHref} className="text-sm font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">
           {backLabel}
         </Link>

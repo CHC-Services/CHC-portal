@@ -30,6 +30,12 @@ export default function SecuritySettingsPage() {
   const [phoneSaved, setPhoneSaved] = useState(false)
   const [phoneError, setPhoneError] = useState('')
 
+  // TextBelt link-approval self-test
+  const [testPhone, setTestPhone] = useState('')
+  const [testPhoneInit, setTestPhoneInit] = useState(false)
+  const [testSending, setTestSending] = useState(false)
+  const [testResult, setTestResult] = useState<{ ok: boolean; text: string; at: string } | null>(null)
+
   // Admin's own authenticator-app (TOTP) 2FA
   const [mfaEnabled, setMfaEnabled] = useState(false)
   const [mfaStep, setMfaStep] = useState<'idle' | 'setup' | 'disabling'>('idle')
@@ -57,6 +63,12 @@ export default function SecuritySettingsPage() {
         setPhoneLoading(false)
       })
   }, [])
+
+  // Default the link-test number to the admin's own 2FA phone once it loads —
+  // only once, so typing a different test number afterward isn't clobbered.
+  useEffect(() => {
+    if (phone && !testPhoneInit) { setTestPhone(phone); setTestPhoneInit(true) }
+  }, [phone, testPhoneInit])
 
   async function startMfaSetup() {
     setMfaMessage('')
@@ -181,6 +193,27 @@ export default function SecuritySettingsPage() {
     setNewApiKey('')
     setNewKeyLabel('')
     loadSmsKeys()
+  }
+
+  async function sendTestLink() {
+    if (!testPhone.trim()) return
+    setTestSending(true)
+    setTestResult(null)
+    const res = await fetch('/api/admin/system/textbelt-test-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ phone: testPhone }),
+    })
+    const data = await res.json()
+    setTestSending(false)
+    setTestResult({
+      ok: res.ok,
+      text: res.ok
+        ? 'Sent — check your phone for the actual message and confirm the link is intact and tappable.'
+        : (data.error || 'Send failed.'),
+      at: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+    })
   }
 
   async function deleteKey(index: number) {
@@ -502,6 +535,41 @@ export default function SecuritySettingsPage() {
               </p>
             </div>
           </div>
+        </div>
+
+        {/* TextBelt link-approval self-test */}
+        <div className="bg-white rounded-2xl shadow-sm p-6">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-lg">🔗</span>
+            <p className="font-bold text-[#2F3E4E] text-sm">Test Link Delivery — TextBelt</p>
+          </div>
+          <p className="text-xs text-[#7A8F79] leading-relaxed mb-4">
+            TextBelt requires separate approval to send SMS messages containing links, and support hasn&apos;t responded
+            to the approval request yet. Use this to send yourself a real test text with a link whenever you want to
+            check whether approval has come through — a successful send below only means TextBelt accepted the
+            request, not that the link survived delivery, so confirm on your phone.
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="tel"
+              placeholder="(555) 555-5555"
+              value={testPhone}
+              onChange={e => setTestPhone(fmtPhoneInput(e.target.value))}
+              className="flex-1 border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] placeholder-[#7A8F79]/50 focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+            />
+            <button
+              onClick={sendTestLink}
+              disabled={testSending || !testPhone.trim()}
+              className="shrink-0 bg-[#2F3E4E] text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-[#7A8F79] transition disabled:opacity-50"
+            >
+              {testSending ? 'Sending…' : 'Send Test Link'}
+            </button>
+          </div>
+          {testResult && (
+            <p className={`text-xs font-medium mt-3 px-3 py-2 rounded-lg ${testResult.ok ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>
+              {testResult.at} — {testResult.text}
+            </p>
+          )}
         </div>
 
         {/* Note about admin accounts */}

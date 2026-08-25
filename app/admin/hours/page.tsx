@@ -91,7 +91,7 @@ export default function AdminHoursPage() {
   const billedHours = filtered.filter(e => e.billed).reduce((s, e) => s + e.hours, 0)
   const unbilledHours = filtered.filter(e => !e.billed).reduce((s, e) => s + e.hours, 0)
 
-  // Year tallies (all entries, current calendar year, unaffected by view filter)
+  // Year tallies (all entries, current  year, unaffected by view filter)
   const currentYear = new Date().getFullYear()
   const yearEntries = entries.filter(e => new Date(e.workDate).getUTCFullYear() === currentYear)
   const totalHoursYear = yearEntries.reduce((s, e) => s + e.hours, 0)

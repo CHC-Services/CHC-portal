@@ -413,7 +413,7 @@ export default function QuickNoteForm({
               🎙 Record Arrival Finding
             </button>
             <button type="button" onClick={() => setTypingEntry(t => !t)} className="border border-[#D9E1E8] text-[#7A8F79] px-5 py-2 rounded-xl font-semibold hover:border-[#7A8F79] hover:text-[#2F3E4E] transition">
-              ✎ Type Entry
+              ✏️ Manual Entry
             </button>
           </div>
         )}

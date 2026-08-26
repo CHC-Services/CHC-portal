@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Row, SectionHeader } from '../ReadOnlyField'
 import { PatientFields, SUBSCRIBER_RELATIONS, inp, lbl } from './types'
+import { findActivePA, type PatientPA } from './PatientPriorAuthHistory'
 
 function AdditionalCoverageView({ data }: { data: Partial<PatientFields> }) {
   if (!data.ins2Type && !data.ins2Id) return null
@@ -122,14 +123,27 @@ function AdditionalCoverageForm({ data, setField }: { data: Partial<PatientField
 }
 
 export default function PatientInsurance({
-  data, readOnly, editing, onEdit, setField,
+  data, readOnly, editing, onEdit, setField, priorAuths,
 }: {
   data: Partial<PatientFields>
   readOnly: boolean
   editing: boolean
   onEdit: () => void
   setField: (k: string, v: any) => void
+  // Full PA history, when the caller has it (not passed on family's page —
+  // guardians don't get a PA History section at all). When provided, the
+  // Clinical/Billing PA row always shows whichever PA is actually active by
+  // date today, derived live from this list — never the separately-stored
+  // Patient.paNumber/paStartDate/paEndDate fields, which can drift out of
+  // sync with the history list if a new PA gets added there without also
+  // updating these. Falls back to those fields when priorAuths isn't given.
+  priorAuths?: PatientPA[]
 }) {
+  const activePA = priorAuths ? findActivePA(priorAuths) : null
+  const paNumberDisplay = priorAuths ? (activePA?.paNumber ?? null) : data.paNumber
+  const paDatesDisplay = priorAuths
+    ? (activePA ? `${activePA.paStartDate || '?'} — ${activePA.paEndDate || 'Present'}` : null)
+    : (data.paStartDate || data.paEndDate ? `${data.paStartDate || '?'} — ${data.paEndDate || 'Present'}` : null)
   // Bumped on every swap so AdditionalCoverageForm (which tracks its own
   // open/closed state locally) remounts and re-derives that state from the
   // freshly-swapped data, instead of staying collapsed on newly-arrived
@@ -161,8 +175,8 @@ export default function PatientInsurance({
         <div>
           <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-2 pb-1 border-b border-[#D9E1E8]">Clinical / Billing</p>
           <Row label="Dx Codes" value={[data.dxCode1, data.dxCode2, data.dxCode3, data.dxCode4].filter(Boolean).join(', ')} />
-          <Row label="Prior Auth #" value={data.paNumber} />
-          <Row label="PA Dates" value={data.paStartDate || data.paEndDate ? `${data.paStartDate || '?'} — ${data.paEndDate || 'Present'}` : null} />
+          <Row label="Prior Auth #" value={paNumberDisplay} />
+          <Row label="PA Dates" value={paDatesDisplay} />
         </div>
       </div>
     )

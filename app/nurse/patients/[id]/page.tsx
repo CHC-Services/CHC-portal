@@ -216,7 +216,7 @@ export default function NursePatientDetailPage({ params }: { params: Promise<{ i
     {
       key: 'insurance', label: 'Insurance', content: (
         <>
-          <PatientInsurance data={merged} readOnly editing={false} onEdit={() => {}} setField={() => {}} />
+          <PatientInsurance data={merged} readOnly editing={false} onEdit={() => {}} setField={() => {}} priorAuths={patient.priorAuths} />
           <div className="bg-white rounded-2xl shadow-sm p-6 mt-5">
             <PatientPriorAuthHistory priorAuths={patient.priorAuths} canEdit={!merged.isLocked} onAdd={handleAddPA} onEdit={handleEditPA} onDelete={handleDeletePA} />
           </div>

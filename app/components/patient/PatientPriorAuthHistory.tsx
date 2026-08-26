@@ -13,17 +13,27 @@ export type PatientPA = {
   createdAt: string
 }
 
-// Puts the PA whose window contains today first (marked active); everything else
-// newest-to-oldest by end date, regardless of the order they were entered.
-function prioritizePAs(pas: PatientPA[]): PatientPA[] {
+// The PA whose date window contains today, or null if none — the single
+// source of truth for "what's the active PA," shared with PatientInsurance's
+// Clinical/Billing display so that section can never drift out of sync with
+// this history list (rather than trusting a separately-maintained field).
+// When more than one PA's window contains today (shouldn't normally happen,
+// but data can be messy), the one with the latest start date wins.
+export function findActivePA(pas: PatientPA[]): PatientPA | null {
   const today = new Date().toISOString().slice(0, 10)
   const withinWindow = (pa: PatientPA) =>
     (!pa.paStartDate || pa.paStartDate <= today) && (!pa.paEndDate || pa.paEndDate >= today)
 
   const active = pas.filter(withinWindow)
-  const current = active.length
+  return active.length
     ? active.reduce((a, b) => (b.paStartDate || '') > (a.paStartDate || '') ? b : a)
     : null
+}
+
+// Puts the PA whose window contains today first (marked active); everything else
+// newest-to-oldest by end date, regardless of the order they were entered.
+function prioritizePAs(pas: PatientPA[]): PatientPA[] {
+  const current = findActivePA(pas)
 
   const rest = pas
     .filter(pa => pa !== current)

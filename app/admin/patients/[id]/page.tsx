@@ -371,7 +371,7 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
     {
       key: 'insurance', label: 'Insurance', content: (
         <>
-          <PatientInsurance data={activeData} readOnly={false} editing={editing} onEdit={() => { setEditing(true); setEditData({ ...patient }) }} setField={setField} />
+          <PatientInsurance data={activeData} readOnly={false} editing={editing} onEdit={() => { setEditing(true); setEditData({ ...patient }) }} setField={setField} priorAuths={patient.priorAuths} />
           {editControls}
           <div className="bg-white rounded-2xl shadow-sm p-6 mt-5">
             <PatientPriorAuthHistory priorAuths={patient.priorAuths} canEdit onAdd={handleAddPA} onEdit={handleEditPA} onDelete={handleDeletePA} />

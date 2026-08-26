@@ -22,6 +22,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const appointments = await prisma.appointment.findMany({
     where: { patientId, status: { not: 'cancelled' } },
     orderBy: { startTime: 'asc' },
+    include: { reminders: true },
   })
   return NextResponse.json({ appointments })
 }
@@ -33,10 +34,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   if (!(await canCreateAppointment(session, patientId))) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const { title, location, provider, startTime, endTime, notes } = await req.json()
+  const { title, location, provider, startTime, endTime, notes, allDay, reminderChannel, reminders } = await req.json()
   if (!title || !startTime) {
     return NextResponse.json({ error: 'title and startTime are required' }, { status: 400 })
   }
+
+  const validReminders: number[] = Array.isArray(reminders)
+    ? reminders.filter((n: unknown) => typeof n === 'number' && n >= 0)
+    : []
 
   const appointment = await prisma.appointment.create({
     data: {
@@ -48,9 +53,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       startTime: new Date(startTime),
       endTime: endTime ? new Date(endTime) : null,
       notes: notes || null,
+      allDay: !!allDay,
+      reminderChannel: ['text', 'email', 'both', 'none'].includes(reminderChannel) ? reminderChannel : 'both',
       createdByUserId: session.id,
       createdByRole: session.role,
+      reminders: { create: validReminders.map(offsetDays => ({ id: crypto.randomUUID(), offsetDays })) },
     },
+    include: { reminders: true },
   })
 
   return NextResponse.json({ appointment })

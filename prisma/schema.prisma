@@ -1037,6 +1037,16 @@ model Appointment {
   endTime   DateTime?
   notes     String?
 
+  // When true, startTime/endTime are date boundaries only (no meaningful
+  // time-of-day) — a single all-day event, or one spanning multiple days.
+  // When false (default, existing behavior), they're a same-day time range.
+  allDay Boolean @default(false)
+
+  // 'text' | 'email' | 'both' | 'none' — no "follow my default" option yet,
+  // since there's no site-wide notification-channel preference to follow
+  // (see AppointmentReminder below / CLAUDE.md's Deferred section).
+  reminderChannel String @default("both")
+
   status String @default("scheduled") // 'scheduled' | 'completed' | 'cancelled' | 'no_show'
 
   createdByUserId String
@@ -1045,9 +1055,29 @@ model Appointment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  reminders AppointmentReminder[]
+
   @@index([patientId])
   @@index([startTime])
   @@index([status])
+}
+
+// One row per lead-time offset a nurse/guardian/admin wants reminded at
+// (day-level only — this app's Vercel plan only allows daily crons, so
+// hour/minute precision isn't reliably deliverable yet; see
+// app/api/cron/appointment-reminders). sentAt is the idempotency marker.
+model AppointmentReminder {
+  id            String   @id @default(uuid())
+  appointmentId String
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  offsetDays Int // days before the appointment's start date
+  sentAt     DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([appointmentId])
+  @@index([sentAt])
 }
 
 model ProgressNote {

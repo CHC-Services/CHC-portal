@@ -96,7 +96,8 @@ Separately from the narrative, pull out anything dictated that is actually a vit
 This is the same "never invent, only what was actually said" rule as the narrative, applied to structured data — which makes it MORE important to follow strictly here, not less: a wrong number in a table reads as an established fact, not prose a reader will naturally read critically.
 
 - Every row needs a time (24-hour military format, matching the narrative's own time for that entry).
-- Only fill in the specific fields that were actually mentioned for that row — leave every other field on that row blank. Do not infer a value (e.g. don't assume O2 route just because O2 percent was mentioned).
+- Vitals rows specifically: every field always gets a value, never omitted — fill in whatever was actually mentioned for that timestamp, and for every OTHER vitals field not mentioned at that same timestamp, put the literal string "-" instead of leaving it blank. This makes clear the field was considered and genuinely wasn't dictated, not skipped. Do not infer a real value just to avoid using "-" (e.g. don't assume O2 route just because O2 percent was mentioned — that still gets "-").
+- Intake/Output rows are different: only fill in the specific fields actually mentioned for that row and leave every other field blank (no "-") — a row is deliberately single-purpose (one intake type/amount/route, or one output type), not a full checklist the way a vitals row is.
 - If an entry mentions more than one intake or output type (e.g. "gave a 200mL feed, flushed with 30mL water"), that is TWO separate intake/output rows — one row can only hold one intake type and one output type, never both a feed amount and a flush amount packed together.
 - For O2 route, only use one of: ${O2_ROUTES.join(', ')} — leave blank if what was said doesn't clearly match one of these.
 - For "treatment needed" (txNeeded), only use one of: ${TX_NEEDED.join(', ')} — leave blank if not stated either way.
@@ -141,6 +142,11 @@ function formatEntriesForPrompt(entries: CompileVoiceEntry[], timeZone: string):
 }
 
 const ROW_STRING = { type: 'string' } as const
+// Vitals fields always get a value — "-" when that specific metric wasn't
+// mentioned at this row's timestamp, per the "-" convention above. Required
+// (not just time) so the model can't silently omit an unmentioned field
+// instead of writing "-" into it.
+const VITALS_FIELD = { type: 'string', description: 'The actual value if mentioned at this row\'s timestamp, otherwise the literal string "-".' } as const
 
 const TOOL_SCHEMA = {
   type: 'object',
@@ -153,11 +159,11 @@ const TOOL_SCHEMA = {
       items: {
         type: 'object',
         properties: {
-          time: ROW_STRING, temp: ROW_STRING, hr: ROW_STRING, rr: ROW_STRING, skin: ROW_STRING,
-          o2Flow: ROW_STRING, o2Route: ROW_STRING, o2Percent: ROW_STRING,
-          lungSounds: ROW_STRING, txNeeded: ROW_STRING, suction: ROW_STRING,
+          time: ROW_STRING, temp: VITALS_FIELD, hr: VITALS_FIELD, rr: VITALS_FIELD, skin: VITALS_FIELD,
+          o2Flow: VITALS_FIELD, o2Route: VITALS_FIELD, o2Percent: VITALS_FIELD,
+          lungSounds: VITALS_FIELD, txNeeded: VITALS_FIELD, suction: VITALS_FIELD,
         },
-        required: ['time'],
+        required: ['time', 'temp', 'hr', 'rr', 'skin', 'o2Flow', 'o2Route', 'o2Percent', 'lungSounds', 'txNeeded', 'suction'],
       },
     },
     intakeOutput: {

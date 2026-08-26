@@ -47,7 +47,6 @@ export default async function PatientSchedulePage({
           patientId={patientId}
           basePath={`/api/patient/${patientId}`}
           availableNurses={availableNurses}
-          section="shifts"
           canManage={canManage}
         />
       </div>

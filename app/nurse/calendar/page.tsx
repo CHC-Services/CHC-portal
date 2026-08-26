@@ -5,8 +5,11 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import CalendarGrid from '../../components/calendar/CalendarGrid'
 import CalendarViewSwitcher from '../../components/calendar/CalendarViewSwitcher'
+import AppointmentForm from '../../components/patient/AppointmentForm'
 import { computeViewRange, dateKey, type CalendarViewMode } from '../../../lib/calendarViewRange'
 import type { CalendarItem as RawCalendarItem } from '../../../lib/calendarFeed'
+
+type PatientOption = { id: string; firstName: string; lastName: string }
 
 type CalendarItem = Omit<RawCalendarItem, 'date' | 'endDate'> & { date: Date; endDate?: Date }
 
@@ -44,6 +47,17 @@ export default function NurseCalendarPage() {
 
   const [selectedItem, setSelectedItem] = useState<CalendarItem | null>(null)
   const [actionBusy, setActionBusy] = useState(false)
+
+  const [patients, setPatients] = useState<PatientOption[]>([])
+  const [showAddAppt, setShowAddAppt] = useState(false)
+  const [apptPatientId, setApptPatientId] = useState('')
+
+  useEffect(() => {
+    fetch('/api/nurse/patients', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.patients) setPatients(data.patients) })
+      .catch(() => {})
+  }, [])
 
   const customRange = useMemo(() => {
     if (view !== 'custom' || !customStart || !customEnd) return undefined
@@ -145,9 +159,14 @@ export default function NurseCalendarPage() {
               Your shifts, appointments, and deadlines across every patient.
             </p>
           </div>
-          <Link href="/nurse/profile" className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">
-            + Add Personal Reminder →
-          </Link>
+          <div className="flex items-center gap-4">
+            <button type="button" onClick={() => setShowAddAppt(true)} className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">
+              + Add Appointment
+            </button>
+            <Link href="/nurse/profile" className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">
+              + Add Personal Reminder →
+            </Link>
+          </div>
         </div>
 
         {/* View mode switcher + navigation */}
@@ -256,6 +275,35 @@ export default function NurseCalendarPage() {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cross-patient Add Appointment modal */}
+      {showAddAppt && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50 overflow-y-auto" onClick={() => { setShowAddAppt(false); setApptPatientId('') }}>
+          <div className="bg-white rounded-2xl shadow-lg p-6 max-w-lg w-full my-8" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-lg font-bold text-[#2F3E4E]">Add Appointment</p>
+              <button onClick={() => { setShowAddAppt(false); setApptPatientId('') }} className="text-[#7A8F79] hover:text-[#2F3E4E] text-sm font-semibold transition">Close</button>
+            </div>
+            <div className="mb-4">
+              <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Patient</label>
+              <select
+                className="w-full border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                value={apptPatientId}
+                onChange={e => setApptPatientId(e.target.value)}
+              >
+                <option value="">— Select a patient —</option>
+                {patients.map(p => <option key={p.id} value={p.id}>{p.firstName} {p.lastName}</option>)}
+              </select>
+            </div>
+            {apptPatientId && (
+              <AppointmentForm
+                patientId={apptPatientId}
+                onCreated={() => { setShowAddAppt(false); setApptPatientId(''); load() }}
+              />
+            )}
           </div>
         </div>
       )}

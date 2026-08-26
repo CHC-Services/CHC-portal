@@ -21,6 +21,10 @@ export type CalendarItem = {
   // filters.
   nurseName?: string
   hasProgressNotes?: boolean
+  // appointment items only — true means date/endDate are date boundaries
+  // (possibly spanning multiple days), not a same-day time range. Drives
+  // CalendarGrid's month-view spanning-bar rendering.
+  allDay?: boolean
 }
 
 // Optional date-range window shared by every feed function below. When
@@ -89,7 +93,7 @@ export async function getNurseCalendarFeed(nurseProfileId: string, session: { id
     ...globalEvents.map(e => ({ id: e.id, source: 'globalEvent' as const, title: e.title, date: e.eventDate, category: e.category, description: e.description ?? undefined, editable: false })),
     ...personalReminders.map(r => ({ id: r.id, source: 'personalReminder' as const, title: r.title, date: r.dueDate, category: r.category, description: r.notes ?? undefined, editable: true })),
     ...[...myShifts, ...openShifts].map(s => ({ id: s.id, source: 'shift' as const, title: s.status === 'assigned' ? 'Shift' : s.status === 'coverage_needed' ? 'Coverage Needed' : 'Open Shift', date: s.startTime, endDate: s.endTime, patientId: s.patientId, patientName: patientName[s.patientId], category: 'shift', status: s.status, editable: s.nurseId === nurseProfileId, hasProgressNotes: s._count.progressNotes > 0 })),
-    ...appointments.map(a => ({ id: a.id, source: 'appointment' as const, title: a.title, date: a.startTime, endDate: a.endTime ?? undefined, patientId: a.patientId, patientName: patientName[a.patientId], category: 'appointment', status: a.status, editable: true })),
+    ...appointments.map(a => ({ id: a.id, source: 'appointment' as const, title: a.title, date: a.startTime, endDate: a.endTime ?? undefined, patientId: a.patientId, patientName: patientName[a.patientId], category: 'appointment', status: a.status, editable: true, allDay: a.allDay })),
     ...meds.map(m => ({ id: m.id, source: 'medication' as const, title: `Refill: ${m.medicationName}`, date: medicationDueDate(m.lastFillDate, m.daySupply), patientId: m.patientId, patientName: patientName[m.patientId], category: 'medication', editable: false })),
     ...pas.map(p => ({ id: p.id, source: 'priorAuth' as const, title: `PA Expiring: ${p.paNumber}`, date: new Date(p.paEndDate!), patientId: p.patientId, patientName: patientName[p.patientId], category: 'priorAuth', editable: false })),
     ...claimReminders.map(c => ({ id: c.id, source: 'claimReminder' as const, title: c.reason, date: c.dueDate, category: 'claim', editable: false })),
@@ -154,7 +158,7 @@ export async function getPatientCalendarFeed(patientId: string, range?: DateRang
 
   const items: CalendarItem[] = [
     ...shifts.map(s => ({ id: s.id, source: 'shift' as const, title: s.status === 'assigned' ? 'Shift' : s.status === 'coverage_needed' ? 'Coverage Needed' : 'Open Shift', date: s.startTime, endDate: s.endTime, patientId, category: 'shift', status: s.status, editable: true, nurseName: s.nurse?.displayName, hasProgressNotes: s._count.progressNotes > 0 })),
-    ...appointments.map(a => ({ id: a.id, source: 'appointment' as const, title: a.title, date: a.startTime, endDate: a.endTime ?? undefined, patientId, category: 'appointment', status: a.status, editable: true })),
+    ...appointments.map(a => ({ id: a.id, source: 'appointment' as const, title: a.title, date: a.startTime, endDate: a.endTime ?? undefined, patientId, category: 'appointment', status: a.status, editable: true, allDay: a.allDay })),
     ...meds.map(m => ({ id: m.id, source: 'medication' as const, title: `Refill: ${m.medicationName}`, date: medicationDueDate(m.lastFillDate, m.daySupply), patientId, category: 'medication', editable: false })),
     ...pas.map(p => ({ id: p.id, source: 'priorAuth' as const, title: `PA Expiring: ${p.paNumber}`, date: new Date(p.paEndDate!), patientId, category: 'priorAuth', editable: false })),
     ...documents.map(d => ({ id: d.id, source: 'document' as const, title: `Expiring: ${d.title}`, date: d.expiresAt!, patientId, category: 'document', editable: false })),

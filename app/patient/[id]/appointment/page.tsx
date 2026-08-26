@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { getUserFromCookie } from '@/lib/getUserFromCookie'
 import { canCreateAppointment } from '@/lib/permissions'
-import PatientSchedule from '../../../components/patient/PatientSchedule'
+import AppointmentForm from '../../../components/patient/AppointmentForm'
 
 // Appointment scheduling/editing for one patient. Unlike shifts, every
 // linked role (nurse included) has equal create/edit/cancel authority here —
@@ -26,13 +26,7 @@ export default async function PatientAppointmentPage({
         </Link>
       )}
       <p className="text-sm text-[#7A8F79] mb-4">Create and manage this patient’s appointments.</p>
-      <PatientSchedule
-        patientId={patientId}
-        basePath={`/api/patient/${patientId}`}
-        availableNurses={[]}
-        section="appointments"
-        canManage={canManage}
-      />
+      <AppointmentForm patientId={patientId} canManage={canManage} />
     </div>
   )
 }

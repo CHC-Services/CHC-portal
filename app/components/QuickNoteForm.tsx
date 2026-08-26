@@ -9,6 +9,16 @@ function toDateInputValue(iso: string) {
   return iso ? iso.slice(0, 10) : ''
 }
 
+// Compile now fills every unmentioned vitals field with a literal "-" (see
+// lib/bedrockClient.ts) so the final table always shows it was considered,
+// not just skipped. That's the right thing for the table itself, but the
+// review-before-adding summary line should still only call out fields that
+// actually have a real value — this treats "-" the same as unset for that
+// one line.
+function isVitalSet(v?: string | null) {
+  return !!v && v !== '-'
+}
+
 // Mirrors ProgressNoteForm.tsx's flowsheet fields, but wired to /api/quick-notes/*
 // with a header token instead of cookie session auth — kept as its own
 // component rather than a further stretch of ProgressNoteForm, since the two
@@ -571,10 +581,10 @@ export default function QuickNoteForm({
               {extractedVitals.map((v, i) => (
                 <p key={`v${i}`} className="text-sm italic text-amber-800 border-l-2 border-amber-300 pl-2">
                   {v.time || '—'} — {[
-                    v.temp && `Temp ${v.temp}`, v.hr && `HR ${v.hr}`, v.rr && `RR ${v.rr}`, v.skin && `Skin ${v.skin}`,
-                    v.o2Flow && `O2 Flow ${v.o2Flow}`, v.o2Route && `O2 Route ${v.o2Route}`, v.o2Percent && `O2 % ${v.o2Percent}`,
-                    v.lungSounds && `Lung Sounds ${v.lungSounds}`, v.txNeeded && `Tx Needed ${v.txNeeded}`, v.suction && `Suction ${v.suction}`,
-                  ].filter(Boolean).join(', ')}
+                    isVitalSet(v.temp) && `Temp ${v.temp}`, isVitalSet(v.hr) && `HR ${v.hr}`, isVitalSet(v.rr) && `RR ${v.rr}`, isVitalSet(v.skin) && `Skin ${v.skin}`,
+                    isVitalSet(v.o2Flow) && `O2 Flow ${v.o2Flow}`, isVitalSet(v.o2Route) && `O2 Route ${v.o2Route}`, isVitalSet(v.o2Percent) && `O2 % ${v.o2Percent}`,
+                    isVitalSet(v.lungSounds) && `Lung Sounds ${v.lungSounds}`, isVitalSet(v.txNeeded) && `Tx Needed ${v.txNeeded}`, isVitalSet(v.suction) && `Suction ${v.suction}`,
+                  ].filter(Boolean).join(', ') || 'no vitals captured'}
                 </p>
               ))}
               {extractedIO.map((r, i) => (

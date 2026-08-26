@@ -543,6 +543,64 @@ export async function sendDocumentExpirationReminder({
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Appointment Reminder — day-level offset before an Appointment's start
+// ─────────────────────────────────────────────────────────────────────────────
+export async function sendAppointmentReminder({
+  toEmail,
+  recipientName,
+  patientName,
+  appointmentTitle,
+  startTime,
+  location,
+  offsetDays,
+}: {
+  toEmail: string
+  recipientName: string
+  patientName: string
+  appointmentTitle: string
+  startTime: Date
+  location: string | null
+  offsetDays: number
+}): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) return false
+  const resend = createLoggedResend('reminder', recipientName)
+
+  const whenStr = startTime.toLocaleString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
+  })
+  const leadStr = offsetDays === 0 ? 'today' : `in ${offsetDays} day${offsetDays !== 1 ? 's' : ''}`
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to: toEmail,
+      replyTo: 'support@cominghomecare.com',
+      subject: `Reminder: ${patientName}'s appointment is ${leadStr}`,
+      html: `
+        <div style="font-family:sans-serif;max-width:520px;padding:32px;color:#2F3E4E">
+          <h2 style="margin:0 0 4px;color:#2F3E4E">Appointment Reminder</h2>
+          <p style="margin:0 0 24px;font-size:13px;color:#7A8F79">Coming Home Care Services, LLC</p>
+
+          <div style="background:#f4f6f8;border-radius:10px;padding:20px 24px;margin-bottom:24px">
+            <p style="margin:0 0 8px;font-size:14px">Hi <strong>${recipientName}</strong>,</p>
+            <p style="margin:0 0 16px;font-size:14px">This is a reminder about an upcoming appointment for <strong>${patientName}</strong>:</p>
+            <p style="margin:0 0 6px;font-size:15px;font-weight:700;color:#2F3E4E">${appointmentTitle}</p>
+            <p style="margin:0 0 6px;font-size:13px;color:#2F3E4E;font-weight:600">${whenStr}</p>
+            ${location ? `<p style="margin:0;font-size:13px;color:#7A8F79">${location}</p>` : ''}
+          </div>
+
+          <hr style="border:none;border-top:1px solid #D9E1E8;margin:24px 0"/>
+          <p style="font-size:11px;color:#aab">Coming Home Care Services, LLC · Automated appointment reminder</p>
+        </div>
+      `,
+    })
+    return !error
+  } catch {
+    return false
+  }
+}
+
 export async function sendEdiSummaryEmail({
   unmatched,
   matched,

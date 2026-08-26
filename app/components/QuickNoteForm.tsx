@@ -211,7 +211,11 @@ export default function QuickNoteForm({
   async function runCompile() {
     setShowCompileConfirm(false)
     setCompiling(true); setCompileError('')
-    const res = await fetch(`/api/quick-notes/notes/${note.id}/compile`, { method: 'POST', headers: headers() })
+    const res = await fetch(`/api/quick-notes/notes/${note.id}/compile`, {
+      method: 'POST',
+      headers: jsonHeaders(),
+      body: JSON.stringify({ timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
+    })
     setCompiling(false)
     if (!res.ok) {
       const body = await res.json().catch(() => ({}))
@@ -452,7 +456,7 @@ export default function QuickNoteForm({
 
         <div className="pt-2 border-t border-[#D9E1E8] space-y-2">
           <div className="flex items-center justify-end gap-3">
-            <p className="text-xs font-bold uppercase tracking-widest text-[#7A8F79]">End of Shift</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-[#7A8F79]">After shift ends, verbally chart all notes, then click ➡️</p>
             <button
               type="button"
               onClick={handleCompileClick}
@@ -494,7 +498,7 @@ export default function QuickNoteForm({
             <p className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Extracted Vitals &amp; Intake/Output — Review Before Adding</p>
             <div className="space-y-1">
               {extractedVitals.map((v, i) => (
-                <p key={`v${i}`} className="text-sm text-[#2F3E4E]">
+                <p key={`v${i}`} className="text-sm italic text-amber-800 border-l-2 border-amber-300 pl-2">
                   {v.time || '—'} — {[
                     v.temp && `Temp ${v.temp}`, v.hr && `HR ${v.hr}`, v.rr && `RR ${v.rr}`, v.skin && `Skin ${v.skin}`,
                     v.o2Flow && `O2 Flow ${v.o2Flow}`, v.o2Route && `O2 Route ${v.o2Route}`, v.o2Percent && `O2 % ${v.o2Percent}`,
@@ -503,7 +507,7 @@ export default function QuickNoteForm({
                 </p>
               ))}
               {extractedIO.map((r, i) => (
-                <p key={`io${i}`} className="text-sm text-[#2F3E4E]">
+                <p key={`io${i}`} className="text-sm italic text-amber-800 border-l-2 border-amber-300 pl-2">
                   {r.time || '—'} — {[
                     r.intakeType && `Intake ${r.intakeType} ${r.intakeAmt || ''}`.trim(), r.intakeRoute && `via ${r.intakeRoute}`,
                     r.outputUrine && `Urine ${r.outputUrine}`, r.outputBM && `BM ${r.outputBM}`, r.outputEmesis && `Emesis ${r.outputEmesis}`,

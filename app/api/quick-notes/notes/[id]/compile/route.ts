@@ -37,8 +37,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: 'No voice entries recorded yet for this note.' }, { status: 400 })
   }
 
+  // Client sends its own IANA timeZone (Intl resolvedOptions) so the
+  // compiled note's per-entry times match her device's clock, not the
+  // server's — see compileVoiceEntries' own comment for why this matters.
+  const body = await req.json().catch(() => ({}))
+  const timeZone = typeof body?.timeZone === 'string' ? body.timeZone : undefined
+
   try {
-    const result = await compileVoiceEntries(entries)
+    const result = await compileVoiceEntries(entries, timeZone)
     return NextResponse.json(result)
   } catch (err: any) {
     console.error('[Micro-Charting compile error]', err)

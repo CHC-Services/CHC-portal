@@ -58,8 +58,30 @@ Your job here has exactly two parts, and they must not blur together:
 
 2. NEVER add any clinical finding, observation, action, medication, quantity, time, or route that was not stated or clearly implied by what was actually dictated. If a word or phrase is genuinely ambiguous — no single reading is clearly favored by context — do not guess. Leave it as close to verbatim as possible and wrap your best-effort rendering in [unclear — please review] so the nurse notices and fixes it herself.
 
+## Extracting multiple times from one entry
+
+A single dictated entry can describe a run of several distinct events that happened at different points during the shift, not just one moment — split it into one narrative line per distinct time, not one line for the whole entry. Two ways a new time reveals itself within an entry's own text:
+- An explicit clock time is stated (e.g. "at 6:15am", "at 7") — convert it to 4-digit 24-hour military format.
+- A duration was given for the activity just described (e.g. "for 10 minutes", "lasted 10 min") and the entry then moves on to a new, distinct action — add that duration to the running clock to get that next action's start time. Only advance the clock this way when a new distinct action actually follows; a duration describing the entry's only activity doesn't need a second line.
+
+Each extracted or computed time becomes the timestamp prefix for its own narrative line — this takes priority over the entry's own recorded-at time, which only applies when nothing in the entry's own text lets you resolve a more specific time — and determines that line's chronological position among every other line in the narrative, same one-blank-line-between-entries formatting as everywhere else.
+
+If an entry mentions no clock time and no duration that would let you compute one, it stays a single line using its own recorded time, exactly as before.
+
+Example — one entry, several actions:
+Raw: "Patient woke up at 6:15am and was placed on the toilet for 10min before moving back to room to start CPT therapy, lasted 10min, tolerated well. Got patient dressed for day after that. Hair styled and oncoming nurse arrived at 7am, report was provided and care handed over."
+
+Compiles to:
+0615 - Patient woke up and was placed on the toilet for 10 minutes.
+
+0625 - Patient moved back to his room to complete CPT vest treatment. Tolerated well.
+
+0635 - Patient dressed for the day. Hair styled.
+
+0700 - Oncoming nurse arrived, report provided, and care handed over.
+
 Formatting rules for the narrative:
-- One line per entry (or per remaining portion of an entry after any arrivalFindings split), prefixed with its time in 24-hour military format (e.g. "1732 - ...").
+- One line per entry (or per remaining portion of an entry after any arrivalFindings split, or per extracted time within an entry per the rule above), prefixed with its time in 24-hour military format (e.g. "1732 - ...").
 - Exactly one blank line between entries.
 - Preserve every quantity, time, and route exactly as stated — do not round, estimate, or normalize units.
 - Use entries' relative references to each other (e.g. "after he was done throwing up") to resolve which earlier entry they refer to, but only within what was actually said across the entries — never invent a connection that isn't supported by the entries themselves.
@@ -99,10 +121,17 @@ export type CompileResult = {
   intakeOutput: ExtractedIntakeOutputRow[]
 }
 
-function formatEntriesForPrompt(entries: CompileVoiceEntry[]): string {
+// recordedAt is a real UTC instant (DateTime @default(now())) — correct and
+// unambiguous in storage. But this function runs in the Vercel serverless
+// function, not the nurse's browser, so toLocaleTimeString() with no
+// explicit timeZone would render in the SERVER's timezone, not hers —
+// timeZone must be passed in from the client (Intl.DateTimeFormat's
+// resolvedOptions().timeZone) for the compiled note's timestamps to match
+// what she actually saw on her device when she recorded each entry.
+function formatEntriesForPrompt(entries: CompileVoiceEntry[], timeZone: string): string {
   return entries
     .map(e => {
-      const time = e.recordedAt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+      const time = e.recordedAt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone })
       const tag = e.entryType === 'arrival' ? 'ARRIVAL' : 'SHIFT'
       return `[${time}] [${tag}] ${e.rawText}`
     })
@@ -149,8 +178,12 @@ const TOOL_SCHEMA = {
  * compiled narrative plus extracted Vitals/Intake-Output rows — never writes
  * any of it anywhere itself, per the "never silently overwrite" requirement;
  * the caller decides what to do with the result. */
-export async function compileVoiceEntries(entries: CompileVoiceEntry[]): Promise<CompileResult> {
-  const userText = `Here are this shift's dictated entries, already in chronological order:\n\n${formatEntriesForPrompt(entries)}`
+// timeZone: IANA zone from the nurse's own device (e.g. "America/New_York"),
+// passed by the client at compile time. Falls back to the agency's home
+// timezone if a caller doesn't supply one, rather than silently defaulting
+// to the server's — nobody using this app is actually in UTC.
+export async function compileVoiceEntries(entries: CompileVoiceEntry[], timeZone: string = 'America/New_York'): Promise<CompileResult> {
+  const userText = `Here are this shift's dictated entries, already in chronological order:\n\n${formatEntriesForPrompt(entries, timeZone)}`
 
   const response = await client.send(new ConverseCommand({
     modelId: MODEL_ID,

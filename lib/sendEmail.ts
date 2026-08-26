@@ -183,6 +183,70 @@ ${emailFooter('support@cominghomecare.com')}
   }
 }
 
+// Sent to an existing approved guardian when someone new self-registers and
+// links themselves to a patient that guardian already has access to. The new
+// guardian's own account is created immediately but held pending until one of
+// the existing guardians approves via the /family dashboard.
+export async function sendGuardianAccessRequestEmail({
+  to,
+  displayName,
+  requesterName,
+  patientName,
+}: {
+  to: string
+  displayName: string
+  requesterName: string
+  patientName: string
+}): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) return false
+  const resend = createLoggedResend('alert', displayName)
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to,
+      subject: `Access request for ${patientName}'s myCare account`,
+      html: `
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background:#D9E1E8;font-family:'Helvetica Neue',Arial,sans-serif">
+<div style="padding:36px 16px">
+<div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(47,62,78,0.13)">
+
+${emailHeader('Access Request')}
+
+<div style="padding:26px 32px 0">
+  <p style="margin:0 0 16px;font-size:14px;color:#4a5568;line-height:1.65">
+    Hi ${displayName}, <strong>${requesterName}</strong> just created a myCare account and linked
+    themselves to <strong>${patientName}</strong>&rsquo;s record — a patient you already have access to.
+  </p>
+  <p style="margin:0 0 22px;font-size:14px;color:#4a5568;line-height:1.65">
+    Their account is on hold and can&rsquo;t view any of ${patientName}&rsquo;s information until you
+    approve them. Sign in and visit your dashboard to approve or deny this request.
+  </p>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:24px">
+    <tr><td style="text-align:center">
+      <a href="${PORTAL_URL}/family" style="display:inline-block;background:#2F3E4E;color:#ffffff;text-decoration:none;padding:13px 36px;border-radius:10px;font-size:14px;font-weight:700;letter-spacing:0.5px">
+        Review Request &rarr;
+      </a>
+    </td></tr>
+  </table>
+</div>
+
+${emailFooter('support@cominghomecare.com')}
+
+</div>
+</div>
+</body>
+</html>
+      `,
+    })
+    return !error
+  } catch {
+    return false
+  }
+}
+
 export async function sendInvoiceEmail({
   to,
   pdfUrl,

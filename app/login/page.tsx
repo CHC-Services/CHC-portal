@@ -62,7 +62,7 @@ export default function LoginPage() {
       if (data.role === 'admin') {
         window.location.href = '/admin'
       } else if (data.role === 'guardian') {
-        window.location.href = '/family'
+        window.location.href = data.needsOnboarding ? '/login/your-information' : '/family'
       } else {
         window.location.href = '/nurse'
       }

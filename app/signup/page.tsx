@@ -59,7 +59,7 @@ export default function SignupPage() {
         setCountdown(secs)
         if (secs <= 0) {
           clearInterval(interval)
-          router.push('/nurse')
+          router.push('/login/your-information')
         }
       }, 1000)
     } catch {

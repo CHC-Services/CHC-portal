@@ -24,7 +24,7 @@ export async function GET(req: Request) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const links = await (prisma.guardianPatient.findMany as any)({
-    where: { userId: session.id },
+    where: { userId: session.id, approvedAt: { not: null } },
     include: {
       patient: {
         include: { medications: { orderBy: { createdAt: 'desc' }, include: { pharmacy: true } } },

@@ -43,8 +43,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
     await (prisma.guardianPatient.upsert as any)({
       where: { userId_patientId: { userId: existing.id, patientId: id } },
-      create: { userId: existing.id, patientId: id, relationship, invitedByUserId: session.id, hipaaAcknowledgedAt },
-      update: { relationship, invitedByUserId: session.id, hipaaAcknowledgedAt },
+      create: { userId: existing.id, patientId: id, relationship, invitedByUserId: session.id, hipaaAcknowledgedAt, approvedAt: new Date(), approvedByUserId: session.id },
+      update: { relationship, invitedByUserId: session.id, hipaaAcknowledgedAt, approvedAt: new Date(), approvedByUserId: session.id },
     })
     return NextResponse.json({ ok: true, email: existing.email, linkedExisting: true })
   }
@@ -64,7 +64,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   })
 
   await (prisma.guardianPatient.create as any)({
-    data: { userId: user.id, patientId: id, relationship, invitedByUserId: session.id, hipaaAcknowledgedAt },
+    data: { userId: user.id, patientId: id, relationship, invitedByUserId: session.id, hipaaAcknowledgedAt, approvedAt: new Date(), approvedByUserId: session.id },
   })
 
   const sent = await sendGuardianWelcomeEmail({

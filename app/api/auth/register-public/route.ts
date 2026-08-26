@@ -17,6 +17,14 @@ async function generateAccountNumber(): Promise<string> {
   return `${yy}${nextSeq}`
 }
 
+// "Patient or Guardian" is the only self-service selection that creates a
+// guardian account. Everything else ("Medical Provider", "Billing Service",
+// "Other") collapses into role: 'nurse', with the raw selection preserved as
+// free-text NurseProfile.signupRole metadata — unchanged from before.
+function resolveRole(signupRole: string | undefined): 'nurse' | 'guardian' {
+  return signupRole?.trim() === 'Patient' ? 'guardian' : 'nurse'
+}
+
 export async function POST(req: Request) {
   try {
     const { firstName, lastName, phone, email, password, signupRole } = await req.json()
@@ -36,33 +44,47 @@ export async function POST(req: Request) {
     const hashed = await bcrypt.hash(password, 10)
     const fullName = `${firstName.trim()} ${lastName.trim()}`
     const displayName = firstName.trim()
+    const role = resolveRole(signupRole)
 
-    const user = await (prisma.user.create as any)({
-      data: {
-        email: email.toLowerCase().trim(),
-        password: hashed,
-        name: fullName,
-        role: 'nurse',
-        nurseProfile: {
-          create: {
-            displayName,
+    const user = role === 'nurse'
+      ? await (prisma.user.create as any)({
+          data: {
+            email: email.toLowerCase().trim(),
+            password: hashed,
+            name: fullName,
+            role: 'nurse',
+            nurseProfile: {
+              create: {
+                displayName,
+                firstName: firstName.trim(),
+                lastName: lastName.trim(),
+                phone: phone.trim(),
+                accountNumber: await generateAccountNumber(),
+                signupRole: signupRole?.trim() || null,
+                planTier: 'BASIC',
+                trialExpiresAt: trialEndDate(),
+              },
+            },
+          },
+          select: {
+            id: true,
+            email: true,
+            role: true,
+            nurseProfile: { select: { id: true, displayName: true, firstName: true, lastName: true } },
+          },
+        })
+      : await (prisma.user.create as any)({
+          data: {
+            email: email.toLowerCase().trim(),
+            password: hashed,
+            name: fullName,
+            role: 'guardian',
+            phone: phone.trim(),
             firstName: firstName.trim(),
             lastName: lastName.trim(),
-            phone: phone.trim(),
-            accountNumber: await generateAccountNumber(),
-            signupRole: signupRole?.trim() || null,
-            planTier: 'BASIC',
-            trialExpiresAt: trialEndDate(),
           },
-        },
-      },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        nurseProfile: { select: { id: true, displayName: true, firstName: true, lastName: true } },
-      },
-    })
+          select: { id: true, email: true, role: true },
+        })
 
     await sendRegistrationConfirmation({ to: user.email, displayName }).catch(() => {})
 
@@ -72,8 +94,8 @@ export async function POST(req: Request) {
       nurseProfileId: user.nurseProfile?.id,
       name: fullName,
       displayName,
-      firstName: (user.nurseProfile as any)?.firstName ?? undefined,
-      lastName: (user.nurseProfile as any)?.lastName ?? undefined,
+      firstName: (user.nurseProfile as any)?.firstName ?? firstName.trim(),
+      lastName: (user.nurseProfile as any)?.lastName ?? lastName.trim(),
     })
 
     const res = NextResponse.json({ ok: true })

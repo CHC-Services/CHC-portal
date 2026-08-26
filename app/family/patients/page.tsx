@@ -6,14 +6,16 @@ import { calculateAge } from '../../../lib/patientAge'
 
 type FamilyPatient = {
   id: string
-  accountNumber: string
+  accountNumber?: string
   firstName: string
   lastName: string
-  dob: string
-  address: string | null
-  insuranceType: string
-  insuranceId: string
-  insuranceName: string | null
+  dob?: string
+  address?: string | null
+  insuranceType?: string
+  insuranceId?: string
+  insuranceName?: string | null
+  pending?: boolean
+  pendingMessage?: string
 }
 
 export default function FamilyPatientsPage() {
@@ -47,7 +49,24 @@ export default function FamilyPatientsPage() {
         ) : (
           <div className="space-y-3">
             {patients.map(p => {
-              const age = calculateAge(p.dob)
+              if (p.pending) {
+                return (
+                  <Link
+                    key={p.id}
+                    href={`/family/patients/${p.id}`}
+                    className="block bg-amber-50 border border-amber-200 rounded-xl p-4 hover:shadow-md transition"
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="font-bold text-base text-[#2F3E4E]">{p.firstName} {p.lastName[0]}.</p>
+                        <p className="text-xs text-amber-700 mt-0.5">{p.pendingMessage || 'Access pending approval from an existing caregiver'}</p>
+                      </div>
+                      <span className="text-[#7A8F79] text-lg">→</span>
+                    </div>
+                  </Link>
+                )
+              }
+              const age = p.dob ? calculateAge(p.dob) : null
               return (
                 <Link
                   key={p.id}

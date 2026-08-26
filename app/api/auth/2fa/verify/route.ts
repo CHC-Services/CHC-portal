@@ -107,7 +107,12 @@ export async function POST(req: Request) {
     portalAgreementSigned,
   })
 
-  const res = NextResponse.json({ ok: true, role: user.role, portalAgreementSigned })
+  // Guardians who self-registered but abandoned before finishing the shared
+  // demographic step need to be sent back there — they have nowhere else
+  // useful to land (no patient linked yet).
+  const needsOnboarding = user.role === 'guardian' && !(user as any).onboardingCompletedAt
+
+  const res = NextResponse.json({ ok: true, role: user.role, portalAgreementSigned, needsOnboarding })
 
   // Clear pending cookie, set full session
   res.cookies.set('pending_2fa', '', { maxAge: 0, path: '/' })

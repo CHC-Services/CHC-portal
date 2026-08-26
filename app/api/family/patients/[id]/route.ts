@@ -15,7 +15,7 @@ async function verifyLinked(userId: string, patientId: string) {
   const link = await (prisma.guardianPatient.findUnique as any)({
     where: { userId_patientId: { userId, patientId } },
   })
-  return !!link
+  return !!link?.approvedAt
 }
 
 const EDITABLE_FIELDS = [
@@ -43,6 +43,20 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     where: { userId_patientId: { userId: session.id, patientId: id } },
   })
   if (!link) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  if (!link.approvedAt) {
+    const pendingPatient = await (prisma.patient.findUnique as any)({ where: { id }, select: { firstName: true, lastName: true } })
+    return NextResponse.json({
+      patient: {
+        id,
+        firstName: pendingPatient?.firstName,
+        lastName: pendingPatient?.lastName,
+        pending: true,
+        pendingMessage: 'Access pending approval from an existing caregiver',
+      },
+      nurseLinks: [],
+    })
+  }
 
   const patient = await (prisma.patient.findUnique as any)({ where: { id } })
   if (!patient) return NextResponse.json({ error: 'Patient not found' }, { status: 404 })

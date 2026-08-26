@@ -143,9 +143,80 @@ function PatientReminderGroup({ patient, reminders }: { patient: FamilyPatient; 
   )
 }
 
+type PendingRequest = {
+  patientId: string
+  patientName: string
+  pendingUserId: string
+  pendingUserName: string
+  pendingUserEmail: string
+  relationship: string | null
+  createdAt: string
+}
+
+function PendingAccessCard({ requests, onDecided }: { requests: PendingRequest[]; onDecided: () => void }) {
+  const [busyKey, setBusyKey] = useState('')
+
+  async function decide(r: PendingRequest, approve: boolean) {
+    const key = `${r.patientId}:${r.pendingUserId}`
+    setBusyKey(key)
+    await fetch(`/api/family/patients/${r.patientId}/approve-guardian`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ pendingUserId: r.pendingUserId, approve }),
+    })
+    setBusyKey('')
+    onDecided()
+  }
+
+  if (requests.length === 0) return null
+
+  return (
+    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 space-y-3">
+      <p className="text-sm font-bold text-amber-800">Access requests awaiting your approval</p>
+      {requests.map(r => {
+        const key = `${r.patientId}:${r.pendingUserId}`
+        return (
+          <div key={key} className="flex items-center justify-between gap-4 bg-white rounded-lg px-3 py-2">
+            <p className="text-sm text-[#2F3E4E]">
+              <strong>{r.pendingUserName}</strong> ({r.pendingUserEmail}){r.relationship ? `, ${r.relationship}` : ''} is requesting access to <strong>{r.patientName}</strong>&apos;s case.
+            </p>
+            <div className="flex gap-2 shrink-0">
+              <button
+                type="button"
+                disabled={busyKey === key}
+                onClick={() => decide(r, true)}
+                className="bg-[#2F3E4E] text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-[#7A8F79] transition disabled:opacity-50"
+              >
+                Approve
+              </button>
+              <button
+                type="button"
+                disabled={busyKey === key}
+                onClick={() => decide(r, false)}
+                className="border border-red-300 text-red-600 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-red-50 transition disabled:opacity-50"
+              >
+                Deny
+              </button>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function FamilyDashboardPage() {
   const [patients, setPatients] = useState<FamilyPatient[]>([])
   const [loading, setLoading] = useState(true)
+  const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([])
+
+  function loadPendingRequests() {
+    fetch('/api/family/pending-guardians', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => setPendingRequests(data.requests || []))
+      .catch(() => {})
+  }
 
   useEffect(() => {
     fetch('/api/family/medications', { credentials: 'include' })
@@ -154,6 +225,7 @@ export default function FamilyDashboardPage() {
         setPatients(data.patients || [])
         setLoading(false)
       })
+    loadPendingRequests()
   }, [])
 
   const reminders: ReminderRow[] = patients
@@ -188,6 +260,8 @@ export default function FamilyDashboardPage() {
         </div>
 
         <WhatsNewCard roleKey="guardian" />
+
+        <PendingAccessCard requests={pendingRequests} onDecided={loadPendingRequests} />
 
         {loading ? (
           <p className="text-sm text-[#7A8F79] text-center py-12">Loading…</p>

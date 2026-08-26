@@ -157,6 +157,18 @@ export default function FamilyPatientDetailPage({ params }: { params: Promise<{ 
     )
   }
 
+  if ((data as any).pending) {
+    return (
+      <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6 pl-0 md:pl-0">
+        <div className="bg-white rounded-xl shadow-sm p-8 text-center max-w-md mx-auto">
+          <p className="text-[#2F3E4E] font-semibold">{data.firstName} {data.lastName}</p>
+          <p className="text-[#7A8F79] text-sm mt-1">{(data as any).pendingMessage || 'Access pending approval from an existing caregiver'}</p>
+          <Link href="/family/patients" className="inline-block mt-4 text-sm font-semibold text-[#7A8F79] hover:text-[#2F3E4E]">← Back to myPatients</Link>
+        </div>
+      </div>
+    )
+  }
+
   const demographicsAndInsuranceForm = (
     <div className="mt-3">
       {error && <p className="text-red-500 text-sm bg-red-50 rounded-lg px-3 py-2 mb-3">{error}</p>}

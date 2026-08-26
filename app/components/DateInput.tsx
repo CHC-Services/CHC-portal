@@ -127,7 +127,7 @@ const DateInput = forwardRef<HTMLInputElement, Props>(function DateInput(
     onKeyDown?.(e)
   }
 
-  const segCls = 'bg-transparent outline-none text-center tabular-nums min-w-0'
+  const segCls = 'bg-transparent outline-none text-center tabular-nums min-w-0 placeholder-[#aab]'
 
   return (
     <div ref={containerRef} id={id} title={title} onBlur={handleContainerBlur} className={`${className || ''} flex items-center justify-center gap-1`} style={style}>

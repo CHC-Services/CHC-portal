@@ -64,7 +64,7 @@ function NurseAdditionalInsuranceForm({
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between text-xs font-bold uppercase tracking-widest text-[#2F3E4E] pb-1 border-b border-[#D9E1E8] mb-3 hover:text-[#7A8F79] transition"
       >
-        <span>Additional Coverage</span>
+        <span>Is there secondary coverage?</span>
         <span className="text-[#7A8F79] font-normal normal-case tracking-normal text-xs">
           {open ? '▲ hide' : '▼ + add secondary insurance'}
         </span>
@@ -257,8 +257,8 @@ export default function MyPatients() {
   })
 
   // ── Shared input class ──────────────────────────────────────────────────
-  const inp = 'w-full border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] placeholder-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] uppercase'
-  const lbl = 'block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1'
+  const inp = 'w-full border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] placeholder:text-[#aab] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] uppercase tracking-wide'
+  const lbl = 'block text-xs font-semibold uppercase tracking-wide text-[#2F3E4E] mb-1'
 
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6 pl-0 md:pl-0 max-w-6xl">
@@ -352,7 +352,7 @@ export default function MyPatients() {
             <div className="flex items-center justify-between p-5 border-b border-[#D9E1E8]">
               <h2 className="text-lg font-bold text-[#2F3E4E]">
                 {step === 'search' && 'Find Patient'}
-                {step === 'found' && 'Patient Found'}
+                {step === 'found' && 'Match Found'}
                 {step === 'notfound' && 'No Match Found'}
                 {step === 'newform' && 'New Patient Record'}
               </h2>
@@ -365,14 +365,16 @@ export default function MyPatients() {
               {/* Step 1: Search */}
               {step === 'search' && (
                 <form onSubmit={handleSearch} className="space-y-4">
-                  <p className="text-sm text-[#7A8F79]">Enter the patient's details to check if they already exist in the system before creating a new record.</p>
-                  <div>
-                    <label className={lbl}>Last Name</label>
-                    <input required value={srchLast} onChange={e => setSrchLast(e.target.value)} placeholder="Patient's last name" className={inp} />
-                  </div>
-                  <div>
-                    <label className={lbl}>Date of Birth</label>
-                    <DateInput required value={srchDob} onChange={e => setSrchDob(e.target.value)} className={inp} />
+                  <p className="text-sm text-[#7A8F79]">Complete the details below to search for an existing patient account before creating a new record.</p>
+                  <div className="flex gap-4">
+                    <div className="w-3/5">
+                      <label className={lbl}>Last Name</label>
+                      <input required value={srchLast} onChange={e => setSrchLast(e.target.value)} placeholder="Patient's last name" className={inp} />
+                    </div>
+                    <div className="w-[18ch]">
+                      <label className={lbl}>Date of Birth</label>
+                      <DateInput required value={srchDob} onChange={e => setSrchDob(e.target.value)} className={inp} />
+                    </div>
                   </div>
                   <div>
                     <label className={lbl}>Medicaid / Insurance Member ID</label>
@@ -412,14 +414,14 @@ export default function MyPatients() {
               {/* Step 2b: No match */}
               {step === 'notfound' && (
                 <div className="text-center">
-                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5">
-                    <p className="text-sm text-amber-800 font-semibold">No patient matches found.</p>
-                    <p className="text-xs text-amber-700 mt-1">Please continue adding a new patient record.</p>
+                  <div className="bg-amber-50 border border-amber-400 rounded-xl p-4 mb-5">
+                    <p className="text-sm text-green-700 font-semibold">No existing record found.</p>
+                    <p className="text-xs text-[#2F3E4E] mt-1">Continue enrollment by clicking the button below.</p>
                   </div>
                   <button onClick={() => setStep('newform')} className="w-full bg-[#2F3E4E] text-white py-2 rounded-xl font-semibold hover:bg-[#7A8F79] transition mb-3">
                     Continue Adding New Patient
                   </button>
-                  <button onClick={() => setStep('search')} className="w-full border border-[#D9E1E8] text-[#7A8F79] py-2 rounded-xl text-sm hover:bg-[#F4F6F5] transition">
+                  <button onClick={() => setStep('search')} className="w-full border border-[#2F3E4E] text-[#2F3E4E] py-2 rounded-xl text-sm hover:bg-[#F4F6F5] transition">
                     Try a Different Search
                   </button>
                 </div>
@@ -444,16 +446,16 @@ export default function MyPatients() {
 
                   {/* ── Demographics ── */}
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-3 pb-1 border-b border-[#D9E1E8]">Demographics</p>
+                    <p className="text-sm font-bold uppercase tracking-widest text-[#7A8F79] mb-3 pb-1 border-b border-[#D9E1E8]">Demographics</p>
                     <div className="space-y-3">
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className={lbl}>First Name</label>
-                          <input required value={newPt.firstName} onChange={e => setPt('firstName', e.target.value)} className={inp} />
+                          {/* <label className={lbl}>First Name</label> */}
+                          <input required value={newPt.firstName} onChange={e => setPt('firstName', e.target.value)} placeholder="First Name" className={inp} />
                         </div>
                         <div>
-                          <label className={lbl}>Last Name</label>
-                          <input required value={newPt.lastName} onChange={e => setPt('lastName', e.target.value)} className={inp} />
+                          {/* <label className={lbl}>Last Name</label> */}
+                          <input required value={newPt.lastName} onChange={e => setPt('lastName', e.target.value)} placeholder="Last Name" className={inp} />
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
@@ -463,7 +465,7 @@ export default function MyPatients() {
                         </div>
                         <div>
                           <label className={lbl}>Sex</label>
-                          <select value={newPt.gender} onChange={e => setPt('gender', e.target.value)} className={inp}>
+                          <select value={newPt.gender} onChange={e => setPt('gender', e.target.value)} className={`${inp} h-[34px]`}>
                             <option value="">Select…</option>
                             <option>Male</option>
                             <option>Female</option>
@@ -521,34 +523,31 @@ export default function MyPatients() {
                     </div>
                   </div>
 
-                  {/* ── Additional Coverage ── */}
-                  <NurseAdditionalInsuranceForm newPt={newPt} setPt={setPt} inp={inp} lbl={lbl} />
-
                   {/* ── Address ── */}
                   <div>
                     <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-3 pb-1 border-b border-[#D9E1E8]">
-                      Address {insType === 'Medicaid' && <span className="normal-case font-normal text-[#aab] ml-1">(optional)</span>}
+                      Claim Mailing Address {insType === 'Medicaid' && <span className="normal-case font-normal text-[#aab] ml-1">(optional)</span>}
                     </p>
                     <div className="space-y-3">
                       <div>
-                        <label className={lbl}>Street</label>
+                        {/* <label className={lbl}>Street</label> */}
                         <input required={insType === 'Commercial'} value={newPt.address} onChange={e => setPt('address', e.target.value)} placeholder="Street address" className={inp} />
                       </div>
                       <div className="grid grid-cols-3 gap-3">
                         <div className="col-span-1">
-                          <label className={lbl}>City</label>
-                          <input required={insType === 'Commercial'} value={newPt.city} onChange={e => setPt('city', e.target.value)} className={inp} />
+                          {/* <label className={lbl}>City</label> */}
+                          <input required={insType === 'Commercial'} value={newPt.city} onChange={e => setPt('city', e.target.value)} placeholder="City" className={inp} />
                         </div>
                         <div>
-                          <label className={lbl}>State</label>
-                          <select required={insType === 'Commercial'} value={newPt.state} onChange={e => setPt('state', e.target.value)} className={inp}>
+                          {/* <label className={lbl}>State</label> */}
+                          <select required={insType === 'Commercial'} value={newPt.state} onChange={e => setPt('state', e.target.value)} className={`${inp} h-[34px]`}>
                             <option value="">ST</option>
                             {US_STATES.map(s => <option key={s}>{s}</option>)}
                           </select>
                         </div>
                         <div>
-                          <label className={lbl}>ZIP</label>
-                          <input required={insType === 'Commercial'} value={newPt.zip} onChange={e => setPt('zip', e.target.value)} className={inp} />
+                          {/* <label className={lbl}>ZIP</label> */}
+                          <input required={insType === 'Commercial'} value={newPt.zip} onChange={e => setPt('zip', e.target.value)} placeholder="ZIP Code" className={inp} />
                         </div>
                       </div>
                     </div>
@@ -556,15 +555,10 @@ export default function MyPatients() {
 
                   {/* ── Clinical / Billing ── */}
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-3 pb-1 border-b border-[#D9E1E8]">Clinical / Billing</p>
+                    <p className="text-sm font-bold uppercase tracking-widest text-[#7A8F79] mb-3 pb-1 border-b border-[#D9E1E8]">Clinical / Billing</p>
                     <div className="space-y-3">
 
-                      {/* High-Tech */}
-                      <div className="flex items-center gap-3">
-                        <input type="checkbox" id="highTech" checked={newPt.highTech} onChange={e => setPt('highTech', e.target.checked)} className="accent-[#7A8F79] w-4 h-4" />
-                        <label htmlFor="highTech" className="text-sm text-[#2F3E4E] font-semibold cursor-pointer">High-Tech designation</label>
-                      </div>
-
+          
                       {/* Diagnosis codes */}
                       <div>
                         <label className={lbl}>Diagnosis Codes (ICD-10) <span className="normal-case font-normal text-[#aab]">(enter applicable)</span></label>
@@ -581,6 +575,13 @@ export default function MyPatients() {
                         <label className={lbl}>Prior Authorization # <span className="normal-case font-normal text-[#aab]">(optional)</span></label>
                         <input value={newPt.paNumber} onChange={e => setPt('paNumber', e.target.value)} className={inp} />
                       </div>
+
+                      {/* High-Tech */}
+                      <div className="flex items-center gap-3">
+                        <input type="checkbox" id="highTech" checked={newPt.highTech} onChange={e => setPt('highTech', e.target.checked)} className="accent-[#7A8F79] w-4 h-4" />
+                        <label htmlFor="highTech" className="text-sm text-[#2F3E4E] font-semibold cursor-pointer">High-Tech designation?</label>
+                      </div>
+
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className={lbl}>PA Start Date</label>
@@ -591,6 +592,9 @@ export default function MyPatients() {
                           <DateInput value={newPt.paEndDate} onChange={e => setPt('paEndDate', e.target.value)} className={inp} />
                         </div>
                       </div>
+
+                      {/* ── Additional Coverage ── */}
+                      <NurseAdditionalInsuranceForm newPt={newPt} setPt={setPt} inp={inp} lbl={lbl} />
 
                       {/* Commercial-only policy details */}
                       {insType === 'Commercial' && (

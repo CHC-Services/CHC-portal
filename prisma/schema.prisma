@@ -54,6 +54,21 @@ model User {
   signatureImageKey String?
   signatureSavedAt  DateTime?
 
+  // Guardian/admin-facing demographic fields, collected in the shared
+  // post-signup "Your Information" step. Nurses keep using NurseProfile's
+  // own copies of these same concepts as authoritative — same deliberate
+  // asymmetry as signatureImageKey above, not a duplicate to keep in sync.
+  firstName String?
+  lastName  String?
+  dob       String?
+  address   String?
+  city      String?
+  state     String?
+  zip       String?
+  // Gates the new shared post-signup intake steps (Your Information, and —
+  // for guardians — the patient search/link/create step).
+  onboardingCompletedAt DateTime?
+
   nurseProfile          NurseProfile?
   guardianLinks         GuardianPatient[]
   sentMessages          Message[]              @relation("MessageSender")
@@ -1363,6 +1378,12 @@ model GuardianPatient {
   relationship             String? // 'Parent' | 'Guardian' | 'Caregiver' — descriptive title chosen by the inviter
   invitedByUserId          String? // who sent the invite — accountability trail for the HIPAA acknowledgment
   hipaaAcknowledgedAt      DateTime? // when the inviter acknowledged the HIPAA access-responsibility notice
+  // null = pending: this guardian is linked but cannot see the patient's data yet
+  // (self-service signup matched a patient that already has another approved guardian).
+  // set = this guardian can see the patient's data — either approved by an existing
+  // guardian, or implicitly (first guardian on the patient, or invite-created link).
+  approvedAt               DateTime?
+  approvedByUserId         String? // which existing guardian approved this link
   createdAt                DateTime @default(now())
 
   @@unique([userId, patientId])

@@ -57,18 +57,19 @@ export function verifyPendingToken(token: string): { id: string; mfaMethod?: Mfa
   }
 }
 
-// Proves a nurse's 3-factor search (lastName+dob+insuranceId) actually matched
+// Proves a requester's 3-factor search (lastName+dob+insuranceId) actually matched
 // this specific patient, so the link endpoint isn't trusting a bare client-supplied
-// patientId. Scoped to the searching nurse so the token can't be replayed by anyone else.
-export function signPatientMatchToken(nurseId: string, patientId: string) {
-  return jwt.sign({ nurseId, patientId, type: 'patient_match' }, JWT_SECRET, { expiresIn: '5m' })
+// patientId. Scoped to the searching requester (a nurse's nurseProfileId, or a
+// guardian's userId) so the token can't be replayed by anyone else.
+export function signPatientMatchToken(requesterId: string, patientId: string) {
+  return jwt.sign({ requesterId, patientId, type: 'patient_match' }, JWT_SECRET, { expiresIn: '5m' })
 }
 
-export function verifyPatientMatchToken(token: string): { nurseId: string; patientId: string } | null {
+export function verifyPatientMatchToken(token: string): { requesterId: string; patientId: string } | null {
   try {
     const payload = jwt.verify(token, JWT_SECRET) as any
     if (payload.type !== 'patient_match') return null
-    return { nurseId: payload.nurseId, patientId: payload.patientId }
+    return { requesterId: payload.requesterId, patientId: payload.patientId }
   } catch {
     return null
   }

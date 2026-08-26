@@ -51,31 +51,55 @@ export async function sendWelcomeEmail({
     const { error } = await resend.emails.send({
       from: FROM,
       to,
-      subject: 'WELCOME: Your Coming Home Care Provider Portal Account is Ready',
+      subject: `Welcome to Coming Home Care, ${displayName.split(' ')[0]} — your provider account is ready`,
       html: `
-        <div style="font-family:sans-serif;max-width:520px;padding:32px;color:#2F3E4E">
-          <h2 style="margin:0 0 8px;color:#2F3E4E">Welcome to the CHC Provider Portal</h2>
-          <p style="margin:0 0 20px;color:#7A8F79;font-size:14px">Your account has been created. Use the credentials below to sign in.</p>
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background:#D9E1E8;font-family:'Helvetica Neue',Arial,sans-serif">
+<div style="padding:36px 16px">
+<div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(47,62,78,0.13)">
 
-          <div style="background:#f4f6f8;border-radius:10px;padding:20px 24px;margin-bottom:24px">
-            <p style="margin:0 0 8px;font-size:14px"><strong>Name:</strong> ${displayName}</p>
-            <p style="margin:0 0 8px;font-size:14px"><strong>Email:</strong> ${email}</p>
-            <p style="margin:0;font-size:14px"><strong>Temporary Password:</strong> ${password}</p>
-          </div>
+${emailHeader('Welcome Aboard')}
 
-          <a href="${PORTAL_URL}/login"
-             style="display:inline-block;background:#2F3E4E;color:white;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600">
-            Sign In to Your Portal →
-          </a>
+<div style="padding:26px 32px 0">
+  <p style="margin:0 0 4px;font-size:10px;color:#7A8F79;text-transform:uppercase;letter-spacing:2px;font-weight:700">Welcome,</p>
+  <p style="margin:0 0 16px;font-size:22px;font-weight:800;color:#2F3E4E;line-height:1.2">${displayName}</p>
+  <p style="margin:0 0 22px;font-size:14px;color:#4a5568;line-height:1.65">
+    We&rsquo;re glad to have you on the team. Your provider account with
+    <span style="font-style:italic;color:#2F3E4E;font-family:Georgia,serif">Coming Home</span><span style="color:#7A8F79;font-weight:600">care</span>
+    is ready to go — sign in below with the credentials we&rsquo;ve set up for you.
+  </p>
 
-          <p style="margin-top:24px;font-size:13px;color:#7A8F79">
-            Once signed in, you can submit hours, view claim status, and manage your profile.<br/>
-            We recommend updating your password after your first login.
-          </p>
+  <div style="background:#2F3E4E;border-radius:14px;padding:20px 24px;margin-bottom:22px">
+    <p style="margin:0 0 3px;font-size:9px;color:#7A8F79;text-transform:uppercase;letter-spacing:2.5px;font-weight:700">Sign-In Email</p>
+    <p style="margin:0 0 14px;font-size:15px;font-weight:700;color:#ffffff">${email}</p>
+    <div style="border-top:1px solid rgba(255,255,255,0.1);padding-top:12px">
+      <p style="margin:0 0 3px;font-size:9px;color:#7A8F79;text-transform:uppercase;letter-spacing:2.5px;font-weight:700">Temporary Password</p>
+      <p style="margin:0;font-size:15px;font-weight:700;color:#ffffff;letter-spacing:0.5px">${password}</p>
+    </div>
+  </div>
 
-          <hr style="border:none;border-top:1px solid #D9E1E8;margin:24px 0"/>
-          <p style="font-size:11px;color:#aab">This is an automated message from Coming Home Care. Please do not reply to this email.</p>
-        </div>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:24px">
+    <tr><td style="text-align:center">
+      <a href="${PORTAL_URL}/login" style="display:inline-block;background:#2F3E4E;color:#ffffff;text-decoration:none;padding:13px 36px;border-radius:10px;font-size:14px;font-weight:700;letter-spacing:0.5px">
+        Sign In to Your Portal &rarr;
+      </a>
+    </td></tr>
+  </table>
+
+  <div style="border-left:3px solid #7A8F79;padding:2px 0 2px 16px;margin-bottom:26px">
+    <p style="margin:0;font-size:13px;color:#4a5568;line-height:1.6">
+      Once signed in, you can submit hours, track claim status, and manage your profile. We recommend updating your password after your first login.
+    </p>
+  </div>
+</div>
+
+${emailFooter('support@cominghomecare.com')}
+
+</div>
+</div>
+</body>
+</html>
       `,
     })
     return !error
@@ -102,31 +126,55 @@ export async function sendGuardianWelcomeEmail({
     const { error } = await resend.emails.send({
       from: FROM,
       to,
-      subject: 'WELCOME: Your Coming Home Care myCare Account is Ready',
+      subject: `Welcome to myCare, ${displayName.split(' ')[0]} — your account is ready`,
       html: `
-        <div style="font-family:sans-serif;max-width:520px;padding:32px;color:#2F3E4E">
-          <h2 style="margin:0 0 8px;color:#2F3E4E">Welcome to <span style="font-style:italic;color:#7A8F79">my</span>Care</h2>
-          <p style="margin:0 0 20px;color:#7A8F79;font-size:14px">You've been added as a family contact. Use the credentials below to sign in and stay connected to your loved one's care.</p>
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background:#D9E1E8;font-family:'Helvetica Neue',Arial,sans-serif">
+<div style="padding:36px 16px">
+<div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(47,62,78,0.13)">
 
-          <div style="background:#f4f6f8;border-radius:10px;padding:20px 24px;margin-bottom:24px">
-            <p style="margin:0 0 8px;font-size:14px"><strong>Name:</strong> ${displayName}</p>
-            <p style="margin:0 0 8px;font-size:14px"><strong>Email:</strong> ${email}</p>
-            <p style="margin:0;font-size:14px"><strong>Temporary Password:</strong> ${password}</p>
-          </div>
+${emailHeader('Welcome to myCare')}
 
-          <a href="${PORTAL_URL}/login"
-             style="display:inline-block;background:#2F3E4E;color:white;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600">
-            Sign In →
-          </a>
+<div style="padding:26px 32px 0">
+  <p style="margin:0 0 4px;font-size:10px;color:#7A8F79;text-transform:uppercase;letter-spacing:2px;font-weight:700">Welcome,</p>
+  <p style="margin:0 0 16px;font-size:22px;font-weight:800;color:#2F3E4E;line-height:1.2">${displayName}</p>
+  <p style="margin:0 0 22px;font-size:14px;color:#4a5568;line-height:1.65">
+    You&rsquo;ve been added as a family contact on
+    <span style="font-style:italic;color:#2F3E4E;font-family:Georgia,serif">Coming Home</span><span style="color:#7A8F79;font-weight:600">care</span>.
+    Sign in below to stay connected to your loved one&rsquo;s care.
+  </p>
 
-          <p style="margin-top:24px;font-size:13px;color:#7A8F79">
-            Once signed in, you can view medications and reminders, share documents with the care team, and check upcoming visits.<br/>
-            We recommend updating your password after your first login.
-          </p>
+  <div style="background:#2F3E4E;border-radius:14px;padding:20px 24px;margin-bottom:22px">
+    <p style="margin:0 0 3px;font-size:9px;color:#7A8F79;text-transform:uppercase;letter-spacing:2.5px;font-weight:700">Sign-In Email</p>
+    <p style="margin:0 0 14px;font-size:15px;font-weight:700;color:#ffffff">${email}</p>
+    <div style="border-top:1px solid rgba(255,255,255,0.1);padding-top:12px">
+      <p style="margin:0 0 3px;font-size:9px;color:#7A8F79;text-transform:uppercase;letter-spacing:2.5px;font-weight:700">Temporary Password</p>
+      <p style="margin:0;font-size:15px;font-weight:700;color:#ffffff;letter-spacing:0.5px">${password}</p>
+    </div>
+  </div>
 
-          <hr style="border:none;border-top:1px solid #D9E1E8;margin:24px 0"/>
-          <p style="font-size:11px;color:#aab">This is an automated message from Coming Home Care. Please do not reply to this email.</p>
-        </div>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:24px">
+    <tr><td style="text-align:center">
+      <a href="${PORTAL_URL}/login" style="display:inline-block;background:#2F3E4E;color:#ffffff;text-decoration:none;padding:13px 36px;border-radius:10px;font-size:14px;font-weight:700;letter-spacing:0.5px">
+        Sign In to myCare &rarr;
+      </a>
+    </td></tr>
+  </table>
+
+  <div style="border-left:3px solid #7A8F79;padding:2px 0 2px 16px;margin-bottom:26px">
+    <p style="margin:0;font-size:13px;color:#4a5568;line-height:1.6">
+      Once signed in, you can view medications and reminders, share documents with the care team, and check upcoming visits. We recommend updating your password after your first login.
+    </p>
+  </div>
+</div>
+
+${emailFooter('support@cominghomecare.com')}
+
+</div>
+</div>
+</body>
+</html>
       `,
     })
     return !error

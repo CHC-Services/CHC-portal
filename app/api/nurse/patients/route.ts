@@ -63,7 +63,7 @@ export async function POST(req: Request) {
   // (a matchToken from /api/nurse/patients/search), not just a client-supplied ID.
   if (body.matchToken) {
     const match = verifyPatientMatchToken(body.matchToken)
-    if (!match || match.nurseId !== session.nurseProfileId) {
+    if (!match || match.requesterId !== session.nurseProfileId) {
       return NextResponse.json({ error: 'Invalid or expired match. Please search again.' }, { status: 400 })
     }
     const patientId = match.patientId

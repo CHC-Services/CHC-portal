@@ -11,8 +11,14 @@ import { O2_ROUTES, TX_NEEDED, INTAKE_ROUTES } from './clinicalOptions'
 // more to reason from when correcting an obvious speech-recognition misfire
 // than an isolated single-entry pass would.
 
+// Deliberately its own env var, not AWS_REGION — that one is shared by
+// lib/s3.ts and lib/awsTranscribe.ts, and S3 buckets are locked to the region
+// they were created in. Bedrock model access is region-specific in a
+// different way (which regions have your model access approved), so forcing
+// all three services to agree on one region was never going to work long
+// term — this keeps Bedrock's region independently configurable.
 const client = new BedrockRuntimeClient({
-  region: process.env.AWS_REGION!,
+  region: process.env.BEDROCK_AWS_REGION!,
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,

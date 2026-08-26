@@ -60,10 +60,10 @@ export default function WhatsNewCard({ roleKey }: { roleKey: 'nurse' | 'guardian
         <div className="flex items-start gap-3">
           <span className="mt-0.5 text-[10px] font-bold uppercase tracking-widest bg-[#7A8F79] text-white px-2 py-1 rounded-full shrink-0">New</span>
           <div>
-            <p className="text-sm font-bold text-[#2F3E4E] mb-1.5">{content.heading}</p>
+            <p className="text-base font-bold text-[#2F3E4E] mb-1.5">{content.heading}</p>
             <ul className="space-y-1">
               {content.items.map(item => (
-                <li key={item} className="text-xs text-[#7A8F79] flex gap-1.5">
+                <li key={item} className="text-sm text-[#7A8F79] flex gap-1.5">
                   <span className="text-[#7A8F79]">•</span>
                   <span>{item}</span>
                 </li>

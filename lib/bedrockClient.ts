@@ -48,7 +48,7 @@ Every entry tagged [ARRIVAL] belongs entirely in arrivalFindings, never in the n
 
 For [SHIFT]-tagged entries, ALSO watch for any of these phrases appearing anywhere inside the entry's own text, regardless of the tag: ${ARRIVAL_CUE_PHRASES.map(p => `"${p}"`).join(', ')}. If one appears, move that portion of the entry (from the cue phrase to wherever the arrival-related content ends) into arrivalFindings instead of the narrative — a nurse who forgot to press the Arrival Finding button but said one of these phrases anyway still gets it routed correctly. The rest of that same entry, if any, still goes in the narrative as normal.
 
-arrivalFindings is plain prose — a one-time initial assessment, not a chronological log — so do NOT prefix it with per-entry timestamps the way the narrative is. If nothing qualifies for arrivalFindings, return an empty string; do not manufacture content to fill it.
+arrivalFindings is plain prose — a one-time initial assessment, not a chronological log. It NEVER starts with or contains a timestamp of any kind, not even a single leading one for the whole block — the assumption is always that arrival findings happened at shift start, so restating a time adds nothing and must not appear. This holds even if the dictated content itself mentions a specific clock time in passing (e.g. "arrived at 7am and found...") — drop that time reference entirely rather than turning it into a leading timestamp; the surrounding words (like "arrived and found...") still read fine without it. If nothing qualifies for arrivalFindings, return an empty string; do not manufacture content to fill it.
 
 ## Narrative
 
@@ -58,7 +58,9 @@ Your job here has exactly two parts, and they must not blur together:
 
 2. NEVER add any clinical finding, observation, action, medication, quantity, time, or route that was not stated or clearly implied by what was actually dictated. If a word or phrase is genuinely ambiguous — no single reading is clearly favored by context — do not guess. Leave it as close to verbatim as possible and wrap your best-effort rendering in [unclear — please review] so the nurse notices and fixes it herself.
 
-## Extracting multiple times from one entry
+## Extracting multiple times from one entry (narrative only)
+
+This section applies to the narrative field ONLY — never to arrivalFindings, which per the rule above never gets any timestamp at all, no matter how many times or durations are mentioned within its content.
 
 A single dictated entry can describe a run of several distinct events that happened at different points during the shift, not just one moment — split it into one narrative line per distinct time, not one line for the whole entry. Two ways a new time reveals itself within an entry's own text:
 - An explicit clock time is stated (e.g. "at 6:15am", "at 7") — convert it to 4-digit 24-hour military format.
@@ -144,7 +146,7 @@ const TOOL_SCHEMA = {
   type: 'object',
   properties: {
     narrative: { type: 'string', description: 'The compiled, professionally-worded shift note text.' },
-    arrivalFindings: { type: 'string', description: 'Plain-prose arrival findings, split out per the splitting rules. Empty string if none.' },
+    arrivalFindings: { type: 'string', description: 'Plain-prose arrival findings, split out per the splitting rules. No timestamp prefix, ever — not even one leading time for the whole block. Empty string if none.' },
     vitals: {
       type: 'array',
       description: 'One row per distinct vitals reading actually dictated. Empty array if none.',
@@ -187,7 +189,13 @@ export async function compileVoiceEntries(entries: CompileVoiceEntry[], timeZone
 
   const response = await client.send(new ConverseCommand({
     modelId: MODEL_ID,
-    system: [{ text: SYSTEM_PROMPT }],
+    // SYSTEM_PROMPT is identical on every call — only the user message
+    // (this shift's entries) changes — so it's the ideal cache candidate.
+    // 1h ttl over the default 5m: compiles happen occasionally rather than
+    // in a constant stream, so the wider window is far more likely to
+    // actually get reused (a nurse's shift + arrival compile, or several
+    // testers compiling within the same hour) before it expires.
+    system: [{ text: SYSTEM_PROMPT }, { cachePoint: { type: 'default', ttl: '1h' } }],
     messages: [{ role: 'user', content: [{ text: userText }] }],
     inferenceConfig: { maxTokens: 3000, temperature: 0.2 },
     toolConfig: {

@@ -350,18 +350,18 @@ export default function QuickNoteForm({
             </select>
           </div>
         </div>
-        <div className="flex flex-wrap items-start gap-3">
+        <div className="flex flex-wrap items-start gap-2">
           <div>
             <label className={lbl}>Service Date</label>
-            <input type="date" className={`${compactInp} w-[136px]`} value={serviceDate} onChange={e => setServiceDate(e.target.value)} />
+            <input type="date" className={`${compactInp} w-[112px]`} value={serviceDate} onChange={e => setServiceDate(e.target.value)} />
           </div>
           <div>
             <label className={lbl}>Shift Start</label>
-            <input className={`${compactInp} w-[92px]`} placeholder="08:00 AM" value={shiftStartTime} onChange={e => setShiftStartTime(e.target.value)} />
+            <input className={`${compactInp} w-[68px]`} placeholder="08:00 AM" value={shiftStartTime} onChange={e => setShiftStartTime(e.target.value)} />
           </div>
           <div>
             <label className={lbl}>Shift End</label>
-            <input className={`${compactInp} w-[92px]`} placeholder="08:00 PM" value={shiftEndTime} onChange={e => setShiftEndTime(e.target.value)} />
+            <input className={`${compactInp} w-[68px]`} placeholder="08:00 PM" value={shiftEndTime} onChange={e => setShiftEndTime(e.target.value)} />
           </div>
           <div>
             <label className={lbl}>Ttl Hrs</label>
@@ -553,6 +553,8 @@ export default function QuickNoteForm({
             <button type="button" onClick={() => setVitals(rows => [...rows, { ...EMPTY_VITAL }])} className="text-xs font-semibold text-[#7A8F79]">+ Add Row</button>
           </div>
         </div>
+        <p className="md:hidden text-[10px] font-semibold text-[#7A8F79]">Swipe to see more columns →</p>
+        <div className="relative">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
@@ -594,6 +596,8 @@ export default function QuickNoteForm({
             </tbody>
           </table>
         </div>
+        <div className="md:hidden pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-white to-transparent" />
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm p-5 space-y-3">
@@ -603,6 +607,8 @@ export default function QuickNoteForm({
             <button type="button" onClick={() => setIntakeOutput(rows => [...rows, { ...EMPTY_IO }])} className="text-xs font-semibold text-[#7A8F79]">+ Add Row</button>
           </div>
         </div>
+        <p className="md:hidden text-[10px] font-semibold text-[#7A8F79]">Swipe to see more columns →</p>
+        <div className="relative">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
@@ -633,6 +639,8 @@ export default function QuickNoteForm({
               ))}
             </tbody>
           </table>
+        </div>
+        <div className="md:hidden pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-white to-transparent" />
         </div>
       </div>
 

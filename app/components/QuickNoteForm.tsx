@@ -108,6 +108,10 @@ export default function QuickNoteForm({
   const [showCompileConfirm, setShowCompileConfirm] = useState(false)
   const [extractedVitals, setExtractedVitals] = useState<VitalRow[]>([])
   const [extractedIO, setExtractedIO] = useState<IORow[]>([])
+  const [typingEntry, setTypingEntry] = useState(false)
+  const [typedText, setTypedText] = useState('')
+  const [typedEntryType, setTypedEntryType] = useState<'shift' | 'arrival'>('shift')
+  const [savingTyped, setSavingTyped] = useState(false)
   const recordingTypeRef = useRef<'shift' | 'arrival'>('shift')
   const mountedRef = useRef(true)
   useEffect(() => () => { mountedRef.current = false }, [])
@@ -180,6 +184,23 @@ export default function QuickNoteForm({
     }
     setPending(null)
     startRecording()
+  }
+
+  async function saveTypedEntry() {
+    if (!typedText.trim()) return
+    setSavingTyped(true)
+    const res = await fetch(`/api/quick-notes/notes/${note.id}/voice-entries/typed`, {
+      method: 'POST',
+      headers: jsonHeaders(),
+      body: JSON.stringify({ rawText: typedText.trim(), entryType: typedEntryType }),
+    })
+    setSavingTyped(false)
+    if (res.ok) {
+      const { entry } = await res.json()
+      setVoiceEntries(rows => [...rows, entry])
+      setTypedText('')
+      setTypingEntry(false)
+    }
   }
 
   async function deleteEntry(entryId: string) {
@@ -381,6 +402,47 @@ export default function QuickNoteForm({
             <button type="button" onClick={() => startRecording('arrival')} className="border border-[#2F3E4E] text-[#2F3E4E] px-5 py-2 rounded-xl font-semibold hover:bg-[#F4F6F5] transition">
               🎙 Record Arrival Finding
             </button>
+            <button type="button" onClick={() => setTypingEntry(t => !t)} className="border border-[#D9E1E8] text-[#7A8F79] px-5 py-2 rounded-xl font-semibold hover:border-[#7A8F79] hover:text-[#2F3E4E] transition">
+              ✎ Type Entry
+            </button>
+          </div>
+        )}
+        {pending == null && typingEntry && (
+          <div className="border border-[#D9E1E8] bg-[#F4F6F5] rounded-lg p-3 space-y-2">
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setTypedEntryType('shift')}
+                className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition ${typedEntryType === 'shift' ? 'bg-[#2F3E4E] text-white border-[#2F3E4E]' : 'border-[#D9E1E8] text-[#7A8F79] hover:bg-white'}`}
+              >
+                Shift Entry
+              </button>
+              <button
+                type="button"
+                onClick={() => setTypedEntryType('arrival')}
+                className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition ${typedEntryType === 'arrival' ? 'bg-[#2F3E4E] text-white border-[#2F3E4E]' : 'border-[#D9E1E8] text-[#7A8F79] hover:bg-white'}`}
+              >
+                Arrival Finding
+              </button>
+            </div>
+            <textarea
+              rows={3}
+              className={`${inp} resize-none bg-white`}
+              placeholder="Type this entry…"
+              value={typedText}
+              onChange={e => setTypedText(e.target.value)}
+            />
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={saveTypedEntry}
+                disabled={savingTyped || !typedText.trim()}
+                className="text-xs font-semibold text-white bg-[#2F3E4E] px-3 py-1.5 rounded-lg hover:bg-[#7A8F79] transition disabled:opacity-50"
+              >
+                {savingTyped ? 'Adding…' : 'Add Entry'}
+              </button>
+              <button type="button" onClick={() => { setTypingEntry(false); setTypedText('') }} className="text-xs text-[#7A8F79]">Cancel</button>
+            </div>
           </div>
         )}
         {pending?.phase === 'recording' && (
@@ -434,7 +496,16 @@ export default function QuickNoteForm({
                 </div>
                 {editingEntryId === e.id ? (
                   <div className="space-y-1.5">
-                    <textarea rows={3} className={`${inp} resize-none bg-white`} value={editingText} onChange={ev => setEditingText(ev.target.value)} />
+                    <textarea
+                      ref={el => { if (el) { el.style.height = 'auto'; el.style.height = `${el.scrollHeight}px` } }}
+                      className={`${inp} resize-none overflow-hidden bg-white`}
+                      value={editingText}
+                      onChange={ev => {
+                        setEditingText(ev.target.value)
+                        ev.target.style.height = 'auto'
+                        ev.target.style.height = `${ev.target.scrollHeight}px`
+                      }}
+                    />
                     <div className="flex items-center gap-3">
                       <button
                         type="button"

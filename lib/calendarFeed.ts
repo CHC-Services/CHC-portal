@@ -1,5 +1,5 @@
 import { prisma } from './prisma'
-import { medicationDueDate } from './medicationReminders'
+import { medicationDueDate, effectiveRefillStatus } from './medicationReminders'
 
 export type CalendarItem = {
   id: string
@@ -75,16 +75,18 @@ export async function getNurseCalendarFeed(nurseProfileId: string, session: { id
   const dueFilter = dateFilter(range, now)
   const startTimeFilter = dateFilter(range, null)
 
-  const [globalEvents, personalReminders, myShifts, openShifts, appointments, meds, pas, claimReminders, documents, progressNotes] = await Promise.all([
+  // ClaimReminder is deliberately excluded from the calendar feed — billing
+  // follow-ups stay an email-only nudge (see app/api/admin/claims/reminders/
+  // route.ts) rather than cluttering the visual calendar.
+  const [globalEvents, personalReminders, myShifts, openShifts, appointments, meds, pas, documents, progressNotes] = await Promise.all([
     prisma.globalEvent.findMany({ where: { eventDate: dateFilter(range, now) }, orderBy: { eventDate: 'asc' } })
       .then(rows => rows.filter(e => e.targetRoles.length === 0 || e.targetRoles.includes(session.role))),
     prisma.nurseReminder.findMany({ where: { nurseId: nurseProfileId, completed: false, dueDate: dueFilter }, orderBy: { dueDate: 'asc' } }),
     prisma.shift.findMany({ where: { nurseId: nurseProfileId, status: { not: 'cancelled' }, ...(startTimeFilter ? { startTime: startTimeFilter } : {}) }, orderBy: { startTime: 'asc' }, include: { _count: { select: { progressNotes: true } } } }),
     patientIds.length ? prisma.shift.findMany({ where: { patientId: { in: patientIds }, status: { in: ['open', 'coverage_needed'] }, ...(startTimeFilter ? { startTime: startTimeFilter } : {}) }, orderBy: { startTime: 'asc' }, include: { _count: { select: { progressNotes: true } } } }) : [],
     patientIds.length ? prisma.appointment.findMany({ where: { patientId: { in: patientIds }, status: { not: 'cancelled' }, ...(startTimeFilter ? { startTime: startTimeFilter } : {}) }, orderBy: { startTime: 'asc' } }) : [],
-    patientIds.length ? prisma.patientMedication.findMany({ where: { patientId: { in: patientIds }, active: true }, select: { id: true, patientId: true, medicationName: true, lastFillDate: true, daySupply: true } }) : [],
+    patientIds.length ? prisma.patientMedication.findMany({ where: { patientId: { in: patientIds }, active: true }, select: { id: true, patientId: true, medicationName: true, lastFillDate: true, daySupply: true, refillsRemaining: true, refillOrderedAt: true } }) : [],
     patientIds.length ? prisma.patientPA.findMany({ where: { patientId: { in: patientIds }, paEndDate: { not: null } } }) : [],
-    prisma.claimReminder.findMany({ where: { nurseId: nurseProfileId, completed: false, dueDate: dueFilter } }),
     patientIds.length ? prisma.patientDocument.findMany({ where: { patientId: { in: patientIds }, expiresAt: { not: null, ...dueFilter } } }) : [],
     patientIds.length ? prisma.progressNote.findMany({ where: { patientId: { in: patientIds }, signedAt: { not: null }, voidedAt: null, ...(startTimeFilter ? { serviceDate: startTimeFilter } : {}) } }) : [],
   ])
@@ -94,9 +96,8 @@ export async function getNurseCalendarFeed(nurseProfileId: string, session: { id
     ...personalReminders.map(r => ({ id: r.id, source: 'personalReminder' as const, title: r.title, date: r.dueDate, category: r.category, description: r.notes ?? undefined, editable: true })),
     ...[...myShifts, ...openShifts].map(s => ({ id: s.id, source: 'shift' as const, title: s.status === 'assigned' ? 'Shift' : s.status === 'coverage_needed' ? 'Coverage Needed' : 'Open Shift', date: s.startTime, endDate: s.endTime, patientId: s.patientId, patientName: patientName[s.patientId], category: 'shift', status: s.status, editable: s.nurseId === nurseProfileId, hasProgressNotes: s._count.progressNotes > 0 })),
     ...appointments.map(a => ({ id: a.id, source: 'appointment' as const, title: a.title, date: a.startTime, endDate: a.endTime ?? undefined, patientId: a.patientId, patientName: patientName[a.patientId], category: 'appointment', status: a.status, editable: true, allDay: a.allDay })),
-    ...meds.map(m => ({ id: m.id, source: 'medication' as const, title: `Refill: ${m.medicationName}`, date: medicationDueDate(m.lastFillDate, m.daySupply), patientId: m.patientId, patientName: patientName[m.patientId], category: 'medication', editable: false })),
+    ...meds.map(m => ({ id: m.id, source: 'medication' as const, title: `Refill: ${m.medicationName}`, date: medicationDueDate(m.lastFillDate, m.daySupply), patientId: m.patientId, patientName: patientName[m.patientId], category: 'medication', status: effectiveRefillStatus(m.refillOrderedAt, m.lastFillDate, m.daySupply, m.refillsRemaining), editable: false })),
     ...pas.map(p => ({ id: p.id, source: 'priorAuth' as const, title: `PA Expiring: ${p.paNumber}`, date: new Date(p.paEndDate!), patientId: p.patientId, patientName: patientName[p.patientId], category: 'priorAuth', editable: false })),
-    ...claimReminders.map(c => ({ id: c.id, source: 'claimReminder' as const, title: c.reason, date: c.dueDate, category: 'claim', editable: false })),
     ...documents.map(d => ({ id: d.id, source: 'document' as const, title: `Expiring: ${d.title}`, date: d.expiresAt!, patientId: d.patientId, patientName: patientName[d.patientId], category: 'document', editable: false })),
     ...progressNotes.map(n => ({ id: n.id, source: 'progressNote' as const, title: 'Progress Note', date: n.serviceDate, patientId: n.patientId, patientName: patientName[n.patientId], category: 'progressNote', editable: false })),
   ]
@@ -151,7 +152,7 @@ export async function getPatientCalendarFeed(patientId: string, range?: DateRang
       include: { nurse: { select: { displayName: true } }, _count: { select: { progressNotes: true } } },
     }),
     prisma.appointment.findMany({ where: { patientId, status: { not: 'cancelled' }, ...(startTimeFilter ? { startTime: startTimeFilter } : {}) }, orderBy: { startTime: 'asc' } }),
-    prisma.patientMedication.findMany({ where: { patientId, active: true }, select: { id: true, patientId: true, medicationName: true, lastFillDate: true, daySupply: true } }),
+    prisma.patientMedication.findMany({ where: { patientId, active: true }, select: { id: true, patientId: true, medicationName: true, lastFillDate: true, daySupply: true, refillsRemaining: true, refillOrderedAt: true } }),
     prisma.patientPA.findMany({ where: { patientId, paEndDate: { not: null } } }),
     prisma.patientDocument.findMany({ where: { patientId, expiresAt: { not: null, ...dueFilter } } }),
   ])
@@ -159,7 +160,7 @@ export async function getPatientCalendarFeed(patientId: string, range?: DateRang
   const items: CalendarItem[] = [
     ...shifts.map(s => ({ id: s.id, source: 'shift' as const, title: s.status === 'assigned' ? 'Shift' : s.status === 'coverage_needed' ? 'Coverage Needed' : 'Open Shift', date: s.startTime, endDate: s.endTime, patientId, category: 'shift', status: s.status, editable: true, nurseName: s.nurse?.displayName, hasProgressNotes: s._count.progressNotes > 0 })),
     ...appointments.map(a => ({ id: a.id, source: 'appointment' as const, title: a.title, date: a.startTime, endDate: a.endTime ?? undefined, patientId, category: 'appointment', status: a.status, editable: true, allDay: a.allDay })),
-    ...meds.map(m => ({ id: m.id, source: 'medication' as const, title: `Refill: ${m.medicationName}`, date: medicationDueDate(m.lastFillDate, m.daySupply), patientId, category: 'medication', editable: false })),
+    ...meds.map(m => ({ id: m.id, source: 'medication' as const, title: `Refill: ${m.medicationName}`, date: medicationDueDate(m.lastFillDate, m.daySupply), patientId, category: 'medication', status: effectiveRefillStatus(m.refillOrderedAt, m.lastFillDate, m.daySupply, m.refillsRemaining), editable: false })),
     ...pas.map(p => ({ id: p.id, source: 'priorAuth' as const, title: `PA Expiring: ${p.paNumber}`, date: new Date(p.paEndDate!), patientId, category: 'priorAuth', editable: false })),
     ...documents.map(d => ({ id: d.id, source: 'document' as const, title: `Expiring: ${d.title}`, date: d.expiresAt!, patientId, category: 'document', editable: false })),
   ]

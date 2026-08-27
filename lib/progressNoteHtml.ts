@@ -78,22 +78,23 @@ const fmtDateTime = (d: Date | string) => new Date(d).toLocaleString('en-US', { 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 const cell = (v: string | null) => esc(v || '—')
 
-// Small running strip repeated on every page by Puppeteer's own pagination
-// (see lib/generateInvoicePdf.ts's displayHeaderFooter option) — this is
-// what stands in for the paper form's repeated, page-numbered continuation
-// pages, without needing to model "pages" as data.
-export function buildProgressNoteHeaderTemplate(patientName: string, serviceDate: Date | string): string {
+// Puppeteer-driven running footer, repeated on every page (see
+// lib/generateInvoicePdf.ts's displayHeaderFooter option) — this is what
+// stands in for the paper form's repeated, page-numbered continuation
+// pages, without needing to model "pages" as data. Page/total-page counts
+// are Chrome's own print-pagination output (via the pageNumber/totalPages
+// classes) — there's no way to compute or bake those into the main content
+// HTML itself, since the content has no idea where Chrome will paginate it.
+// No running header — the document's own header block (patientName/account,
+// title) already covers page 1, and repeating it on a separate top strip
+// was redundant; the patient identifier lives in this footer instead so
+// continuation pages still carry it if ever separated from page 1.
+export function buildProgressNoteFooterTemplate(patientName: string): string {
   return `
-    <div style="font-family:Arial,sans-serif;font-size:8px;color:${SAGE};width:100%;padding:0 0.25in;display:flex;justify-content:space-between">
-      <span>${esc(patientName)} — Progress Note</span>
-      <span>${fmtDate(serviceDate)}</span>
-    </div>`
-}
-
-export function buildProgressNoteFooterTemplate(): string {
-  return `
-    <div style="font-family:Arial,sans-serif;font-size:8px;color:${SAGE};width:100%;padding:0 0.25in;text-align:center">
-      Page <span class="pageNumber"></span> of <span class="totalPages"></span>
+    <div style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:8px;color:${SAGE};width:100%;padding:5px 0.25in 0;margin:0 0.1in;border-top:1px solid ${BG};display:flex;justify-content:space-between;align-items:center">
+      <span style="font-weight:700;color:${NAVY}">${esc(patientName)}</span>
+      <span style="letter-spacing:0.04em">Coming Home Care</span>
+      <span>Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
     </div>`
 }
 

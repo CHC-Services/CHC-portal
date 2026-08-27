@@ -10,20 +10,31 @@ import { computeViewRange, monthGridDays, daysBetween, dateKey, type CalendarVie
 // hour-by-hour scheduling grid with overlap layout — that's a much bigger
 // UI problem than Phase 1 needs; each day's items are just a sorted list.
 
+// Pastel-coded so repeat event types stand out at a glance (Alex's request —
+// shift assignment state and reminder type should be readable from color
+// alone without opening each item). Shift color depends on status, not just
+// category, so it's handled separately in chipClass() below rather than here.
 const CATEGORY_COLORS: Record<string, string> = {
-  shift: 'bg-[#2F3E4E] text-white',
-  appointment: 'bg-sky-600 text-white',
+  appointment: 'bg-purple-100 text-purple-800',
   globalEvent: 'bg-purple-600 text-white',
-  medication: 'bg-amber-500 text-white',
-  priorAuth: 'bg-amber-500 text-white',
-  claim: 'bg-red-500 text-white',
-  document: 'bg-red-500 text-white',
+  medication: 'bg-orange-100 text-orange-800',
+  // Prior Auth and Document expirations share a color — both are, from a
+  // nurse's perspective, "a document on file is about to expire."
+  priorAuth: 'bg-yellow-100 text-yellow-800',
+  document: 'bg-yellow-100 text-yellow-800',
   progressNote: 'bg-[#7A8F79] text-white',
   personalReminder: 'bg-[#7A8F79] text-white',
 }
 
-function chipClass(category: string): string {
-  return CATEGORY_COLORS[category] || 'bg-[#7A8F79] text-white'
+function chipClass(item: CalendarItem): string {
+  if (item.category === 'shift') {
+    // 'assigned'/'completed' had a provider on it; 'open'/'coverage_needed'
+    // (and the rare stray 'cancelled') did not.
+    return item.status === 'assigned' || item.status === 'completed'
+      ? 'bg-green-100 text-green-800'
+      : 'bg-red-100 text-red-800'
+  }
+  return CATEGORY_COLORS[item.category] || 'bg-[#7A8F79] text-white'
 }
 
 function fmtTime(d: Date): string {
@@ -35,10 +46,58 @@ function ItemChip({ item, onClick }: { item: CalendarItem; onClick?: (item: Cale
     <button
       type="button"
       onClick={() => onClick?.(item)}
-      className={`w-full text-left text-[10px] leading-tight px-1.5 py-0.5 rounded truncate ${chipClass(item.category)} hover:opacity-80 transition`}
+      className={`w-full text-left text-[10px] leading-tight px-1.5 py-0.5 rounded truncate ${chipClass(item)} hover:opacity-80 transition`}
       title={`${fmtTime(item.date)} — ${item.title}${item.patientName ? ` (${item.patientName})` : ''}`}
     >
       {fmtTime(item.date)} {item.title}
+    </button>
+  )
+}
+
+// Medication refills and progress notes are dense, repeat-per-day event
+// types that used to eat a full chip each — on a patient with several active
+// scripts that alone could fill a day's cell. Both get pulled out of the
+// normal chip list on month/week views and summarized as a single corner
+// badge instead (see MedicationBadge/ProgressNoteBadge below); the Day view
+// still lists them individually since that's the actual drill-down view
+// someone lands on to see which script or which note.
+const COMPACT_ONLY_CATEGORIES = new Set(['medication', 'progressNote'])
+
+function medicationFlags(dayItems: CalendarItem[]): { show: boolean; overdue: boolean } {
+  const meds = dayItems.filter(i => i.category === 'medication')
+  return { show: meds.length > 0, overdue: meds.some(m => m.status === 'overdue') }
+}
+
+function progressNoteCount(dayItems: CalendarItem[]): number {
+  return dayItems.filter(i => i.category === 'progressNote').length
+}
+
+// Overdue = the due date has arrived and nobody's marked it ordered/filled
+// yet — animate-pulse gives it the "fading blink" nudge Alex asked for;
+// a refill that's merely upcoming (badge visible, not yet due) stays static.
+function MedicationBadge({ overdue, onClick }: { overdue: boolean; onClick?: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={overdue ? 'Refill overdue — not yet ordered or filled' : 'Refill due this day'}
+      className={`leading-none ${overdue ? 'animate-pulse' : ''}`}
+    >
+      💊
+    </button>
+  )
+}
+
+function ProgressNoteBadge({ count, onClick }: { count: number; onClick?: () => void }) {
+  const marks = Math.min(count, 2)
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={`${count} progress note${count > 1 ? 's' : ''} filed`}
+      className="leading-none text-green-600 font-bold"
+    >
+      {'✓'.repeat(marks)}
     </button>
   )
 }
@@ -127,7 +186,7 @@ export default function CalendarGrid({
                         type="button"
                         onClick={() => onItemClick?.(item)}
                         style={{ gridColumnStart: startCol + 1, gridColumnEnd: endCol + 2 }}
-                        className={`text-left text-[10px] leading-tight px-1.5 py-0.5 rounded truncate ${chipClass(item.category)} hover:opacity-80 transition`}
+                        className={`text-left text-[10px] leading-tight px-1.5 py-0.5 rounded truncate ${chipClass(item)} hover:opacity-80 transition`}
                         title={`${item.title}${item.patientName ? ` (${item.patientName})` : ''}`}
                       >
                         {item.title}
@@ -140,15 +199,40 @@ export default function CalendarGrid({
                 {week.map(day => {
                   const key = dateKey(day)
                   const dayItems = (byDay.get(key) || []).filter(item => !isSpanningAllDay(item))
+                  const visibleItems = dayItems.filter(item => !COMPACT_ONLY_CATEGORIES.has(item.category))
+                  const meds = medicationFlags(dayItems)
+                  const noteCount = progressNoteCount(dayItems)
                   const greyed = isGreyedOut?.(key) ?? false
                   const inMonth = day.getMonth() === thisMonth
+                  // Rather than tracking a separate muted color for every
+                  // "this already happened" event status, a passed day just
+                  // gets struck through once at the cell level.
+                  const isPast = key < today
                   return (
                     <div
                       key={key}
-                      className={`min-h-[80px] border border-[#D9E1E8] rounded-lg p-1 space-y-0.5 transition ${
+                      className={`relative min-h-[80px] border border-[#D9E1E8] rounded-lg p-1 space-y-0.5 transition ${
                         greyed ? 'opacity-30' : ''
                       } ${inMonth ? 'bg-white' : 'bg-[#F4F6F5]'} ${key === today ? 'ring-2 ring-[#7A8F79]' : ''}`}
                     >
+                      {isPast && (
+                        <div
+                          className="absolute inset-0 rounded-lg pointer-events-none"
+                          style={{
+                            backgroundImage: 'linear-gradient(to bottom left, transparent calc(50% - 0.5px), rgba(220,38,38,0.5) calc(50% - 0.5px), rgba(220,38,38,0.5) calc(50% + 0.5px), transparent calc(50% + 0.5px))',
+                          }}
+                        />
+                      )}
+                      {meds.show && (
+                        <span className="absolute top-0.5 right-0.5 text-xs">
+                          <MedicationBadge overdue={meds.overdue} onClick={() => onDayClick?.(day)} />
+                        </span>
+                      )}
+                      {noteCount > 0 && (
+                        <span className="absolute bottom-0.5 right-0.5 text-[10px]">
+                          <ProgressNoteBadge count={noteCount} onClick={() => onDayClick?.(day)} />
+                        </span>
+                      )}
                       <button
                         type="button"
                         onClick={() => onDayClick?.(day)}
@@ -157,10 +241,10 @@ export default function CalendarGrid({
                         {day.getDate()}
                       </button>
                       <div className="space-y-0.5">
-                        {dayItems.slice(0, 3).map(item => <ItemChip key={item.id} item={item} onClick={onItemClick} />)}
-                        {dayItems.length > 3 && (
+                        {visibleItems.slice(0, 3).map(item => <ItemChip key={item.id} item={item} onClick={onItemClick} />)}
+                        {visibleItems.length > 3 && (
                           <button type="button" onClick={() => onDayClick?.(day)} className="text-[10px] text-[#7A8F79] hover:underline">
-                            +{dayItems.length - 3} more
+                            +{visibleItems.length - 3} more
                           </button>
                         )}
                       </div>
@@ -175,28 +259,44 @@ export default function CalendarGrid({
     )
   }
 
-  // Day / Week / Look-Ahead / Custom — shared day-section agenda layout
+  // Day / Week / Look-Ahead / Custom — shared day-section agenda layout.
+  // Week view gets the same compact medication/progress-note badge treatment
+  // as Month (Alex asked for both); Day view keeps the full itemized list
+  // since that's the actual drill-down someone lands on (via onDayClick) to
+  // see which script or which note.
   const { start, end } = computeViewRange(view, anchorDate, customRange)
   const days = daysBetween(start, end)
+  const isCompact = view === 'week'
 
   return (
     <div className="space-y-3">
       {days.map(day => {
         const key = dateKey(day)
         const dayItems = (byDay.get(key) || []).sort((a, b) => a.date.getTime() - b.date.getTime())
+        const visibleItems = isCompact ? dayItems.filter(item => !COMPACT_ONLY_CATEGORIES.has(item.category)) : dayItems
+        const meds = isCompact ? medicationFlags(dayItems) : { show: false, overdue: false }
+        const noteCount = isCompact ? progressNoteCount(dayItems) : 0
         const greyed = isGreyedOut?.(key) ?? false
         return (
           <div key={key} className={`border border-[#D9E1E8] rounded-xl p-3 transition ${greyed ? 'opacity-30' : ''} ${key === today ? 'ring-2 ring-[#7A8F79]' : ''}`}>
-            <p className="text-xs font-bold text-[#2F3E4E] mb-2">
-              {day.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-            </p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-bold text-[#2F3E4E]">
+                {day.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+              </p>
+              {(meds.show || noteCount > 0) && (
+                <div className="flex items-center gap-2 text-sm">
+                  {meds.show && <MedicationBadge overdue={meds.overdue} onClick={() => onDayClick?.(day)} />}
+                  {noteCount > 0 && <span className="text-[11px]"><ProgressNoteBadge count={noteCount} onClick={() => onDayClick?.(day)} /></span>}
+                </div>
+              )}
+            </div>
             {dayItems.length === 0 ? (
               <p className="text-xs text-[#7A8F79] italic">Nothing scheduled.</p>
-            ) : (
+            ) : visibleItems.length > 0 ? (
               <div className="space-y-1">
-                {dayItems.map(item => <ItemChip key={item.id} item={item} onClick={onItemClick} />)}
+                {visibleItems.map(item => <ItemChip key={item.id} item={item} onClick={onItemClick} />)}
               </div>
-            )}
+            ) : null}
           </div>
         )
       })}

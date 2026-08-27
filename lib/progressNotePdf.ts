@@ -1,7 +1,7 @@
 import { prisma } from './prisma'
 import { uploadToS3, objectExists, getPresignedDownloadUrl } from './s3'
 import { generatePdfFromHtml } from './generateInvoicePdf'
-import { buildProgressNoteHtml, buildProgressNoteHeaderTemplate, buildProgressNoteFooterTemplate } from './progressNoteHtml'
+import { buildProgressNoteHtml, buildProgressNoteFooterTemplate } from './progressNoteHtml'
 import { authorDisplayName } from './progressNoteAuthor'
 
 const AUTHOR_SELECT = { select: { name: true, nurseProfile: { select: { firstName: true, lastName: true, displayName: true, credentials: true } } } } as const
@@ -84,13 +84,15 @@ export async function getOrCreateProgressNotePdf(noteId: string): Promise<{ url:
 
   const pdfBuffer = await generatePdfFromHtml(html, {
     displayHeaderFooter: true,
-    headerTemplate: buildProgressNoteHeaderTemplate(patientName, note.serviceDate),
-    footerTemplate: buildProgressNoteFooterTemplate(),
+    // No headerTemplate — there's no running top strip any more (see
+    // progressNoteHtml.ts), so top margin is pulled back down to the
+    // no-header default instead of reserving space for one.
+    footerTemplate: buildProgressNoteFooterTemplate(patientName),
     // Extra left clearance on every page — these get 3-hole-punched into a
     // binder. With standard long-edge duplex printing the binding edge
     // stays the same physical side front-and-back, so a uniform left margin
     // (not alternating odd/even) is correct here.
-    margin: { left: '0.75in' },
+    margin: { left: '0.75in', top: '0.25in' },
   })
 
   const s3Key = `progress-notes/${noteId}/packet.pdf`

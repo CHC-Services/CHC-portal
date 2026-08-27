@@ -20,7 +20,6 @@ const CATEGORY_LABEL: Record<string, string> = {
   personalReminder: 'My Reminders',
   medication: 'Medication Refills',
   priorAuth: 'Prior Auth Expirations',
-  claimReminder: 'Claim Reminders',
   document: 'Document Expirations',
   progressNote: 'Progress Notes',
 }

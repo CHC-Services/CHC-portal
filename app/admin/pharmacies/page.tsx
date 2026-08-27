@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, Fragment } from 'react'
-import AdminNav from '../../components/AdminNav'
 
 type PharmacyPatient = {
   id: string
@@ -82,7 +81,6 @@ export default function AdminPharmaciesPage() {
 
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6">
-      <AdminNav />
 
       <div className="mb-5">
         <h1 className="text-3xl font-bold text-[#2F3E4E]">

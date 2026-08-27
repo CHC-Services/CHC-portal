@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import AdminNav from '../../../components/AdminNav'
 import Link from 'next/link'
 import DateInput from '../../../components/DateInput'
 
@@ -138,7 +137,6 @@ export default function LoginLogPage() {
 
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">
-      <AdminNav />
 
       <div className="flex items-center gap-2 mb-1">
         <Link href="/admin/system" className="text-sm text-[#7A8F79] hover:text-[#2F3E4E] transition">⚙ System</Link>

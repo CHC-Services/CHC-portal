@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import AdminNav from '../../components/AdminNav'
 import DateInput from '../../components/DateInput'
 
 type Nurse = { id: string; displayName: string; user: { email: string; name: string } | null }
@@ -393,7 +392,6 @@ export default function AdminDocumentsPage() {
         <p className="text-sm text-[#7A8F79] mt-1">Upload a document and assign it to one or more providers.</p>
       </div>
 
-      <AdminNav />
 
       {/* Provider-Uploaded Document Queue */}
       {queue.length > 0 && (

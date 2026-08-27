@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import AdminNav from '../../components/AdminNav'
 import DateInput from '../../components/DateInput'
 import CalendarGrid from '../../components/calendar/CalendarGrid'
 import CalendarViewSwitcher from '../../components/calendar/CalendarViewSwitcher'
@@ -155,7 +154,6 @@ export default function AdminCalendarPage() {
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">
       <div className="max-w-5xl mx-auto">
-        <AdminNav />
 
         <div className="flex items-center gap-4 mb-6 flex-wrap">
           <Link href="/admin" className="text-[#7A8F79] hover:text-[#2F3E4E] text-sm">← Admin</Link>

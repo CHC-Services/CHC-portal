@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import AdminNav from '../components/AdminNav'
 import Tabs from '../components/Tabs'
 import AccountsTable, { Account } from '../components/AccountsTable'
 import { fmtPhoneInput } from '../../lib/formatPhone'
@@ -477,7 +476,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">
-      <AdminNav />
 
       {/* Header */}
       <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">

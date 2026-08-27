@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import AdminNav from '../../components/AdminNav'
 import Link from 'next/link'
 import { formalName } from '../../../lib/formatName'
 import DateInput from '../../components/DateInput'
@@ -458,7 +457,6 @@ export default function EnrollmentPage() {
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6">
       <div className="max-w-7xl mx-auto">
-        <AdminNav />
 
         {/* Header */}
         <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">

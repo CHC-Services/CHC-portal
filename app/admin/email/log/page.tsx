@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import AdminNav from '../../../components/AdminNav'
 
 type LogEntry = {
   id: string
@@ -73,7 +72,6 @@ export default function EmailLogPage() {
       <div className="max-w-5xl mx-auto space-y-6">
 
         <div className="mb-2">
-          <AdminNav />
           <div className="flex items-center justify-between mt-1">
             <h1 className="text-3xl font-bold text-[#2F3E4E]">
               <span className="text-[#7A8F79] italic">ad</span>Email — Sent Log

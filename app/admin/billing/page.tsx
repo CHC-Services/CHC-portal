@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import AdminNav from '../../components/AdminNav'
 import { formalName } from '../../../lib/formatName'
 import { campaignRuleLabel, campaignWindowLabel } from '../../../lib/campaignDiscount'
 import DateInput from '../../components/DateInput'
@@ -150,16 +149,16 @@ function QuickEntryForm({ onAdded }: { onAdded: () => void }) {
 
       {open && (
         <div className="border-t border-[#D9E1E8] px-5 py-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+          <div className="flex flex-wrap gap-3 items-end">
 
             {/* Nurse */}
-            <div className="lg:col-span-1 space-y-1">
+            <div className="space-y-1">
               <label className="block text-[10px] font-bold uppercase tracking-widest text-[#7A8F79]">Nurse *</label>
               <select
                 ref={nurseRef}
                 value={nurseId}
                 onChange={e => setNurseId(e.target.value)}
-                className="w-full border border-[#D9E1E8] rounded-lg px-2 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                className="w-52 h-[34px] border border-[#D9E1E8] rounded-lg px-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
               >
                 <option value="">— Select —</option>
                 {[...nurses].sort((a, b) => nurseLabel(a).localeCompare(nurseLabel(b))).map(n => (
@@ -171,18 +170,18 @@ function QuickEntryForm({ onAdded }: { onAdded: () => void }) {
             </div>
 
             {/* Patient */}
-            <div className="lg:col-span-1 space-y-1">
+            <div className="space-y-1">
               <label className="block text-[10px] font-bold uppercase tracking-widest text-[#7A8F79]">Patient <span className="text-red-400">*</span></label>
               {nurseId && patients.length === 0 ? (
-                <div className="border border-dashed border-[#D9E1E8] rounded-lg px-2 py-2 text-[11px] text-[#7A8F79] italic">
-                  No patients linked to this nurse
+                <div className="w-52 h-[34px] flex items-center border border-dashed border-[#D9E1E8] rounded-lg px-2 text-[11px] text-[#7A8F79] italic">
+                  No patients linked
                 </div>
               ) : (
                 <select
                   value={patientId}
                   onChange={e => setPatientId(e.target.value)}
                   disabled={!nurseId}
-                  className="w-full border border-[#D9E1E8] rounded-lg px-2 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] disabled:opacity-40"
+                  className="w-52 h-[34px] border border-[#D9E1E8] rounded-lg px-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79] disabled:opacity-40"
                 >
                   <option value="">— Select patient —</option>
                   {patients.map(p => (
@@ -195,7 +194,7 @@ function QuickEntryForm({ onAdded }: { onAdded: () => void }) {
             </div>
 
             {/* Date — segmented MM / DD / YYYY */}
-            <div className="lg:col-span-1 space-y-1">
+            <div className="space-y-1">
               <label className="block text-[10px] font-bold uppercase tracking-widest text-[#7A8F79]">Date Worked *</label>
               <div className="flex items-center border border-[#D9E1E8] rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-[#7A8F79] bg-white">
                 <input
@@ -234,7 +233,7 @@ function QuickEntryForm({ onAdded }: { onAdded: () => void }) {
             </div>
 
             {/* Hours */}
-            <div className="lg:col-span-1 space-y-1">
+            <div className="space-y-1">
               <label className="block text-[10px] font-bold uppercase tracking-widest text-[#7A8F79]">Hours *</label>
               <input
                 ref={hoursRef}
@@ -249,7 +248,7 @@ function QuickEntryForm({ onAdded }: { onAdded: () => void }) {
             </div>
 
             {/* Notes + Submit */}
-            <div className="lg:col-span-1 space-y-1">
+            <div className="flex-1 min-w-[180px] space-y-1">
               <label className="block text-[10px] font-bold uppercase tracking-widest text-[#7A8F79]">Notes</label>
               <div className="flex gap-2">
                 <input
@@ -891,7 +890,6 @@ export default function BillingPage() {
 
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">
-      <AdminNav />
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-[#2F3E4E]">
           <span className="text-[#7A8F79] italic">ad</span>Billing

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import AdminNav from '../../../components/AdminNav'
 import {
   type PortalSettings,
   DEFAULTS,
@@ -72,7 +71,6 @@ export default function AppearancePage() {
 
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">
-      <AdminNav />
 
       <div className="mb-6 flex items-center justify-between">
         <div>

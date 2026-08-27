@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import AdminNav from '../../components/AdminNav'
 import { campaignRuleLabel, campaignWindowLabel } from '../../../lib/campaignDiscount'
 import DateInput from '../../components/DateInput'
 
@@ -130,7 +129,6 @@ export default function CampaignsPage() {
 
   return (
     <div className="min-h-screen bg-[#D9E1E8]">
-      <AdminNav />
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
 
         <div className="flex items-center justify-between">

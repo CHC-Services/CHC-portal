@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import AdminNav from '../../components/AdminNav'
 import { shortInvoiceNumber } from '../../../lib/formatInvoice'
 import DateInput from '../../components/DateInput'
 
@@ -321,7 +320,6 @@ export default function AdminInvoicingPage() {
 
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6">
-      <AdminNav />
 
       <div className="mb-5">
         <h1 className="text-2xl font-bold text-[#2F3E4E]">

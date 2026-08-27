@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import AdminNav from '../../components/AdminNav'
 
 const CARDS = [
   {
@@ -51,7 +50,6 @@ const CARDS = [
 export default function SystemPage() {
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">
-      <AdminNav />
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-[#2F3E4E]">⚙ System</h1>
         <p className="text-sm text-[#7A8F79] mt-1">Admin tools and configuration.</p>

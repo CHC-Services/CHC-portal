@@ -3,7 +3,6 @@
 import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import AdminNav from '../../../components/AdminNav'
 import ProfileDemographicsCard from '../../../components/profile/ProfileDemographicsCard'
 import ProfileBillingInfoCard from '../../../components/profile/ProfileBillingInfoCard'
 import ProfileBankingCard from '../../../components/profile/ProfileBankingCard'
@@ -85,12 +84,11 @@ export default function AdminAccountDetailPage({ params }: { params: Promise<{ i
     else { const data = await res.json(); setMessage(data.error || 'Update failed.') }
   }
 
-  if (loading) return <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8"><AdminNav /><p className="text-sm text-[#7A8F79]">Loading…</p></div>
+  if (loading) return <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8"><p className="text-sm text-[#7A8F79]">Loading…</p></div>
 
   if (notFound || loadError || !account) {
     return (
       <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">
-        <AdminNav />
         <div className="bg-white rounded-xl shadow-sm p-8 text-center max-w-md mx-auto mt-8">
           <p className="text-[#2F3E4E] font-semibold">{notFound ? 'Account not found' : (loadError || 'Something went wrong loading this account.')}</p>
           <Link href="/admin" className="inline-block mt-4 text-sm font-semibold text-[#7A8F79] hover:text-[#2F3E4E]">← Back to adAccounts</Link>
@@ -101,7 +99,6 @@ export default function AdminAccountDetailPage({ params }: { params: Promise<{ i
 
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">
-      <AdminNav />
 
       <Link href="/admin" className="text-sm text-[#7A8F79] hover:text-[#2F3E4E] transition">← adAccounts</Link>
 

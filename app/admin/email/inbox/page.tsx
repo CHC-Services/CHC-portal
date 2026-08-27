@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import MessagingPage from '../../../components/messaging/MessagingPage'
-import AdminNav from '../../../components/AdminNav'
 
 export default function AdminInboxPage() {
   const [patients, setPatients] = useState<{ id: string; name: string }[]>([])
@@ -14,5 +13,5 @@ export default function AdminInboxPage() {
       .catch(() => {})
   }, [])
 
-  return <MessagingPage basePath="/admin/email/inbox" patients={patients} prefix="ad" title="Inbox" nav={<AdminNav />} />
+  return <MessagingPage basePath="/admin/email/inbox" patients={patients} prefix="ad" title="Inbox" />
 }

@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useState, useEffect, useRef, Fragment, useMemo } from 'react'
-import AdminNav from '../../components/AdminNav'
 import { calcMedicaidCycleInfo, payCycleDateLabel } from '../../../lib/medicaidPayCycle'
 import { formalName } from '../../../lib/formatName'
 import { excludedClaimIds as totalsExcludedClaimIds } from '../../../lib/claimTotals'
@@ -1416,7 +1415,6 @@ export default function AdminClaimsPage() {
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-6">
       <div className="max-w-screen-xl mx-auto">
-        <AdminNav />
 
         {/* Header */}
         <div className="flex flex-wrap items-start justify-between gap-4 mb-6">

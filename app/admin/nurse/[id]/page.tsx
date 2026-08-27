@@ -3,7 +3,6 @@
 import { useState, useEffect, use, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import AdminNav from '../../../components/AdminNav'
 import DateInput from '../../../components/DateInput'
 import NurseQuickAccessTokensCard from '../../../components/admin/NurseQuickAccessTokensCard'
 import { fmtPhoneInput } from '../../../../lib/formatPhone'
@@ -1081,7 +1080,6 @@ export default function NurseDetailPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">
-      <AdminNav />
 
       {/* ── Row 1: Back to Roster ── */}
       <div className="mb-2">

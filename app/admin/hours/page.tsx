@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import AdminNav from '../../components/AdminNav'
 import { formalName } from '../../../lib/formatName'
 
 type TimeEntry = {
@@ -109,7 +108,6 @@ export default function AdminHoursPage() {
 
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">
-      <AdminNav />
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-[#2F3E4E]">
           <span className="text-[#7A8F79] italic">ad</span>Hours

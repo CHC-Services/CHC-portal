@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import AdminNav from '../../components/AdminNav'
 import UnreadBadge from '../../components/messaging/UnreadBadge'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -744,7 +743,6 @@ If you have any questions about your hours or billing, reply to this email and w
         <div className="max-w-6xl mx-auto">
 
           <div className="mb-6">
-            <AdminNav />
             <h1 className="text-3xl font-bold text-[#2F3E4E]">
               <span className="text-[#7A8F79] italic">ad</span>Messaging
             </h1>

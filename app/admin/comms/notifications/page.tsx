@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import AdminNav from '../../../components/AdminNav'
 import { NOTIFICATION_CATALOG } from '../../../../lib/notificationCatalog'
 
 const CHANNEL_LABEL: Record<string, string> = { email: '📧 Email', sms: '💬 SMS' }
@@ -13,7 +12,6 @@ export default function NotificationsCatalogPage() {
 
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">
-      <AdminNav />
 
       <div className="flex items-center gap-2 mb-1">
         <Link href="/admin/comms" className="text-sm text-[#7A8F79] hover:text-[#2F3E4E] transition">💬 Comms</Link>

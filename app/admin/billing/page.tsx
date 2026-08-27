@@ -63,6 +63,7 @@ function QuickEntryForm({ onAdded }: { onAdded: () => void }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const nurseRef = useRef<HTMLSelectElement>(null)
   const mmRef = useRef<HTMLInputElement>(null)
   const ddRef = useRef<HTMLInputElement>(null)
   const yyyyRef = useRef<HTMLInputElement>(null)
@@ -128,7 +129,7 @@ function QuickEntryForm({ onAdded }: { onAdded: () => void }) {
     setTimeout(() => setSuccess(''), 2500)
     reset()
     onAdded()
-    mmRef.current?.focus()
+    nurseRef.current?.focus()
   }
 
   const nurseLabel = (n: NurseOption) => formalName(n) || n.displayName
@@ -155,6 +156,7 @@ function QuickEntryForm({ onAdded }: { onAdded: () => void }) {
             <div className="lg:col-span-1 space-y-1">
               <label className="block text-[10px] font-bold uppercase tracking-widest text-[#7A8F79]">Nurse *</label>
               <select
+                ref={nurseRef}
                 value={nurseId}
                 onChange={e => setNurseId(e.target.value)}
                 className="w-full border border-[#D9E1E8] rounded-lg px-2 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
@@ -204,7 +206,7 @@ function QuickEntryForm({ onAdded }: { onAdded: () => void }) {
                   placeholder="MM"
                   value={dateParts.mm}
                   onChange={e => handleDatePart('mm', e.target.value)}
-                  className="w-10 text-center text-sm text-[#2F3E4E] py-2 focus:outline-none bg-transparent"
+                  className="w-9 text-center text-sm text-[#2F3E4E] py-2 focus:outline-none bg-transparent"
                 />
                 <span className="text-[#D9E1E8] font-bold select-none">/</span>
                 <input
@@ -215,7 +217,7 @@ function QuickEntryForm({ onAdded }: { onAdded: () => void }) {
                   placeholder="DD"
                   value={dateParts.dd}
                   onChange={e => handleDatePart('dd', e.target.value)}
-                  className="w-10 text-center text-sm text-[#2F3E4E] py-2 focus:outline-none bg-transparent"
+                  className="w-9 text-center text-sm text-[#2F3E4E] py-2 focus:outline-none bg-transparent"
                 />
                 <span className="text-[#D9E1E8] font-bold select-none">/</span>
                 <input
@@ -226,7 +228,7 @@ function QuickEntryForm({ onAdded }: { onAdded: () => void }) {
                   placeholder="YYYY"
                   value={dateParts.yyyy}
                   onChange={e => handleDatePart('yyyy', e.target.value)}
-                  className="w-16 text-center text-sm text-[#2F3E4E] py-2 focus:outline-none bg-transparent"
+                  className="w-14 text-center text-sm text-[#2F3E4E] py-2 focus:outline-none bg-transparent"
                 />
               </div>
             </div>
@@ -242,7 +244,7 @@ function QuickEntryForm({ onAdded }: { onAdded: () => void }) {
                 placeholder="e.g. 8"
                 value={hours}
                 onChange={e => setHours(e.target.value.replace(/\D/g, '').slice(0, 2))}
-                className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] text-center font-bold focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                className="w-14 border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] text-center font-bold focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
               />
             </div>
 
@@ -256,7 +258,7 @@ function QuickEntryForm({ onAdded }: { onAdded: () => void }) {
                   value={notes}
                   onChange={e => setNotes(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') submit() }}
-                  className="flex-1 border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                  className="flex-1 min-w-0 border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
                 />
                 <button
                   onClick={submit}

@@ -664,7 +664,7 @@ function ClaimDetailModal({
                     <input className={inp} value={cForm.secondaryPaidTo} onChange={e => setCForm(f => ({ ...f, secondaryPaidTo: e.target.value }))} />
                   </div>
                   <div>
-                    <label className={lbl}>Check #</label>
+                    <label className={lbl}>{isSecondaryMed ? 'Payer Claim #' : 'Check #'}</label>
                     <input className={inp} value={cForm.secondaryCheckNum} onChange={e => setCForm(f => ({ ...f, secondaryCheckNum: e.target.value }))} />
                   </div>
                 </div>
@@ -1216,23 +1216,33 @@ export default function AdminClaimsPage() {
     }
   }, [addForm.primaryPaidAmt, addForm.secondaryPaidAmt, showAddModal])
 
-  // Medicaid: default Paid To = "Provider"
+  // Medicaid: default Paid To = "Provider" — applies wherever Medicaid is
+  // actually listed (primary or secondary), not primary only.
   useEffect(() => {
     if (!showAddModal) return
-    if (addForm.primaryPayer === 'Medicaid') {
+    if (isMedicaidPayer(addForm.primaryPayer)) {
       setAddForm(f => ({ ...f, primaryPaidTo: f.primaryPaidTo || 'Provider' }))
+    } else if (isMedicaidPayer(addForm.secondaryPayer)) {
+      setAddForm(f => ({ ...f, secondaryPaidTo: f.secondaryPaidTo || 'Provider' }))
     }
-  }, [addForm.primaryPayer, showAddModal])
+  }, [addForm.primaryPayer, addForm.secondaryPayer, showAddModal])
 
-  // Medicaid: default Date Fully Finalized = deposit date from proc date
+  // Medicaid: default Date Fully Finalized = deposit date from proc date —
+  // driven by whichever side (primary or secondary) is actually Medicaid,
+  // not primary only. Only one side can be "the Medicaid one" at a time —
+  // the Secondary Insurance section itself is hidden whenever primary is
+  // Medicaid, so these two branches never both apply.
   useEffect(() => {
-    if (!showAddModal || addForm.primaryPayer !== 'Medicaid') return
-    if (!addForm.primaryPaidDate) return
-    const info = calcMedicaidCycleInfo(addForm.primaryPaidDate)
+    if (!showAddModal) return
+    const primaryIsMed = isMedicaidPayer(addForm.primaryPayer)
+    const secondaryIsMed = !primaryIsMed && isMedicaidPayer(addForm.secondaryPayer)
+    const procDate = primaryIsMed ? addForm.primaryPaidDate : secondaryIsMed ? addForm.secondaryPaidDate : null
+    if (!procDate) return
+    const info = calcMedicaidCycleInfo(procDate)
     if (info?.depositDateStr) {
       setAddForm(f => ({ ...f, dateFullyFinalized: info.depositDateStr }))
     }
-  }, [addForm.primaryPaidDate, addForm.primaryPayer, showAddModal])
+  }, [addForm.primaryPaidDate, addForm.primaryPayer, addForm.secondaryPaidDate, addForm.secondaryPayer, showAddModal])
 
 
   async function toggleBulkMode() {
@@ -2089,7 +2099,7 @@ export default function AdminClaimsPage() {
                       </div>
                     </div>
                     <div>
-                      <label className={lbl}>Date Fully Finalized{primaryIsMedicaid && <span className="text-[#7A8F79] font-normal normal-case text-[10px] ml-1">(auto from deposit)</span>}</label>
+                      <label className={lbl}>Date Fully Finalized{(primaryIsMedicaid || secondaryIsMedicaid) && <span className="text-[#7A8F79] font-normal normal-case text-[10px] ml-1">(auto from deposit)</span>}</label>
                       <DateInput ref={finalDateRef} value={addForm.dateFullyFinalized || ''} onChange={e => setAddForm(f => ({ ...f, dateFullyFinalized: e.target.value }))} className={fi} />
                     </div>
                     <div>

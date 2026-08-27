@@ -19,6 +19,8 @@ export default function AdminProgressNotePage({ params }: { params: Promise<{ id
   const [voiding, setVoiding] = useState(false)
   const [voidReason, setVoidReason] = useState('')
   const [showVoidForm, setShowVoidForm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   function load() {
     setLoading(true)
@@ -45,6 +47,13 @@ export default function AdminProgressNotePage({ params }: { params: Promise<{ id
     })
     setVoiding(false)
     if (res.ok) { setShowVoidForm(false); load() }
+  }
+
+  async function handleDelete() {
+    setDeleting(true)
+    const res = await fetch(`/api/admin/progress-notes/${noteId}`, { method: 'DELETE', credentials: 'include' })
+    setDeleting(false)
+    if (res.ok) router.push(`/admin/patients/${id}`)
   }
 
   if (loading) {
@@ -87,6 +96,30 @@ export default function AdminProgressNotePage({ params }: { params: Promise<{ id
     </div>
   ) : null
 
+  // Hard delete — always available to admin regardless of signed/voided
+  // status (unlike Void, this actually removes the record). Meant as a
+  // testing-environment escape hatch for erroneous notes; keep this
+  // deliberately separate from Void, which is the real production path.
+  const deleteAction = (
+    <div className="bg-white rounded-2xl shadow-sm p-6 space-y-3">
+      {!confirmingDelete ? (
+        <button onClick={() => setConfirmingDelete(true)} className="text-xs font-semibold text-red-600 border border-red-200 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100 transition">
+          Delete This Note
+        </button>
+      ) : (
+        <div className="space-y-3">
+          <p className="text-sm text-[#2F3E4E]">This permanently deletes the note, its signature(s), PDF, and revision history. This cannot be undone — use Void instead for a real record. Continue?</p>
+          <div className="flex items-center gap-3">
+            <button onClick={handleDelete} disabled={deleting} className="bg-red-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-red-700 transition disabled:opacity-50">
+              {deleting ? 'Deleting…' : 'Confirm Delete'}
+            </button>
+            <button onClick={() => setConfirmingDelete(false)} className="text-sm text-[#7A8F79] hover:text-[#2F3E4E] transition">Cancel</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6">
       <div className="max-w-5xl mx-auto">
@@ -110,6 +143,7 @@ export default function AdminProgressNotePage({ params }: { params: Promise<{ id
             basePath="/api/admin"
             signatureUrl={signatureUrl}
             voidAction={voidAction}
+            deleteAction={deleteAction}
             addendumAction={note.signedAt && !note.voidedAt ? (
               <ProgressNoteAddendumForm
                 basePath="/api/admin"

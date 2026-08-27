@@ -206,7 +206,7 @@ export default function CalendarGrid({
                   const inMonth = day.getMonth() === thisMonth
                   // Rather than tracking a separate muted color for every
                   // "this already happened" event status, a passed day just
-                  // gets struck through once at the cell level.
+                  // gets its date number struck through once.
                   const isPast = key < today
                   return (
                     <div
@@ -215,14 +215,6 @@ export default function CalendarGrid({
                         greyed ? 'opacity-30' : ''
                       } ${inMonth ? 'bg-white' : 'bg-[#F4F6F5]'} ${key === today ? 'ring-2 ring-[#7A8F79]' : ''}`}
                     >
-                      {isPast && (
-                        <div
-                          className="absolute inset-0 rounded-lg pointer-events-none"
-                          style={{
-                            backgroundImage: 'linear-gradient(to bottom left, transparent calc(50% - 0.5px), rgba(220,38,38,0.5) calc(50% - 0.5px), rgba(220,38,38,0.5) calc(50% + 0.5px), transparent calc(50% + 0.5px))',
-                          }}
-                        />
-                      )}
                       {meds.show && (
                         <span className="absolute top-0.5 right-0.5 text-xs">
                           <MedicationBadge overdue={meds.overdue} onClick={() => onDayClick?.(day)} />
@@ -233,13 +225,23 @@ export default function CalendarGrid({
                           <ProgressNoteBadge count={noteCount} onClick={() => onDayClick?.(day)} />
                         </span>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => onDayClick?.(day)}
-                        className={`text-[11px] font-semibold ${inMonth ? 'text-[#2F3E4E]' : 'text-[#7A8F79]'} hover:underline`}
-                      >
-                        {day.getDate()}
-                      </button>
+                      <span className="relative inline-block">
+                        <button
+                          type="button"
+                          onClick={() => onDayClick?.(day)}
+                          className={`text-[11px] font-semibold ${inMonth ? 'text-[#2F3E4E]' : 'text-[#7A8F79]'} hover:underline`}
+                        >
+                          {day.getDate()}
+                        </button>
+                        {isPast && (
+                          <span
+                            className="absolute -inset-0.5 pointer-events-none"
+                            style={{
+                              backgroundImage: 'linear-gradient(to bottom left, transparent calc(50% - 0.5px), rgba(220,38,38,0.75) calc(50% - 0.5px), rgba(220,38,38,0.75) calc(50% + 0.5px), transparent calc(50% + 0.5px))',
+                            }}
+                          />
+                        )}
+                      </span>
                       <div className="space-y-0.5">
                         {visibleItems.slice(0, 3).map(item => <ItemChip key={item.id} item={item} onClick={onItemClick} />)}
                         {visibleItems.length > 3 && (

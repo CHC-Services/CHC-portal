@@ -15,13 +15,14 @@ function fmtDateTime(iso: string) {
 // admin's view page, family's view page, and the nurse's own view of an
 // already-signed note.
 export default function ProgressNoteView({
-  note, basePath, signatureUrl, voidAction, addendumAction,
+  note, basePath, signatureUrl, voidAction, addendumAction, deleteAction,
 }: {
   note: ProgressNoteDTO
   basePath: string // '/api/nurse', '/api/admin', or '/api/family'
   signatureUrl?: string | null
   voidAction?: React.ReactNode
   addendumAction?: React.ReactNode
+  deleteAction?: React.ReactNode
 }) {
   const [loadingPdf, setLoadingPdf] = useState(false)
   const [pdfError, setPdfError] = useState('')
@@ -230,6 +231,7 @@ export default function ProgressNoteView({
 
       {addendumAction}
       {voidAction}
+      {deleteAction}
     </div>
   )
 }

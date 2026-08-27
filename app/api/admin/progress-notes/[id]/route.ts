@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../lib/prisma'
 import { verifyToken } from '../../../../../lib/auth'
 import { canEditProgressNote } from '../../../../../lib/permissions'
-import { getPresignedDownloadUrl } from '../../../../../lib/s3'
+import { getPresignedDownloadUrl, deleteFromS3 } from '../../../../../lib/s3'
 import { authorDisplayName } from '../../../../../lib/progressNoteAuthor'
 
 function getSession(req: Request) {
@@ -141,18 +141,32 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   return NextResponse.json({ note })
 }
 
-// Draft-only cleanup for admin's own abandoned draft.
+// Admin-only hard delete — unlike the draft-only/author-only DELETE the
+// nurse route exposes, this removes a note regardless of author or signed
+// status. Added so Alex can clean up erroneous test notes without leaving
+// them stuck forever (only "void" existed before, which keeps the record).
+// Vitals/intakeOutput/addenda/voiceEntries cascade via FK; ProgressNoteRevision
+// has no FK (just a loose progressNoteId string) so it's cleaned up explicitly,
+// and any S3-stored signature(s)/PDF are deleted best-effort alongside.
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = getSession(req)
   if (!session || session.role !== 'admin') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await params
 
-  const existing = await prisma.progressNote.findUnique({ where: { id } })
+  const existing = await prisma.progressNote.findUnique({
+    where: { id },
+    include: { addenda: { select: { signatureImageKey: true } } },
+  })
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  if (!(await canEditProgressNote(session, existing))) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  }
 
-  await prisma.progressNote.delete({ where: { id } })
+  const s3Keys = [existing.signatureImageKey, existing.pdfS3Key, ...existing.addenda.map(a => a.signatureImageKey)]
+    .filter((k): k is string => !!k)
+  await Promise.all(s3Keys.map(k => deleteFromS3(k).catch(() => {})))
+
+  await prisma.$transaction([
+    prisma.progressNoteRevision.deleteMany({ where: { progressNoteId: id } }),
+    prisma.progressNote.delete({ where: { id } }),
+  ])
+
   return NextResponse.json({ ok: true })
 }

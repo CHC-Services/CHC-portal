@@ -956,7 +956,9 @@ function AdminClaimCard({
 
 // ─── AdminClaimsPage ──────────────────────────────────────────────────────────
 
-export default function AdminClaimsPage() {
+type ClaimsPageTab = 'claims' | 'medicaidPayouts'
+
+function ClaimsTab({ setTab }: { setTab: (t: ClaimsPageTab) => void }) {
   const [claims, setClaims] = useState<CommercialClaim[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -1431,6 +1433,20 @@ export default function AdminClaimsPage() {
           <div>
             <h1 className="text-2xl font-bold text-[#2F3E4E]"><span className="text-[#7A8F79] italic">ad</span>Claims</h1>
             <p className="text-sm text-[#7A8F79] mt-0.5">Manage claims below.</p>
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={() => setTab('claims')}
+                className="px-4 py-2 rounded-lg text-sm font-semibold transition bg-[#2F3E4E] text-white"
+              >
+                Claims
+              </button>
+              <button
+                onClick={() => setTab('medicaidPayouts')}
+                className="px-4 py-2 rounded-lg text-sm font-semibold transition bg-white text-[#2F3E4E] border border-[#D9E1E8] hover:border-[#7A8F79] hover:text-[#7A8F79]"
+              >
+                Medicaid Payouts
+              </button>
+            </div>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <CarcLookupModal showAdminTools />
@@ -2221,4 +2237,146 @@ export default function AdminClaimsPage() {
 
     </div>
   )
+}
+
+// ─── Medicaid Payouts ─────────────────────────────────────────────────────────
+// One row per nurse per pay cycle (server-aggregated in the API route) — a
+// simple, screenshot-friendly grid so admin can show a nurse without portal
+// access what she was paid for a given cycle. Deliberately not the full
+// nurse-side Pay Log UI (claim-level breakdown, received-checkbox tracking) —
+// just Nurse / Payout Date / Amount, filterable by nurse and cycle.
+
+type MedicaidPayoutRow = {
+  nurseId: string
+  nurseName: string
+  estPayCycle: number
+  depositDate: string | null
+  amount: number
+}
+
+function fmtMoney(n: number): string {
+  return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+function fmtPayoutDate(v: string | null): string {
+  if (!v) return 'Pending'
+  const [y, m, d] = v.split('-')
+  return new Date(Number(y), Number(m) - 1, Number(d)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+function MedicaidPayoutsTab({ setTab }: { setTab: (t: ClaimsPageTab) => void }) {
+  const [rows, setRows] = useState<MedicaidPayoutRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [nurseSearch, setNurseSearch] = useState('')
+  const [cycleFilter, setCycleFilter] = useState('')
+
+  useEffect(() => {
+    fetch('/api/admin/medicaid-payouts', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setRows(data) })
+      .finally(() => setLoading(false))
+  }, [])
+
+  const cycleOptions = useMemo(() => {
+    const cycles = Array.from(new Set(rows.map(r => r.estPayCycle))).sort((a, b) => b - a)
+    return cycles.map(c => ({ value: String(c), label: `Cycle ${c} — ${payCycleDateLabel(c)}` }))
+  }, [rows])
+
+  const filtered = rows.filter(r => {
+    if (nurseSearch && !r.nurseName.toLowerCase().includes(nurseSearch.toLowerCase())) return false
+    if (cycleFilter && String(r.estPayCycle) !== cycleFilter) return false
+    return true
+  })
+
+  return (
+    <div className="min-h-screen bg-[#D9E1E8] p-6">
+      <div className="max-w-screen-xl mx-auto">
+
+        <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-[#2F3E4E]"><span className="text-[#7A8F79] italic">ad</span>Claims</h1>
+            <p className="text-sm text-[#7A8F79] mt-0.5">Medicaid payouts by nurse and pay cycle.</p>
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={() => setTab('claims')}
+                className="px-4 py-2 rounded-lg text-sm font-semibold transition bg-white text-[#2F3E4E] border border-[#D9E1E8] hover:border-[#7A8F79] hover:text-[#7A8F79]"
+              >
+                Claims
+              </button>
+              <button
+                onClick={() => setTab('medicaidPayouts')}
+                className="px-4 py-2 rounded-lg text-sm font-semibold transition bg-[#2F3E4E] text-white"
+              >
+                Medicaid Payouts
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm p-4 mb-4 flex flex-wrap items-end gap-3">
+          <div className="w-64">
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] mb-1">Nurse</label>
+            <input
+              value={nurseSearch}
+              onChange={e => setNurseSearch(e.target.value)}
+              placeholder="Search by nurse name…"
+              className="w-full h-[34px] border border-[#D9E1E8] rounded-lg px-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+            />
+          </div>
+          <div className="w-64">
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] mb-1">Pay Cycle</label>
+            <select
+              value={cycleFilter}
+              onChange={e => setCycleFilter(e.target.value)}
+              className="w-full h-[34px] border border-[#D9E1E8] rounded-lg px-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+            >
+              <option value="">All cycles</option>
+              {cycleOptions.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </select>
+          </div>
+          {(nurseSearch || cycleFilter) && (
+            <button
+              onClick={() => { setNurseSearch(''); setCycleFilter('') }}
+              className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition h-[34px]"
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          {loading ? (
+            <p className="text-sm text-[#7A8F79] p-6">Loading…</p>
+          ) : filtered.length === 0 ? (
+            <p className="text-sm text-[#7A8F79] p-6">No Medicaid payouts match these filters.</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[#D9E1E8] text-left text-[10px] font-bold uppercase tracking-widest text-[#7A8F79]">
+                  <th className="px-4 py-2.5">Nurse</th>
+                  <th className="px-4 py-2.5">Payout Date</th>
+                  <th className="px-4 py-2.5 text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(r => (
+                  <tr key={`${r.nurseId}:${r.estPayCycle}`} className="border-b border-[#D9E1E8] last:border-0 hover:bg-[#F4F6F5] transition">
+                    <td className="px-4 py-2.5 font-semibold text-[#2F3E4E]">{r.nurseName}</td>
+                    <td className="px-4 py-2.5 text-[#2F3E4E]">{fmtPayoutDate(r.depositDate)}</td>
+                    <td className="px-4 py-2.5 text-right font-semibold text-[#2F3E4E]">{fmtMoney(r.amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+      </div>
+    </div>
+  )
+}
+
+export default function AdminClaimsPage() {
+  const [tab, setTab] = useState<ClaimsPageTab>('claims')
+  return tab === 'claims' ? <ClaimsTab setTab={setTab} /> : <MedicaidPayoutsTab setTab={setTab} />
 }

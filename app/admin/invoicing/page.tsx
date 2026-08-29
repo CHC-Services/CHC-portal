@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { shortInvoiceNumber } from '../../../lib/formatInvoice'
+import { formalName } from '../../../lib/formatName'
 import DateInput from '../../components/DateInput'
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -98,10 +99,331 @@ function StatCard({ label, amount, count, color }: { label: string; amount: numb
   )
 }
 
+// ── Generate Invoices ────────────────────────────────────────────────────────
+// The cross-nurse "what's outstanding" batch screen — replaces having to open
+// each nurse's profile individually to see and check off which dates of
+// service still need to be invoiced. One row per nurse (count outstanding,
+// oldest unbilled date, running total); expand a nurse to see the actual
+// entries and pick a month to auto-check everything billed that month — the
+// normal case is then just "expand → pick month → Generate." Unchecking down
+// to a subset still works for an off-cycle/partial invoice.
+
+type OutstandingEntry = {
+  id: string
+  workDate: string
+  hours: number
+  billed: boolean
+  readyToInvoice: boolean
+  invoiceFeePlan: string | null
+  invoiceFeeAmt: number | null
+  nurse: { id: string; firstName: string | null; lastName: string | null; displayName: string; accountNumber: string | null }
+  patient: { firstName: string; lastName: string; accountNumber: string | null } | null
+}
+
+// Display-only estimate before generation — the authoritative amount is
+// always computed server-side in POST /api/admin/time-entry/[id] at flag
+// time. Keep these two in sync if the fee schedule ever changes.
+const FEE_PLAN_OPTIONS = [
+  { value: 'ST-MED',  label: 'Short-Term Medicaid',  amount: 3.00 },
+  { value: 'ST-COM',  label: 'Short-Term Commercial', amount: 4.00 },
+  { value: 'ST-DUAL', label: 'Short-Term Dual',        amount: 5.00 },
+  { value: 'LT-MED',  label: 'Long-Term Medicaid',    amount: 2.00 },
+  { value: 'LT-COM',  label: 'Long-Term Commercial',   amount: 3.00 },
+  { value: 'LT-DUAL', label: 'Long-Term Dual',          amount: 4.00 },
+]
+const FEE_AMOUNT: Record<string, number> = Object.fromEntries(FEE_PLAN_OPTIONS.map(p => [p.value, p.amount]))
+
+function monthKey(dateStr: string) {
+  return dateStr.slice(0, 7) // YYYY-MM
+}
+function monthLabel(key: string) {
+  const [y, m] = key.split('-').map(Number)
+  return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+}
+
+function NurseOutstandingRow({ nurseEntries, onGenerated }: {
+  nurseEntries: OutstandingEntry[]
+  onGenerated: () => void
+}) {
+  const nurse = nurseEntries[0].nurse
+  const [expanded, setExpanded] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [plans, setPlans] = useState<Record<string, string>>({})
+  const [monthPick, setMonthPick] = useState('')
+  const [dueTerm, setDueTerm] = useState('30')
+  const [notes, setNotes] = useState('')
+  const [generating, setGenerating] = useState(false)
+  const [message, setMessage] = useState('')
+
+  const sorted = [...nurseEntries].sort((a, b) => a.workDate.localeCompare(b.workDate))
+  const billedEntries = sorted.filter(e => e.billed)
+  const unbilledCount = sorted.length - billedEntries.length
+  const oldest = sorted[0]
+  const knownTotal = sorted.reduce((s, e) => s + (e.invoiceFeeAmt ?? 0), 0)
+
+  const monthOptions = useMemo(() => {
+    const keys = Array.from(new Set(billedEntries.map(e => monthKey(e.workDate)))).sort()
+    return keys.map(k => ({ value: k, label: monthLabel(k) }))
+  }, [billedEntries])
+
+  function planFor(entry: OutstandingEntry) {
+    return plans[entry.id] ?? entry.invoiceFeePlan ?? 'LT-MED'
+  }
+
+  function pickMonth(key: string) {
+    setMonthPick(key)
+    setMessage('')
+    if (!key) { setSelected(new Set()); return }
+    setSelected(new Set(billedEntries.filter(e => monthKey(e.workDate) === key).map(e => e.id)))
+  }
+
+  function toggleEntry(entry: OutstandingEntry) {
+    if (!entry.billed) return
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(entry.id)) next.delete(entry.id); else next.add(entry.id)
+      return next
+    })
+  }
+
+  const selectedTotal = sorted
+    .filter(e => selected.has(e.id))
+    .reduce((s, e) => s + (FEE_AMOUNT[planFor(e)] ?? 0), 0)
+
+  async function handleGenerate() {
+    if (selected.size === 0) return
+    setGenerating(true)
+    setMessage('')
+    try {
+      // POST /api/admin/invoices sweeps up every readyToInvoice:true entry
+      // for this nurse, not just what we flag below — so any stale flag left
+      // over from an earlier interrupted session (or the old per-nurse
+      // screen) needs to be explicitly cleared here too, or it would ride
+      // along on this invoice invisibly to what's actually checked above.
+      for (const entry of sorted) {
+        const shouldFlag = selected.has(entry.id)
+        if (!shouldFlag && !entry.readyToInvoice) continue
+        const res = await fetch(`/api/admin/time-entry/${entry.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(shouldFlag
+            ? { readyToInvoice: true, invoiceFeePlan: planFor(entry) }
+            : { readyToInvoice: false }),
+        })
+        if (!res.ok) throw new Error('Failed to flag one or more entries.')
+      }
+      const res = await fetch('/api/admin/invoices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ nurseId: nurse.id, dueTerm, notes }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to create invoice.')
+      setMessage(`✓ Invoice ${data.invoiceNumber || ''} created.`)
+      setSelected(new Set())
+      setMonthPick('')
+      onGenerated()
+    } catch (err: any) {
+      setMessage(err.message || 'Something went wrong.')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setExpanded(e => !e)}
+        className="w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-[#F4F6F5] transition"
+      >
+        <div className="flex items-center gap-3">
+          <span className="font-semibold text-[#2F3E4E]">{formalName(nurse) || nurse.displayName}</span>
+          {nurse.accountNumber && <span className="text-[10px] font-mono text-[#7A8F79] bg-[#F4F6F5] px-2 py-0.5 rounded-full">{nurse.accountNumber}</span>}
+        </div>
+        <div className="flex items-center gap-4 text-xs">
+          <span className="text-[#7A8F79]">{billedEntries.length} billed, uninvoiced{unbilledCount > 0 ? ` · ${unbilledCount} not billed yet` : ''}</span>
+          <span className="text-[#7A8F79]">Oldest: {fmt(oldest.workDate)}</span>
+          {knownTotal > 0 && <span className="font-bold text-[#2F3E4E]">{currency(knownTotal)} flagged so far</span>}
+          <span className="text-[#7A8F79]">{expanded ? '▲' : '▼'}</span>
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="border-t border-[#D9E1E8] px-5 py-4 space-y-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="w-64">
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] mb-1">Pick a month to auto-check</label>
+              <select
+                value={monthPick}
+                onChange={e => pickMonth(e.target.value)}
+                className="w-full h-[34px] border border-[#D9E1E8] rounded-lg px-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+              >
+                <option value="">— Custom selection —</option>
+                {monthOptions.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+              </select>
+            </div>
+            <div className="w-32">
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] mb-1">Due Term</label>
+              <select
+                value={dueTerm}
+                onChange={e => setDueTerm(e.target.value)}
+                className="w-full h-[34px] border border-[#D9E1E8] rounded-lg px-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+              >
+                <option value="30">30 days</option>
+                <option value="60">60 days</option>
+                <option value="90">90 days</option>
+                <option value="ASAP">ASAP</option>
+              </select>
+            </div>
+            <div className="flex-1 min-w-[180px]">
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] mb-1">Notes <span className="normal-case font-normal text-[#aab]">(optional)</span></label>
+              <input
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                className="w-full h-[34px] border border-[#D9E1E8] rounded-lg px-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+              />
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[#D9E1E8] text-left text-[10px] font-bold uppercase tracking-widest text-[#7A8F79]">
+                  <th className="px-2 py-2 w-8"></th>
+                  <th className="px-2 py-2">DOS</th>
+                  <th className="px-2 py-2">Patient</th>
+                  <th className="px-2 py-2">Status</th>
+                  <th className="px-2 py-2">Fee Plan</th>
+                  <th className="px-2 py-2 text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sorted.map(entry => (
+                  <tr key={entry.id} className={`border-b border-[#D9E1E8] last:border-0 ${!entry.billed ? 'opacity-40' : ''}`}>
+                    <td className="px-2 py-1.5">
+                      <input
+                        type="checkbox"
+                        disabled={!entry.billed}
+                        checked={selected.has(entry.id)}
+                        onChange={() => toggleEntry(entry)}
+                        className="accent-[#7A8F79] w-4 h-4"
+                      />
+                    </td>
+                    <td className="px-2 py-1.5 text-[#2F3E4E]">{fmt(entry.workDate)}</td>
+                    <td className="px-2 py-1.5 text-[#2F3E4E]">
+                      {entry.patient ? `${entry.patient.firstName} ${entry.patient.lastName}` : '—'}
+                    </td>
+                    <td className="px-2 py-1.5">
+                      {entry.billed ? (
+                        <span className="text-[10px] font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded-full">Billed</span>
+                      ) : (
+                        <span className="text-[10px] font-bold text-[#7A8F79] bg-[#F4F6F5] px-2 py-0.5 rounded-full" title="No claim submitted yet — can't be invoiced">Not billed</span>
+                      )}
+                    </td>
+                    <td className="px-2 py-1.5">
+                      {selected.has(entry.id) ? (
+                        <select
+                          value={planFor(entry)}
+                          onChange={e => setPlans(p => ({ ...p, [entry.id]: e.target.value }))}
+                          className="h-[30px] border border-[#D9E1E8] rounded-lg px-2 text-xs text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                        >
+                          {FEE_PLAN_OPTIONS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                        </select>
+                      ) : entry.invoiceFeePlan ? (
+                        <span className="text-xs text-[#7A8F79]">{entry.invoiceFeePlan}</span>
+                      ) : (
+                        <span className="text-xs text-[#aab]">—</span>
+                      )}
+                    </td>
+                    <td className="px-2 py-1.5 text-right font-semibold text-[#2F3E4E]">
+                      {selected.has(entry.id) ? currency(FEE_AMOUNT[planFor(entry)] ?? 0) : entry.invoiceFeeAmt != null ? currency(entry.invoiceFeeAmt) : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex items-center justify-between gap-4 pt-1">
+            <div className="text-sm">
+              <span className="text-[#7A8F79]">{selected.size} selected · </span>
+              <span className="font-bold text-[#2F3E4E]">{currency(selectedTotal)}</span>
+              {message && <span className="ml-3 text-xs font-semibold text-[#2F3E4E]">{message}</span>}
+            </div>
+            <button
+              onClick={handleGenerate}
+              disabled={selected.size === 0 || generating}
+              className="bg-[#2F3E4E] text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-50"
+            >
+              {generating ? 'Generating…' : `Generate Invoice (${selected.size})`}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function GenerateInvoicesTab({ onCreated }: { onCreated: () => void }) {
+  const [entries, setEntries] = useState<OutstandingEntry[]>([])
+  const [loading, setLoading] = useState(true)
+  const [nurseSearch, setNurseSearch] = useState('')
+
+  const load = useCallback(() => {
+    setLoading(true)
+    fetch('/api/admin/invoices/outstanding', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setEntries(data) })
+      .finally(() => setLoading(false))
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const byNurse = useMemo(() => {
+    const map = new Map<string, OutstandingEntry[]>()
+    for (const e of entries) {
+      if (!map.has(e.nurse.id)) map.set(e.nurse.id, [])
+      map.get(e.nurse.id)!.push(e)
+    }
+    return Array.from(map.values())
+      .filter(group => !nurseSearch || (formalName(group[0].nurse) || group[0].nurse.displayName).toLowerCase().includes(nurseSearch.toLowerCase()))
+      .sort((a, b) => (formalName(a[0].nurse) || a[0].nurse.displayName).localeCompare(formalName(b[0].nurse) || b[0].nurse.displayName))
+  }, [entries, nurseSearch])
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-white rounded-xl shadow-sm p-4">
+        <label className="block text-[10px] font-bold uppercase tracking-widest text-[#7A8F79] mb-1">Nurse</label>
+        <input
+          value={nurseSearch}
+          onChange={e => setNurseSearch(e.target.value)}
+          placeholder="Search by nurse name…"
+          className="w-64 h-[34px] border border-[#D9E1E8] rounded-lg px-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+        />
+      </div>
+
+      {loading ? (
+        <p className="text-sm text-[#7A8F79] py-4">Loading…</p>
+      ) : byNurse.length === 0 ? (
+        <p className="text-sm text-[#7A8F79] py-4">Nothing outstanding — every entry has been invoiced.</p>
+      ) : (
+        <div className="space-y-2">
+          {byNurse.map(group => (
+            <NurseOutstandingRow key={group[0].nurse.id} nurseEntries={group} onGenerated={() => { load(); onCreated() }} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AdminInvoicingPage() {
-  const [tab, setTab] = useState<'overview' | 'invoices' | 'payments' | 'income'>('overview')
+  const [tab, setTab] = useState<'overview' | 'generate' | 'invoices' | 'payments' | 'income'>('overview')
   const [stats, setStats] = useState<Stats | null>(null)
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [incomeData, setIncomeData] = useState<IncomeData | null>(null)
@@ -342,20 +664,31 @@ export default function AdminInvoicingPage() {
 
       {/* ── Tabs ── */}
       <div className="flex gap-1.5 mb-4 flex-wrap">
-        {(['overview', 'invoices', 'payments', 'income'] as const).map(t => (
+        {([
+          ['overview', 'Overview'],
+          ['generate', 'Generate Invoices'],
+          ['invoices', 'Invoices'],
+          ['payments', 'Payments'],
+          ['income', 'Income'],
+        ] as const).map(([t, label]) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-4 py-1.5 rounded-lg text-sm font-semibold capitalize transition ${
+            className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition ${
               tab === t ? 'bg-[#2F3E4E] text-white' : 'bg-white text-[#2F3E4E] border border-[#D9E1E8] hover:border-[#7A8F79]'
             }`}
           >
-            {t}
+            {label}
           </button>
         ))}
       </div>
 
-      {loading && <p className="text-sm text-[#7A8F79] py-4">Loading…</p>}
+      {loading && tab !== 'generate' && <p className="text-sm text-[#7A8F79] py-4">Loading…</p>}
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          TAB: GENERATE INVOICES
+      ═══════════════════════════════════════════════════════════════════ */}
+      {tab === 'generate' && <GenerateInvoicesTab onCreated={loadAll} />}
 
       {/* ═══════════════════════════════════════════════════════════════════
           TAB: OVERVIEW

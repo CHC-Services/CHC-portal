@@ -206,16 +206,16 @@ export default function CalendarGrid({
                   const noteCount = progressNoteCount(dayItems)
                   const greyed = isGreyedOut?.(key) ?? false
                   const inMonth = day.getMonth() === thisMonth
-                  // Rather than tracking a separate muted color for every
-                  // "this already happened" event status, a passed day just
-                  // gets its date number struck through once.
+                  // Past days get a light fade instead of a strikethrough —
+                  // a quieter, cell-level way to separate past from present.
                   const isPast = key < today
+                  const isToday = key === today
                   return (
                     <div
                       key={key}
-                      className={`relative min-h-[80px] border border-[#D9E1E8] rounded-lg p-1 space-y-0.5 transition ${
-                        greyed ? 'opacity-30' : ''
-                      } ${inMonth ? 'bg-white' : 'bg-[#F4F6F5]'} ${key === today ? 'ring-2 ring-[#7A8F79]' : ''}`}
+                      className={`relative min-h-[80px] border-2 rounded-lg p-1 space-y-0.5 transition ${
+                        isToday ? 'border-[#D4AF37]' : 'border-[#D9E1E8]'
+                      } ${greyed ? 'opacity-30' : isPast ? 'opacity-60' : ''} ${inMonth ? 'bg-white' : 'bg-[#F4F6F5]'}`}
                     >
                       {meds.show && (
                         <span className="absolute top-0.5 right-0.5 text-xs">
@@ -227,23 +227,13 @@ export default function CalendarGrid({
                           <ProgressNoteBadge count={noteCount} onClick={() => onDayClick?.(day)} />
                         </span>
                       )}
-                      <span className="relative inline-block">
-                        <button
-                          type="button"
-                          onClick={() => onDayClick?.(day)}
-                          className={`text-[11px] font-semibold ${inMonth ? 'text-[#2F3E4E]' : 'text-[#7A8F79]'} hover:underline`}
-                        >
-                          {day.getDate()}
-                        </button>
-                        {isPast && (
-                          <span
-                            className="absolute -inset-0.5 pointer-events-none"
-                            style={{
-                              backgroundImage: 'linear-gradient(to bottom left, transparent calc(50% - 0.5px), rgba(220,38,38,0.75) calc(50% - 0.5px), rgba(220,38,38,0.75) calc(50% + 0.5px), transparent calc(50% + 0.5px))',
-                            }}
-                          />
-                        )}
-                      </span>
+                      <button
+                        type="button"
+                        onClick={() => onDayClick?.(day)}
+                        className={`text-[11px] font-semibold ${inMonth ? 'text-[#2F3E4E]' : 'text-[#7A8F79]'} hover:underline`}
+                      >
+                        {day.getDate()}
+                      </button>
                       <div className="space-y-0.5">
                         {visibleItems.slice(0, 3).map(item => <ItemChip key={item.id} item={item} onClick={onItemClick} />)}
                         {visibleItems.length > 3 && (

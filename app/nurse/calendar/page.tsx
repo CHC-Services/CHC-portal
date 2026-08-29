@@ -43,6 +43,7 @@ export default function NurseCalendarPage() {
 
   const [selectedTypes, setSelectedTypes] = useState<Set<string> | null>(null) // null = all
   const [notesFilter, setNotesFilter] = useState<'all' | 'with' | 'without'>('all')
+  const [selectedPatientId, setSelectedPatientId] = useState('') // '' = all patients
 
   const [selectedItem, setSelectedItem] = useState<CalendarItem | null>(null)
   const [actionBusy, setActionBusy] = useState(false)
@@ -94,6 +95,7 @@ export default function NurseCalendarPage() {
 
   function matchesFilters(item: CalendarItem): boolean {
     if (selectedTypes && !selectedTypes.has(item.category)) return false
+    if (selectedPatientId && item.patientId !== selectedPatientId) return false
     if (notesFilter !== 'all' && item.source === 'shift') {
       const has = !!item.hasProgressNotes
       if (notesFilter === 'with' && !has) return false
@@ -112,7 +114,7 @@ export default function NurseCalendarPage() {
     return map
   }, [items])
 
-  const filtersActive = (selectedTypes !== null) || notesFilter !== 'all'
+  const filtersActive = (selectedTypes !== null) || notesFilter !== 'all' || selectedPatientId !== ''
   function isGreyedOut(key: string) {
     if (!filtersActive) return false
     const dayItems = byDay.get(key)
@@ -127,6 +129,12 @@ export default function NurseCalendarPage() {
       if (next.has(cat)) next.delete(cat); else next.add(cat)
       return next
     })
+  }
+
+  function clearFilters() {
+    setSelectedTypes(null)
+    setNotesFilter('all')
+    setSelectedPatientId('')
   }
 
   async function claimShift(id: string) {
@@ -160,7 +168,7 @@ export default function NurseCalendarPage() {
           </div>
           <div className="flex items-center gap-4">
             <button type="button" onClick={() => setShowAddAppt(true)} className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">
-              + Add Appointment
+              + Add Patient Appointment
             </button>
             <Link href="/nurse/profile" className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">
               + Add Personal Reminder →
@@ -188,6 +196,21 @@ export default function NurseCalendarPage() {
         {/* Filters */}
         {presentTypes.length > 0 && (
           <div className="bg-white rounded-xl shadow-sm p-3 mb-4 flex items-center gap-4 flex-wrap">
+            {patients.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] uppercase tracking-wide font-bold text-[#7A8F79] mr-1">Patient</span>
+                <select
+                  value={selectedPatientId}
+                  onChange={e => setSelectedPatientId(e.target.value)}
+                  className="h-[30px] border border-[#D9E1E8] rounded-lg px-2 text-xs text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                >
+                  <option value="">All Patients</option>
+                  {[...patients].sort((a, b) => a.lastName.localeCompare(b.lastName)).map(p => (
+                    <option key={p.id} value={p.id}>{p.firstName} {p.lastName}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-[10px] uppercase tracking-wide font-bold text-[#7A8F79] mr-1">Type</span>
               {presentTypes.map(cat => {
@@ -204,9 +227,6 @@ export default function NurseCalendarPage() {
                   </button>
                 )
               })}
-              {selectedTypes !== null && (
-                <button onClick={() => setSelectedTypes(null)} className="text-[11px] text-[#7A8F79] hover:text-[#2F3E4E] underline ml-1">Reset</button>
-              )}
             </div>
             {presentTypes.includes('shift') && (
               <div className="flex items-center gap-1.5">
@@ -223,6 +243,11 @@ export default function NurseCalendarPage() {
                   </button>
                 ))}
               </div>
+            )}
+            {filtersActive && (
+              <button onClick={clearFilters} className="ml-auto text-[11px] font-semibold text-[#7A8F79] hover:text-[#2F3E4E] underline">
+                Clear Filters
+              </button>
             )}
           </div>
         )}

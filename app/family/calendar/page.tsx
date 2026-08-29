@@ -40,6 +40,7 @@ export default function FamilyCalendarPage() {
   const [loading, setLoading] = useState(true)
 
   const [selectedTypes, setSelectedTypes] = useState<Set<string> | null>(null)
+  const [selectedPatientId, setSelectedPatientId] = useState('') // '' = all patients
   const [selectedItem, setSelectedItem] = useState<CalendarItem | null>(null)
 
   const [patients, setPatients] = useState<PatientOption[]>([])
@@ -86,6 +87,7 @@ export default function FamilyCalendarPage() {
 
   function matchesFilters(item: CalendarItem): boolean {
     if (selectedTypes && !selectedTypes.has(item.category)) return false
+    if (selectedPatientId && item.patientId !== selectedPatientId) return false
     return true
   }
 
@@ -99,7 +101,7 @@ export default function FamilyCalendarPage() {
     return map
   }, [items])
 
-  const filtersActive = selectedTypes !== null
+  const filtersActive = selectedTypes !== null || selectedPatientId !== ''
   function isGreyedOut(key: string) {
     if (!filtersActive) return false
     const dayItems = byDay.get(key)
@@ -114,6 +116,11 @@ export default function FamilyCalendarPage() {
       if (next.has(cat)) next.delete(cat); else next.add(cat)
       return next
     })
+  }
+
+  function clearFilters() {
+    setSelectedTypes(null)
+    setSelectedPatientId('')
   }
 
   const manageHref = selectedItem?.patientId && selectedItem.source === 'shift' ? `/patient/${selectedItem.patientId}/schedule`
@@ -135,7 +142,7 @@ export default function FamilyCalendarPage() {
           </div>
           <div className="flex items-center gap-4">
             <button type="button" onClick={() => setShowAddAppt(true)} className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">
-              + Add Appointment
+              + Add PasAppointment
             </button>
             <Link href="/family/reminders" className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">
               + Add Reminder →
@@ -160,24 +167,43 @@ export default function FamilyCalendarPage() {
         />
 
         {presentTypes.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm p-3 mb-4 flex items-center gap-1.5 flex-wrap">
-            <span className="text-[10px] uppercase tracking-wide font-bold text-[#7A8F79] mr-1">Type</span>
-            {presentTypes.map(cat => {
-              const active = selectedTypes === null || selectedTypes.has(cat)
-              return (
-                <button
-                  key={cat}
-                  onClick={() => toggleType(cat)}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition border ${
-                    active ? 'bg-[#2F3E4E] text-white border-[#2F3E4E]' : 'bg-white text-[#7A8F79] border-[#D9E1E8] opacity-60'
-                  }`}
+          <div className="bg-white rounded-xl shadow-sm p-3 mb-4 flex items-center gap-4 flex-wrap">
+            {patients.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] uppercase tracking-wide font-bold text-[#7A8F79] mr-1">Patient</span>
+                <select
+                  value={selectedPatientId}
+                  onChange={e => setSelectedPatientId(e.target.value)}
+                  className="h-[30px] border border-[#D9E1E8] rounded-lg px-2 text-xs text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
                 >
-                  {CATEGORY_LABEL[cat] || cat}
-                </button>
-              )
-            })}
-            {selectedTypes !== null && (
-              <button onClick={() => setSelectedTypes(null)} className="text-[11px] text-[#7A8F79] hover:text-[#2F3E4E] underline ml-1">Reset</button>
+                  <option value="">All Patients</option>
+                  {[...patients].sort((a, b) => a.lastName.localeCompare(b.lastName)).map(p => (
+                    <option key={p.id} value={p.id}>{p.firstName} {p.lastName}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] uppercase tracking-wide font-bold text-[#7A8F79] mr-1">Type</span>
+              {presentTypes.map(cat => {
+                const active = selectedTypes === null || selectedTypes.has(cat)
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => toggleType(cat)}
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition border ${
+                      active ? 'bg-[#2F3E4E] text-white border-[#2F3E4E]' : 'bg-white text-[#7A8F79] border-[#D9E1E8] opacity-60'
+                    }`}
+                  >
+                    {CATEGORY_LABEL[cat] || cat}
+                  </button>
+                )
+              })}
+            </div>
+            {filtersActive && (
+              <button onClick={clearFilters} className="ml-auto text-[11px] font-semibold text-[#7A8F79] hover:text-[#2F3E4E] underline">
+                Clear Filters
+              </button>
             )}
           </div>
         )}

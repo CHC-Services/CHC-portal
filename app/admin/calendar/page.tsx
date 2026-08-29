@@ -110,6 +110,10 @@ export default function AdminCalendarPage() {
     return !dayItems.some(matchesFilters)
   }
 
+  function clearFilters() {
+    setSelectedTypes(null)
+  }
+
   function toggleType(cat: string) {
     setSelectedTypes(prev => {
       const base = prev ?? new Set(presentTypes)
@@ -288,8 +292,10 @@ export default function AdminCalendarPage() {
                 </button>
               )
             })}
-            {selectedTypes !== null && (
-              <button onClick={() => setSelectedTypes(null)} className="text-[11px] text-[#7A8F79] hover:text-[#2F3E4E] underline ml-1">Reset</button>
+            {filtersActive && (
+              <button onClick={clearFilters} className="ml-auto text-[11px] font-semibold text-[#7A8F79] hover:text-[#2F3E4E] underline">
+                Clear Filters
+              </button>
             )}
           </div>
         )}

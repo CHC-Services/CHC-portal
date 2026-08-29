@@ -59,6 +59,20 @@ export default function NurseCalendarPage() {
       .catch(() => {})
   }, [])
 
+  // Escape closes whatever's on top first (the Add Appointment modal, then
+  // the event detail popup) and only falls through to "back to month" once
+  // nothing else is open — so it never yanks you out of a popup unexpectedly.
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return
+      if (showAddAppt) { setShowAddAppt(false); setApptPatientId(''); return }
+      if (selectedItem) { setSelectedItem(null); return }
+      if (view !== 'month') setView('month')
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [showAddAppt, selectedItem, view])
+
   const customRange = useMemo(() => {
     if (view !== 'custom' || !customStart || !customEnd) return undefined
     return { start: new Date(customStart), end: new Date(customEnd) }

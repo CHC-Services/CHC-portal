@@ -170,7 +170,7 @@ export default function CalendarGrid({
     return (
       <div className="space-y-1">
         <div className="grid grid-cols-7 gap-1">
-          {['Sat', 'Fri', 'Thu', 'Wed', 'Tue', 'Mon', 'Sun'].map(d => (
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
             <p key={d} className="text-[10px] font-bold uppercase tracking-wide text-[#7A8F79] text-center pb-1">{d}</p>
           ))}
         </div>
@@ -185,9 +185,7 @@ export default function CalendarGrid({
                       <button
                         type="button"
                         onClick={() => onItemClick?.(item)}
-                        // Columns are mirrored for display (6 - col) since the
-                        // day cells below render right-to-left.
-                        style={{ gridColumnStart: (6 - endCol) + 1, gridColumnEnd: (6 - startCol) + 2 }}
+                        style={{ gridColumnStart: startCol + 1, gridColumnEnd: endCol + 2 }}
                         className={`text-left text-[10px] leading-tight px-1.5 py-0.5 rounded truncate ${chipClass(item)} hover:opacity-80 transition`}
                         title={`${item.title}${item.patientName ? ` (${item.patientName})` : ''}`}
                       >
@@ -198,7 +196,7 @@ export default function CalendarGrid({
                 </div>
               )}
               <div className="grid grid-cols-7 gap-1">
-                {[...week].reverse().map(day => {
+                {week.map(day => {
                   const key = dateKey(day)
                   const dayItems = (byDay.get(key) || []).filter(item => !isSpanningAllDay(item))
                   const visibleItems = dayItems.filter(item => !COMPACT_ONLY_CATEGORIES.has(item.category))

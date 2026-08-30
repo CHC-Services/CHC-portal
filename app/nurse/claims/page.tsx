@@ -7,6 +7,7 @@ import { payCycleDateLabel, calcMedicaidCycleInfo } from '../../../lib/medicaidP
 import { activeClaims } from '../../../lib/claimTotals'
 import DateInput from '../../components/DateInput'
 import CarcLookupModal from '../../components/CarcLookupModal'
+import MedicaidStatusCodeModal from '../../components/MedicaidStatusCodeModal'
 
 // ── Search helper — checks every string/number field on a claim ──────────────
 function claimMatchesSearch(c: Claim, q: string): boolean {
@@ -197,10 +198,7 @@ function PayerSection({ label, payer, submitDate, allowedAmt, paidAmt, coAmt, ba
   const short = label === 'PRIMARY' ? 'Pri.' : 'Sec.'
   return (
     <div>
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold">{label} — {payer || '—'}</p>
-        <p className="text-[10px] uppercase tracking-wide text-[#7A8F79] font-semibold">PayDate/Cycle</p>
-      </div>
+      <p className="text-xs uppercase tracking-widest text-[#7A8F79] font-semibold mb-2">{label} — {payer || '—'}</p>
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-y-2 gap-x-1 items-start">
         <div className="flex flex-col items-center gap-1">
           {claimIdValue && <p className="text-xs font-semibold text-[#2F3E4E] leading-tight">{claimIdValue}</p>}
@@ -211,13 +209,15 @@ function PayerSection({ label, payer, submitDate, allowedAmt, paidAmt, coAmt, ba
         <Cell label={`${short} Paid`} value={fmt(paidAmt, '$')} valueClass="text-[#7A8F79]" />
         <Cell label={`${short} WO`} value={fmt(coAmt, '$')} />
         <Cell label="Balance" value={fmt(balance, '$')} valueClass={(balance || 0) > 0 ? 'text-red-600' : 'text-[#2F3E4E]'} />
-        <Cell value={(() => {
+        <Cell label="PayDate/Cycle" value={(() => {
           const { date, cycle } = payDateCycleParts(paidDate, payer)
           return <>{date}{cycle && <span className="block font-normal">{cycle}</span>}</>
         })()} />
       </div>
-      <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#D9E1E8]">
-        <p className="text-[10px] text-[#7A8F79]"><span className="font-semibold uppercase tracking-wide">Remark Codes:</span> —</p>
+      {/* Remark codes render once for the whole claim (Row 4, below both
+          payer sections) rather than duplicated per-payer here — they were
+          never actually payer-specific data. */}
+      <div className="flex items-center justify-end mt-2 pt-2 border-t border-[#D9E1E8]">
         <p className="text-[10px] text-right"><span className="font-semibold uppercase tracking-wide text-[#7A8F79]">{isMedicaidPayer(payer) ? 'Payer Claim #' : 'Check #'} </span><span className="text-[#2F3E4E] font-mono">{checkNum || '—'}</span></p>
       </div>
     </div>
@@ -264,7 +264,7 @@ function groupClaims(claims: Claim[]): ClaimGroup[] {
   return groups
 }
 
-function ClaimRow({ primary: c, chain, eobDocs, onClaimPaid }: ClaimGroup & { eobDocs: { id: string; fileName: string }[]; onClaimPaid: (claimId: string) => void }) {
+function ClaimRow({ primary: c, chain, eobDocs, onClaimPaid, statusCodes }: ClaimGroup & { eobDocs: { id: string; fileName: string }[]; onClaimPaid: (claimId: string) => void; statusCodes: Record<string, string> }) {
   const [expanded, setExpanded] = useState(false)
   // Track which EOB is open: { doc, url, loading }
   const [activeEob, setActiveEob] = useState<{ id: string; fileName: string } | null>(null)
@@ -347,17 +347,16 @@ function ClaimRow({ primary: c, chain, eobDocs, onClaimPaid }: ClaimGroup & { eo
         onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded(x => !x) } }}
         className={`w-full text-left px-4 py-3 cursor-pointer transition-colors ${expanded ? 'bg-[#EEF2EC] hover:bg-[#E7EDE5]' : 'hover:bg-[#F4F6F5]'}`}
       >
-        {/* Resubmit indicator — only rendered when present, no blank row otherwise */}
-        {c.resubmissionOf && (
-          <div className="mb-1.5">
-            <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full whitespace-nowrap">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-y-2 gap-x-2 items-center">
+          {/* Resubmission badge sits in the arrow's own top row (matching
+              the DOS-start line next to it) instead of pushing the whole
+              card taller — invisible (not removed) when absent so every
+              card's arrow column keeps the same two-row height and the
+              arrow itself always lines up with the DOS-stop line below it. */}
+          <div className="flex flex-col items-center gap-1">
+            <span className={`text-[10px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full whitespace-nowrap leading-tight ${c.resubmissionOf ? '' : 'invisible'}`}>
               ↻ Resubmission
             </span>
-          </div>
-        )}
-
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-y-2 gap-x-2 items-center">
-          <div className="flex justify-center">
             <span className="text-[#7A8F79] text-xs">{expanded ? '▲' : '▼'}</span>
           </div>
           <div className="flex flex-col items-center text-center">
@@ -427,11 +426,23 @@ function ClaimRow({ primary: c, chain, eobDocs, onClaimPaid }: ClaimGroup & { eo
             </div>
           )}
 
-          {/* Row 4 — Remark codes from the EOB, entered by admin */}
+          {/* Row 4 — Remark codes from the EOB, entered by admin. remarkCodes
+              is a free-text, comma-separated field (e.g. "F1, 3") — each one
+              gets looked up against the status code table and rendered on
+              its own row with the resolved description next to it. */}
           {c.remarkCodes && (
-            <div className="pt-3 border-t border-[#D9E1E8] flex items-baseline gap-1.5">
-              <p className="text-[10px] text-[#7A8F79] font-semibold uppercase tracking-wide whitespace-nowrap">Remark Codes:</p>
-              <p className="text-sm text-[#2F3E4E]">{c.remarkCodes}</p>
+            <div className="pt-3 border-t border-[#D9E1E8]">
+              <p className="text-[10px] text-[#7A8F79] font-semibold uppercase tracking-wide mb-1">Remark Codes</p>
+              <div className="space-y-0.5">
+                {c.remarkCodes.split(',').map(s => s.trim()).filter(Boolean).map((code, i) => (
+                  <div key={`${code}-${i}`} className="flex items-baseline gap-1.5">
+                    <span className="text-xs font-mono font-bold text-[#2F3E4E] whitespace-nowrap">{code}</span>
+                    <span className="text-xs text-[#2F3E4E]">
+                      {statusCodes[code] || <span className="text-[#7A8F79] italic">No description on file</span>}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -798,6 +809,9 @@ function NurseClaimsPageInner() {
   // Map from Claim.id (DB UUID) → array of EOB docs (supports multiple per claim)
   const [eobMap, setEobMap] = useState<Record<string, { id: string; fileName: string }[]>>({})
   const [effectiveTier, setEffectiveTier] = useState<'FREE' | 'BASIC' | 'PRO' | null>(null)
+  // code → description, for resolving Claim.remarkCodes (a free-text,
+  // comma-separated field) into readable text on each claim card.
+  const [statusCodes, setStatusCodes] = useState<Record<string, string>>({})
 
   function handleClaimPaid(claimId: string) {
     setClaims(prev => prev.map(c => c.id === claimId ? { ...c, claimStage: 'Paid' } : c))
@@ -812,6 +826,16 @@ function NurseClaimsPageInner() {
     fetch('/api/nurse/plan', { credentials: 'include' })
       .then(r => r.ok ? r.json() : { effectiveTier: 'FREE' })
       .then(d => setEffectiveTier(d.effectiveTier || 'FREE'))
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/medicaid-status-codes', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => {
+        if (!Array.isArray(data)) return
+        setStatusCodes(Object.fromEntries(data.map((c: { code: string; description: string }) => [c.code, c.description])))
+      })
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -1001,7 +1025,10 @@ function NurseClaimsPageInner() {
               Medicaid Pay Log
             </button>
           </div>
-          <CarcLookupModal />
+          <div className="flex items-center gap-2">
+            <CarcLookupModal />
+            <MedicaidStatusCodeModal />
+          </div>
         </div>
 
         <PortalMessages priority="Claims" />
@@ -1165,7 +1192,7 @@ function NurseClaimsPageInner() {
         ) : (
           <div className="space-y-2">
             {groupClaims(yearFilteredClaims).map(group => (
-              <ClaimRow key={group.primary.id} {...group} eobDocs={eobMap[group.primary.id] ?? []} onClaimPaid={handleClaimPaid} />
+              <ClaimRow key={group.primary.id} {...group} eobDocs={eobMap[group.primary.id] ?? []} onClaimPaid={handleClaimPaid} statusCodes={statusCodes} />
             ))}
           </div>
         )}

@@ -245,8 +245,8 @@ export default function FamilyCalendarPage() {
             <p className="text-lg font-bold text-[#2F3E4E]">{selectedItem.title}</p>
             {selectedItem.patientName && <p className="text-sm text-[#2F3E4E] mt-1">{selectedItem.patientName}</p>}
             <p className="text-sm text-[#7A8F79] mt-1">
-              {fmtDate(selectedItem.date)} · {fmtTime(selectedItem.date)}
-              {selectedItem.endDate && ` – ${fmtTime(selectedItem.endDate)}`}
+              {fmtDate(selectedItem.date)}{!selectedItem.allDay && ` · ${fmtTime(selectedItem.date)}`}
+              {selectedItem.endDate && !selectedItem.allDay && ` – ${fmtTime(selectedItem.endDate)}`}
             </p>
             {selectedItem.description && <p className="text-sm text-[#7A8F79] mt-2">{selectedItem.description}</p>}
             {selectedItem.status && (

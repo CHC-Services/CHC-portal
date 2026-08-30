@@ -11,6 +11,8 @@ import { EVENT_AUDIENCES, audienceLabelForRoles } from '../../../lib/eventAudien
 import type { CalendarItem as RawCalendarItem } from '../../../lib/calendarFeed'
 
 type CalendarItem = Omit<RawCalendarItem, 'date' | 'endDate'> & { date: Date; endDate?: Date }
+type PatientOption = { id: string; firstName: string; lastName: string; accountNumber?: string | null }
+type AdminCalendarViewMode = 'global' | 'patient'
 
 const CATEGORIES = [
   { value: 'tax',        label: '🧾 Tax Deadline' },
@@ -18,7 +20,18 @@ const CATEGORIES = [
   { value: 'compliance',label: '✅ Compliance' },
   { value: 'general',   label: '📅 General' },
 ]
-const CATEGORY_LABEL: Record<string, string> = Object.fromEntries(CATEGORIES.map(c => [c.value, c.label]))
+// Global View categories (admin-authored broadcasts) plus every category a
+// patient-scoped feed can carry — merged so whichever mode is active, the
+// Category filter pills render a friendly label instead of a raw key.
+const CATEGORY_LABEL: Record<string, string> = {
+  ...Object.fromEntries(CATEGORIES.map(c => [c.value, c.label])),
+  shift: 'Shifts',
+  appointment: 'Appointments',
+  medication: 'Medication Refills',
+  priorAuth: 'Prior Auth Expirations',
+  document: 'Document Expirations',
+  progressNote: 'Progress Notes',
+}
 
 function fmtTime(d: Date) {
   return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
@@ -28,18 +41,28 @@ function fmtDate(d: Date) {
 }
 
 // Repurposed "adCalendar" — same CalendarGrid/view-switcher every role's
-// myCalendar uses, but as a management view: this GET (/api/admin/calendar
-// with no ?patientId=) returns every GlobalEvent regardless of audience,
-// since the admin authoring them needs to see & manage all four layers, not
-// just the ones targeted at their own role. Creating an event now picks an
-// Audience (lib/eventAudience.ts) instead of raw role checkboxes — same
-// targetRoles field underneath, just a friendlier mapping.
+// myCalendar uses. Two modes now, picked via the dropdown below:
+// - Global View (default, unchanged): the management view this page always
+//   was — GET /api/admin/calendar with no ?patientId= returns every
+//   GlobalEvent regardless of audience, since the admin authoring them
+//   needs to see & manage all four layers, not just their own role's.
+// - Patient View: the exact same GET but with ?patientId= set, which
+//   returns that one patient's real calendar feed (shifts, appointments,
+//   meds, etc.) via getPatientCalendarFeed — the same data any nurse/family
+//   member linked to that patient would see. Meant as a troubleshooting
+//   lens (support tickets, "why isn't my appointment showing") rather than
+//   a full second operational calendar — it's read-only here; editing still
+//   happens through the patient's own Schedule/Appointment pages.
 export default function AdminCalendarPage() {
   const router = useRouter()
   const [view, setView] = useState<CalendarViewMode>('month')
   const [anchorDate, setAnchorDate] = useState(new Date())
   const [customStart, setCustomStart] = useState('')
   const [customEnd, setCustomEnd] = useState('')
+
+  const [calendarViewMode, setCalendarViewMode] = useState<AdminCalendarViewMode>('global')
+  const [patients, setPatients] = useState<PatientOption[]>([])
+  const [selectedPatientId, setSelectedPatientId] = useState('')
 
   const [items, setItems] = useState<CalendarItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -55,6 +78,17 @@ export default function AdminCalendarPage() {
     audienceIndex: 3, // 'All Users'
     recurrence: '',
   })
+
+  // Patient list is only needed once admin actually switches to Patient
+  // View — no reason to pull every patient on a page load that's staying
+  // in Global View, the common case.
+  useEffect(() => {
+    if (calendarViewMode !== 'patient' || patients.length > 0) return
+    fetch('/api/admin/patients', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (Array.isArray(data?.patients)) setPatients(data.patients) })
+      .catch(() => {})
+  }, [calendarViewMode, patients.length])
 
   // Escape closes whatever's on top first (the Add Event form, then the
   // event detail popup) and only falls through to "back to month" once
@@ -78,8 +112,16 @@ export default function AdminCalendarPage() {
   const range = useMemo(() => computeViewRange(view, anchorDate, customRange), [view, anchorDate, customRange])
 
   const load = useCallback(() => {
+    // Patient View with nothing picked yet has nothing to fetch — show the
+    // picker prompt instead of hitting the API with a meaningless request.
+    if (calendarViewMode === 'patient' && !selectedPatientId) {
+      setItems([])
+      setLoading(false)
+      return
+    }
     setLoading(true)
     const params = new URLSearchParams({ start: range.start.toISOString(), end: range.end.toISOString() })
+    if (calendarViewMode === 'patient' && selectedPatientId) params.set('patientId', selectedPatientId)
     return fetch(`/api/admin/calendar?${params}`, { credentials: 'include' })
       .then(r => {
         if (r.status === 401) { router.push('/login'); return null }
@@ -95,7 +137,7 @@ export default function AdminCalendarPage() {
         setItems(parsed)
       })
       .finally(() => setLoading(false))
-  }, [range.start, range.end, router])
+  }, [range.start, range.end, router, calendarViewMode, selectedPatientId])
 
   useEffect(() => { load() }, [load])
 
@@ -177,17 +219,56 @@ export default function AdminCalendarPage() {
           <Link href="/admin" className="text-[#7A8F79] hover:text-[#2F3E4E] text-sm">← Admin</Link>
           <div>
             <h1 className="text-3xl font-bold text-[#2F3E4E]"><span className="text-[#7A8F79] italic">ad</span>Calendar</h1>
-            <p className="text-xs text-[#7A8F79] mt-0.5">Every event you’ve created, across every audience.</p>
+            <p className="text-xs text-[#7A8F79] mt-0.5">
+              {calendarViewMode === 'global'
+                ? 'Every event you’ve created, across every audience.'
+                : 'What a nurse or family member linked to this patient actually sees — for troubleshooting only.'}
+            </p>
           </div>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="ml-auto bg-[#2F3E4E] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition"
-          >
-            {showForm ? 'Cancel' : '+ Add Event'}
-          </button>
+          <div className="ml-auto flex items-center gap-3">
+            <select
+              value={calendarViewMode}
+              onChange={e => {
+                const mode = e.target.value as AdminCalendarViewMode
+                setCalendarViewMode(mode)
+                setShowForm(false)
+                setSelectedItem(null)
+              }}
+              className="h-[34px] border border-[#D9E1E8] rounded-lg px-2 text-sm font-semibold text-[#2F3E4E] bg-white focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+            >
+              <option value="global">Global View</option>
+              <option value="patient">Patient View</option>
+            </select>
+            {calendarViewMode === 'global' && (
+              <button
+                onClick={() => setShowForm(!showForm)}
+                className="bg-[#2F3E4E] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition"
+              >
+                {showForm ? 'Cancel' : '+ Add Event'}
+              </button>
+            )}
+          </div>
         </div>
 
-        {showForm && (
+        {calendarViewMode === 'patient' && (
+          <div className="bg-white rounded-xl shadow-sm p-3 mb-4 flex items-center gap-1.5">
+            <span className="text-[10px] uppercase tracking-wide font-bold text-[#7A8F79] mr-1">Patient</span>
+            <select
+              value={selectedPatientId}
+              onChange={e => setSelectedPatientId(e.target.value)}
+              className="h-[30px] w-64 border border-[#D9E1E8] rounded-lg px-2 text-xs text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+            >
+              <option value="">— Select a patient —</option>
+              {[...patients].sort((a, b) => a.lastName.localeCompare(b.lastName)).map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.firstName} {p.lastName}{p.accountNumber ? ` · ${p.accountNumber}` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {calendarViewMode === 'global' && showForm && (
           <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm p-6 mb-6 space-y-4">
             <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79]">New Event</h2>
 
@@ -314,7 +395,11 @@ export default function AdminCalendarPage() {
           </div>
         )}
 
-        {loading ? (
+        {calendarViewMode === 'patient' && !selectedPatientId ? (
+          <div className="bg-white rounded-xl shadow-sm p-8 text-center">
+            <p className="text-sm text-[#7A8F79]">Select a patient above to see what their nurse/family calendar looks like.</p>
+          </div>
+        ) : loading ? (
           <p className="text-[#7A8F79] text-sm">Loading…</p>
         ) : (
           <div className="bg-white rounded-xl shadow-sm p-4">
@@ -335,15 +420,26 @@ export default function AdminCalendarPage() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" onClick={() => setSelectedItem(null)}>
           <div className="bg-white rounded-2xl shadow-lg p-6 max-w-sm w-full" onClick={e => e.stopPropagation()}>
             <p className="text-lg font-bold text-[#2F3E4E]">{selectedItem.title}</p>
-            <p className="text-sm text-[#7A8F79] mt-1">{fmtDate(selectedItem.date)} · {fmtTime(selectedItem.date)}</p>
-            {selectedItem.description && <p className="text-sm text-[#7A8F79] mt-2">{selectedItem.description}</p>}
-            <p className="text-[10px] uppercase tracking-wide font-semibold text-[#7A8F79] mt-2">
-              Audience: {audienceLabelForRoles(selectedItem.targetRoles || [])}
+            {selectedItem.patientName && <p className="text-sm text-[#2F3E4E] mt-1">{selectedItem.patientName}</p>}
+            <p className="text-sm text-[#7A8F79] mt-1">
+              {fmtDate(selectedItem.date)}{!selectedItem.allDay && ` · ${fmtTime(selectedItem.date)}`}
+              {selectedItem.endDate && !selectedItem.allDay && ` – ${fmtTime(selectedItem.endDate)}`}
             </p>
+            {selectedItem.description && <p className="text-sm text-[#7A8F79] mt-2">{selectedItem.description}</p>}
+            {selectedItem.source === 'globalEvent' && (
+              <p className="text-[10px] uppercase tracking-wide font-semibold text-[#7A8F79] mt-2">
+                Audience: {audienceLabelForRoles(selectedItem.targetRoles || [])}
+              </p>
+            )}
+            {selectedItem.status && (
+              <p className="text-[10px] uppercase tracking-wide font-semibold text-[#7A8F79] mt-2">{selectedItem.status.replace('_', ' ')}</p>
+            )}
             <div className="flex items-center justify-end gap-2 mt-5">
-              <button onClick={() => deleteEvent(selectedItem.id)} disabled={deleting} className="border border-red-300 text-red-500 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-red-50 transition disabled:opacity-50">
-                {deleting ? 'Deleting…' : 'Delete'}
-              </button>
+              {selectedItem.source === 'globalEvent' && (
+                <button onClick={() => deleteEvent(selectedItem.id)} disabled={deleting} className="border border-red-300 text-red-500 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-red-50 transition disabled:opacity-50">
+                  {deleting ? 'Deleting…' : 'Delete'}
+                </button>
+              )}
               <button onClick={() => setSelectedItem(null)} className="text-sm font-semibold text-[#7A8F79] hover:text-[#2F3E4E] px-4 py-2 transition">
                 Close
               </button>

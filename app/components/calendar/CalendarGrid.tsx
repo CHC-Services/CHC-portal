@@ -42,14 +42,19 @@ function fmtTime(d: Date): string {
 }
 
 function ItemChip({ item, onClick }: { item: CalendarItem; onClick?: (item: CalendarItem) => void }) {
+  // allDay items (e.g. medication refills) only ever have a due DATE, not a
+  // due time — their stored timestamp is midnight UTC, which renders as some
+  // arbitrary local-timezone hour (8 PM, say) that looks like a real
+  // deadline but isn't one. Skip the time for those instead of showing it.
+  const timePrefix = item.allDay ? '' : `${fmtTime(item.date)} `
   return (
     <button
       type="button"
       onClick={() => onClick?.(item)}
       className={`w-full text-left text-[10px] leading-tight px-1.5 py-0.5 rounded truncate ${chipClass(item)} hover:opacity-80 transition`}
-      title={`${fmtTime(item.date)} — ${item.title}${item.patientName ? ` (${item.patientName})` : ''}`}
+      title={`${item.allDay ? '' : `${fmtTime(item.date)} — `}${item.title}${item.patientName ? ` (${item.patientName})` : ''}`}
     >
-      {fmtTime(item.date)} {item.title}
+      {timePrefix}{item.title}
     </button>
   )
 }

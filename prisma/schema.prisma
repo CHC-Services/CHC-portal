@@ -854,6 +854,8 @@ model CaseAssignment {
 model MedicaidStatusCode {
   code        String   @id
   description String
+  active      Boolean  @default(true)
+  outcome     String? // 'Pay' | 'Deny' | 'Neutral' — how this status ultimately resolves the claim line
   createdAt   DateTime @default(now())
 }
 

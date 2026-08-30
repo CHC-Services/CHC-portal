@@ -6,6 +6,7 @@ import { formalName } from '../../../lib/formatName'
 import { excludedClaimIds as totalsExcludedClaimIds } from '../../../lib/claimTotals'
 import DateInput from '../../components/DateInput'
 import CarcLookupModal from '../../components/CarcLookupModal'
+import MedicaidStatusCodeModal from '../../components/MedicaidStatusCodeModal'
 
 const CLAIM_STAGES = [
   'Draft', 'INS-1 Submitted', 'Resubmitted', 'Adjusted', 'Pending', 'Info Requested',
@@ -1450,6 +1451,7 @@ function ClaimsTab({ setTab }: { setTab: (t: ClaimsPageTab) => void }) {
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <CarcLookupModal showAdminTools />
+            <MedicaidStatusCodeModal showAdminTools />
             <button
               onClick={toggleBulkMode}
               disabled={bulkModeLoading}

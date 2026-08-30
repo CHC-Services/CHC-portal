@@ -13,12 +13,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ code: 
   if (!adminOnly(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { code } = await params
-  const { description } = await req.json()
-  if (!description?.trim()) return NextResponse.json({ error: 'description required' }, { status: 400 })
+  const { description, active, outcome } = await req.json()
+
+  const data: Record<string, unknown> = {}
+  if (description !== undefined) {
+    if (!description.trim()) return NextResponse.json({ error: 'description required' }, { status: 400 })
+    data.description = description.trim()
+  }
+  if (active !== undefined) data.active = !!active
+  if (outcome !== undefined) data.outcome = outcome || null
 
   const record = await (prisma.medicaidStatusCode.update as any)({
     where: { code },
-    data: { description: description.trim() },
+    data,
   })
   return NextResponse.json(record)
 }

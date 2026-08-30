@@ -45,7 +45,7 @@ export default function PatientSchedule({
   patientId, basePath, availableNurses, canManage = true,
 }: {
   patientId: string
-  basePath: string // '/api/admin', '/api/family', or '/api/patient/{id}' (role-agnostic)
+  basePath: string // always '/api/patient/{id}' today (its one caller) — kept as a prop rather than hardcoded in case a future admin-only bulk view wants to reuse this component against a different endpoint
   availableNurses: NurseOption[]
   // Gates create/edit/cancel controls. Defaults true (existing admin/family
   // embeds are unaffected) — the new shared /patient/[id]/schedule page

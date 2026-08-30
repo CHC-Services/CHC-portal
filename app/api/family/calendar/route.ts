@@ -10,8 +10,8 @@ function getSession(req: Request) {
 
 // A guardian's feed across every patient they're linked to, plus GlobalEvent
 // broadcasts targeted at 'guardian' (or everyone). Read-only; shifts/
-// appointments are created/edited via /api/family/shifts and
-// /api/family/appointments.
+// appointments are created/edited via the role-agnostic
+// /api/patient/[id]/shifts and /api/patient/[id]/appointments.
 export async function GET(req: Request) {
   const session = getSession(req)
   if (!session || session.role !== 'guardian') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

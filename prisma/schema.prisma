@@ -383,7 +383,24 @@ model Campaign {
 
   // Time bounds
   startDate DateTime? // when the campaign begins (null = immediate)
-  weekCount Int? // how many Mon-Sun weeks it applies (null = indefinite)
+  weekCount Int? // how many Mon-Sun weeks it applies (null = indefinite) — legacy bound, still respected for older campaigns that only ever set this
+  endDate   DateTime? // exact stop date, day-precision — takes priority over weekCount when set; new campaigns (site-wide or not) set this instead
+
+  // When true, this campaign's discount applies automatically to every
+  // invoice generated while it's active and in-window — no CampaignEnrollment
+  // row needed. A site-wide campaign is checked as a fallback only when the
+  // invoiced nurse has no active personal enrollment (a specific enrollment
+  // always wins over a blanket site-wide promo). Most campaigns are still
+  // per-nurse opt-in (false, the default) via CampaignEnrollment.
+  siteWide Boolean @default(false)
+
+  // Which invoice fee-plan codes (ST-MED, CORR, VR-MED, etc. — see
+  // lib/feePlans.ts) this campaign's discount applies to. Empty = every fee
+  // plan (the pre-existing behavior, and the default for new campaigns) —
+  // same "empty means everyone/everything" convention as GlobalEvent.targetRoles.
+  // A non-empty list scopes the discount to only those entries; every other
+  // flagged entry on the invoice still bills at its normal fee, undiscounted.
+  appliesFeePlans String[] @default([])
 
   // Promo link hook — unique slug for future /join?ref= flow
   promoSlug String? @unique
@@ -396,6 +413,7 @@ model Campaign {
 
   @@index([active])
   @@index([promoSlug])
+  @@index([siteWide])
 }
 
 model CampaignEnrollment {

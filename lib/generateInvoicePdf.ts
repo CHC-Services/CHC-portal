@@ -1,4 +1,35 @@
 import type { Browser } from 'puppeteer-core'
+import { existsSync } from 'fs'
+
+// Local headless Chrome launches were intermittently failing outright
+// ("Failed to launch the browser process: Code: null", no stderr). Turned
+// out to be macOS denying Chrome's internal sandbox IPC (Mach port
+// rendezvous) rather than a corrupted/missing binary — confirmed by running
+// with `dumpio: true`, which surfaced "bootstrap_look_up
+// com.google.chrome.for.testing.MachPortRendezvousServer: Permission denied"
+// even though the same binary launched cleanly moments later. --no-sandbox
+// sidesteps that OS-level IPC entirely rather than depending on it working.
+// (Production never hits this path — Vercel's Lambda runtime uses
+// @sparticuz/chromium in the else branch below, already unsandboxed by
+// nature of that environment.)
+const LOCAL_LAUNCH_ARGS = ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+
+// If a real Chrome install is ever preferred over Puppeteer's own
+// auto-downloaded copy, PUPPETEER_EXECUTABLE_PATH (or one of these common
+// paths) wins — but as of the sandbox-args fix above, the bundled copy works
+// fine on its own; this is just a manual override, not a required fallback.
+const COMMON_LOCAL_CHROME_PATHS = [
+  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  '/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary',
+  '/Applications/Chromium.app/Contents/MacOS/Chromium',
+]
+
+function findLocalChromeExecutable(): string | null {
+  if (process.env.PUPPETEER_EXECUTABLE_PATH && existsSync(process.env.PUPPETEER_EXECUTABLE_PATH)) {
+    return process.env.PUPPETEER_EXECUTABLE_PATH
+  }
+  return COMMON_LOCAL_CHROME_PATHS.find(existsSync) ?? null
+}
 
 // Renders an HTML string to a PDF buffer using headless Chromium.
 // @sparticuz/chromium provides a binary compatible with Vercel's serverless
@@ -23,11 +54,18 @@ export async function generatePdfFromHtml(html: string, options: {
 
   let browser: Browser
   if (isLocal) {
-    // Local dev — use the full `puppeteer` package's bundled Chromium
-    // (devDependency only) instead of the Lambda-only @sparticuz/chromium
-    // binary, which won't run outside AWS.
+    // Local dev — prefer a real installed Chrome (see findLocalChromeExecutable
+    // above); fall back to the full `puppeteer` package's bundled Chromium
+    // (devDependency only) if no system install is found. Neither path touches
+    // production, which always uses the Lambda-only @sparticuz/chromium binary
+    // in the else branch below.
     const puppeteer = await import('puppeteer')
-    browser = await puppeteer.launch({ headless: true }) as unknown as Browser
+    const systemChrome = findLocalChromeExecutable()
+    browser = await puppeteer.launch({
+      headless: true,
+      args: LOCAL_LAUNCH_ARGS,
+      ...(systemChrome ? { executablePath: systemChrome } : {}),
+    }) as unknown as Browser
   } else {
     const chromium = (await import('@sparticuz/chromium')).default
     const puppeteer = await import('puppeteer-core')

@@ -33,21 +33,43 @@ export async function GET(req: Request) {
 
   const grossAmount = entries.reduce((s, e) => s + (e.invoiceFeeAmt ?? 0), 0)
 
-  if (!enrollment) {
+  // Mirrors app/api/admin/invoices/route.ts's precedence exactly, so this
+  // preview matches what generating the invoice will actually apply: a
+  // personal enrollment always wins; a site-wide campaign is only checked
+  // when there's no enrollment at all.
+  let campaign = enrollment?.campaign ?? null
+  let isSiteWide = false
+  if (!campaign) {
+    const now = new Date()
+    campaign = await prisma.campaign.findFirst({
+      where: {
+        siteWide: true,
+        active: true,
+        AND: [
+          { OR: [{ startDate: null }, { startDate: { lte: now } }] },
+          { OR: [{ endDate: null }, { endDate: { gte: now } }] },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+    isSiteWide = !!campaign
+  }
+
+  if (!campaign) {
     return NextResponse.json({ grossAmount, discountAmt: 0, totalAmount: grossAmount, enrollment: null, weekBreakdown: [] })
   }
 
-  const { campaign } = enrollment
   const result = calcCampaignDiscount(campaign, entries)
 
   return NextResponse.json({
     ...result,
     enrollment: {
-      id: enrollment.id,
+      id: enrollment?.id ?? null,
       campaignId: campaign.id,
       campaignName: campaign.name,
       ruleLabel: campaignRuleLabel(campaign),
       windowLabel: campaignWindowLabel(campaign),
+      siteWide: isSiteWide,
     },
   })
 }

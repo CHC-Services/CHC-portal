@@ -31,7 +31,10 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json()
-  const { name, description, type, flatAmtPerDos, weeklyMaxAmt, percentOff, startDate, weekCount, promoSlug } = body
+  const {
+    name, description, type, flatAmtPerDos, weeklyMaxAmt, percentOff,
+    startDate, weekCount, endDate, promoSlug, siteWide, appliesFeePlans,
+  } = body
 
   if (!name || !type) {
     return NextResponse.json({ error: 'name and type are required' }, { status: 400 })
@@ -53,7 +56,10 @@ export async function POST(req: Request) {
       percentOff: percentOff ?? null,
       startDate: startDate ? new Date(startDate) : null,
       weekCount: weekCount ?? null,
+      endDate: endDate ? new Date(endDate) : null,
       promoSlug: promoSlug?.trim() || null,
+      siteWide: !!siteWide,
+      appliesFeePlans: Array.isArray(appliesFeePlans) ? appliesFeePlans : [],
       active: true,
     },
   })

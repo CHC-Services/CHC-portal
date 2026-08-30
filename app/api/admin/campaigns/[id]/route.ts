@@ -36,7 +36,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const { id } = await params
   const body = await req.json()
-  const { name, description, type, flatAmtPerDos, weeklyMaxAmt, percentOff, startDate, weekCount, promoSlug, active } = body
+  const {
+    name, description, type, flatAmtPerDos, weeklyMaxAmt, percentOff,
+    startDate, weekCount, endDate, promoSlug, active, siteWide, appliesFeePlans,
+  } = body
 
   const campaign = await prisma.campaign.update({
     where: { id },
@@ -49,8 +52,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       ...(percentOff !== undefined && { percentOff }),
       ...(startDate !== undefined && { startDate: startDate ? new Date(startDate) : null }),
       ...(weekCount !== undefined && { weekCount }),
+      ...(endDate !== undefined && { endDate: endDate ? new Date(endDate) : null }),
       ...(promoSlug !== undefined && { promoSlug: promoSlug?.trim() || null }),
       ...(active !== undefined && { active }),
+      ...(siteWide !== undefined && { siteWide: !!siteWide }),
+      ...(appliesFeePlans !== undefined && { appliesFeePlans: Array.isArray(appliesFeePlans) ? appliesFeePlans : [] }),
     },
   })
 

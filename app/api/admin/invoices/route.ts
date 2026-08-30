@@ -82,6 +82,31 @@ export async function POST(req: Request) {
         discountNote = `Campaign: ${enrollment.campaign.name} (${campaignRuleLabel(enrollment.campaign)})`
         campaignEnrollmentId = enrollment.id
       }
+    } else {
+      // No personal enrollment — fall back to a site-wide campaign that
+      // auto-applies to every invoice while it's active and in-window.
+      // A specific per-nurse enrollment always wins over a blanket
+      // site-wide promo, which is why this only runs when !enrollment.
+      const now = new Date()
+      const siteWideCampaign = await prisma.campaign.findFirst({
+        where: {
+          siteWide: true,
+          active: true,
+          AND: [
+            { OR: [{ startDate: null }, { startDate: { lte: now } }] },
+            { OR: [{ endDate: null }, { endDate: { gte: now } }] },
+          ],
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+
+      if (siteWideCampaign) {
+        const result = calcCampaignDiscount(siteWideCampaign, entries)
+        discountAmt = result.discountAmt
+        if (discountAmt > 0) {
+          discountNote = siteWideCampaign.name
+        }
+      }
     }
   }
 
@@ -115,7 +140,22 @@ export async function POST(req: Request) {
 
   // Render the canonical PDF and store it in S3 — this is the one artifact
   // every later print/email/view reuses instead of re-rendering its own copy.
-  const { url: pdfUrl } = await getOrCreateInvoicePdf(invoice.id)
+  // If this throws (Chrome/S3 hiccup), roll back the invoice + free the
+  // entries rather than leaving a broken invoice sitting around with those
+  // entries permanently locked as "already invoiced" but nothing actually
+  // delivered — a real failure mode this hit once already (see
+  // lib/generateInvoicePdf.ts's local-launch fix from the same incident).
+  let pdfUrl: string
+  try {
+    ;({ url: pdfUrl } = await getOrCreateInvoicePdf(invoice.id))
+  } catch (err) {
+    await prisma.$transaction([
+      prisma.timeEntry.updateMany({ where: { invoiceId: invoice.id }, data: { invoiceId: null } }),
+      prisma.invoice.delete({ where: { id: invoice.id } }),
+    ])
+    console.error(`Invoice PDF generation failed for ${invoiceNumber}, rolled back:`, err)
+    return NextResponse.json({ error: 'Failed to generate the invoice PDF — nothing was saved, safe to try again.' }, { status: 500 })
+  }
 
   // Send email with the stored PDF attached — fire-and-forget so a slow or
   // failed Resend call can't hang the response for an invoice that has

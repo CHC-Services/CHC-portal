@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { formalName } from '../../../lib/formatName'
 import { campaignRuleLabel, campaignWindowLabel } from '../../../lib/campaignDiscount'
+import { FEE_PLAN_CODES, FEE_PLAN_LABEL } from '../../../lib/feePlans'
 import DateInput from '../../components/DateInput'
 
 type Tab = 'hours' | 'invoices' | 'campaigns'
@@ -605,8 +606,11 @@ type Campaign = {
   percentOff?: number
   startDate?: string
   weekCount?: number
+  endDate?: string
   promoSlug?: string
   active: boolean
+  siteWide: boolean
+  appliesFeePlans: string[]
   _count?: { enrollments: number }
 }
 
@@ -630,8 +634,11 @@ function CampaignsTab() {
   const [weeklyMaxAmt, setWeeklyMaxAmt] = useState('')
   const [percentOff, setPercentOff] = useState('')
   const [startDate, setStartDate] = useState('')
-  const [weekCount, setWeekCount] = useState('')
+  const [endDate, setEndDate] = useState('')
   const [promoSlug, setPromoSlug] = useState('')
+  const [siteWide, setSiteWide] = useState(false)
+  const [scopeMode, setScopeMode] = useState<'all' | 'specific'>('all')
+  const [appliesFeePlans, setAppliesFeePlans] = useState<string[]>([])
 
   async function fetchCampaigns() {
     const res = await fetch('/api/admin/campaigns', { credentials: 'include' })
@@ -644,7 +651,8 @@ function CampaignsTab() {
   function resetForm() {
     setName(''); setDescription(''); setType('flat_per_dos')
     setFlatAmtPerDos(''); setWeeklyMaxAmt(''); setPercentOff('')
-    setStartDate(''); setWeekCount(''); setPromoSlug('')
+    setStartDate(''); setEndDate(''); setPromoSlug('')
+    setSiteWide(false); setScopeMode('all'); setAppliesFeePlans([])
     setFormMsg(''); setEditingId(null)
   }
 
@@ -657,14 +665,25 @@ function CampaignsTab() {
     setWeeklyMaxAmt(c.weeklyMaxAmt?.toString() || '')
     setPercentOff(c.percentOff?.toString() || '')
     setStartDate(c.startDate ? c.startDate.slice(0, 10) : '')
-    setWeekCount(c.weekCount?.toString() || '')
+    setEndDate(c.endDate ? c.endDate.slice(0, 10) : '')
     setPromoSlug(c.promoSlug || '')
+    setSiteWide(!!c.siteWide)
+    setScopeMode(c.appliesFeePlans && c.appliesFeePlans.length > 0 ? 'specific' : 'all')
+    setAppliesFeePlans(c.appliesFeePlans || [])
     setFormMsg('')
     setShowForm(true)
   }
 
+  function toggleFeePlan(code: string) {
+    setAppliesFeePlans(prev => prev.includes(code) ? prev.filter(x => x !== code) : [...prev, code])
+  }
+
   async function save() {
     if (!name.trim()) { setFormMsg('Name is required.'); return }
+    if (scopeMode === 'specific' && appliesFeePlans.length === 0) {
+      setFormMsg('Select at least one service code, or switch back to Entire Invoice.')
+      return
+    }
     setSaving(true)
     setFormMsg('')
 
@@ -676,8 +695,10 @@ function CampaignsTab() {
       weeklyMaxAmt:  type === 'flat_per_dos' ? parseFloat(weeklyMaxAmt)  || null : null,
       percentOff:    type === 'percent_off'  ? parseFloat(percentOff)    || null : null,
       startDate: startDate || null,
-      weekCount: weekCount ? parseInt(weekCount) : null,
+      endDate: endDate || null,
       promoSlug: promoSlug.trim() || null,
+      siteWide,
+      appliesFeePlans: scopeMode === 'specific' ? appliesFeePlans : [],
     }
 
     const url    = editingId ? `/api/admin/campaigns/${editingId}` : '/api/admin/campaigns'
@@ -737,8 +758,8 @@ function CampaignsTab() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Campaign Name</label>
-              <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. FB Spring 2026"
+              <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Discount Title <span className="normal-case font-normal">(shown on the invoice)</span></label>
+              <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Fall 2026 Referral Promo"
                 className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
             </div>
             <div className="space-y-1">
@@ -798,9 +819,8 @@ function CampaignsTab() {
                 className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Week Count <span className="normal-case font-normal">(optional)</span></label>
-              <input type="number" min="1" step="1" value={weekCount} onChange={e => setWeekCount(e.target.value)}
-                placeholder="e.g. 4"
+              <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Stop Date <span className="normal-case font-normal">(optional)</span></label>
+              <DateInput value={endDate} onChange={e => setEndDate(e.target.value)}
                 className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
             </div>
             <div className="space-y-1">
@@ -813,6 +833,42 @@ function CampaignsTab() {
               )}
             </div>
           </div>
+
+          {/* Applies To — entire invoice, or scoped to specific service codes */}
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Applies To</label>
+            <div className="flex gap-2">
+              {(['all', 'specific'] as const).map(m => (
+                <button key={m} type="button" onClick={() => setScopeMode(m)}
+                  className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition ${
+                    scopeMode === m ? 'bg-[#2F3E4E] text-white border-[#2F3E4E]' : 'border-[#D9E1E8] text-[#7A8F79] hover:bg-[#f4f6f8]'
+                  }`}>
+                  {m === 'all' ? 'Entire Invoice' : 'Specific Service Codes'}
+                </button>
+              ))}
+            </div>
+            {scopeMode === 'specific' && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
+                {FEE_PLAN_CODES.map(p => (
+                  <label key={p.value} className="flex items-center gap-2 text-xs text-[#2F3E4E] border border-[#D9E1E8] rounded-lg px-2.5 py-2 cursor-pointer hover:border-[#7A8F79]">
+                    <input type="checkbox" checked={appliesFeePlans.includes(p.value)} onChange={() => toggleFeePlan(p.value)}
+                      className="accent-[#7A8F79]" />
+                    <span className="truncate">{p.label}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Site-Wide */}
+          <label className="flex items-start gap-2.5 border border-[#D9E1E8] rounded-lg px-3 py-2.5 cursor-pointer hover:border-[#7A8F79]">
+            <input type="checkbox" checked={siteWide} onChange={e => setSiteWide(e.target.checked)}
+              className="accent-[#7A8F79] mt-0.5" />
+            <span>
+              <span className="block text-sm font-semibold text-[#2F3E4E]">Site-Wide Promotion</span>
+              <span className="block text-xs text-[#7A8F79]">Applies automatically to every invoice generated while active — no per-provider enrollment needed. A provider's own personal campaign enrollment, if they have one, still takes priority over this.</span>
+            </span>
+          </label>
 
           {formMsg && <p className="text-xs font-semibold text-red-500">{formMsg}</p>}
 
@@ -846,6 +902,9 @@ function CampaignsTab() {
                     {!c.active && (
                       <span className="text-[10px] font-semibold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full uppercase tracking-wide">Inactive</span>
                     )}
+                    {c.siteWide && (
+                      <span className="text-[10px] font-semibold bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full uppercase tracking-wide">Site-Wide</span>
+                    )}
                     {c.promoSlug && (
                       <span className="text-[10px] font-mono bg-[#f4f6f8] text-[#7A8F79] px-2 py-0.5 rounded">/join?ref={c.promoSlug}</span>
                     )}
@@ -853,9 +912,16 @@ function CampaignsTab() {
                   <p className="text-xs text-[#7A8F79] mt-0.5">
                     {campaignRuleLabel(c as any)} · {campaignWindowLabel(c as any)}
                   </p>
+                  <p className="text-xs text-[#7A8F79] mt-0.5">
+                    Applies to: {c.appliesFeePlans && c.appliesFeePlans.length > 0
+                      ? c.appliesFeePlans.map(code => FEE_PLAN_LABEL[code] || code).join(', ')
+                      : 'Entire invoice'}
+                  </p>
                   {c.description && <p className="text-xs text-[#4a5a6a] mt-1">{c.description}</p>}
                   <p className="text-[10px] text-[#7A8F79] mt-1.5">
-                    {c._count?.enrollments ?? 0} active enrollment{c._count?.enrollments !== 1 ? 's' : ''}
+                    {c.siteWide
+                      ? 'Auto-applies to every invoice — no enrollment needed'
+                      : `${c._count?.enrollments ?? 0} active enrollment${c._count?.enrollments !== 1 ? 's' : ''}`}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">

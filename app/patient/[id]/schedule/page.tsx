@@ -41,6 +41,14 @@ export default async function PatientSchedulePage({
           ? 'Create and manage this patient’s shifts.'
           : 'This patient’s shift schedule. Use your myCalendar to claim or release your own shifts.'}
       </p>
+
+      {canManage && (
+        <div className="bg-[#F4F6F5] border border-[#D9E1E8] rounded-xl px-4 py-3 mb-4">
+          <p className="text-xs text-[#2F3E4E]">
+            <span className="font-semibold">How "Open" shifts work:</span> leaving a shift or template unassigned marks it "Open" so it can be claimed by a nurse already linked to <em>this patient</em> — it does not post to a wider pool of nurses. Build out the full schedule below (assigned + open slots) as the baseline need; only nurses on this patient's roster will see the open ones on their own myCalendar.
+          </p>
+        </div>
+      )}
       <div className="space-y-6">
         <PatientShiftTemplates patientId={patientId} availableNurses={availableNurses} canManage={canManage} />
         <PatientSchedule

@@ -221,6 +221,7 @@ export default function PatientSchedule({
                   <option key={n.id} value={n.id}>{n.lastName ? `${n.firstName} ${n.lastName}` : n.displayName}</option>
                 ))}
               </select>
+              <p className="text-[10px] text-[#7A8F79] mt-1">Open = claimable only by this patient's own linked nurses, not a wider pool.</p>
             </div>
             <div />
             <div>

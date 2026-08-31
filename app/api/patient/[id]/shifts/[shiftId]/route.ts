@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../../lib/prisma'
 import { verifyToken } from '../../../../../../lib/auth'
 import { canEditShift, canAssignShift, canCancelShift } from '../../../../../../lib/permissions'
+import { reassignShiftPendingHours, releaseShiftPendingHours, regenerateScheduledPendingHours, cancelShiftPendingHours } from '../../../../../../lib/pendingHours'
 
 function getSession(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -49,6 +50,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const shift = await prisma.shift.update({ where: { id: shiftId }, data }).catch(() => null)
   if (!shift) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  // Keep Pending Hours in sync with whatever just changed (spec §10-13) —
+  // unconfirmed rows only; anything already confirmed is never touched here.
+  if (isReassignment) {
+    if (shift.nurseId) {
+      await reassignShiftPendingHours(shift, shift.nurseId, session.id)
+    } else if (existing.nurseId) {
+      await releaseShiftPendingHours(shiftId, existing.nurseId)
+    }
+  } else if ('startTime' in body || 'endTime' in body) {
+    await regenerateScheduledPendingHours(shift)
+  }
+
   return NextResponse.json({ shift })
 }
 
@@ -66,5 +80,6 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
 
   const shift = await prisma.shift.update({ where: { id: shiftId }, data: { status: 'cancelled' } }).catch(() => null)
   if (!shift) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  await cancelShiftPendingHours(shiftId)
   return NextResponse.json({ ok: true })
 }

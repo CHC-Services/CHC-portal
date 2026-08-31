@@ -21,6 +21,178 @@ type LinkedPatient = {
   merged: { firstName: string; lastName: string; accountNumber: string }
 }
 
+type PendingHourItem = {
+  id: string
+  shiftId: string
+  patientId: string
+  patientName: string
+  dateOfService: string
+  scheduledStart: string
+  scheduledEnd: string
+  scheduledHours: number
+  actualHours: number | null
+  shiftEndTime: string
+  status: 'scheduled' | 'awaiting_confirmation' | 'confirmed' | 'not_worked' | 'reassigned'
+}
+
+function fmtShiftDate(iso: string) {
+  return new Date(iso).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+}
+function fmtShiftTime(iso: string) {
+  return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+}
+
+// A scheduled shift's expected hours, waiting on the nurse to confirm/adjust/
+// mark not-worked once it's over — replaces retyping hours that were already
+// scheduled (see .claude/chc_markdown_files/Coming_Homecare_Scheduling_Pending_Hours_Spec.md).
+// The manual "Submit Hours" form below stays exactly as-is for ad-hoc work
+// that was never scheduled as a shift.
+function ScheduledShiftsCard({ onConfirmed }: { onConfirmed: () => void }) {
+  const [items, setItems] = useState<PendingHourItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [adjustingId, setAdjustingId] = useState<string | null>(null)
+  const [adjustStart, setAdjustStart] = useState('')
+  const [adjustEnd, setAdjustEnd] = useState('')
+  const [error, setError] = useState('')
+
+  function load() {
+    setLoading(true)
+    fetch('/api/nurse/pending-hours', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d.items)) setItems(d.items) })
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => { load() }, [])
+
+  async function handleConfirm(id: string) {
+    setBusyId(id); setError('')
+    const res = await fetch(`/api/nurse/pending-hours/${id}/confirm`, { method: 'POST', credentials: 'include' })
+    setBusyId(null)
+    if (res.ok) { load(); onConfirmed() } else { const d = await res.json(); setError(d.error || 'Failed to confirm.') }
+  }
+
+  async function handleNotWorked(id: string) {
+    if (!window.confirm('Mark this scheduled shift as not worked? This can’t be undone.')) return
+    setBusyId(id); setError('')
+    const res = await fetch(`/api/nurse/pending-hours/${id}/not-worked`, { method: 'POST', credentials: 'include' })
+    setBusyId(null)
+    if (res.ok) load(); else { const d = await res.json(); setError(d.error || 'Failed to update.') }
+  }
+
+  function startAdjust(item: PendingHourItem) {
+    setAdjustingId(item.id)
+    setAdjustStart(new Date(item.scheduledStart).toTimeString().slice(0, 5))
+    setAdjustEnd(new Date(item.scheduledEnd).toTimeString().slice(0, 5))
+    setError('')
+  }
+
+  async function submitAdjust(item: PendingHourItem) {
+    const day = new Date(item.dateOfService)
+    const [sh, sm] = adjustStart.split(':').map(Number)
+    const [eh, em] = adjustEnd.split(':').map(Number)
+    const actualStart = new Date(day.getFullYear(), day.getMonth(), day.getDate(), sh, sm)
+    const actualEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate(), eh, em)
+    setBusyId(item.id); setError('')
+    const res = await fetch(`/api/nurse/pending-hours/${item.id}/adjust`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ actualStart: actualStart.toISOString(), actualEnd: actualEnd.toISOString() }),
+    })
+    setBusyId(null)
+    if (res.ok) { setAdjustingId(null); load(); onConfirmed() } else { const d = await res.json(); setError(d.error || 'Failed to save.') }
+  }
+
+  if (loading) return null
+  if (items.length === 0) return null
+
+  const awaiting = items.filter(i => i.status === 'awaiting_confirmation')
+  const upcoming = items.filter(i => i.status === 'scheduled')
+  const resolved = items.filter(i => i.status === 'confirmed' || i.status === 'not_worked')
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm p-5 mb-4 space-y-4">
+      <p className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79]">Scheduled Shifts</p>
+      {error && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-1.5">{error}</p>}
+
+      {awaiting.map(item => (
+        <div key={item.id} className="border border-[#7A8F79] bg-[#F4F6F5] rounded-xl p-4">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div>
+              <p className="text-sm font-bold text-[#2F3E4E]">{fmtShiftDate(item.scheduledStart)} · {item.patientName}</p>
+              <p className="text-xs text-[#7A8F79] mt-0.5">
+                {fmtShiftTime(item.scheduledStart)} – {fmtShiftTime(item.scheduledEnd)} · {item.scheduledHours} hrs
+              </p>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-amber-600 mt-1">Awaiting Confirmation</p>
+            </div>
+          </div>
+
+          {adjustingId === item.id ? (
+            <div className="mt-3 flex flex-wrap items-end gap-2">
+              <div>
+                <label className="block text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79] mb-0.5">Actual Start</label>
+                <input type="time" value={adjustStart} onChange={e => setAdjustStart(e.target.value)}
+                  className="border border-[#D9E1E8] rounded-lg px-2 py-1.5 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold uppercase tracking-wide text-[#7A8F79] mb-0.5">Actual End</label>
+                <input type="time" value={adjustEnd} onChange={e => setAdjustEnd(e.target.value)}
+                  className="border border-[#D9E1E8] rounded-lg px-2 py-1.5 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
+              </div>
+              <button onClick={() => submitAdjust(item)} disabled={busyId === item.id}
+                className="bg-[#2F3E4E] text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-50">
+                {busyId === item.id ? 'Saving…' : 'Save'}
+              </button>
+              <button onClick={() => setAdjustingId(null)} className="text-sm text-[#7A8F79] hover:text-[#2F3E4E] px-2">Cancel</button>
+            </div>
+          ) : (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button onClick={() => handleConfirm(item.id)} disabled={busyId === item.id}
+                className="bg-[#2F3E4E] text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition disabled:opacity-50">
+                {busyId === item.id ? '…' : `✓ Confirm ${item.scheduledHours} Hours`}
+              </button>
+              <button onClick={() => startAdjust(item)} className="border border-[#D9E1E8] text-[#2F3E4E] px-4 py-1.5 rounded-lg text-sm font-semibold hover:border-[#7A8F79] transition">
+                ✎ Adjust Hours
+              </button>
+              <button onClick={() => handleNotWorked(item.id)} disabled={busyId === item.id} className="border border-[#D9E1E8] text-[#7A8F79] px-4 py-1.5 rounded-lg text-sm font-semibold hover:border-red-300 hover:text-red-500 transition disabled:opacity-50">
+                ○ Did Not Work
+              </button>
+            </div>
+          )}
+        </div>
+      ))}
+
+      {upcoming.map(item => (
+        <div key={item.id} className="border border-[#D9E1E8] rounded-xl p-4">
+          <p className="text-sm font-bold text-[#2F3E4E]">{fmtShiftDate(item.scheduledStart)} · {item.patientName}</p>
+          <p className="text-xs text-[#7A8F79] mt-0.5">
+            {fmtShiftTime(item.scheduledStart)} – {fmtShiftTime(item.scheduledEnd)} · {item.scheduledHours} hrs
+          </p>
+          <p className="text-[10px] text-[#7A8F79] mt-1">Confirmation available after {fmtShiftTime(item.shiftEndTime)} on {fmtShiftDate(item.shiftEndTime)}</p>
+        </div>
+      ))}
+
+      {resolved.length > 0 && (
+        <details className="pt-1">
+          <summary className="text-xs font-semibold text-[#7A8F79] cursor-pointer hover:text-[#2F3E4E]">Recently confirmed / not worked</summary>
+          <div className="mt-2 space-y-1.5">
+            {resolved.map(item => (
+              <div key={item.id} className="flex items-center justify-between text-xs text-[#7A8F79] border-b border-[#F4F6F5] pb-1.5">
+                <span>{fmtShiftDate(item.scheduledStart)} · {item.patientName}</span>
+                <span className={item.status === 'confirmed' ? 'text-green-600 font-semibold' : 'text-[#7A8F79]'}>
+                  {item.status === 'confirmed' ? `✓ ${item.actualHours} hrs confirmed` : 'Not worked'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+    </div>
+  )
+}
+
 export default function MyHours() {
   const router = useRouter()
   const dateInputRef = useRef<HTMLInputElement>(null)
@@ -240,6 +412,8 @@ export default function MyHours() {
           {now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </p>
       </div>
+
+      <ScheduledShiftsCard onConfirmed={loadEntries} />
 
       {/* Year filter */}
       {effectiveTier !== 'FREE' && (

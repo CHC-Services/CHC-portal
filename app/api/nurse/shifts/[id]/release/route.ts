@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../../lib/prisma'
 import { verifyToken } from '../../../../../../lib/auth'
 import { canReleaseShift } from '../../../../../../lib/permissions'
+import { releaseShiftPendingHours } from '../../../../../../lib/pendingHours'
 
 function getSession(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -26,5 +27,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     where: { id },
     data: { nurseId: null, status: 'coverage_needed' },
   })
+  await releaseShiftPendingHours(id, session.nurseProfileId)
   return NextResponse.json({ shift: updated })
 }

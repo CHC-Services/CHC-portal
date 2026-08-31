@@ -18,13 +18,16 @@ const QUOTES = [
   { text: "The greatest wealth is health.", author: "Virgil" },
   { text: "Nursing is a progressive art such that to stand still is to go backward.", author: "Florence Nightingale" },
   { text: "Being a nurse means to hold all your own tears and start drawing smiles on people's faces.", author: "Dana Basem" },
-  { text: "Everything is sketchy. The world does nothing but sketch. The more you sketch, the more the world becomes clear.", author: "Combined" },
   { text: "The best way to find yourself is to lose yourself in the service of others.", author: "Mahatma Gandhi" },
   { text: "Life is not easy for any of us. But what of that? We must have perseverance and, above all, confidence in ourselves.", author: "Marie Curie" },
   { text: "Nursing is not for everyone. It takes a special kind of person to be a nurse, but those who are nurses know they have found their calling.", author: "Unknown" },
   { text: "Start by doing what's necessary; then do what's possible; and suddenly you are doing the impossible.", author: "Francis of Assisi" },
   { text: "I didn't want just any career, so I'm not going to be just any nurse.", author: "Unknown" },
   { text: "Show kindness in every interaction, you never know how much it might mean to someone who is struggling.", author: "Unknown" },
+  { text: "When a person decides to become a nurse, they make the most important decision of their lives. They choose to dedicate themselves to the care of others.", author: "Margaret Harvey " },
+  { text: "The character of the nurse is as important as the knowledge she possesses.", author: "Carolyn Jarvis" },
+  { text: "You treat a disease: You win, you lose. You treat a person, I guarantee you win—no matter the outcome.", author: "'Patch' Adams" },
+  { text: "Constant attention by a good nurse may be just as important as a major operation by a surgeon.", author: "Dag Hammarskjold" }
 ]
 
 type Direction = 'up' | 'down' | 'left' | 'right'

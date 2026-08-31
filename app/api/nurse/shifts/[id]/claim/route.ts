@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../../lib/prisma'
 import { verifyToken } from '../../../../../../lib/auth'
 import { canClaimOpenShift } from '../../../../../../lib/permissions'
+import { generatePendingHoursForShift } from '../../../../../../lib/pendingHours'
 
 function getSession(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -32,5 +33,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const updated = await prisma.shift.findUnique({ where: { id } })
+  if (updated) await generatePendingHoursForShift(updated, session.nurseProfileId)
   return NextResponse.json({ shift: updated })
 }

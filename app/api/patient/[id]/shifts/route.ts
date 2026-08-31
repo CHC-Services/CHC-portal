@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../lib/prisma'
 import { verifyToken } from '../../../../../lib/auth'
 import { canViewSchedule, canCreateShift } from '../../../../../lib/permissions'
+import { generatePendingHoursForShift } from '../../../../../lib/pendingHours'
 
 function getSession(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -10,9 +11,10 @@ function getSession(req: Request) {
 }
 
 // Role-agnostic shift CRUD for one patient — backs app/patient/[id]/schedule.
-// Unlike the older per-role /api/{admin,family,nurse}/shifts endpoints (kept
-// as-is, still used elsewhere), this one is scoped to a single patientId from
-// the URL and defers entirely to lib/permissions.ts for who can do what.
+// The older per-role /api/{admin,family,nurse}/shifts endpoints this
+// superseded were confirmed to have zero remaining callers and removed
+// 2026-08-30. This one is scoped to a single patientId from the URL and
+// defers entirely to lib/permissions.ts for who can do what.
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = getSession(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -63,6 +65,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       createdByRole: session.role,
     },
   })
+
+  // A shift created pre-assigned already has an expected nurse — generate
+  // her Pending Hours immediately rather than waiting for a later PATCH.
+  // An open/unassigned shift gets its Pending Hours once someone claims or
+  // is assigned to it (see the PATCH route).
+  if (shift.nurseId) await generatePendingHoursForShift(shift, shift.nurseId)
 
   return NextResponse.json({ shift })
 }

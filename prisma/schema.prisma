@@ -194,6 +194,7 @@ model NurseProfile {
   reminders           NurseReminder[]
   shifts              Shift[]
   shiftTemplates      ShiftTemplate[]
+  pendingHours        PendingHour[]
   documents           NurseDocument[]
   invoiceActivities   InvoiceActivity[]
   caseAssignments     CaseAssignment[]
@@ -322,7 +323,8 @@ model TimeEntry {
 
   createdAt DateTime @default(now())
 
-  nurse NurseProfile @relation(fields: [nurseId], references: [id])
+  nurse       NurseProfile @relation(fields: [nurseId], references: [id])
+  pendingHour PendingHour?
 
   @@unique([nurseId, workDate, patientId])
 }
@@ -979,6 +981,7 @@ model Patient {
   shiftTemplates ShiftTemplate[]
   appointments  Appointment[]
   progressNotes ProgressNote[]
+  pendingHours  PendingHour[]
 }
 
 model Shift {
@@ -1013,12 +1016,63 @@ model Shift {
   updatedAt DateTime @updatedAt
 
   progressNotes ProgressNote[]
+  pendingHours  PendingHour[]
 
   @@index([patientId])
   @@index([nurseId])
   @@index([startTime])
   @@index([templateId])
   @@index([status])
+}
+
+// One row per date-of-service segment of a Shift — a same-day shift gets one
+// row, an overnight shift gets two (split at midnight; see
+// lib/pendingHours.ts's splitShiftIntoDaySegments). This is upstream of
+// TimeEntry, not a replacement for it: TimeEntry stays the sole source of
+// truth the invoice/campaign-discount pipeline reads from, and only gets a
+// new row once a PendingHour is actually confirmed. 'awaiting_confirmation'
+// is deliberately not a stored status — it's derived on read from
+// `now >= shift.endTime`, the same computed-not-stored pattern
+// lib/medicationReminders.ts's effectiveRefillStatus already uses, so it can
+// never drift out of sync with the shift it depends on.
+model PendingHour {
+  id        String       @id @default(uuid())
+  shiftId   String
+  shift     Shift        @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  nurseId   String
+  nurse     NurseProfile @relation(fields: [nurseId], references: [id])
+  patientId String
+  patient   Patient      @relation(fields: [patientId], references: [id])
+
+  dateOfService  DateTime // the specific calendar day this segment bills to
+  scheduledStart DateTime
+  scheduledEnd   DateTime
+  scheduledHours Float
+
+  actualStart DateTime?
+  actualEnd   DateTime?
+  actualHours Float?
+
+  status String @default("scheduled") // 'scheduled' | 'confirmed' | 'not_worked' | 'reassigned'
+
+  timeEntryId String?    @unique
+  timeEntry   TimeEntry? @relation(fields: [timeEntryId], references: [id])
+
+  // Audit trail — set only when a still-unconfirmed row is reassigned to a
+  // different nurse (see the reassignment branch of PATCH
+  // /api/patient/[id]/shifts/[shiftId]). A confirmed row (timeEntryId set)
+  // is never touched by reassignment — it stays attributed to whoever
+  // actually confirmed it, no matter who the shift is reassigned to later.
+  reassignedFromNurseId String?
+  reassignedAt          DateTime?
+  reassignedByUserId    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([shiftId, nurseId, dateOfService])
+  @@index([nurseId, status])
+  @@index([shiftId])
 }
 
 // Recurring shift-generation rule (Phase 2 of CareCalendar). Admin/guardian

@@ -45,7 +45,9 @@ export default function ServicesPage() {
           </h1>
           <p className="mt-3 text-[#D9E1E8] text-sm max-w-xl leading-relaxed">
             Coming Home Care started as a medical billing service for home care providers, and has grown into a
-            full care-coordination platform. Once enrolled, we manage claim submission, monitor for follow-up
+            full care-coordination platform. Once enrolled, providers can convert their verbal documentation into a written progress note, 
+            enroll in billing services, store documents in a secure HIPAA-compliant database to be easily accessed anywhere, 
+            receive email/text reminders of upcoming document expirations, monitor for follow-up
             responses, track reimbursements, and give your whole care team — providers, families, and
             patients — a secure, connected place to stay on top of it all, so you can focus
             on what matters most: <span className="font-bold italic text-lg text-[#7A8F79]">care</span>.

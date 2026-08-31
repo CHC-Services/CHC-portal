@@ -28,4 +28,5 @@ export const CARE_QUOTES: Quote[] = [
   { text: 'The future is unwritten, which means there is still room for something beautiful.', author: '' },
   { text: 'Courage is not the absence of fear. It is choosing to continue while fear is present.', author: '' },
   { text: 'Never underestimate the healing power of feeling seen, heard, and cared for.', author: '' },
+  { text: "Sometimes the most important medicine is simply being there.", author: "Unknown" },
 ]

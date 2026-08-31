@@ -8,51 +8,7 @@
 // side-effect (not just date math) is the actual point of this feature.
 
 import { prisma } from './prisma'
-
-const NY_TZ = 'America/New_York'
-
-// This agency operates out of Buffalo, NY — overnight shifts split at
-// Eastern midnight, not UTC midnight (UTC would misplace the boundary by
-// 4-5 hours and attribute hours to the wrong date of service). DST-safe:
-// tries both possible ET offsets and keeps whichever is self-consistent,
-// rather than assuming a fixed offset.
-function nyOffsetMinutesAt(instant: Date): number {
-  const part = new Intl.DateTimeFormat('en-US', { timeZone: NY_TZ, timeZoneName: 'shortOffset' })
-    .formatToParts(instant)
-    .find(p => p.type === 'timeZoneName')!.value // e.g. "GMT-4" or "GMT-5"
-  const match = part.match(/GMT([+-]\d+)/)
-  return match ? parseInt(match[1], 10) * 60 : -300
-}
-
-function nyDateKey(instant: Date): string {
-  const parts = Object.fromEntries(
-    new Intl.DateTimeFormat('en-US', { timeZone: NY_TZ, year: 'numeric', month: '2-digit', day: '2-digit' })
-      .formatToParts(instant)
-      .map(p => [p.type, p.value])
-  )
-  return `${parts.year}-${parts.month}-${parts.day}`
-}
-
-/** The UTC instant of Eastern midnight (00:00 ET) starting the given YYYY-MM-DD calendar date. */
-function nyMidnightUtc(dateKey: string): Date {
-  const [y, m, d] = dateKey.split('-').map(Number)
-  for (const guessOffsetMin of [-300, -240]) { // EST, then EDT
-    const candidate = new Date(Date.UTC(y, m - 1, d, 0, 0, 0) - guessOffsetMin * 60_000)
-    if (nyOffsetMinutesAt(candidate) === guessOffsetMin) return candidate
-  }
-  return new Date(Date.UTC(y, m - 1, d, 5, 0, 0)) // fallback: assume EST
-}
-
-function nextDateKey(dateKey: string): string {
-  const [y, m, d] = dateKey.split('-').map(Number)
-  const next = new Date(Date.UTC(y, m - 1, d + 1))
-  return `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, '0')}-${String(next.getUTCDate()).padStart(2, '0')}`
-}
-
-/** Date-only fields in this codebase are stored as UTC-midnight of the intended calendar day (see lib/localDate.ts). */
-function dateKeyToUtcMidnight(dateKey: string): Date {
-  return new Date(`${dateKey}T00:00:00.000Z`)
-}
+import { nyDateKeyOf, easternMidnightUtc, nextNyDateKey, dateKeyToUtcMidnight } from './easternTime'
 
 function hoursBetween(a: Date, b: Date): number {
   return Math.round(((b.getTime() - a.getTime()) / 3_600_000) * 100) / 100
@@ -72,8 +28,8 @@ export type DaySegment = {
  * Spec example: Sat 7PM → Sun 7AM becomes [Sat 5.0h, Sun 7.0h].
  */
 export function splitShiftIntoDaySegments(startTime: Date, endTime: Date): DaySegment[] {
-  const startKey = nyDateKey(startTime)
-  const endKey = nyDateKey(endTime)
+  const startKey = nyDateKeyOf(startTime)
+  const endKey = nyDateKeyOf(endTime)
 
   if (startKey === endKey) {
     return [{
@@ -88,7 +44,7 @@ export function splitShiftIntoDaySegments(startTime: Date, endTime: Date): DaySe
   let segStart = startTime
   let currentKey = startKey
   while (currentKey < endKey) {
-    const nextMidnight = nyMidnightUtc(nextDateKey(currentKey))
+    const nextMidnight = easternMidnightUtc(nextNyDateKey(currentKey))
     segments.push({
       dateOfService: dateKeyToUtcMidnight(currentKey),
       scheduledStart: segStart,
@@ -96,7 +52,7 @@ export function splitShiftIntoDaySegments(startTime: Date, endTime: Date): DaySe
       scheduledHours: hoursBetween(segStart, nextMidnight),
     })
     segStart = nextMidnight
-    currentKey = nyDateKey(segStart)
+    currentKey = nyDateKeyOf(segStart)
   }
   segments.push({
     dateOfService: dateKeyToUtcMidnight(endKey),

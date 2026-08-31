@@ -25,6 +25,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const body = await req.json()
   const data: Record<string, any> = {}
   if ('nurseId' in body) data.nurseId = body.nurseId || null
+  if ('label' in body) data.label = body.label || null
   if ('startTimeOfDay' in body) data.startTimeOfDay = body.startTimeOfDay
   if ('durationHours' in body) data.durationHours = body.durationHours
   if ('recurrence' in body) data.recurrence = body.recurrence

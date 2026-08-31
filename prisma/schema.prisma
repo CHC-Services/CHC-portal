@@ -1090,14 +1090,16 @@ model ShiftTemplate {
   nurseId String?
   nurse   NurseProfile? @relation(fields: [nurseId], references: [id], onDelete: SetNull)
 
+  label String? // distinguishes multiple templates on one patient (e.g. one per nurse) in the UI
+
   startTimeOfDay String // "HH:MM" 24hr, e.g. "07:00" — configurable shift-change time
-  durationHours  Int    // 4 | 8 | 12
+  durationHours  Float  // computed from start/end time on the form, not a fixed picker — supports fractional-hour shifts
 
   recurrence String  // 'daily' | 'weekly'
   daysOfWeek Int[]   @default([]) // 0=Sun..6=Sat; ignored when recurrence='daily'
 
   activeFrom  DateTime // template start date
-  activeUntil DateTime? // null = indefinite
+  activeUntil DateTime? // null on input defaults to activeFrom + 4 months (see lib/shiftTemplates.ts's defaultActiveUntil) — never stored null, so a template never recurs indefinitely
 
   notes    String?
   isActive Boolean @default(true) // pause without deleting; materialization skips inactive templates

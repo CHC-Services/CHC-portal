@@ -31,6 +31,8 @@ if (!session || session.role !== 'admin') return NextResponse.json({ error: 'Una
 
 **Filled-out data renders read-only, with an Edit button** — any field/section that already has a value (profile pages, patient records, medication details, etc.) must render as read-only display, not an open input, until the user clicks "Edit." Only fields with no existing value (e.g. "add a phone number" when none is on file) or brand-new-entry forms (e.g. "Add PA," "Add Medication") show inputs by default. Reuse `app/components/ReadOnlyField.tsx` (`Row` for a label/value line, `SectionHeader` for a card header with the Edit button baked in) — see `app/nurse/profile/page.tsx` and `app/components/patient/PatientDemographics.tsx`/`PatientInsurance.tsx` for reference implementations. `app/components/MedicationList.tsx` already follows this natively (card view + "Edit" swaps to the form).
 
+**Time/date-of-day logic** — this agency operates out of Buffalo, NY, but the server (Vercel) runs UTC. Any function computing a calendar-day boundary or a wall-clock time-of-day must go through `lib/easternTime.ts`'s DST-safe helpers (`nyDateKeyOf`, `easternMidnightUtc`, `easternTimeOfDayUtc`, `nextNyDateKey`/`previousNyDateKey`) — never server-local time (`Date.setHours`, `new Date().getDate()`, `.getDay()` on an arbitrary instant) or a naive fixed-UTC-offset assumption. Reference implementations: `lib/pendingHours.ts` (midnight-split) and `lib/shiftTemplates.ts` (shift-change time materialization). Plain calendar-date fields with no wall-clock component (e.g. `activeFrom`/`activeUntil`) follow a separate, simpler convention — stored as UTC-midnight of the intended date (see `dateKeyToUtcMidnight`) — since there's no time-of-day to get wrong.
+
 **Migrations** — applied manually:
 1. `execute_sql` via Supabase MCP (project: `rfhewykretdmldfwpnbw`, region: us-east-1)
 2. `npx prisma migrate resolve --applied <migration_name>`
@@ -127,15 +129,16 @@ Dropdown: `${firstName[0]}. ${lastName.slice(0,5)}` — admin sees account numbe
 - Family: `app/family/calendar/page.tsx` replaced the `/family/schedule` `ComingSoonCard` stub; `FamilySideNav.tsx` entry now reads "Calendar" with the `my` prefix (dropped `noPrefix`).
 - Admin: no separate nav entry — folded into the existing `adCalendar` (`/admin/calendar`) pill in `AdminNav.tsx`'s Comms group.
 
-### Deferred to Phase 2
-Recurring shift-schedule templates (4/8/12hr slots, daily/weekly/monthly recurrence, configurable shift-change times) — nothing in this codebase expands a template into repeating instances today; needs its own design pass (likely a `ShiftTemplate` model + materialization mechanism).
+### Recurring shift templates (completed 2026-08-31)
+`ShiftTemplate` (`prisma/schema.prisma`) expands into real `Shift` rows via `lib/shiftTemplates.ts`'s `materializeShiftTemplate` — called inline on template create/edit and daily by the `materialize-shift-templates` cron, out to a rolling `MATERIALIZATION_HORIZON_DAYS`-day horizon. Duration is computed client-side from a start/end time pair (`durationHours` is a `Float`, not a fixed 4/8/12hr picker — supports fractional/short shifts), and an `activeUntil` left blank at creation defaults to `activeFrom` + 4 months (`defaultActiveUntil`) rather than recurring indefinitely. `label` distinguishes multiple templates on one patient (e.g. one per nurse) in `PatientShiftTemplates.tsx`'s list. All wall-clock time-of-day math (`startTimeOfDay` → an actual materialized instant) goes through `lib/easternTime.ts`, not server-local time — see the Time/date-of-day logic convention above.
+
+**Occurrence-scoped edit/delete** — the standard calendar-app "this occurrence / this-and-future / entire series" pattern. "Entire series" is just the existing template `PATCH`/`DELETE` (`app/api/patient/[id]/shift-templates/[templateId]/route.ts`) — series-edit also has a UI home now: clicking a template row in `PatientShiftTemplates.tsx` (when `canManage`) opens the same create form pre-filled, submitting a `PATCH`. "This occurrence" and "this and future" are new: `app/api/patient/[id]/shift-templates/[templateId]/occurrences/[shiftId]/route.ts`, `PATCH`/`DELETE` with `?scope=this|future`. `scope=this` reuses `lib/shiftTemplates.ts`'s `updateShiftAndSyncPendingHours`/`cancelSingleShift` (shared with the plain single-shift route, so the Pending Hours sync hooks aren't duplicated). `scope=future` is a series split: `capTemplateBeforeOccurrence` ends the old template the Eastern calendar day before this occurrence, `cancelFutureGeneratedShifts` cancels its not-yet-worked future shifts, then a new `ShiftTemplate` is created from the edited fields starting at this occurrence and materialized immediately. A shift with a **confirmed** `PendingHour` (or `status: 'completed'`) is rejected from `future`-scope bulk operations — never touched except individually via `scope=this`. The materializer's own duplicate guard (`lib/shiftTemplates.ts`) matches on same-Eastern-calendar-day, not exact instant, specifically so an individually-edited occurrence (`scope=this`) doesn't get regenerated as a duplicate by the next cron pass.
 
 ## What's Not Built Yet
 - Voice dictation feature linked to patients (architecture agreed, not started)
 - Parent account level for patient assignment (future role)
 - myHours: admin view of patient column shows account number (UI not yet updated on admin side)
 - Configurable role-based permissions system (canonical-data doc proposes a `can(user, action, resource)` authorization layer + admin Roles & Permissions settings UI — not started; today's auth is still per-route inline role checks, per the Auth pattern above)
-- CareCalendar Phase 2: recurring shift-schedule templates (see above)
 
 <!-- BEGIN:nextjs-agent-rules -->
 

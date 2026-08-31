@@ -6,6 +6,7 @@ import { inp, lbl } from './types'
 type Template = {
   id: string
   nurseId: string | null
+  label: string | null
   startTimeOfDay: string
   durationHours: number
   recurrence: string
@@ -19,7 +20,23 @@ type Template = {
 type NurseOption = { id: string; displayName: string; firstName?: string; lastName?: string }
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-const DURATIONS = [4, 8, 12]
+
+// Duration isn't picked directly — it's computed from the start/end time
+// inputs, so shifts of any length (2hr, 5hr, etc.) are representable, not
+// just a fixed 4/8/12hr set.
+function computeDurationHours(start: string, end: string): number {
+  const [sh, sm] = start.split(':').map(Number)
+  const [eh, em] = end.split(':').map(Number)
+  let minutes = (eh * 60 + em) - (sh * 60 + sm)
+  if (minutes <= 0) minutes += 24 * 60 // crosses midnight
+  return Math.round((minutes / 60) * 100) / 100
+}
+
+function computeEndTimeOfDay(startTimeOfDay: string, durationHours: number): string {
+  const [h, m] = startTimeOfDay.split(':').map(Number)
+  const totalMin = (h * 60 + m + Math.round(durationHours * 60)) % (24 * 60)
+  return `${String(Math.floor(totalMin / 60)).padStart(2, '0')}:${String(totalMin % 60).padStart(2, '0')}`
+}
 
 function nurseName(nurses: NurseOption[], nurseId: string | null) {
   if (!nurseId) return 'Open — unassigned'
@@ -58,9 +75,11 @@ export default function PatientShiftTemplates({
   const [loading, setLoading] = useState(true)
 
   const [adding, setAdding] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [nurseId, setNurseId] = useState('')
+  const [label, setLabel] = useState('')
   const [startTimeOfDay, setStartTimeOfDay] = useState('07:00')
-  const [durationHours, setDurationHours] = useState(8)
+  const [endTimeOfDay, setEndTimeOfDay] = useState('15:00')
   const [recurrence, setRecurrence] = useState<'daily' | 'weekly'>('weekly')
   const [daysOfWeek, setDaysOfWeek] = useState<number[]>([])
   const [activeFrom, setActiveFrom] = useState('')
@@ -82,6 +101,32 @@ export default function PatientShiftTemplates({
     setDaysOfWeek(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d].sort())
   }
 
+  function resetForm() {
+    setAdding(false); setEditingId(null); setError('')
+    setNurseId(''); setLabel(''); setStartTimeOfDay('07:00'); setEndTimeOfDay('15:00')
+    setRecurrence('weekly'); setDaysOfWeek([]); setActiveFrom(''); setActiveUntil(''); setNotes('')
+  }
+
+  // Doubles as "entire series" edit — clicking Edit on a template row
+  // pre-fills this same form and PATCHes that template on submit, which
+  // re-materializes forward (see the [templateId] PATCH route), covering the
+  // "edit all instances" scope. "This occurrence" / "this and future" scopes
+  // are handled per-shift down in PatientSchedule.tsx instead.
+  function startEdit(t: Template) {
+    setEditingId(t.id)
+    setNurseId(t.nurseId || '')
+    setLabel(t.label || '')
+    setStartTimeOfDay(t.startTimeOfDay)
+    setEndTimeOfDay(computeEndTimeOfDay(t.startTimeOfDay, t.durationHours))
+    setRecurrence(t.recurrence as 'daily' | 'weekly')
+    setDaysOfWeek(t.daysOfWeek)
+    setActiveFrom(t.activeFrom.slice(0, 10))
+    setActiveUntil(t.activeUntil ? t.activeUntil.slice(0, 10) : '')
+    setNotes(t.notes || '')
+    setError('')
+    setAdding(true)
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
@@ -91,26 +136,28 @@ export default function PatientShiftTemplates({
       return
     }
     setSaving(true)
-    const res = await fetch(`/api/patient/${patientId}/shift-templates`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({
-        nurseId: nurseId || null,
-        startTimeOfDay,
-        durationHours,
-        recurrence,
-        daysOfWeek,
-        activeFrom: new Date(activeFrom).toISOString(),
-        activeUntil: activeUntil ? new Date(activeUntil).toISOString() : null,
-        notes: notes || null,
-      }),
-    })
+    const res = await fetch(
+      editingId ? `/api/patient/${patientId}/shift-templates/${editingId}` : `/api/patient/${patientId}/shift-templates`,
+      {
+        method: editingId ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          nurseId: nurseId || null,
+          label: label || null,
+          startTimeOfDay,
+          durationHours: computeDurationHours(startTimeOfDay, endTimeOfDay),
+          recurrence,
+          daysOfWeek,
+          activeFrom: new Date(activeFrom).toISOString(),
+          activeUntil: activeUntil ? new Date(activeUntil).toISOString() : null,
+          notes: notes || null,
+        }),
+      }
+    )
     setSaving(false)
     if (res.ok) {
-      setAdding(false)
-      setNurseId(''); setStartTimeOfDay('07:00'); setDurationHours(8)
-      setRecurrence('weekly'); setDaysOfWeek([]); setActiveFrom(''); setActiveUntil(''); setNotes('')
+      resetForm()
       load()
     } else {
       const body = await res.json().catch(() => null)
@@ -141,7 +188,7 @@ export default function PatientShiftTemplates({
       <div className="flex items-center justify-between">
         <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">Recurring Templates</p>
         {canManage && (
-          <button onClick={() => setAdding(a => !a)} className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">
+          <button onClick={() => (adding ? resetForm() : setAdding(true))} className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition">
             {adding ? 'Cancel' : '+ New Template'}
           </button>
         )}
@@ -161,25 +208,16 @@ export default function PatientShiftTemplates({
               </select>
             </div>
             <div>
-              <label className={lbl}>Shift-Change Start Time</label>
+              <label className={lbl}>Label</label>
+              <input type="text" className={inp} placeholder="e.g. Jane's weekday days" value={label} onChange={e => setLabel(e.target.value)} />
+            </div>
+            <div>
+              <label className={lbl}>Start Time</label>
               <input type="time" className={inp} value={startTimeOfDay} onChange={e => setStartTimeOfDay(e.target.value)} required />
             </div>
-          </div>
-
-          <div>
-            <label className={lbl}>Duration</label>
-            <div className="flex gap-2">
-              {DURATIONS.map(h => (
-                <button
-                  key={h} type="button"
-                  onClick={() => setDurationHours(h)}
-                  className={`px-4 py-1.5 rounded-lg text-sm font-semibold border transition ${
-                    durationHours === h ? 'bg-[#2F3E4E] text-white border-[#2F3E4E]' : 'bg-white text-[#7A8F79] border-[#D9E1E8] hover:border-[#7A8F79]'
-                  }`}
-                >
-                  {h}hr
-                </button>
-              ))}
+            <div>
+              <label className={lbl}>End Time</label>
+              <input type="time" className={inp} value={endTimeOfDay} onChange={e => setEndTimeOfDay(e.target.value)} required />
             </div>
           </div>
 
@@ -223,6 +261,7 @@ export default function PatientShiftTemplates({
             <div>
               <label className={lbl}>Ends (optional)</label>
               <input type="date" className={inp} value={activeUntil} onChange={e => setActiveUntil(e.target.value)} />
+              <p className="text-[10px] text-[#7A8F79] mt-1">Leave blank to auto-end after 4 months.</p>
             </div>
           </div>
 
@@ -232,7 +271,7 @@ export default function PatientShiftTemplates({
           </div>
 
           <button type="submit" disabled={saving} className="bg-[#2F3E4E] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#7A8F79] transition disabled:opacity-50">
-            {saving ? 'Saving…' : 'Create Template'}
+            {saving ? 'Saving…' : editingId ? 'Update Template' : 'Create Template'}
           </button>
         </form>
       )}
@@ -245,7 +284,7 @@ export default function PatientShiftTemplates({
             <div key={t.id} className={`flex items-center justify-between bg-[#F4F6F5] rounded-lg px-3 py-2 ${!t.isActive ? 'opacity-50' : ''}`}>
               <div>
                 <p className="text-sm text-[#2F3E4E] font-semibold">
-                  {summarizeDays(t)} · {fmtTimeOfDay(t.startTimeOfDay)}–{fmtTimeOfDay(`${(parseInt(t.startTimeOfDay.split(':')[0]) + t.durationHours) % 24}:${t.startTimeOfDay.split(':')[1]}`)}
+                  {t.label ? `${t.label} · ` : ''}{summarizeDays(t)} · {fmtTimeOfDay(t.startTimeOfDay)}–{fmtTimeOfDay(computeEndTimeOfDay(t.startTimeOfDay, t.durationHours))}
                 </p>
                 <p className="text-xs text-[#7A8F79]">
                   {nurseName(availableNurses, t.nurseId)} · from {fmtDate(t.activeFrom)}{t.activeUntil ? ` to ${fmtDate(t.activeUntil)}` : ''}
@@ -254,6 +293,7 @@ export default function PatientShiftTemplates({
               </div>
               {canManage && (
                 <div className="flex items-center gap-2">
+                  <button onClick={() => startEdit(t)} className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] transition">Edit</button>
                   <button onClick={() => toggleActive(t)} className="text-xs text-amber-600 hover:text-amber-800 transition">
                     {t.isActive ? 'Pause' : 'Resume'}
                   </button>

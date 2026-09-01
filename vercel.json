@@ -5,7 +5,8 @@
     "app/api/admin/invoices/[id]/s3/route.ts": { "maxDuration": 30, "memory": 1024 },
     "app/api/nurse/progress-notes/[id]/pdf/route.ts": { "maxDuration": 60, "memory": 1024 },
     "app/api/family/progress-notes/[id]/pdf/route.ts": { "maxDuration": 60, "memory": 1024 },
-    "app/api/admin/progress-notes/[id]/pdf/route.ts": { "maxDuration": 60, "memory": 1024 }
+    "app/api/admin/progress-notes/[id]/pdf/route.ts": { "maxDuration": 60, "memory": 1024 },
+    "app/api/quick-notes/notes/[id]/pdf-preview/route.ts": { "maxDuration": 60, "memory": 1024 }
   },
   "crons": [
     {

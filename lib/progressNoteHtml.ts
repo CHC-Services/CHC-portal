@@ -55,8 +55,11 @@ export interface ProgressNoteHtmlData {
   location: string | null
   arrivalFindings: string | null
   shiftNotes: string | null
-  signedAt: Date | string
-  signatureUrl: string
+  // Optional so this template can also render a not-yet-signed draft preview
+  // (see generateDraftProgressNotePdf in lib/progressNotePdf.ts) — every
+  // existing signed-note caller still always passes both.
+  signedAt?: Date | string | null
+  signatureUrl?: string | null
   voidedAt: Date | string | null
   voidReason: string | null
   vitals: ProgressNoteHtmlVital[]
@@ -182,6 +185,18 @@ export function buildProgressNoteHtml(data: ProgressNoteHtmlData): string {
       <p style="margin:4px 0 0;font-size:10px;color:#dc2626">Voided ${fmtDateTime(data.voidedAt)}${data.voidReason ? ` — ${esc(data.voidReason)}` : ''}</p>
     </div>` : ''
 
+  // Only a not-yet-signed preview render hits this — every real (signed)
+  // export always has both signedAt and signatureUrl.
+  const isSigned = !!(data.signedAt && data.signatureUrl)
+  const draftBanner = !isSigned ? `
+    <div style="margin-bottom:16px;border:1px solid #fcd34d;background:#fffbeb;border-radius:6px;padding:12px">
+      <p style="margin:0;font-size:11px;font-weight:700;color:#92400e">Draft — Not Yet Signed</p>
+      <p style="margin:4px 0 0;font-size:10px;color:#b45309">This copy is for review only and is not a final clinical record until signed.</p>
+    </div>` : ''
+  const signatureSection = isSigned
+    ? section('Signature', signatureBlock(data.authorDisplayName, data.authorRole, data.signatureUrl as string, data.signedAt as Date | string))
+    : section('Signature', `<p style="margin:0;font-size:11px;color:${SAGE};font-style:italic">Not yet signed.</p>`)
+
   const addendaHtml = data.addenda.length > 0 ? `
     <p style="margin:0 0 8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:${NAVY}">Addenda</p>
     ${data.addenda.map(a => `
@@ -211,6 +226,7 @@ export function buildProgressNoteHtml(data: ProgressNoteHtmlData): string {
       </div>
     </div>
 
+    ${draftBanner}
     ${voidedBanner}
 
     ${twoColumnSection('Shift Details', `
@@ -230,7 +246,7 @@ export function buildProgressNoteHtml(data: ProgressNoteHtmlData): string {
     ${section('Arrival Findings', `<p style="margin:0;font-size:11px;color:${NAVY};white-space:pre-wrap">${cell(data.arrivalFindings)}</p>`)}
     ${section('Shift Notes', `<p style="margin:0;font-size:11px;color:${NAVY};white-space:pre-wrap;line-height:1.5">${cell(data.shiftNotes)}</p>`)}
 
-    ${section('Signature', signatureBlock(data.authorDisplayName, data.authorRole, data.signatureUrl, data.signedAt))}
+    ${signatureSection}
 
     ${addendaHtml}
   </div>

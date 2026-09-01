@@ -105,6 +105,8 @@ export default function QuickNoteForm({
   const [signError, setSignError] = useState('')
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [printing, setPrinting] = useState(false)
+  const [printError, setPrintError] = useState('')
 
   // Micro-Charting state
   const [voiceEntries, setVoiceEntries] = useState<VoiceEntryDTO[]>(note.voiceEntries)
@@ -351,6 +353,41 @@ export default function QuickNoteForm({
     const body = await res.json().catch(() => ({}))
     setError(body.error || 'Failed to save.')
     return false
+  }
+
+  // Opens a printable preview of the note as it stands right now, before
+  // she signs it — reuses the exact "not yet signed" render the pdf-preview
+  // route produces via lib/progressNoteHtml.ts, not a browser print of the
+  // on-screen form. Opens a blank tab synchronously first (before the
+  // awaits below) so it survives popup blockers, then redirects it to the
+  // generated PDF once ready.
+  async function printDraft() {
+    const win = window.open('', '_blank')
+    if (win) {
+      const p = win.document.createElement('p')
+      p.style.cssText = 'font-family:sans-serif;color:#7A8F79;padding:2rem'
+      p.textContent = 'Preparing preview…'
+      win.document.body.appendChild(p)
+    }
+    setPrinting(true); setPrintError('')
+    // Print should reflect exactly what's saved, not just what's currently
+    // typed but unsaved on screen — same reasoning signAndLock already
+    // follows before its own POST.
+    const ok = await saveDraft()
+    if (!ok) { setPrinting(false); win?.close(); return }
+    const res = await fetch(`/api/quick-notes/notes/${note.id}/pdf-preview`, { headers: headers() })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      setPrintError(body.error || 'Failed to generate preview.')
+      setPrinting(false)
+      win?.close()
+      return
+    }
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    if (win) win.location.href = url
+    else window.open(url, '_blank')
+    setPrinting(false)
   }
 
   async function signAndLock() {
@@ -752,6 +789,15 @@ export default function QuickNoteForm({
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm p-5 space-y-3">
+        {shiftNotes.trim() && (
+          <div className="flex items-center gap-3 pb-3 border-b border-[#D9E1E8]">
+            <button type="button" onClick={printDraft} disabled={printing} className="border border-[#D9E1E8] text-[#2F3E4E] px-5 py-2 rounded-xl font-semibold hover:bg-[#F4F6F5] transition disabled:opacity-50">
+              {printing ? 'Preparing…' : 'Print Preview'}
+            </button>
+            <p className="text-xs text-[#7A8F79]">Review a printable copy before signing.</p>
+          </div>
+        )}
+        {printError && <p className="text-red-500 text-sm bg-red-50 rounded-lg px-3 py-2">{printError}</p>}
         {!confirmingSign ? (
           <button type="button" onClick={() => setConfirmingSign(true)} disabled={!shiftNotes.trim()} className="bg-[#2F3E4E] text-white px-5 py-2 rounded-xl font-semibold hover:bg-[#7A8F79] transition disabled:opacity-50">
             Sign &amp; Lock This Note

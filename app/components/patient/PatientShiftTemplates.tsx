@@ -60,6 +60,63 @@ function summarizeDays(t: Template) {
   return [...t.daysOfWeek].sort((a, b) => a - b).map(d => DAY_LABELS[d]).join('/')
 }
 
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+// "By month" creation mode — lets a user pick a whole calendar month (e.g.
+// "every Tue/Wed in September") instead of hand-picking activeFrom/activeUntil
+// dates. Produces the same plain 'YYYY-MM-DD' strings the date-range inputs
+// already feed into activeFrom/activeUntil state, so nothing downstream
+// (submit, validation) needs to know which mode built them.
+function upcomingMonthOptions(count = 12): { value: string; label: string }[] {
+  const now = new Date()
+  const opts: { value: string; label: string }[] = []
+  for (let i = 0; i < count; i++) {
+    const m = now.getMonth() + i
+    const targetYear = now.getFullYear() + Math.floor(m / 12)
+    const targetMonth = m % 12
+    opts.push({ value: `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}`, label: `${MONTH_NAMES[targetMonth]} ${targetYear}` })
+  }
+  return opts
+}
+
+function monthBounds(yyyyMm: string): { from: string; until: string } {
+  const [y, m] = yyyyMm.split('-').map(Number)
+  const lastDay = new Date(y, m, 0).getDate() // day 0 of next month = last day of this one
+  return { from: `${yyyyMm}-01`, until: `${yyyyMm}-${String(lastDay).padStart(2, '0')}` }
+}
+
+// Drives the "Repeat for {Month} ->" quick action on an existing template —
+// always extends to the end of the calendar month right after wherever its
+// activeUntil currently sits (or today, if it somehow has none), regardless
+// of whether that end date happens to already be month-aligned. Pure
+// UTC-integer math, not local Date/toLocaleDateString, so it can't drift a
+// day near a month boundary depending on the browser's timezone.
+function nextRepeatTarget(activeUntil: string | null): { dateStr: string; monthLabel: string } {
+  const base = activeUntil ? new Date(activeUntil) : new Date()
+  const y = base.getUTCFullYear()
+  const m = base.getUTCMonth()
+  const targetMonth = (m + 1) % 12
+  const targetYear = y + Math.floor((m + 1) / 12)
+  const lastDay = new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate()
+  return {
+    dateStr: `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`,
+    monthLabel: MONTH_NAMES[targetMonth],
+  }
+}
+
+// Whole-calendar-day difference (UTC-based, not local) between a template's
+// activeUntil and today — drives the "Expiring soon"/"Expired" indicator so
+// there's actually a visible cue to click Repeat/Extend before shifts
+// silently stop generating.
+function daysUntilExpiry(activeUntil: string | null): number | null {
+  if (!activeUntil) return null
+  const target = new Date(activeUntil)
+  const now = new Date()
+  const targetKey = Date.UTC(target.getUTCFullYear(), target.getUTCMonth(), target.getUTCDate())
+  const todayKey = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  return Math.round((targetKey - todayKey) / 86_400_000)
+}
+
 // Recurring shift-generation rules for one patient — sits above the ad-hoc
 // Shifts panel on app/patient/[id]/schedule. Admin/guardian (canManage) get
 // the create form + pause/delete controls; nurses see the same list
@@ -82,11 +139,14 @@ export default function PatientShiftTemplates({
   const [endTimeOfDay, setEndTimeOfDay] = useState('15:00')
   const [recurrence, setRecurrence] = useState<'daily' | 'weekly'>('weekly')
   const [daysOfWeek, setDaysOfWeek] = useState<number[]>([])
+  const [dateMode, setDateMode] = useState<'range' | 'month'>('range')
+  const [selectedMonth, setSelectedMonth] = useState('')
   const [activeFrom, setActiveFrom] = useState('')
   const [activeUntil, setActiveUntil] = useState('')
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [repeatingId, setRepeatingId] = useState<string | null>(null)
 
   function load() {
     setLoading(true)
@@ -105,6 +165,31 @@ export default function PatientShiftTemplates({
     setAdding(false); setEditingId(null); setError('')
     setNurseId(''); setLabel(''); setStartTimeOfDay('07:00'); setEndTimeOfDay('15:00')
     setRecurrence('weekly'); setDaysOfWeek([]); setActiveFrom(''); setActiveUntil(''); setNotes('')
+    setDateMode('range'); setSelectedMonth('')
+  }
+
+  function handleMonthSelect(value: string) {
+    setSelectedMonth(value)
+    if (!value) { setActiveFrom(''); setActiveUntil(''); return }
+    const { from, until } = monthBounds(value)
+    setActiveFrom(from)
+    setActiveUntil(until)
+  }
+
+  // Same PATCH the full edit form already uses (see submit()) — just a
+  // single-field body, so no new endpoint was needed. The route re-
+  // materializes forward on its own once activeUntil moves.
+  async function repeatForNextMonth(t: Template) {
+    setRepeatingId(t.id)
+    const { dateStr } = nextRepeatTarget(t.activeUntil)
+    await fetch(`/api/patient/${patientId}/shift-templates/${t.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ activeUntil: new Date(dateStr).toISOString() }),
+    })
+    setRepeatingId(null)
+    load()
   }
 
   // Doubles as "entire series" edit — clicking Edit on a template row
@@ -123,6 +208,7 @@ export default function PatientShiftTemplates({
     setActiveFrom(t.activeFrom.slice(0, 10))
     setActiveUntil(t.activeUntil ? t.activeUntil.slice(0, 10) : '')
     setNotes(t.notes || '')
+    setDateMode('range'); setSelectedMonth('')
     setError('')
     setAdding(true)
   }
@@ -255,16 +341,49 @@ export default function PatientShiftTemplates({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={lbl}>Starts</label>
-              <input type="date" className={inp} value={activeFrom} onChange={e => setActiveFrom(e.target.value)} required />
+          <div>
+            <label className={lbl}>Active Dates</label>
+            <div className="flex gap-2 mb-2">
+              {(['range', 'month'] as const).map(mode => (
+                <button
+                  key={mode} type="button"
+                  onClick={() => setDateMode(mode)}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-semibold border transition ${
+                    dateMode === mode ? 'bg-[#2F3E4E] text-white border-[#2F3E4E]' : 'bg-white text-[#7A8F79] border-[#D9E1E8] hover:border-[#7A8F79]'
+                  }`}
+                >
+                  {mode === 'range' ? 'Specific Dates' : 'By Month'}
+                </button>
+              ))}
             </div>
-            <div>
-              <label className={lbl}>Ends (optional)</label>
-              <input type="date" className={inp} value={activeUntil} onChange={e => setActiveUntil(e.target.value)} />
-              <p className="text-[10px] text-[#7A8F79] mt-1">Leave blank to auto-end after 4 months.</p>
-            </div>
+
+            {dateMode === 'range' ? (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={lbl}>Starts</label>
+                  <input type="date" className={inp} value={activeFrom} onChange={e => setActiveFrom(e.target.value)} required />
+                </div>
+                <div>
+                  <label className={lbl}>Ends (optional)</label>
+                  <input type="date" className={inp} value={activeUntil} onChange={e => setActiveUntil(e.target.value)} />
+                  <p className="text-[10px] text-[#7A8F79] mt-1">Leave blank to auto-end after 4 months.</p>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <select className={inp} value={selectedMonth} onChange={e => handleMonthSelect(e.target.value)} required>
+                  <option value="">— Select a month —</option>
+                  {upcomingMonthOptions().map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+                {activeFrom && activeUntil && (
+                  <p className="text-[10px] text-[#7A8F79] mt-1">
+                    Covers {fmtDate(activeFrom)} – {fmtDate(activeUntil)}. Use the recurrence above to pick which days within the month (e.g. every Tue/Wed, or every day). Once the month is over, use the Repeat for {nextRepeatTarget(activeUntil).monthLabel} button on the list below to carry the same schedule forward.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           <div>
@@ -282,28 +401,43 @@ export default function PatientShiftTemplates({
         <p className="text-xs text-[#7A8F79] italic">No recurring templates.</p>
       ) : (
         <div className="space-y-1.5">
-          {templates.map(t => (
-            <div key={t.id} className={`flex items-center justify-between bg-[#F4F6F5] rounded-lg px-3 py-2 ${!t.isActive ? 'opacity-50' : ''}`}>
-              <div>
-                <p className="text-sm text-[#2F3E4E] font-semibold">
-                  {t.label ? `${t.label} · ` : ''}{summarizeDays(t)} · {fmtTimeOfDay(t.startTimeOfDay)}–{fmtTimeOfDay(computeEndTimeOfDay(t.startTimeOfDay, t.durationHours))}
-                </p>
-                <p className="text-xs text-[#7A8F79]">
-                  {nurseName(availableNurses, t.nurseId)} · from {fmtDate(t.activeFrom)}{t.activeUntil ? ` to ${fmtDate(t.activeUntil)}` : ''}
-                  {!t.isActive && ' · Paused'}
-                </p>
-              </div>
-              {canManage && (
-                <div className="flex items-center gap-2">
-                  <button onClick={() => startEdit(t)} className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] transition">Edit</button>
-                  <button onClick={() => toggleActive(t)} className="text-xs text-amber-600 hover:text-amber-800 transition">
-                    {t.isActive ? 'Pause' : 'Resume'}
-                  </button>
-                  <button onClick={() => remove(t.id)} className="text-xs text-red-500 hover:text-red-700 transition">Delete</button>
+          {templates.map(t => {
+            const expiry = daysUntilExpiry(t.activeUntil)
+            const repeatTarget = nextRepeatTarget(t.activeUntil)
+            return (
+              <div key={t.id} className={`flex items-center justify-between bg-[#F4F6F5] rounded-lg px-3 py-2 ${!t.isActive ? 'opacity-50' : ''}`}>
+                <div>
+                  <p className="text-sm text-[#2F3E4E] font-semibold">
+                    {t.label ? `${t.label} · ` : ''}{summarizeDays(t)} · {fmtTimeOfDay(t.startTimeOfDay)}–{fmtTimeOfDay(computeEndTimeOfDay(t.startTimeOfDay, t.durationHours))}
+                  </p>
+                  <p className="text-xs text-[#7A8F79]">
+                    {nurseName(availableNurses, t.nurseId)} · from {fmtDate(t.activeFrom)}{t.activeUntil ? ` to ${fmtDate(t.activeUntil)}` : ''}
+                    {expiry !== null && expiry < 0 && <span className="text-red-600 font-semibold"> · Expired</span>}
+                    {expiry !== null && expiry >= 0 && expiry <= 14 && (
+                      <span className="text-amber-600 font-semibold"> · Expires {expiry === 0 ? 'today' : `in ${expiry}d`}</span>
+                    )}
+                    {!t.isActive && ' · Paused'}
+                  </p>
                 </div>
-              )}
-            </div>
-          ))}
+                {canManage && (
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => startEdit(t)} className="text-xs text-[#7A8F79] hover:text-[#2F3E4E] transition">Edit</button>
+                    <button
+                      onClick={() => repeatForNextMonth(t)}
+                      disabled={repeatingId === t.id}
+                      className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition disabled:opacity-50"
+                    >
+                      {repeatingId === t.id ? '…' : `Repeat for ${repeatTarget.monthLabel} →`}
+                    </button>
+                    <button onClick={() => toggleActive(t)} className="text-xs text-amber-600 hover:text-amber-800 transition">
+                      {t.isActive ? 'Pause' : 'Resume'}
+                    </button>
+                    <button onClick={() => remove(t.id)} className="text-xs text-red-500 hover:text-red-700 transition">Delete</button>
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
     </div>

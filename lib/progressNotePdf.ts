@@ -107,6 +107,69 @@ export async function getOrCreateProgressNotePdf(noteId: string): Promise<{ url:
   return { url, s3Key }
 }
 
+/**
+ * Renders a live, uncached preview PDF for a note that hasn't been signed
+ * yet — backs Micro-Charting's "print before signing" option, available once
+ * she's compiled/entered some shift-notes content. Deliberately NOT cached to
+ * S3 or gated on pdfS3Key like getOrCreateProgressNotePdf above: an unsigned
+ * note's content keeps changing right up until Sign, so nothing here should
+ * look reusable across edits — every call re-renders from current content.
+ */
+export async function generateDraftProgressNotePdf(noteId: string): Promise<Buffer> {
+  const note = await prisma.progressNote.findUnique({
+    where: { id: noteId },
+    include: {
+      patient: { select: {
+        firstName: true, lastName: true, accountNumber: true,
+        dxCode1: true, dxCode2: true,
+        insuranceName: true, insuranceId: true,
+        ins2Name: true, ins2Id: true,
+        paNumber: true,
+      } },
+      authorUser: AUTHOR_SELECT,
+      vitals: { orderBy: { sortOrder: 'asc' } },
+      intakeOutput: { orderBy: { sortOrder: 'asc' } },
+    },
+  })
+  if (!note) throw new Error('Progress note not found')
+
+  const patientName = `${note.patient.firstName} ${note.patient.lastName}`
+
+  const html = buildProgressNoteHtml({
+    patientName,
+    patientAccountNumber: note.patient.accountNumber || '—',
+    authorDisplayName: authorDisplayName(note),
+    authorRole: note.authorRole,
+    serviceDate: note.serviceDate,
+    shiftStartTime: note.shiftStartTime,
+    shiftEndTime: note.shiftEndTime,
+    totalHours: note.totalHours,
+    location: note.location,
+    arrivalFindings: note.arrivalFindings,
+    shiftNotes: note.shiftNotes,
+    signedAt: null,
+    signatureUrl: null,
+    voidedAt: note.voidedAt,
+    voidReason: note.voidReason,
+    vitals: note.vitals,
+    intakeOutput: note.intakeOutput,
+    addenda: [],
+    dxCode1: note.patient.dxCode1,
+    dxCode2: note.patient.dxCode2,
+    insuranceName: note.patient.insuranceName,
+    insuranceId: note.patient.insuranceId,
+    ins2Name: note.patient.ins2Name,
+    ins2Id: note.patient.ins2Id,
+    paNumber: note.patient.paNumber,
+  })
+
+  return generatePdfFromHtml(html, {
+    displayHeaderFooter: true,
+    footerTemplate: buildProgressNoteFooterTemplate(patientName),
+    margin: { left: '0.75in', top: '0.25in' },
+  })
+}
+
 /** Clears the stored PDF reference so the next print/download regenerates it. */
 export async function invalidateProgressNotePdf(noteId: string): Promise<void> {
   await prisma.progressNote.update({ where: { id: noteId }, data: { pdfS3Key: null } }).catch(() => {})

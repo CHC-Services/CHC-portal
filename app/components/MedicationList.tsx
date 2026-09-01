@@ -638,9 +638,9 @@ function MedicationForm({ initial, onSubmit, onCancel, submitLabel, pharmacies =
 }
 
 const refillStatusMeta: Record<RefillStatus, { label: string; bg: string; text: string }> = {
-  due: { label: 'Refill Due', bg: '#FEF3C7', text: '#92400E' },
-  overdue: { label: 'Refill Overdue', bg: '#FEE2E2', text: '#B91C1C' },
-  ordered: { label: 'Refill Ordered', bg: '#DBEAFE', text: '#1D4ED8' },
+  due: { label: 'Due', bg: '#FEF3C7', text: '#92400E' },
+  overdue: { label: 'Overdue', bg: '#FEE2E2', text: '#B91C1C' },
+  ordered: { label: 'Ordered', bg: '#DBEAFE', text: '#1D4ED8' },
   filled: { label: 'Filled', bg: theme.offWhite, text: theme.sage },
 }
 
@@ -785,11 +785,21 @@ function DrugFactsModal({ medicationName, facts, loading, onClose }: {
   )
 }
 
-function adminSentenceOf(med: Pick<MedicationDTO, 'medicationName' | 'dose' | 'doseUnit' | 'frequency' | 'route' | 'duration'>): string | null {
+// The scaffold words ("Administer", "via", "for") stay normal weight; the
+// actual user-entered data points (dose/frequency, route, duration) are
+// bolded so they stand out from the sentence glue around them.
+function adminSentenceOf(med: Pick<MedicationDTO, 'medicationName' | 'dose' | 'doseUnit' | 'frequency' | 'route' | 'duration'>): React.ReactNode | null {
   const doseText = med.dose ? `${med.dose}${med.doseUnit || ''}` : null
-  const parts = [doseText, med.frequency].filter(Boolean).join(' ')
-  if (!parts && !med.route && !med.duration) return null
-  return `Administer ${med.medicationName}${parts ? ` ${parts}` : ''}${med.route ? ` via ${med.route}` : ''}${med.duration ? ` for ${med.duration}` : ''}.`
+  const doseFreq = [doseText, med.frequency].filter(Boolean).join(' ')
+  if (!doseFreq && !med.route && !med.duration) return null
+  return (
+    <>
+      Administer {med.medicationName}
+      {doseFreq && <> <strong>{doseFreq}</strong></>}
+      {med.route && <> via <strong>{med.route}</strong></>}
+      {med.duration && <> for <strong>{med.duration}</strong></>}.
+    </>
+  )
 }
 
 function onHandOf(med: Pick<MedicationDTO, 'unitStrength' | 'unitType'>): string {
@@ -804,15 +814,15 @@ function MedicationRow({ med, onClick }: { med: MedicationDTO; onClick: () => vo
   const cellCls = 'px-3 py-2 align-top whitespace-nowrap'
   return (
     <tr onClick={onClick} className="cursor-pointer border-b last:border-b-0 hover:bg-black/[0.02]" style={{ borderColor: theme.bg }}>
+      <td className={cellCls}><RefillStatusBadge status={med.refillStatus} /></td>
       <td className={cellCls}>
         <p className="font-semibold" style={{ color: theme.navy }}>{med.medicationName}</p>
       </td>
       <td className={`${cellCls} text-xs`} style={{ color: theme.navy }}>{onHandOf(med) || '—'}</td>
-      <td className={`${cellCls} text-xs whitespace-normal min-w-[14rem]`} style={{ color: theme.navy }}>{adminSentenceOf(med) || '—'}</td>
+      <td className={`${cellCls} text-xs whitespace-normal min-w-[14rem]`} style={{ color: theme.navy }}>{adminSentenceOf(med) ?? '—'}</td>
       <td className={`${cellCls} text-xs`} style={{ color: theme.navy }}>{med.daySupply}d</td>
       <td className={`${cellCls} text-xs`} style={{ color: theme.navy }}>{fmtDate(med.lastFillDate)}</td>
       <td className={`${cellCls} text-xs`} style={{ color: theme.navy }}>{fmtDate(dueDate)}</td>
-      <td className={cellCls}><RefillStatusBadge status={med.refillStatus} /></td>
       <td className={`${cellCls} text-xs font-mono`} style={{ color: theme.navy }}>{med.rxNumber || '—'}</td>
       <td className={`${cellCls} text-xs`} style={{ color: theme.navy }}>{med.refillsRemaining ?? '—'}</td>
       <td className={`${cellCls} text-xs`} style={{ color: theme.navy }}>{med.pharmacyName || '—'}</td>
@@ -820,7 +830,7 @@ function MedicationRow({ med, onClick }: { med: MedicationDTO; onClick: () => vo
   )
 }
 
-const tableHeaders = ['Medication', 'On Hand', 'Prescribed Administration', 'Supply', 'Last Fill', 'Due', 'Status', 'RX #', 'Refills', 'Pharmacy']
+const tableHeaders = ['Status', 'Medication', 'On Hand', 'Prescribed Administration', 'Supply', 'Last Fill', 'Due', 'RX #', 'Refills', 'Pharmacy']
 
 function MedicationTable({ medications, onSelect }: { medications: MedicationDTO[]; onSelect: (med: MedicationDTO) => void }) {
   return (
@@ -908,7 +918,7 @@ function MedicationDetailModal({ med, onAdd, onEdit, onConfirmRefill, onOrderRef
               )}
             </div>
 
-            <p className="text-sm mb-1" style={{ color: theme.navy }}>{adminSentenceOf(med) || '—'}</p>
+            <p className="text-sm mb-1" style={{ color: theme.navy }}>{adminSentenceOf(med) ?? '—'}</p>
             {onHandOf(med) && <p className="text-xs mb-3" style={{ color: theme.sage }}>{onHandOf(med)} on hand</p>}
 
             {onFetchDrugFacts && (

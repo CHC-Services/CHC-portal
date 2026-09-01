@@ -369,6 +369,11 @@ export default function NurseCalendarPage() {
                   </div>
                 </div>
                 <p className="text-[10px] text-[#7A8F79]">Must fall within the shift's own hours. Any leftover time stays open for another nurse.</p>
+                <p className="text-[10px] font-semibold text-[#7A8F79]">
+                  {selectedItem?.partialClaimRequiresApproval
+                    ? "This patient requires family approval — you'll be assigned once it's reviewed, not immediately."
+                    : "This will be assigned to you immediately once submitted."}
+                </p>
               </div>
             )}
 

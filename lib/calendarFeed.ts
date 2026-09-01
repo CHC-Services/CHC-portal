@@ -21,6 +21,11 @@ export type CalendarItem = {
   // filters.
   nurseName?: string
   hasProgressNotes?: boolean
+  // shift items only — lets the nurse-calendar UI tell her up front, before
+  // she submits a "Cover a Portion" claim, whether it'll finalize
+  // immediately or needs family/admin approval first (Patient.
+  // partialShiftClaimsRequireApproval — see lib/shiftSplit.ts).
+  partialClaimRequiresApproval?: boolean
   // appointment items only — true means date/endDate are date boundaries
   // (possibly spanning multiple days), not a same-day time range. Drives
   // CalendarGrid's month-view spanning-bar rendering.
@@ -67,10 +72,11 @@ export async function getNurseCalendarFeed(nurseProfileId: string, session: { id
 
   const links = await prisma.nursePatient.findMany({
     where: { nurseId: nurseProfileId, isActive: true },
-    select: { patientId: true, patient: { select: { firstName: true, lastName: true } } },
+    select: { patientId: true, patient: { select: { firstName: true, lastName: true, partialShiftClaimsRequireApproval: true } } },
   })
   const patientIds = links.map(l => l.patientId)
   const patientName = Object.fromEntries(links.map(l => [l.patientId, `${l.patient.firstName} ${l.patient.lastName}`]))
+  const requiresApproval = Object.fromEntries(links.map(l => [l.patientId, l.patient.partialShiftClaimsRequireApproval]))
 
   const dueFilter = dateFilter(range, now)
   const startTimeFilter = dateFilter(range, null)
@@ -94,7 +100,7 @@ export async function getNurseCalendarFeed(nurseProfileId: string, session: { id
   const items: CalendarItem[] = [
     ...globalEvents.map(e => ({ id: e.id, source: 'globalEvent' as const, title: e.title, date: e.eventDate, category: e.category, description: e.description ?? undefined, editable: false })),
     ...personalReminders.map(r => ({ id: r.id, source: 'personalReminder' as const, title: r.title, date: r.dueDate, category: r.category, description: r.notes ?? undefined, editable: true })),
-    ...[...myShifts, ...openShifts].map(s => ({ id: s.id, source: 'shift' as const, title: s.status === 'assigned' ? 'Shift' : s.status === 'coverage_needed' ? 'Coverage Needed' : 'Open Shift', date: s.startTime, endDate: s.endTime, patientId: s.patientId, patientName: patientName[s.patientId], category: 'shift', status: s.status, editable: s.nurseId === nurseProfileId, hasProgressNotes: s._count.progressNotes > 0 })),
+    ...[...myShifts, ...openShifts].map(s => ({ id: s.id, source: 'shift' as const, title: s.status === 'assigned' ? 'Shift' : s.status === 'coverage_needed' ? 'Coverage Needed' : 'Open Shift', date: s.startTime, endDate: s.endTime, patientId: s.patientId, patientName: patientName[s.patientId], category: 'shift', status: s.status, editable: s.nurseId === nurseProfileId, hasProgressNotes: s._count.progressNotes > 0, partialClaimRequiresApproval: requiresApproval[s.patientId] })),
     ...appointments.map(a => ({ id: a.id, source: 'appointment' as const, title: a.title, date: a.startTime, endDate: a.endTime ?? undefined, patientId: a.patientId, patientName: patientName[a.patientId], category: 'appointment', status: a.status, editable: true, allDay: a.allDay })),
     ...meds.map(m => ({ id: m.id, source: 'medication' as const, title: `Refill: ${m.medicationName}`, date: medicationDueDate(m.lastFillDate, m.daySupply), patientId: m.patientId, patientName: patientName[m.patientId], category: 'medication', status: effectiveRefillStatus(m.refillOrderedAt, m.lastFillDate, m.daySupply, m.refillsRemaining), editable: false, allDay: true })),
     ...pas.map(p => ({ id: p.id, source: 'priorAuth' as const, title: `PA Expiring: ${p.paNumber}`, date: new Date(p.paEndDate!), patientId: p.patientId, patientName: patientName[p.patientId], category: 'priorAuth', editable: false })),

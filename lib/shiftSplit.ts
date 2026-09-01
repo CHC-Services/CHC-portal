@@ -1,5 +1,6 @@
 import { prisma } from './prisma'
 import { generatePendingHoursForShift } from './pendingHours'
+import { reconcileNewShift } from './shiftReconciliation'
 
 export type ShiftRange = { startTime: Date; endTime: Date }
 
@@ -75,6 +76,12 @@ export async function finalizeShiftClaim(
   }
 
   await generatePendingHoursForShift(claimed, nurseId)
+
+  // Any OTHER open shift on this patient (a different template, say) that
+  // also happens to overlap the just-claimed range gets carved too — see
+  // lib/shiftReconciliation.ts. The leftovers created just above are already
+  // correct by construction and don't need this.
+  await reconcileNewShift(claimed)
 
   return { claimed, leftovers }
 }

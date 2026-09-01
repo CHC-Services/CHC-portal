@@ -3,6 +3,7 @@ import { prisma } from '../../../../../lib/prisma'
 import { verifyToken } from '../../../../../lib/auth'
 import { canViewSchedule, canCreateShift } from '../../../../../lib/permissions'
 import { generatePendingHoursForShift } from '../../../../../lib/pendingHours'
+import { reconcileNewShift } from '../../../../../lib/shiftReconciliation'
 
 function getSession(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -71,6 +72,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   // An open/unassigned shift gets its Pending Hours once someone claims or
   // is assigned to it (see the PATCH route).
   if (shift.nurseId) await generatePendingHoursForShift(shift, shift.nurseId)
+
+  // Carve into (if assigned) or trim against (if open) any other shifts on
+  // this patient it overlaps — see lib/shiftReconciliation.ts.
+  await reconcileNewShift(shift)
 
   return NextResponse.json({ shift })
 }

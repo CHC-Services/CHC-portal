@@ -217,7 +217,7 @@ export default function NurseCalendarPage() {
 
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-6 md:p-8">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-6xl mx-auto">
 
         <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
           <div>

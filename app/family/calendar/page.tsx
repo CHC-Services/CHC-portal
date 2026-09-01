@@ -131,7 +131,7 @@ export default function FamilyCalendarPage() {
 
   return (
     <div className="min-h-screen bg-[#D9E1E8] p-4 md:p-6 pl-0 md:pl-0">
-      <div className="max-w-5xl">
+      <div className="max-w-6xl">
 
         <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
           <div>

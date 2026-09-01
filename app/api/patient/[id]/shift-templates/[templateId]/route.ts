@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../../lib/prisma'
 import { verifyToken } from '../../../../../../lib/auth'
 import { canCreateShift } from '../../../../../../lib/permissions'
-import { materializeShiftTemplate, materializationHorizon } from '../../../../../../lib/shiftTemplates'
+import { materializeShiftTemplate, materializationHorizon, cancelFutureGeneratedShifts } from '../../../../../../lib/shiftTemplates'
 
 function getSession(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -71,18 +71,21 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
 
   if (!(await canCreateShift(session, patientId))) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  await ((prisma as any).shiftTemplate.update)({ where: { id: templateId }, data: { isActive: false } })
-
   // Cancel this template's own future, not-yet-worked generated shifts —
-  // leave past/completed ones as real history.
-  await (prisma.shift.updateMany as any)({
-    where: {
-      templateId,
-      startTime: { gt: new Date() },
-      status: { in: ['open', 'coverage_needed', 'assigned'] },
-    },
-    data: { status: 'cancelled' },
-  })
+  // leave past/completed ones as real history. Routed through
+  // cancelFutureGeneratedShifts (not a bare updateMany) so each shift goes
+  // through cancelSingleShift — releases its Pending Hours the same way any
+  // other cancel path does, and (if it had a nurse assigned) triggers the
+  // coverage-need re-materialization that reopens the gap immediately.
+  await cancelFutureGeneratedShifts(templateId, new Date())
+
+  // A genuine delete, not the Pause button's isActive:false toggle — those
+  // were previously identical (the only distinction was this cancellation
+  // side effect), which read as "Delete doesn't actually erase anything."
+  // Shift.templateId is nullable with onDelete: SetNull, so already-
+  // generated shifts (including the just-cancelled future ones and any past/
+  // completed history) simply lose their template link, not get deleted.
+  await ((prisma as any).shiftTemplate.delete)({ where: { id: templateId } })
 
   return NextResponse.json({ ok: true })
 }

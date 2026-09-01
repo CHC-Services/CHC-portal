@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useRef, useState } from 'react'
 import type { CalendarItem } from '../../../lib/calendarFeed'
 import { computeViewRange, monthGridDays, daysBetween, dateKey, type CalendarViewMode } from '../../../lib/calendarViewRange'
 
@@ -156,6 +157,168 @@ function weekSpanningBars(week: Date[], items: CalendarItem[]): SpanningBar[] {
   return bars
 }
 
+// Hourly Day view (an opt-in toggle alongside the default Summary agenda
+// list — see the `dayLayout` state below). A real hour-by-hour timeline: 60
+// timed-event minimum, so a short item is still clickable), and overlapping
+// events share width side-by-side rather than stacking on top of each other.
+const HOUR_PX = 48
+const MIN_EVENT_PX = 20
+
+function timedItemsForHourly(dayItems: CalendarItem[]): CalendarItem[] {
+  return dayItems.filter(i => !i.allDay)
+}
+
+// Greedy column assignment within connected clusters of mutually-overlapping
+// events — two events in different, non-overlapping clusters elsewhere in
+// the day don't force each other's width down, only genuinely concurrent
+// events do.
+function assignOverlapColumns(items: CalendarItem[]): Map<string, { col: number; cols: number }> {
+  const sorted = [...items].sort((a, b) => a.date.getTime() - b.date.getTime())
+  const result = new Map<string, { col: number; cols: number }>()
+
+  let clusterItems: CalendarItem[] = []
+  let clusterEnd = -Infinity
+
+  function flushCluster() {
+    if (clusterItems.length === 0) return
+    const colEnds: number[] = [] // end time (ms) currently occupied in each column
+    const colOf = new Map<string, number>()
+    for (const item of clusterItems) {
+      const start = item.date.getTime()
+      const end = (item.endDate ?? new Date(item.date.getTime() + 30 * 60_000)).getTime()
+      let placed = false
+      for (let c = 0; c < colEnds.length; c++) {
+        if (colEnds[c] <= start) { colEnds[c] = end; colOf.set(item.id, c); placed = true; break }
+      }
+      if (!placed) { colEnds.push(end); colOf.set(item.id, colEnds.length - 1) }
+    }
+    const cols = colEnds.length
+    for (const item of clusterItems) result.set(item.id, { col: colOf.get(item.id)!, cols })
+    clusterItems = []
+  }
+
+  for (const item of sorted) {
+    const start = item.date.getTime()
+    const end = (item.endDate ?? new Date(item.date.getTime() + 30 * 60_000)).getTime()
+    if (clusterItems.length > 0 && start >= clusterEnd) flushCluster()
+    clusterItems.push(item)
+    clusterEnd = clusterItems.length === 1 ? end : Math.max(clusterEnd, end)
+  }
+  flushCluster()
+
+  return result
+}
+
+function HourlyDay({ day, dayItems, onItemClick, onDayClick }: {
+  day: Date
+  dayItems: CalendarItem[]
+  onItemClick?: (item: CalendarItem) => void
+  onDayClick?: (day: Date) => void
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const dayStart = new Date(day); dayStart.setHours(0, 0, 0, 0)
+  const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60_000)
+
+  const allDayItems = dayItems.filter(i => i.allDay)
+  const timed = timedItemsForHourly(dayItems)
+  const columns = assignOverlapColumns(timed)
+
+  // Land somewhere useful instead of at midnight — the earliest event's hour
+  // (clamped to a sensible morning start) if there is one, else 6 AM.
+  useEffect(() => {
+    if (!scrollRef.current) return
+    const earliestHour = timed.length
+      ? Math.max(0, Math.min(...timed.map(i => i.date.getHours())) - 1)
+      : 6
+    scrollRef.current.scrollTop = earliestHour * HOUR_PX
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateKey(day)])
+
+  return (
+    <div className="border border-[#D9E1E8] rounded-xl overflow-hidden">
+      {/* All-day section — its own strip, connected directly above the
+          hourly grid (just above the 12:00 AM row), not part of the scroll. */}
+      <div className="bg-[#F4F6F5] border-b border-[#D9E1E8] p-2">
+        <p className="text-[10px] font-bold uppercase tracking-wide text-[#7A8F79] mb-1">All Day</p>
+        {allDayItems.length === 0 ? (
+          <p className="text-[11px] text-[#7A8F79] italic">Nothing all-day.</p>
+        ) : (
+          <div className="space-y-0.5">
+            {allDayItems.map(item => <ItemChip key={item.id} item={item} onClick={onItemClick} />)}
+          </div>
+        )}
+      </div>
+
+      <div ref={scrollRef} className="relative overflow-y-auto" style={{ maxHeight: HOUR_PX * 14 }}>
+        <div className="relative" style={{ height: HOUR_PX * 24 }}>
+          {Array.from({ length: 24 }).map((_, h) => (
+            <div
+              key={h}
+              className="absolute left-0 right-0 border-t border-[#F0F2F1] flex"
+              style={{ top: h * HOUR_PX, height: HOUR_PX }}
+            >
+              <span className="w-12 shrink-0 text-right pr-2 text-[10px] text-[#7A8F79] -translate-y-1/2 mt-0">
+                {h === 0 ? '12 AM' : h < 12 ? `${h} AM` : h === 12 ? '12 PM' : `${h - 12} PM`}
+              </span>
+              <button
+                type="button"
+                onClick={() => onDayClick?.(day)}
+                className="flex-1 h-full hover:bg-[#F4F6F5]/60 transition"
+              />
+            </div>
+          ))}
+          <div className="absolute left-12 right-0 top-0 bottom-0">
+            {timed.map(item => {
+              const start = item.date < dayStart ? dayStart : item.date
+              const rawEnd = item.endDate ?? new Date(item.date.getTime() + 30 * 60_000)
+              const end = rawEnd > dayEnd ? dayEnd : rawEnd
+              const top = ((start.getTime() - dayStart.getTime()) / 3_600_000) * HOUR_PX
+              const height = Math.max(((end.getTime() - start.getTime()) / 3_600_000) * HOUR_PX, MIN_EVENT_PX)
+              const placement = columns.get(item.id) || { col: 0, cols: 1 }
+              const widthPct = 100 / placement.cols
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => onItemClick?.(item)}
+                  title={`${fmtTime(item.date)} — ${item.title}${item.patientName ? ` (${item.patientName})` : ''}`}
+                  className={`absolute text-left text-[10px] leading-tight px-1.5 py-0.5 rounded truncate ${chipClass(item)} hover:opacity-80 transition border border-white/60`}
+                  style={{
+                    top, height,
+                    left: `calc(${placement.col * widthPct}% + 2px)`,
+                    width: `calc(${widthPct}% - 4px)`,
+                  }}
+                >
+                  {fmtTime(item.date)} {item.title}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DayLayoutToggle({ dayLayout, onChange }: { dayLayout: 'summary' | 'hourly'; onChange: (v: 'summary' | 'hourly') => void }) {
+  return (
+    <div className="flex gap-1.5">
+      {(['summary', 'hourly'] as const).map(v => (
+        <button
+          key={v}
+          type="button"
+          onClick={() => onChange(v)}
+          className={`px-3 py-1 rounded-full text-xs font-semibold border capitalize transition ${
+            dayLayout === v ? 'bg-[#2F3E4E] text-white border-[#2F3E4E]' : 'bg-white text-[#7A8F79] border-[#D9E1E8] hover:border-[#7A8F79]'
+          }`}
+        >
+          {v}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export default function CalendarGrid({
   items,
   view,
@@ -173,6 +336,10 @@ export default function CalendarGrid({
 }) {
   const byDay = groupByDay(items)
   const today = dateKey(new Date())
+  // Day-view-only toggle between the default Summary agenda list and a real
+  // hour-by-hour timeline — internal to this component since no page needs
+  // to know or control which one's showing.
+  const [dayLayout, setDayLayout] = useState<'summary' | 'hourly'>('summary')
 
   if (view === 'month') {
     const days = monthGridDays(anchorDate)
@@ -223,7 +390,7 @@ export default function CalendarGrid({
                   return (
                     <div
                       key={key}
-                      className={`relative min-h-[80px] border-2 rounded-lg p-1 space-y-0.5 transition ${
+                      className={`relative min-h-[90px] border-2 rounded-lg p-1 space-y-0.5 transition ${
                         isToday ? 'border-[#D4AF37]' : 'border-[#D9E1E8]'
                       } ${isPast ? 'opacity-60' : ''} ${inMonth ? 'bg-white' : 'bg-[#F4F6F5]'}`}
                     >
@@ -272,8 +439,20 @@ export default function CalendarGrid({
   const days = daysBetween(start, end)
   const isCompact = view === 'week'
 
+  if (view === 'day' && dayLayout === 'hourly') {
+    const day = days[0]
+    const dayItems = byDay.get(dateKey(day)) || []
+    return (
+      <div className="space-y-3">
+        <DayLayoutToggle dayLayout={dayLayout} onChange={setDayLayout} />
+        <HourlyDay day={day} dayItems={dayItems} onItemClick={onItemClick} onDayClick={onDayClick} />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-3">
+      {view === 'day' && <DayLayoutToggle dayLayout={dayLayout} onChange={setDayLayout} />}
       {days.map(day => {
         const key = dateKey(day)
         const dayItems = (byDay.get(key) || []).sort((a, b) => a.date.getTime() - b.date.getTime())

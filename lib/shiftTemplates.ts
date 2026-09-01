@@ -1,6 +1,7 @@
 import { prisma } from './prisma'
 import { easternMidnightUtc, nextNyDateKey, previousNyDateKey, easternTimeOfDayUtc, nyDateKeyOf, dateKeyToUtcMidnight } from './easternTime'
 import { reassignShiftPendingHours, releaseShiftPendingHours, regenerateScheduledPendingHours, cancelShiftPendingHours } from './pendingHours'
+import { reconcileNewShift } from './shiftReconciliation'
 
 // Rolling window a template stays materialized into real Shift rows —
 // "roughly a month visible/claimable ahead," refreshed daily by the
@@ -82,14 +83,17 @@ export async function materializeShiftTemplate(template: MaterializableTemplate,
     // shift whose time was individually edited (see the occurrence-scoped
     // edit routes) still counts as "already covering this day," so the next
     // materialization pass doesn't create a duplicate at the original slot.
+    // Excludes cancelled rows deliberately — a slot a coverage-reconciliation
+    // pass cancelled (see lib/shiftReconciliation.ts) must read as "not
+    // materialized" so it regenerates once whatever absorbed it is removed.
     const dayStartUtc = easternMidnightUtc(dayKey)
     const dayEndUtc = easternMidnightUtc(nextNyDateKey(dayKey))
     const existing = await (prisma.shift.findFirst as any)({
-      where: { templateId: template.id, startTime: { gte: dayStartUtc, lt: dayEndUtc } },
+      where: { templateId: template.id, startTime: { gte: dayStartUtc, lt: dayEndUtc }, status: { not: 'cancelled' } },
     })
     if (existing) continue
 
-    await (prisma.shift.create as any)({
+    const newShift = await (prisma.shift.create as any)({
       data: {
         id: crypto.randomUUID(),
         patientId: template.patientId,
@@ -103,6 +107,7 @@ export async function materializeShiftTemplate(template: MaterializableTemplate,
         createdByRole: template.createdByRole,
       },
     })
+    await reconcileNewShift(newShift)
     created++
   }
   return created
@@ -129,6 +134,10 @@ export async function updateShiftAndSyncPendingHours(
     } else if (existing.nurseId) {
       await releaseShiftPendingHours(shiftId, existing.nurseId)
     }
+    // Whichever direction — newly assigned (carve into overlapping opens) or
+    // released back to open (trim against whatever else is already
+    // assigned) — see lib/shiftReconciliation.ts.
+    await reconcileNewShift(shift)
   } else if ('startTime' in data || 'endTime' in data) {
     await regenerateScheduledPendingHours(shift)
   }
@@ -138,8 +147,22 @@ export async function updateShiftAndSyncPendingHours(
 // Core "cancel one Shift row + preserve its Pending Hours history" logic,
 // shared the same way as updateShiftAndSyncPendingHours above.
 export async function cancelSingleShift(shiftId: string): Promise<any> {
+  const existing = await prisma.shift.findUnique({ where: { id: shiftId } })
   const shift = await (prisma.shift.update as any)({ where: { id: shiftId }, data: { status: 'cancelled' } }).catch(() => null)
-  if (shift) await cancelShiftPendingHours(shiftId)
+  if (!shift) return null
+
+  await cancelShiftPendingHours(shiftId)
+
+  // Real coverage was just lost (not merely an already-open placeholder) —
+  // regenerate this patient's coverage-need templates immediately rather
+  // than waiting for the next day's cron, so the gap reopens right away.
+  if (existing?.nurseId) {
+    const openTemplates = await ((prisma as any).shiftTemplate.findMany)({
+      where: { patientId: shift.patientId, nurseId: null, isActive: true },
+    })
+    for (const t of openTemplates) await materializeShiftTemplate(t, materializationHorizon())
+  }
+
   return shift
 }
 

@@ -176,6 +176,7 @@ export default function PatientShiftTemplates({
   }
 
   async function remove(id: string) {
+    if (!confirm('Delete this template? This permanently removes it — use Pause instead if you just want to stop it temporarily.')) return
     await fetch(`/api/patient/${patientId}/shift-templates/${id}`, { method: 'DELETE', credentials: 'include' })
     load()
   }

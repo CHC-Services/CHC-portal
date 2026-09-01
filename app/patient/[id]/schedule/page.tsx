@@ -4,6 +4,7 @@ import { canCreateShift } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
 import PatientSchedule from '../../../components/patient/PatientSchedule'
 import PatientShiftTemplates from '../../../components/patient/PatientShiftTemplates'
+import PatientCoveragePlan from '../../../components/patient/PatientCoveragePlan'
 
 // Shift scheduling/editing for one patient — reached from that patient's
 // myCalendar entry or their role's patient-detail page. Authorization to
@@ -50,6 +51,7 @@ export default async function PatientSchedulePage({
         </div>
       )}
       <div className="space-y-6">
+        <PatientCoveragePlan patientId={patientId} canManage={canManage} />
         <PatientShiftTemplates patientId={patientId} availableNurses={availableNurses} canManage={canManage} />
         <PatientSchedule
           patientId={patientId}

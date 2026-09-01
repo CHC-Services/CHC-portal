@@ -34,6 +34,18 @@ import { useEffect, useRef, useState } from 'react'
 
 type Phase = 'requesting' | 'idle' | 'recording' | 'paused' | 'finalizing'
 
+// The upload route this feeds (app/api/quick-notes/notes/[id]/voice-entries/start)
+// sits behind this server's ~4MB request-body ceiling (see the same limit
+// noted in app/api/admin/documents/route.ts) — a recording that grows past
+// that used to upload fine client-side and only fail once it hit the server,
+// by which point the nurse had already stopped talking and had no chance to
+// react. These two caps (whichever is hit first — bitrate varies by browser/
+// device, so real accumulated bytes are tracked live rather than estimated)
+// drive the progress bar below and force a clean auto-stop-and-save well
+// before the actual server limit, instead of an upload failure after the fact.
+const MAX_RECORDING_BYTES = 3.5 * 1024 * 1024 // ~3.5MB, safely under the ~4MB server ceiling
+const MAX_RECORDING_SECONDS = 600 // 10 minutes — a generous ceiling for one spoken note; she can start a new voice entry to continue
+
 function formatDuration(totalSeconds: number): string {
   const mins = Math.floor(totalSeconds / 60)
   const secs = totalSeconds % 60
@@ -53,6 +65,8 @@ export default function CaptureAudio({
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [everStarted, setEverStarted] = useState(false)
   const [interrupted, setInterrupted] = useState(false)
+  const [totalBytes, setTotalBytes] = useState(0)
+  const [limitReason, setLimitReason] = useState<'size' | 'duration' | null>(null)
 
   const streamRef = useRef<MediaStream | null>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
@@ -62,6 +76,13 @@ export default function CaptureAudio({
   // ending and the recorder's own auto-stop can trigger the same finalize path.
   const finalizedRef = useRef(false)
   const cancelledRef = useRef(false)
+  // Real running total, not the totalBytes state (which is only for the
+  // progress-bar render) — ondataavailable's closure would otherwise see a
+  // stale value from whenever the recorder was created.
+  const totalBytesRef = useRef(0)
+  // Guards against triggering the size and duration checks both firing for
+  // the same recording.
+  const autoStoppedRef = useRef(false)
 
   // Mic permission is requested the moment this mounts, not on the first
   // Record press — there's no reliable cross-browser way to check
@@ -117,6 +138,27 @@ export default function CaptureAudio({
     return () => clearInterval(interval)
   }, [phase])
 
+  // Duration side of the recording-limit check — the size side is checked
+  // directly in ondataavailable below, since that's where real byte counts
+  // arrive.
+  useEffect(() => {
+    if (elapsedSeconds >= MAX_RECORDING_SECONDS) autoStop('duration')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [elapsedSeconds])
+
+  // Cuts the recording off cleanly the moment either cap is reached, instead
+  // of letting her keep talking into a recording that's already too big to
+  // upload — reuses the same stop->onstop->finalize path a manual "Stop &
+  // Save" tap goes through, so whatever was captured up to this point is
+  // still saved normally.
+  function autoStop(reason: 'size' | 'duration') {
+    if (autoStoppedRef.current) return
+    autoStoppedRef.current = true
+    setLimitReason(reason)
+    setPhase('finalizing')
+    stopAndSave()
+  }
+
   // Single place a final Blob gets produced, regardless of what triggered
   // the stop. Safe to call more than once (only the first call does anything).
   function finalize() {
@@ -143,13 +185,25 @@ export default function CaptureAudio({
       chunksRef.current = []
       finalizedRef.current = false
       cancelledRef.current = false
+      autoStoppedRef.current = false
+      totalBytesRef.current = 0
+      setTotalBytes(0)
+      setLimitReason(null)
       const recorder = new MediaRecorder(streamRef.current)
-      recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+      recorder.ondataavailable = e => {
+        if (e.data.size <= 0) return
+        chunksRef.current.push(e.data)
+        totalBytesRef.current += e.data.size
+        setTotalBytes(totalBytesRef.current)
+        if (totalBytesRef.current >= MAX_RECORDING_BYTES) autoStop('size')
+      }
       // Wired up immediately (not just inside a "Stop & Save" click) so an
       // OS-forced stop while the screen is locked still gets captured.
       recorder.onstop = finalize
       recorderRef.current = recorder
-      recorder.start()
+      // Timeslice so chunks (and real byte counts) arrive periodically
+      // instead of only at stop() — needed for the live capacity check above.
+      recorder.start(1000)
       setEverStarted(true)
       setInterrupted(false)
       setPhase('recording')
@@ -254,16 +308,38 @@ export default function CaptureAudio({
     return (
       <div className="border border-[#D9E1E8] bg-[#F4F6F5] rounded-lg p-3 space-y-1">
         <p className="text-sm font-semibold text-[#2F3E4E]">
-          {interrupted ? 'Recording was interrupted — saving what was captured…' : 'Saving…'}
+          {limitReason
+            ? `Recording ${limitReason === 'size' ? 'length' : 'time'} limit reached — saving what you recorded…`
+            : interrupted ? 'Recording was interrupted — saving what was captured…' : 'Saving…'}
         </p>
+        {limitReason && (
+          <p className="text-xs text-[#7A8F79]">Start a new voice entry to keep going.</p>
+        )}
       </div>
     )
   }
 
+  const sizeFraction = Math.min(totalBytes / MAX_RECORDING_BYTES, 1)
+  const durationFraction = Math.min(elapsedSeconds / MAX_RECORDING_SECONDS, 1)
+  const capacityUsed = Math.max(sizeFraction, durationFraction)
+  const capacityPct = Math.round(capacityUsed * 100)
+  const barColor = capacityUsed >= 0.9 ? 'bg-red-500' : capacityUsed >= 0.7 ? 'bg-amber-500' : 'bg-green-500'
+
   return (
     <div className="space-y-2">
       {everStarted && (
-        <p className="text-sm font-bold text-[#2F3E4E] tabular-nums">{formatDuration(elapsedSeconds)}</p>
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-bold text-[#2F3E4E] tabular-nums">{formatDuration(elapsedSeconds)}</p>
+            <p className="text-[10px] font-semibold text-[#7A8F79]">{capacityPct}% of max length</p>
+          </div>
+          <div className="w-full h-1.5 rounded-full bg-[#F4F6F5] overflow-hidden">
+            <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${capacityPct}%` }} />
+          </div>
+          {capacityUsed >= 0.85 && phase === 'recording' && (
+            <p className="text-[10px] font-semibold text-amber-600">Approaching the recording limit — wrap up or pause &amp; submit soon.</p>
+          )}
+        </div>
       )}
       <div className="flex flex-col md:flex-row md:items-center gap-2">
         {phase === 'recording' ? (

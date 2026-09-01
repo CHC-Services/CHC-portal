@@ -5,7 +5,7 @@ import { searchDrugNames } from '../../../lib/drugSearchClient'
 import { fetchDrugFacts } from '../../../lib/drugFactsClient'
 
 export default function PatientMedications({
-  patientName, medications, onAdd, onEdit, onConfirmRefill, onOrderRefill, onDelete, readOnly, pharmacies,
+  patientName, medications, onAdd, onEdit, onConfirmRefill, onOrderRefill, onSkipRefill, onDelete, readOnly, pharmacies,
 }: {
   patientName: string
   medications: MedicationDTO[]
@@ -13,6 +13,7 @@ export default function PatientMedications({
   onEdit: (medId: string, data: MedicationInput) => Promise<void>
   onConfirmRefill: (medId: string, refillDate: string, daySupply: string) => Promise<void>
   onOrderRefill: (medId: string, orderedDate: string) => Promise<void>
+  onSkipRefill: (medId: string, refillDate: string, daySupply: string) => Promise<void>
   onDelete: (medId: string) => Promise<void>
   readOnly?: boolean
   pharmacies: PharmacyOption[]
@@ -26,6 +27,7 @@ export default function PatientMedications({
         onEdit={onEdit}
         onConfirmRefill={onConfirmRefill}
         onOrderRefill={onOrderRefill}
+        onSkipRefill={onSkipRefill}
         onDelete={onDelete}
         readOnly={readOnly}
         pharmacies={pharmacies}

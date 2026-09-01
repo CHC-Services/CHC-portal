@@ -63,6 +63,19 @@ export default function FamilyMedicationsPage() {
     load()
   }
 
+  // "Enough on hand, no need to reorder this cycle" — resets the due-date
+  // window like a normal refill but skipCount:true tells the route not to
+  // decrement refillsRemaining, since no pharmacy refill actually happened.
+  async function handleSkipRefill(medId: string, refillDate: string, daySupply: string) {
+    await fetch('/api/family/medications/refill', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ medId, refillDate, daySupply, skipCount: true }),
+    })
+    load()
+  }
+
   async function handleOrderRefill(medId: string, orderedDate: string) {
     await fetch('/api/family/medications/order', {
       method: 'PATCH',
@@ -106,6 +119,7 @@ export default function FamilyMedicationsPage() {
                 onAdd={data => handleAdd(p.id, data)}
                 onEdit={handleEdit}
                 onConfirmRefill={handleConfirmRefill}
+                onSkipRefill={handleSkipRefill}
                 onOrderRefill={handleOrderRefill}
                 onDelete={handleDelete}
                 pharmacies={pharmacies}

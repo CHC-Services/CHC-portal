@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import DateInput from './DateInput'
 
 // ─── Portable component — no API calls, no Prisma/site imports. ────────────────
@@ -110,6 +110,7 @@ type MedicationListProps = {
   onEdit: (id: string, data: MedicationInput) => Promise<void>
   onConfirmRefill: (id: string, refillDate: string, daySupply: string) => Promise<void>
   onOrderRefill: (id: string, orderedDate: string) => Promise<void>
+  onSkipRefill: (id: string, refillDate: string, daySupply: string) => Promise<void>
   onDelete: (id: string) => Promise<void>
   readOnly?: boolean
   pharmacies?: PharmacyOption[]
@@ -659,12 +660,13 @@ function RefillStatusBadge({ status }: { status: RefillStatus }) {
 // silences the reminder for everyone on the account until it's picked up.
 // "RX Filled" is the actual restock: prompts for the fill date, pre-fills the
 // day supply from the current value (editable), and clears any in-flight order.
-function RefillActions({ med, onConfirmRefill, onOrderRefill }: {
+function RefillActions({ med, onConfirmRefill, onOrderRefill, onSkipRefill }: {
   med: MedicationDTO
   onConfirmRefill: (id: string, refillDate: string, daySupply: string) => Promise<void>
   onOrderRefill: (id: string, orderedDate: string) => Promise<void>
+  onSkipRefill: (id: string, refillDate: string, daySupply: string) => Promise<void>
 }) {
-  const [prompt, setPrompt] = useState<'order' | 'fill' | null>(null)
+  const [prompt, setPrompt] = useState<'order' | 'fill' | 'skip' | null>(null)
   const [date, setDate] = useState(todayStr())
   const [daySupply, setDaySupply] = useState(String(med.daySupply))
   const [saving, setSaving] = useState(false)
@@ -730,6 +732,46 @@ function RefillActions({ med, onConfirmRefill, onOrderRefill }: {
     )
   }
 
+  if (prompt === 'skip') {
+    return (
+      <div className="space-y-2">
+        <p className="text-xs" style={{ color: theme.sage }}>
+          Resets the due date without using a refill — for when there's enough on hand already.
+        </p>
+        <div className="flex items-center gap-2">
+          <DateInput
+            value={date}
+            onChange={e => setDate(e.target.value)}
+            className="flex-1 border rounded-lg p-2 text-sm"
+            style={{ borderColor: theme.bg, color: theme.navy }}
+          />
+          <input
+            type="number"
+            min="1"
+            value={daySupply}
+            onChange={e => setDaySupply(e.target.value)}
+            placeholder="Day supply"
+            className="w-24 border rounded-lg p-2 text-sm"
+            style={{ borderColor: theme.bg, color: theme.navy }}
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={async () => { setSaving(true); await onSkipRefill(med.id, date, daySupply); setSaving(false); setPrompt(null) }}
+            disabled={saving}
+            className="flex-1 rounded-lg py-2 text-sm font-semibold text-white disabled:opacity-50"
+            style={{ background: '#92400E' }}
+          >
+            {saving ? '…' : 'Confirm Skip'}
+          </button>
+          <button onClick={() => setPrompt(null)} className="text-xs font-semibold" style={{ color: theme.sage }}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex gap-2">
       {med.refillStatus !== 'ordered' && (
@@ -747,6 +789,13 @@ function RefillActions({ med, onConfirmRefill, onOrderRefill }: {
         style={{ background: theme.sage }}
       >
         RX Filled
+      </button>
+      <button
+        onClick={() => { setDate(todayStr()); setDaySupply(String(med.daySupply)); setPrompt('skip') }}
+        className="flex-1 rounded-lg py-2.5 text-sm font-semibold border"
+        style={{ borderColor: '#FEF3C7', background: '#FEF3C7', color: '#92400E' }}
+      >
+        Skip Refill
       </button>
     </div>
   )
@@ -785,11 +834,31 @@ function DrugFactsModal({ medicationName, facts, loading, onClose }: {
   )
 }
 
+// The subset of DOSE_UNIT_OPTIONS that read as spoken words ("2 sprays")
+// rather than measurement abbreviations ("7mL") — reads with a space and
+// pluralizes; everything else (mg, mL, mEq, %, ...) stays glued to the
+// number with no space, same as clinical shorthand is normally written.
+const WORD_DOSE_UNITS = new Set(['unit', 'tablet', 'capsule', 'puff', 'spray', 'drop', 'patch', 'application'])
+
+function pluralizeUnit(unit: string): string {
+  if (/(ch|sh|x|s)$/i.test(unit)) return `${unit}es`
+  return `${unit}s`
+}
+
+function formatDoseText(dose: string | null, doseUnit: string | null): string | null {
+  if (!dose) return null
+  if (!doseUnit) return dose
+  if (!WORD_DOSE_UNITS.has(doseUnit.trim().toLowerCase())) return `${dose}${doseUnit}`
+  const n = parseFloat(dose)
+  const unit = !isNaN(n) && n === 1 ? doseUnit : pluralizeUnit(doseUnit)
+  return `${dose} ${unit}`
+}
+
 // The scaffold words ("Administer", "via", "for") stay normal weight; the
 // actual user-entered data points (dose/frequency, route, duration) are
 // bolded so they stand out from the sentence glue around them.
 function adminSentenceOf(med: Pick<MedicationDTO, 'medicationName' | 'dose' | 'doseUnit' | 'frequency' | 'route' | 'duration'>): React.ReactNode | null {
-  const doseText = med.dose ? `${med.dose}${med.doseUnit || ''}` : null
+  const doseText = formatDoseText(med.dose, med.doseUnit)
   const doseFreq = [doseText, med.frequency].filter(Boolean).join(' ')
   if (!doseFreq && !med.route && !med.duration) return null
   return (
@@ -858,12 +927,13 @@ function MedicationTable({ medications, onSelect }: { medications: MedicationDTO
 // Side panel opened by clicking a row (or "+ Add Medication"). Owns the
 // read/edit toggle, refill workflow, delete, and drug-facts lookup — the one
 // place per medication where those actions live, keeping MedicationTable pure display.
-function MedicationDetailModal({ med, onAdd, onEdit, onConfirmRefill, onOrderRefill, onDelete, onClose, readOnly, pharmacies, onSearchDrugNames, onFetchDrugFacts }: {
+function MedicationDetailModal({ med, onAdd, onEdit, onConfirmRefill, onOrderRefill, onSkipRefill, onDelete, onClose, readOnly, pharmacies, onSearchDrugNames, onFetchDrugFacts }: {
   med: MedicationDTO | null // null = "add new" mode
   onAdd?: (data: MedicationInput) => Promise<void>
   onEdit: (id: string, data: MedicationInput) => Promise<void>
   onConfirmRefill: (id: string, refillDate: string, daySupply: string) => Promise<void>
   onOrderRefill: (id: string, orderedDate: string) => Promise<void>
+  onSkipRefill: (id: string, refillDate: string, daySupply: string) => Promise<void>
   onDelete: (id: string) => Promise<void>
   onClose: () => void
   readOnly?: boolean
@@ -969,7 +1039,7 @@ function MedicationDetailModal({ med, onAdd, onEdit, onConfirmRefill, onOrderRef
             </div>
 
             {!readOnly && med.refillStatus !== 'filled' && (
-              <RefillActions med={med} onConfirmRefill={onConfirmRefill} onOrderRefill={onOrderRefill} />
+              <RefillActions med={med} onConfirmRefill={onConfirmRefill} onOrderRefill={onOrderRefill} onSkipRefill={onSkipRefill} />
             )}
 
             <button onClick={onClose} className="mt-4 w-full rounded-lg py-2 text-sm font-semibold border" style={{ borderColor: theme.bg, color: theme.sage }}>
@@ -991,9 +1061,22 @@ function MedicationDetailModal({ med, onAdd, onEdit, onConfirmRefill, onOrderRef
   )
 }
 
-export default function MedicationList({ patientName, medications, onAdd, onEdit, onConfirmRefill, onOrderRefill, onDelete, readOnly, pharmacies, onSearchDrugNames, onFetchDrugFacts }: MedicationListProps) {
+export default function MedicationList({ patientName, medications, onAdd, onEdit, onConfirmRefill, onOrderRefill, onSkipRefill, onDelete, readOnly, pharmacies, onSearchDrugNames, onFetchDrugFacts }: MedicationListProps) {
   const [adding, setAdding] = useState(false)
   const [selected, setSelected] = useState<MedicationDTO | null>(null)
+
+  // Confirm/Order Refill (and Edit) save through the parent's onConfirmRefill/
+  // onOrderRefill/onEdit, which re-fetch and pass down a new `medications`
+  // array — but `selected` was snapshotted at click time and never pointed at
+  // that new array, so the still-open modal kept showing pre-refill data even
+  // though the save worked. Re-sync it to the fresh copy (by id) whenever the
+  // list updates, so the open modal reflects what was just saved immediately.
+  useEffect(() => {
+    if (!selected) return
+    const fresh = medications.find(m => m.id === selected.id)
+    setSelected(fresh || null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [medications])
 
   return (
     <div className="space-y-3">
@@ -1021,6 +1104,7 @@ export default function MedicationList({ patientName, medications, onAdd, onEdit
           onEdit={onEdit}
           onConfirmRefill={onConfirmRefill}
           onOrderRefill={onOrderRefill}
+          onSkipRefill={onSkipRefill}
           onDelete={onDelete}
           onClose={() => { setAdding(false); setSelected(null) }}
           readOnly={readOnly}

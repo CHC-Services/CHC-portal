@@ -1033,6 +1033,7 @@ model Patient {
   timeEntries   TimeEntry[]
   priorAuths    PatientPA[]
   medications   PatientMedication[]
+  medicationAdministrations MedicationAdministration[]
   guardianLinks GuardianPatient[]
   documents     PatientDocument[]
   shifts        Shift[]
@@ -1482,8 +1483,76 @@ model PatientMedication {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  scheduleTimes   MedicationScheduleTime[]
+  administrations MedicationAdministration[]
+
   @@index([patientId])
   @@index([pharmacyId])
+}
+
+// One row per fixed daily time a medication is due (0 rows = PRN/as-needed —
+// no fixed schedule, logged ad-hoc instead via a MedicationAdministration
+// with scheduledTimeOfDay null). "Twice daily" = 2 rows, etc. Independent of
+// the descriptive `frequency` label above, which stays free text.
+model MedicationScheduleTime {
+  id           String            @id @default(uuid())
+  medicationId String
+  medication   PatientMedication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+
+  timeOfDay String // "HH:MM" — Eastern wall-clock, see CLAUDE.md's Time/date-of-day logic convention
+  sortOrder Int    @default(0)
+
+  createdAt DateTime @default(now())
+
+  administrations MedicationAdministration[]
+
+  @@index([medicationId])
+}
+
+// The actual per-dose administration log — the digital MAR. A row only ever
+// exists once something happened (given/refused/omitted, or a PRN dose) — a
+// still-pending slot is computed at read time from PatientMedication +
+// MedicationScheduleTime, never pre-materialized (no cron needed here,
+// unlike ShiftTemplate's Shift materialization).
+model MedicationAdministration {
+  id           String            @id @default(uuid())
+  medicationId String
+  medication   PatientMedication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+  patientId    String
+  patient      Patient           @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  scheduledDate      DateTime // UTC-midnight-of-day convention (date-only, like activeFrom/activeUntil)
+  scheduledTimeOfDay String? // "HH:MM" — null for a PRN entry (no fixed slot)
+  scheduleTimeId     String?
+  scheduleTime       MedicationScheduleTime? @relation(fields: [scheduleTimeId], references: [id], onDelete: SetNull)
+
+  status         String  @default("given") // 'given' | 'refused' | 'omitted'
+  omissionReason String? // required (enforced in the route, not the schema) when refused/omitted
+
+  // Who actually got the dose into the patient — could be a guardian, even
+  // when a nurse is the one entering this record (see documentedBy* below).
+  administeredByUserId              String?
+  administeredByRole                String? // 'nurse' | 'guardian'
+  administeredByDisplayNameSnapshot String?
+  administeredAt                    DateTime?
+
+  // Who is entering/attesting to this record right now — almost always the
+  // same person as administeredBy, except when a nurse is proxy-documenting
+  // a dose a family member actually gave (the point of this feature).
+  documentedByUserId              String
+  documentedByRole                String // 'nurse' | 'guardian' | 'admin'
+  documentedByDisplayNameSnapshot String
+
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // One row per medication+day+fixed-slot for scheduled doses — Postgres
+  // treats NULL as distinct in a unique index, so PRN rows (scheduledTimeOfDay
+  // always null) are naturally exempt and several can exist per day.
+  @@unique([medicationId, scheduledDate, scheduledTimeOfDay])
+  @@index([patientId])
+  @@index([medicationId, scheduledDate])
 }
 
 // Shared pharmacy directory — grows as medications are entered. Referenced by

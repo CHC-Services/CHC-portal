@@ -4,7 +4,7 @@ import { useState } from 'react'
 import GuardianInviteModal, { GuardianInviteData } from '../GuardianInviteModal'
 import { formalName } from '../../../lib/formatName'
 
-export type NurseLink = { id: string; isActive: boolean; nurse: { id: string; displayName: string; firstName?: string; lastName?: string; accountNumber: string | null } }
+export type NurseLink = { id: string; isActive: boolean; nurse: { id: string; userId: string; displayName: string; firstName?: string; lastName?: string; accountNumber: string | null } }
 export type GuardianLink = { id: string; relationship: string | null; user: { id: string; name: string; email: string } }
 type NurseOption = { id: string; displayName: string; firstName?: string; lastName?: string; accountNumber: string | null }
 

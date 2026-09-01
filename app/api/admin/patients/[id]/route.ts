@@ -20,7 +20,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     include: {
       nurseLinks: {
         include: {
-          nurse: { select: { id: true, displayName: true, firstName: true, lastName: true, accountNumber: true } },
+          nurse: { select: { id: true, userId: true, displayName: true, firstName: true, lastName: true, accountNumber: true } },
         },
       },
       guardianLinks: {
@@ -29,7 +29,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         },
       },
       priorAuths: { orderBy: [{ paStartDate: 'desc' }, { createdAt: 'desc' }] },
-      medications: { orderBy: { createdAt: 'desc' }, include: { pharmacy: true } },
+      medications: { orderBy: { createdAt: 'desc' }, include: { pharmacy: true, scheduleTimes: { orderBy: { sortOrder: 'asc' } } } },
       timeEntries: {
         orderBy: { workDate: 'desc' },
         take: 50,

@@ -26,7 +26,7 @@ export async function GET(req: Request) {
       patient: {
         include: {
           priorAuths: { orderBy: [{ paStartDate: 'desc' }, { createdAt: 'desc' }] },
-          medications: { orderBy: { createdAt: 'desc' }, include: { pharmacy: true } },
+          medications: { orderBy: { createdAt: 'desc' }, include: { pharmacy: true, scheduleTimes: { orderBy: { sortOrder: 'asc' } } } },
         },
       },
     },

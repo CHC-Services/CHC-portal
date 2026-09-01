@@ -5,6 +5,7 @@ import PatientDetailShell from '../../../components/patient/PatientDetailShell'
 import PatientDemographics from '../../../components/patient/PatientDemographics'
 import PatientInsurance from '../../../components/patient/PatientInsurance'
 import PatientMedications from '../../../components/patient/PatientMedications'
+import PatientMedicationMAR, { MarRosterEntry } from '../../../components/patient/PatientMedicationMAR'
 import PatientDocuments from '../../../components/patient/PatientDocuments'
 import PatientOrders from '../../../components/patient/PatientOrders'
 import PatientCareTeam, { NurseLink, GuardianLink } from '../../../components/patient/PatientCareTeam'
@@ -211,6 +212,11 @@ export default function NursePatientDetailPage({ params }: { params: Promise<{ i
 
   const merged = patient.merged
 
+  const marRoster: MarRosterEntry[] = [
+    ...patient.nurseLinks.filter(l => l.isActive).map(l => ({ userId: l.nurse.userId, name: l.nurse.firstName && l.nurse.lastName ? `${l.nurse.firstName} ${l.nurse.lastName}` : l.nurse.displayName, role: 'nurse' as const })),
+    ...patient.guardianLinks.map(g => ({ userId: g.user.id, name: g.user.name, role: 'guardian' as const })),
+  ]
+
   const banners = merged.isLocked ? (
     <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
       <p className="text-xs font-bold text-amber-800">Record Locked — View Only</p>
@@ -249,6 +255,17 @@ export default function NursePatientDetailPage({ params }: { params: Promise<{ i
           onDelete={handleDeleteMedication}
           readOnly={merged.isLocked}
           pharmacies={pharmacies}
+        />
+      ),
+    },
+    {
+      key: 'medicationLog', label: 'Medication Log', content: (
+        <PatientMedicationMAR
+          basePath={`/api/patient/${id}`}
+          currentUserId={nurseUserId}
+          currentUserRole="nurse"
+          canAttributeToOthers
+          roster={marRoster}
         />
       ),
     },

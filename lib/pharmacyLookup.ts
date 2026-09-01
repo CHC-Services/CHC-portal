@@ -49,7 +49,7 @@ export async function resolvePharmacy(input: {
  * expects regardless of the underlying relational structure.
  */
 export function flattenMedication(med: any) {
-  const { pharmacy, ...rest } = med
+  const { pharmacy, scheduleTimes, ...rest } = med
   return {
     ...rest,
     pharmacyId: pharmacy?.id ?? med.pharmacyId ?? null,
@@ -57,5 +57,8 @@ export function flattenMedication(med: any) {
     pharmacyAddress: pharmacy?.address ?? null,
     pharmacyPhone: pharmacy?.phone ?? null,
     refillStatus: effectiveRefillStatus(med.refillOrderedAt, med.lastFillDate, med.daySupply, med.refillsRemaining),
+    scheduleTimes: Array.isArray(scheduleTimes)
+      ? [...scheduleTimes].sort((a: any, b: any) => a.sortOrder - b.sortOrder).map((t: any) => t.timeOfDay)
+      : [],
   }
 }

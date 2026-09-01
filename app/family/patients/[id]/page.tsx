@@ -6,6 +6,7 @@ import PatientDetailShell from '../../../components/patient/PatientDetailShell'
 import PatientDemographics from '../../../components/patient/PatientDemographics'
 import PatientInsurance from '../../../components/patient/PatientInsurance'
 import PatientMedications from '../../../components/patient/PatientMedications'
+import PatientMedicationMAR from '../../../components/patient/PatientMedicationMAR'
 import PatientDocuments from '../../../components/patient/PatientDocuments'
 import PatientOrders from '../../../components/patient/PatientOrders'
 import PatientNotifications from '../../../components/patient/PatientNotifications'
@@ -236,6 +237,17 @@ export default function FamilyPatientDetailPage({ params }: { params: Promise<{ 
           onOrderRefill={handleOrderRefill}
           onDelete={handleDeleteMedication}
           pharmacies={pharmacies}
+        />
+      ),
+    },
+    {
+      key: 'medicationLog', label: 'Medication Log', content: (
+        <PatientMedicationMAR
+          basePath={`/api/patient/${id}`}
+          currentUserId={guardianUserId}
+          currentUserRole="guardian"
+          canAttributeToOthers={false}
+          roster={[]}
         />
       ),
     },

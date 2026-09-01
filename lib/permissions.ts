@@ -156,3 +156,47 @@ export async function canManageProgressNoteDocument(session: Session, note: { au
   if (session.role === 'admin') return true
   return session.role === 'nurse' && note.authorUserId === session.id
 }
+
+// Medication Administration Record (MAR) — whole care team can see the log,
+// same as clinical notes.
+export async function canViewMedicationAdministration(session: Session, patientId: string): Promise<boolean> {
+  return isLinkedToPatient(session, patientId)
+}
+
+// Document a dose administration. Self-attesting your own dose is always
+// allowed for any linked role. Attributing it to someone *else* is nurse/
+// admin only — the explicit point of this feature: a nurse can log that a
+// family member gave a dose, even outside her own shift, because families
+// often don't fill out their own paperwork; a guardian can only log their
+// own. The target must actually be a nurse or guardian linked to this
+// patient, verified here, never just trusted from the request body.
+export async function canDocumentMedicationAdministration(
+  session: Session,
+  patientId: string,
+  administeredByUserId: string | null
+): Promise<boolean> {
+  if (!(await isLinkedToPatient(session, patientId))) return false
+  if (!administeredByUserId || administeredByUserId === session.id) return true
+  if (session.role !== 'nurse' && session.role !== 'admin') return false
+
+  const [nurseLink, guardianLink] = await Promise.all([
+    prisma.nurseProfile.findFirst({
+      where: { userId: administeredByUserId, nursePatients: { some: { patientId, isActive: true } } },
+      select: { id: true },
+    }),
+    prisma.guardianPatient.findUnique({
+      where: { userId_patientId: { userId: administeredByUserId, patientId } },
+    }),
+  ])
+  return !!nurseLink || !!guardianLink
+}
+
+// Edit/delete an existing MAR entry — whoever entered it (so a nurse can fix
+// her own back-filled entries), or admin.
+export async function canEditMedicationAdministration(
+  session: Session,
+  entry: { documentedByUserId: string }
+): Promise<boolean> {
+  if (session.role === 'admin') return true
+  return entry.documentedByUserId === session.id
+}

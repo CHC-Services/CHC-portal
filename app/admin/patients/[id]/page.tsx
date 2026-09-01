@@ -6,6 +6,7 @@ import PatientDetailShell from '../../../components/patient/PatientDetailShell'
 import PatientDemographics from '../../../components/patient/PatientDemographics'
 import PatientInsurance from '../../../components/patient/PatientInsurance'
 import PatientMedications from '../../../components/patient/PatientMedications'
+import PatientMedicationMAR, { MarRosterEntry } from '../../../components/patient/PatientMedicationMAR'
 import PatientDocuments from '../../../components/patient/PatientDocuments'
 import PatientOrders from '../../../components/patient/PatientOrders'
 import PatientCareTeam, { NurseLink, GuardianLink } from '../../../components/patient/PatientCareTeam'
@@ -366,6 +367,11 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
 
   const activeData = editing ? editData : patient
 
+  const marRoster: MarRosterEntry[] = [
+    ...patient.nurseLinks.filter(l => l.isActive).map(l => ({ userId: l.nurse.userId, name: l.nurse.firstName && l.nurse.lastName ? `${l.nurse.firstName} ${l.nurse.lastName}` : l.nurse.displayName, role: 'nurse' as const })),
+    ...patient.guardianLinks.map(g => ({ userId: g.user.id, name: g.user.name, role: 'guardian' as const })),
+  ]
+
   function handleCancelEdit() {
     setEditData({ ...patient! })
     setEditing(false)
@@ -414,6 +420,17 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
           onOrderRefill={handleOrderRefill}
           onDelete={handleDeleteMedication}
           pharmacies={pharmacies}
+        />
+      ),
+    },
+    {
+      key: 'medicationLog', label: 'Medication Log', content: (
+        <PatientMedicationMAR
+          basePath={`/api/patient/${id}`}
+          currentUserId={adminUserId}
+          currentUserRole="admin"
+          canAttributeToOthers
+          roster={marRoster}
         />
       ),
     },

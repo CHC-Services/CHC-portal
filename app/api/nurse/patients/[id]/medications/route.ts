@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../../lib/prisma'
 import { verifyToken } from '../../../../../../lib/auth'
 import { resolvePharmacy, flattenMedication } from '../../../../../../lib/pharmacyLookup'
+import { scheduleTimesCreateData, replaceScheduleTimes } from '../../../../../../lib/medicationScheduleTimes'
 
 function auth(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -32,7 +33,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const medications = await (prisma.patientMedication.findMany as any)({
     where: { patientId: id },
     orderBy: { createdAt: 'desc' },
-    include: { pharmacy: true },
+    include: { pharmacy: true, scheduleTimes: { orderBy: { sortOrder: 'asc' } } },
   })
 
   return NextResponse.json({ medications: medications.map(flattenMedication) })
@@ -52,7 +53,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (canonical?.isLocked) return NextResponse.json({ error: 'Record locked by admin' }, { status: 403 })
 
   const body = await req.json()
-  const { medicationName, rxcui, dose, doseUnit, unitStrength, unitType, frequency, route, duration, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone } = body
+  const { medicationName, rxcui, dose, doseUnit, unitStrength, unitType, frequency, route, duration, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone, scheduleTimes } = body
   if (!medicationName?.trim()) return NextResponse.json({ error: 'Medication name required' }, { status: 400 })
   if (!lastFillDate) return NextResponse.json({ error: 'Last fill date required' }, { status: 400 })
 
@@ -77,8 +78,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       pharmacyId,
       createdByUserId: session.id,
       createdByRole: session.role,
+      scheduleTimes: scheduleTimesCreateData(scheduleTimes),
     },
-    include: { pharmacy: true },
+    include: { pharmacy: true, scheduleTimes: { orderBy: { sortOrder: 'asc' } } },
   })
 
   return NextResponse.json({ ok: true, medication: flattenMedication(medication) })
@@ -97,7 +99,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const canonical = await (prisma.patient.findUnique as any)({ where: { id }, select: { isLocked: true } })
   if (canonical?.isLocked) return NextResponse.json({ error: 'Record locked by admin' }, { status: 403 })
 
-  const { medId, medicationName, rxcui, dose, doseUnit, unitStrength, unitType, frequency, route, duration, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone, active } = await req.json()
+  const { medId, medicationName, rxcui, dose, doseUnit, unitStrength, unitType, frequency, route, duration, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone, active, scheduleTimes } = await req.json()
   if (!medId) return NextResponse.json({ error: 'medId required' }, { status: 400 })
 
   const data: Record<string, any> = {}
@@ -125,7 +127,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   })
   if (count === 0) return NextResponse.json({ error: 'Medication not found' }, { status: 404 })
 
-  const medication = await (prisma.patientMedication.findUnique as any)({ where: { id: medId }, include: { pharmacy: true } })
+  if (scheduleTimes !== undefined) await replaceScheduleTimes(medId, scheduleTimes)
+
+  const medication = await (prisma.patientMedication.findUnique as any)({ where: { id: medId }, include: { pharmacy: true, scheduleTimes: { orderBy: { sortOrder: 'asc' } } } })
   return NextResponse.json({ ok: true, medication: flattenMedication(medication) })
 }
 

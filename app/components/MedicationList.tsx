@@ -38,6 +38,7 @@ export type MedicationDTO = {
   active: boolean
   refillStatus: RefillStatus
   refillOrderedAt: string | null // ISO date string, set while refillStatus === 'ordered'
+  scheduleTimes: string[] // fixed daily clock times ("HH:MM"), empty for PRN — see MedicationInput
 }
 
 export type MedicationInput = {
@@ -57,6 +58,10 @@ export type MedicationInput = {
   pharmacyName: string
   pharmacyAddress: string
   pharmacyPhone: string
+  // Fixed daily clock times this medication is due — independent of the
+  // descriptive `frequency` label above. Empty for PRN/as-needed meds, which
+  // get logged ad-hoc on the MAR instead of against a fixed slot.
+  scheduleTimes: string[]
 }
 
 // Parses a leading numeric amount + optional unit off a free-typed string
@@ -120,7 +125,7 @@ type MedicationListProps = {
 
 const emptyForm: MedicationInput = {
   medicationName: '', rxcui: '', dose: '', doseUnit: '', unitStrength: '', unitType: '', frequency: '', route: '', duration: '', daySupply: '30',
-  lastFillDate: '', rxNumber: '', refillsRemaining: '', pharmacyName: '', pharmacyAddress: '', pharmacyPhone: '',
+  lastFillDate: '', rxNumber: '', refillsRemaining: '', pharmacyName: '', pharmacyAddress: '', pharmacyPhone: '', scheduleTimes: [],
 }
 
 function todayStr(): string {
@@ -344,6 +349,7 @@ function toFormValues(m: MedicationDTO): MedicationInput {
     pharmacyName: m.pharmacyName || '',
     pharmacyAddress: m.pharmacyAddress || '',
     pharmacyPhone: m.pharmacyPhone || '',
+    scheduleTimes: m.scheduleTimes || [],
   }
 }
 
@@ -568,6 +574,42 @@ function MedicationForm({ initial, onSubmit, onCancel, submitLabel, pharmacies =
           </p>
         )}
       </div>
+
+      {form.frequency !== 'As needed (PRN)' && (
+        <div>
+          <label className="block text-[10px] uppercase tracking-wide mb-1" style={{ color: theme.sage }}>
+            Scheduled Times (for the Medication Administration Record)
+          </label>
+          <div className="space-y-1.5">
+            {form.scheduleTimes.map((t, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input
+                  type="time"
+                  value={t}
+                  onChange={e => setForm(f => ({ ...f, scheduleTimes: f.scheduleTimes.map((x, idx) => idx === i ? e.target.value : x) }))}
+                  className={`${narrowCls} w-32`}
+                  style={inputStyle}
+                />
+                <button
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, scheduleTimes: f.scheduleTimes.filter((_, idx) => idx !== i) }))}
+                  className="text-xs font-semibold text-red-500"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => setForm(f => ({ ...f, scheduleTimes: [...f.scheduleTimes, '08:00'] }))}
+              className="text-xs font-semibold"
+              style={{ color: theme.sage }}
+            >
+              + Add Time
+            </button>
+          </div>
+        </div>
+      )}
 
       <SectionDivider label="Fill Details" />
 

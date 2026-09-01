@@ -23,10 +23,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       patient: {
         include: {
           priorAuths: { orderBy: [{ paStartDate: 'desc' }, { createdAt: 'desc' }] },
-          medications: { orderBy: { createdAt: 'desc' }, include: { pharmacy: true } },
+          medications: { orderBy: { createdAt: 'desc' }, include: { pharmacy: true, scheduleTimes: { orderBy: { sortOrder: 'asc' } } } },
           nurseLinks: {
             include: {
-              nurse: { select: { id: true, displayName: true, firstName: true, lastName: true, accountNumber: true } },
+              nurse: { select: { id: true, userId: true, displayName: true, firstName: true, lastName: true, accountNumber: true } },
             },
           },
           guardianLinks: {

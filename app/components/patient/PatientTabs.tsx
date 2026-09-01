@@ -2,7 +2,7 @@
 
 import Tabs from '../Tabs'
 
-export type DetailTab = 'demographics' | 'insurance' | 'medications' | 'documents' | 'orders' | 'careTeam' | 'reminders' | 'schedule' | 'progressNotes'
+export type DetailTab = 'demographics' | 'insurance' | 'medications' | 'medicationLog' | 'documents' | 'orders' | 'careTeam' | 'reminders' | 'schedule' | 'progressNotes'
 
 // The standard 4 tabs every role gets. Roles that need more (e.g. admin/nurse
 // add a Care Team tab) build their own tabs array — the tab bar always reflects

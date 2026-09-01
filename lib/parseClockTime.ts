@@ -75,3 +75,78 @@ export function mergeRowsByTime<T extends { time: string | null }>(
   })
   return tagged.map(t => t.row)
 }
+
+/** "60 mL" → { qty: 60, unit: "mL", unitKey: "ml" }. Returns null for
+ * anything that doesn't start with a number — never guesses at a quantity
+ * that isn't there. `unitKey` (lowercased) is for comparing two units
+ * case-insensitively; `unit` keeps its original casing for display. */
+function parseAmount(raw: string | null): { qty: number; unit: string; unitKey: string } | null {
+  if (!raw) return null
+  const m = raw.trim().match(/^(\d+(?:\.\d+)?)\s*(.*)$/)
+  if (!m) return null
+  const qty = parseFloat(m[1])
+  if (isNaN(qty)) return null
+  const unit = m[2].trim()
+  return { qty, unit, unitKey: unit.toLowerCase() }
+}
+
+function formatAmount(qty: number, unit: string): string {
+  const q = Number.isInteger(qty) ? String(qty) : String(Math.round(qty * 100) / 100)
+  return unit ? `${q} ${unit}` : q
+}
+
+/** Collapses Intake/Output rows that share the same charted time, intake
+ * type, and route into one row with the intake amounts added together —
+ * e.g. three separate "water, G-Tube" entries all charted at 23:50 become
+ * one 23:50 row with the total volume, instead of three near-identical
+ * lines. Only sums when the units match (both "mL", say) — different or
+ * unparseable units are left as separate rows rather than guessed at. Any
+ * output fields (urine/BM/emesis) on a row that gets folded into an earlier
+ * one are carried forward if the kept row doesn't already have them, so
+ * nothing on the discarded row is silently lost. Rows with no time or no
+ * intake type pass through untouched — this only ever merges genuine
+ * same-timeframe repeats of the same input. */
+export function collapseSameTimeIntake<T extends {
+  time: string | null
+  intakeType: string | null
+  intakeAmt: string | null
+  intakeRoute: string | null
+  outputUrine?: string | null
+  outputBM?: string | null
+  outputEmesis?: string | null
+}>(rows: T[]): T[] {
+  const result: T[] = []
+  const groupIndex = new Map<string, number>()
+
+  for (const row of rows) {
+    const type = row.intakeType?.trim().toLowerCase()
+    const route = row.intakeRoute?.trim().toLowerCase() || ''
+    if (!row.time || !type) { result.push(row); continue }
+
+    const key = `${row.time}|${type}|${route}`
+    const existingIdx = groupIndex.get(key)
+    if (existingIdx === undefined) {
+      groupIndex.set(key, result.length)
+      result.push(row)
+      continue
+    }
+
+    const existing = result[existingIdx]
+    const a = parseAmount(existing.intakeAmt)
+    const b = parseAmount(row.intakeAmt)
+    if (a && b && a.unitKey === b.unitKey) {
+      result[existingIdx] = {
+        ...existing,
+        intakeAmt: formatAmount(a.qty + b.qty, a.unit),
+        outputUrine: existing.outputUrine || row.outputUrine,
+        outputBM: existing.outputBM || row.outputBM,
+        outputEmesis: existing.outputEmesis || row.outputEmesis,
+      }
+    } else {
+      // Units don't match (or one side can't be parsed) — don't guess at a
+      // combined total, keep both rows as-is.
+      result.push(row)
+    }
+  }
+  return result
+}

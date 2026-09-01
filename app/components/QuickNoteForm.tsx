@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { mergeRowsByTime, computeShiftHours } from '../../lib/parseClockTime'
+import { mergeRowsByTime, computeShiftHours, collapseSameTimeIntake } from '../../lib/parseClockTime'
 import { O2_ROUTES, TX_NEEDED, INTAKE_ROUTES, PLACES_OF_SERVICE } from '../../lib/clinicalOptions'
 import CaptureAudio from './CaptureAudio'
 
@@ -293,7 +293,10 @@ export default function QuickNoteForm({
     // entries (00:00–06:00) sort after its evening entries (19:00–23:59)
     // instead of before them — see mergeRowsByTime's own comment.
     if (extractedVitals.length) setVitals(rows => mergeRowsByTime(rows, extractedVitals, shiftStartTime))
-    if (extractedIO.length) setIntakeOutput(rows => mergeRowsByTime(rows, extractedIO, shiftStartTime))
+    // Same time + same intake type + same route (e.g. three separate "water,
+    // G-Tube" entries all charted at 23:50) collapse into one row with the
+    // amounts summed, instead of listing each administration separately.
+    if (extractedIO.length) setIntakeOutput(rows => collapseSameTimeIntake(mergeRowsByTime(rows, extractedIO, shiftStartTime)))
     setExtractedVitals([]); setExtractedIO([])
   }
 

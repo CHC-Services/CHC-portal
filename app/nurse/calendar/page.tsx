@@ -48,6 +48,16 @@ export default function NurseCalendarPage() {
   const [selectedItem, setSelectedItem] = useState<CalendarItem | null>(null)
   const [actionBusy, setActionBusy] = useState(false)
 
+  // "Cover a Portion" — reveals a sub-range picker inline in the same detail
+  // modal instead of a separate one. claimResultMessage differs by whether
+  // the patient has partialShiftClaimsRequireApproval on (see
+  // app/api/nurse/shifts/[id]/claim-portion/route.ts's `pending` response).
+  const [portionMode, setPortionMode] = useState(false)
+  const [portionStart, setPortionStart] = useState('')
+  const [portionEnd, setPortionEnd] = useState('')
+  const [portionError, setPortionError] = useState('')
+  const [claimResultMessage, setClaimResultMessage] = useState('')
+
   const [patients, setPatients] = useState<PatientOption[]>([])
   const [showAddAppt, setShowAddAppt] = useState(false)
   const [apptPatientId, setApptPatientId] = useState('')
@@ -66,7 +76,7 @@ export default function NurseCalendarPage() {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key !== 'Escape') return
       if (showAddAppt) { setShowAddAppt(false); setApptPatientId(''); return }
-      if (selectedItem) { setSelectedItem(null); return }
+      if (selectedItem) { closeDetailModal(); setClaimResultMessage(''); return }
       if (view !== 'month') setView('month')
     }
     window.addEventListener('keydown', handleKeyDown)
@@ -155,13 +165,56 @@ export default function NurseCalendarPage() {
     setActionBusy(true)
     const res = await fetch(`/api/nurse/shifts/${id}/claim`, { method: 'POST', credentials: 'include' })
     setActionBusy(false)
-    if (res.ok) { setSelectedItem(null); load() }
+    if (res.ok) { closeDetailModal(); load() }
   }
   async function releaseShift(id: string) {
     setActionBusy(true)
     const res = await fetch(`/api/nurse/shifts/${id}/release`, { method: 'POST', credentials: 'include' })
     setActionBusy(false)
-    if (res.ok) { setSelectedItem(null); load() }
+    if (res.ok) { closeDetailModal(); load() }
+  }
+
+  function closeDetailModal() {
+    setSelectedItem(null)
+    setPortionMode(false); setPortionStart(''); setPortionEnd(''); setPortionError('')
+  }
+
+  function openPortionPicker() {
+    if (!selectedItem?.endDate) return
+    setPortionMode(true)
+    setPortionStart(toLocalInputValue(selectedItem.date))
+    setPortionEnd(toLocalInputValue(selectedItem.endDate))
+    setPortionError('')
+  }
+
+  async function submitPortionClaim() {
+    if (!selectedItem || !portionStart || !portionEnd) return
+    setPortionError('')
+    setActionBusy(true)
+    const res = await fetch(`/api/nurse/shifts/${selectedItem.id}/claim-portion`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        start: new Date(portionStart).toISOString(),
+        end: new Date(portionEnd).toISOString(),
+      }),
+    })
+    const body = await res.json().catch(() => null)
+    setActionBusy(false)
+    if (!res.ok) { setPortionError(body?.error || 'Could not submit that claim.'); return }
+    setPortionMode(false)
+    setClaimResultMessage(
+      body?.pending
+        ? "Sent to the family for approval — you'll be notified once it's reviewed."
+        : `You've picked up ${fmtTime(new Date(portionStart))} – ${fmtTime(new Date(portionEnd))}.`
+    )
+    load()
+  }
+
+  function toLocalInputValue(d: Date) {
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
   }
 
   const isClaimableShift = selectedItem?.source === 'shift' && (selectedItem.status === 'open' || selectedItem.status === 'coverage_needed')
@@ -276,7 +329,7 @@ export default function NurseCalendarPage() {
               anchorDate={anchorDate}
               customRange={customRange}
               isGreyedOut={isGreyedOut}
-              onItemClick={(item) => setSelectedItem(item as CalendarItem)}
+              onItemClick={(item) => { setSelectedItem(item as CalendarItem); setPortionMode(false); setPortionError(''); setClaimResultMessage('') }}
               onDayClick={(day) => { if (view === 'month') { setAnchorDate(day); setView('day') } }}
             />
           </div>
@@ -285,7 +338,7 @@ export default function NurseCalendarPage() {
 
       {/* Detail modal */}
       {selectedItem && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" onClick={() => setSelectedItem(null)}>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" onClick={closeDetailModal}>
           <div className="bg-white rounded-2xl shadow-lg p-6 max-w-sm w-full" onClick={e => e.stopPropagation()}>
             <p className="text-lg font-bold text-[#2F3E4E]">{selectedItem.title}</p>
             {selectedItem.patientName && <p className="text-sm text-[#2F3E4E] mt-1">{selectedItem.patientName}</p>}
@@ -298,20 +351,58 @@ export default function NurseCalendarPage() {
               <p className="text-[10px] uppercase tracking-wide font-semibold text-[#7A8F79] mt-2">{selectedItem.status.replace('_', ' ')}</p>
             )}
 
-            <div className="flex items-center justify-end gap-2 mt-5">
-              {isClaimableShift && (
-                <button onClick={() => claimShift(selectedItem.id)} disabled={actionBusy} className="bg-[#2F3E4E] text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-[#7A8F79] transition disabled:opacity-50">
-                  {actionBusy ? 'Claiming…' : 'Claim Shift'}
-                </button>
+            {claimResultMessage && (
+              <p className="text-xs font-semibold text-[#7A8F79] bg-[#F4F6F5] rounded-lg px-3 py-2 mt-3">{claimResultMessage}</p>
+            )}
+
+            {isClaimableShift && portionMode && (
+              <div className="mt-4 space-y-2 bg-[#F4F6F5] rounded-xl p-3">
+                {portionError && <p className="text-xs text-red-500 font-semibold">{portionError}</p>}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-wide font-bold text-[#7A8F79] mb-1">Start</label>
+                    <input type="datetime-local" className="w-full border border-[#D9E1E8] p-1.5 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" value={portionStart} onChange={e => setPortionStart(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-wide font-bold text-[#7A8F79] mb-1">End</label>
+                    <input type="datetime-local" className="w-full border border-[#D9E1E8] p-1.5 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" value={portionEnd} onChange={e => setPortionEnd(e.target.value)} />
+                  </div>
+                </div>
+                <p className="text-[10px] text-[#7A8F79]">Must fall within the shift's own hours. Any leftover time stays open for another nurse.</p>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2 mt-5 flex-wrap">
+              {isClaimableShift && !portionMode && (
+                <>
+                  <button onClick={() => claimShift(selectedItem.id)} disabled={actionBusy} className="bg-[#2F3E4E] text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-[#7A8F79] transition disabled:opacity-50">
+                    {actionBusy ? 'Claiming…' : 'Cover Entire Shift'}
+                  </button>
+                  <button onClick={openPortionPicker} disabled={actionBusy} className="border border-[#2F3E4E] text-[#2F3E4E] text-sm font-semibold px-4 py-2 rounded-xl hover:bg-[#F4F6F5] transition disabled:opacity-50">
+                    Cover a Portion
+                  </button>
+                </>
+              )}
+              {isClaimableShift && portionMode && (
+                <>
+                  <button onClick={submitPortionClaim} disabled={actionBusy} className="bg-[#2F3E4E] text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-[#7A8F79] transition disabled:opacity-50">
+                    {actionBusy ? 'Submitting…' : 'Submit'}
+                  </button>
+                  <button onClick={() => { setPortionMode(false); setPortionError('') }} className="text-sm font-semibold text-[#7A8F79] hover:text-[#2F3E4E] px-4 py-2 transition">
+                    Back
+                  </button>
+                </>
               )}
               {isMyAssignedShift && (
                 <button onClick={() => releaseShift(selectedItem.id)} disabled={actionBusy} className="border border-amber-300 text-amber-700 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-amber-50 transition disabled:opacity-50">
                   {actionBusy ? 'Releasing…' : 'Release'}
                 </button>
               )}
-              <button onClick={() => setSelectedItem(null)} className="text-sm font-semibold text-[#7A8F79] hover:text-[#2F3E4E] px-4 py-2 transition">
-                Close
-              </button>
+              {!portionMode && (
+                <button onClick={closeDetailModal} className="text-sm font-semibold text-[#7A8F79] hover:text-[#2F3E4E] px-4 py-2 transition">
+                  Close
+                </button>
+              )}
             </div>
           </div>
         </div>

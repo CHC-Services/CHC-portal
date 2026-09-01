@@ -116,6 +116,16 @@ export default function FamilyPatientDetailPage({ params }: { params: Promise<{ 
     setData(d => ({ ...d, medicationRemindersOptIn: val }))
   }
 
+  async function handleTogglePartialShiftClaimsRequireApproval(val: boolean) {
+    await fetch(`/api/family/patients/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ partialShiftClaimsRequireApproval: val }),
+    })
+    setData(d => ({ ...d, partialShiftClaimsRequireApproval: val }))
+  }
+
   function setField(k: string, v: any) {
     setData(d => ({ ...d, [k]: v }))
     setSaved(false)
@@ -258,6 +268,8 @@ export default function FamilyPatientDetailPage({ params }: { params: Promise<{ 
           role="family"
           medicationOptIn={data.medicationRemindersOptIn}
           onToggleMedicationOptIn={handleToggleMedicationReminders}
+          partialShiftClaimsRequireApproval={data.partialShiftClaimsRequireApproval}
+          onTogglePartialShiftClaimsRequireApproval={handleTogglePartialShiftClaimsRequireApproval}
         />
       ),
     },

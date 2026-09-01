@@ -6,6 +6,7 @@ import ProfileDemographicsCard from '../../components/profile/ProfileDemographic
 import ProfileBillingInfoCard from '../../components/profile/ProfileBillingInfoCard'
 import ProfileBankingCard from '../../components/profile/ProfileBankingCard'
 import MessagingPrefToggle from '../../components/MessagingPrefToggle'
+import PartialShiftClaimNotifyToggle from '../../components/PartialShiftClaimNotifyToggle'
 import SignatureCapture from '../../components/SignatureCapture'
 
 export default function AdminProfilePage() {
@@ -138,6 +139,12 @@ export default function AdminProfilePage() {
           <p className="font-bold text-[#2F3E4E] text-sm mb-1">Messaging</p>
           <p className="text-xs text-[#7A8F79] leading-relaxed mb-4">Email alerts for new messages you receive on the portal.</p>
           <MessagingPrefToggle />
+        </div>
+
+        <div className="bg-white rounded-xl shadow p-6">
+          <p className="font-bold text-[#2F3E4E] text-sm mb-1">Scheduling</p>
+          <p className="text-xs text-[#7A8F79] leading-relaxed mb-4">Notifications for partial open-shift claims.</p>
+          <PartialShiftClaimNotifyToggle />
         </div>
       </div>
     </div>

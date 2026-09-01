@@ -31,6 +31,7 @@ const EDITABLE_FIELDS = [
   'ins2Type', 'ins2Id', 'ins2Name', 'ins2Group', 'ins2Plan',
   'ins2SubscriberName', 'ins2SubscriberRelation',
   'ins2NetworkStatus', 'ins2HasCaseRate', 'ins2CaseRateAmount', 'ins2PolicyNotes',
+  'partialShiftClaimsRequireApproval',
 ] as const
 
 // GET — full patient record, for the myPatients detail/edit page

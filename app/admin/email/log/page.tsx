@@ -24,6 +24,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 export default function EmailLogPage() {
   const router = useRouter()
+  const [channel, setChannel] = useState<'email' | 'sms'>('email')
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -34,9 +35,9 @@ export default function EmailLogPage() {
   const [modalUrl, setModalUrl] = useState<string | null>(null)
   const [modalLoading, setModalLoading] = useState(false)
 
-  const load = useCallback(async (p: number, cat: string) => {
+  const load = useCallback(async (p: number, cat: string, ch: 'email' | 'sms') => {
     setLoading(true)
-    const params = new URLSearchParams({ page: String(p) })
+    const params = new URLSearchParams({ page: String(p), channel: ch })
     if (cat) params.set('category', cat)
     const res = await fetch(`/api/admin/email/log?${params}`, { credentials: 'include' })
     if (res.status === 401) { router.push('/login'); return }
@@ -48,7 +49,7 @@ export default function EmailLogPage() {
     setLoading(false)
   }, [router])
 
-  useEffect(() => { load(1, category) }, [load, category])
+  useEffect(() => { load(1, category, channel) }, [load, category, channel])
 
   async function openBody(id: string) {
     setModalLoading(true); setModalUrl(null)
@@ -86,7 +87,21 @@ export default function EmailLogPage() {
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-xl shadow-sm px-5 py-4 flex items-center gap-4">
+        <div className="bg-white rounded-xl shadow-sm px-5 py-4 flex items-center gap-4 flex-wrap">
+          <p className="text-xs font-semibold uppercase tracking-widest text-[#7A8F79]">Channel</p>
+          <div className="flex gap-1.5">
+            {(['email', 'sms'] as const).map(ch => (
+              <button
+                key={ch}
+                onClick={() => { setChannel(ch); setCategory(''); setPage(1) }}
+                className={`px-3 py-1 rounded-full text-xs font-semibold border capitalize transition ${
+                  channel === ch ? 'bg-[#2F3E4E] text-white border-[#2F3E4E]' : 'bg-white text-[#7A8F79] border-[#D9E1E8] hover:border-[#7A8F79]'
+                }`}
+              >
+                {ch === 'sms' ? 'SMS' : 'Email'}
+              </button>
+            ))}
+          </div>
           <p className="text-xs font-semibold uppercase tracking-widest text-[#7A8F79]">Filter</p>
           <select
             value={category}
@@ -94,12 +109,23 @@ export default function EmailLogPage() {
             className="border border-[#D9E1E8] rounded-lg px-3 py-1.5 text-sm text-[#2F3E4E] bg-white focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
           >
             <option value="">All Categories</option>
-            <option value="invoice">Invoice</option>
-            <option value="receipt">Receipt</option>
-            <option value="reminder">Reminder</option>
-            <option value="alert">Alert</option>
-            <option value="broadcast">Broadcast</option>
-            <option value="misc">Misc</option>
+            {channel === 'email' ? (
+              <>
+                <option value="invoice">Invoice</option>
+                <option value="receipt">Receipt</option>
+                <option value="reminder">Reminder</option>
+                <option value="alert">Alert</option>
+                <option value="broadcast">Broadcast</option>
+                <option value="misc">Misc</option>
+              </>
+            ) : (
+              <>
+                <option value="shift-claim">Shift Claim</option>
+                <option value="reminder">Reminder</option>
+                <option value="alert">Alert</option>
+                <option value="misc">Misc</option>
+              </>
+            )}
           </select>
           {!loading && <p className="text-xs text-[#7A8F79] ml-auto">{total.toLocaleString()} total</p>}
         </div>
@@ -109,7 +135,7 @@ export default function EmailLogPage() {
           {loading ? (
             <div className="p-10 text-center text-sm text-[#7A8F79]">Loading…</div>
           ) : logs.length === 0 ? (
-            <div className="p-10 text-center text-sm text-[#7A8F79]">No emails logged yet.</div>
+            <div className="p-10 text-center text-sm text-[#7A8F79]">No {channel === 'sms' ? 'texts' : 'emails'} logged yet.</div>
           ) : (
             <table className="w-full text-sm">
               <thead>
@@ -117,9 +143,9 @@ export default function EmailLogPage() {
                   <th className="px-4 py-3 text-left">Date / Time</th>
                   <th className="px-4 py-3 text-left">Recipient</th>
                   <th className="px-4 py-3 text-left">Category</th>
-                  <th className="px-4 py-3 text-left">Subject</th>
+                  <th className="px-4 py-3 text-left">{channel === 'sms' ? 'Message' : 'Subject'}</th>
                   <th className="px-4 py-3 text-left">Status</th>
-                  <th className="px-4 py-3 text-center">Body</th>
+                  {channel === 'email' && <th className="px-4 py-3 text-center">Body</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#D9E1E8]">
@@ -141,19 +167,21 @@ export default function EmailLogPage() {
                         {log.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-center">
-                      {log.status === 'sent' ? (
-                        <button
-                          onClick={() => openBody(log.id)}
-                          title="View message body"
-                          className="text-lg hover:scale-110 transition"
-                        >
-                          📑
-                        </button>
-                      ) : (
-                        <span className="text-[#D9E1E8]">—</span>
-                      )}
-                    </td>
+                    {channel === 'email' && (
+                      <td className="px-4 py-3 text-center">
+                        {log.status === 'sent' ? (
+                          <button
+                            onClick={() => openBody(log.id)}
+                            title="View message body"
+                            className="text-lg hover:scale-110 transition"
+                          >
+                            📑
+                          </button>
+                        ) : (
+                          <span className="text-[#D9E1E8]">—</span>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -165,7 +193,7 @@ export default function EmailLogPage() {
         {pages > 1 && (
           <div className="flex items-center justify-center gap-2">
             <button
-              onClick={() => load(page - 1, category)}
+              onClick={() => load(page - 1, category, channel)}
               disabled={page <= 1}
               className="px-3 py-1.5 rounded-lg border border-[#D9E1E8] text-sm text-[#7A8F79] hover:border-[#7A8F79] disabled:opacity-40 transition"
             >
@@ -173,7 +201,7 @@ export default function EmailLogPage() {
             </button>
             <span className="text-sm text-[#7A8F79]">Page {page} of {pages}</span>
             <button
-              onClick={() => load(page + 1, category)}
+              onClick={() => load(page + 1, category, channel)}
               disabled={page >= pages}
               className="px-3 py-1.5 rounded-lg border border-[#D9E1E8] text-sm text-[#7A8F79] hover:border-[#7A8F79] disabled:opacity-40 transition"
             >

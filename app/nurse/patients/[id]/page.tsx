@@ -284,6 +284,7 @@ export default function NursePatientDetailPage({ params }: { params: Promise<{ i
           onToggleMedicationOptIn={handleToggleMedicationReminders}
           documentRemindersEnabled={merged.documentRemindersEnabled}
           paRemindersEnabled={merged.paRemindersEnabled}
+          partialShiftClaimsRequireApproval={merged.partialShiftClaimsRequireApproval}
         />
       ),
     },

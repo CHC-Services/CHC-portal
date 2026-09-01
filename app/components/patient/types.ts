@@ -55,6 +55,7 @@ export type PatientFields = {
   lockedBy?: string | null
   documentRemindersEnabled?: boolean
   paRemindersEnabled?: boolean
+  partialShiftClaimsRequireApproval?: boolean
   // Not a canonical Patient field — lives on the current viewer's own
   // NursePatient/GuardianPatient link, mixed into this shape for convenience.
   medicationRemindersOptIn?: boolean

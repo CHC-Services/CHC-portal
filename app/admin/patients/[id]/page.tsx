@@ -275,6 +275,16 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
     setPatient(p => p ? { ...p, paRemindersEnabled: val } : p)
   }
 
+  async function handleTogglePartialShiftClaimsRequireApproval(val: boolean) {
+    await fetch(`/api/admin/patients/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ partialShiftClaimsRequireApproval: val }),
+    })
+    setPatient(p => p ? { ...p, partialShiftClaimsRequireApproval: val } : p)
+  }
+
   async function handleLock() {
     setLocking(true)
     const res = await fetch(`/api/admin/patients/${id}/lock`, { method: 'POST', credentials: 'include' })
@@ -465,6 +475,8 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
           paRemindersEnabled={patient.paRemindersEnabled}
           onToggleDocumentReminders={handleToggleDocumentReminders}
           onTogglePaReminders={handleTogglePaReminders}
+          partialShiftClaimsRequireApproval={patient.partialShiftClaimsRequireApproval}
+          onTogglePartialShiftClaimsRequireApproval={handleTogglePartialShiftClaimsRequireApproval}
         />
       ),
     },

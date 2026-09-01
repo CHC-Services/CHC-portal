@@ -1921,3 +1921,176 @@ export async function sendTwoFactorCodeEmail({
     return false
   }
 }
+
+function fmtRange(start: Date, end: Date): string {
+  const dateStr = start.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+  const startStr = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  const endStr = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  return `${dateStr}, ${startStr} – ${endStr}`
+}
+
+// Sent both when a partial claim finalizes immediately, and when an
+// approval-path request gets approved (same finalize code path,
+// lib/shiftSplit.ts). `audience` only tweaks the greeting/subject framing —
+// nurse/family/admin all get the same underlying facts.
+export async function sendShiftPortionClaimedEmail({
+  toEmail,
+  recipientName,
+  patientName,
+  nurseName,
+  claimedStart,
+  claimedEnd,
+  remainingOpenRanges,
+  audience,
+}: {
+  toEmail: string
+  recipientName: string
+  patientName: string
+  nurseName: string
+  claimedStart: Date
+  claimedEnd: Date
+  remainingOpenRanges: { start: Date; end: Date }[]
+  audience: 'nurse' | 'family' | 'admin'
+}): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) return false
+  const resend = createLoggedResend('alert', recipientName)
+
+  const subject = audience === 'nurse'
+    ? `You've picked up part of ${patientName}'s shift`
+    : `${nurseName} picked up part of ${patientName}'s open shift`
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to: toEmail,
+      replyTo: 'support@cominghomecare.com',
+      subject,
+      html: `
+        <div style="font-family:sans-serif;max-width:520px;padding:32px;color:#2F3E4E">
+          <h2 style="margin:0 0 4px;color:#2F3E4E">Partial Shift Claimed</h2>
+          <p style="margin:0 0 24px;font-size:13px;color:#7A8F79">Coming Home Care Services, LLC</p>
+
+          <div style="background:#f4f6f8;border-radius:10px;padding:20px 24px;margin-bottom:24px">
+            <p style="margin:0 0 16px;font-size:14px">Hi <strong>${recipientName}</strong>,</p>
+            <p style="margin:0 0 12px;font-size:14px">
+              ${audience === 'nurse' ? "You've" : `<strong>${nurseName}</strong> has`} picked up part of an open shift for <strong>${patientName}</strong>:
+            </p>
+            <p style="margin:0 0 12px;font-size:14px;font-weight:700;color:#2F3E4E">${fmtRange(claimedStart, claimedEnd)}</p>
+            ${remainingOpenRanges.length > 0 ? `
+              <p style="margin:16px 0 6px;font-size:13px;color:#7A8F79">Still open and needing coverage:</p>
+              ${remainingOpenRanges.map(r => `<p style="margin:0 0 4px;font-size:13px;color:#2F3E4E">${fmtRange(r.start, r.end)}</p>`).join('')}
+            ` : `<p style="margin:16px 0 0;font-size:13px;color:#7A8F79">The rest of that shift's time is fully covered.</p>`}
+          </div>
+
+          <hr style="border:none;border-top:1px solid #D9E1E8;margin:24px 0"/>
+          <p style="font-size:11px;color:#aab">Coming Home Care Services, LLC · Automated scheduling notification</p>
+        </div>
+      `,
+    })
+    return !error
+  } catch {
+    return false
+  }
+}
+
+// Approval-path only — sent to family+admin when a nurse requests a
+// partial claim on a patient with partialShiftClaimsRequireApproval on.
+export async function sendShiftPortionRequestEmail({
+  toEmail,
+  recipientName,
+  patientName,
+  nurseName,
+  requestedStart,
+  requestedEnd,
+  patientId,
+}: {
+  toEmail: string
+  recipientName: string
+  patientName: string
+  nurseName: string
+  requestedStart: Date
+  requestedEnd: Date
+  patientId: string
+}): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) return false
+  const resend = createLoggedResend('alert', recipientName)
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to: toEmail,
+      replyTo: 'support@cominghomecare.com',
+      subject: `${nurseName} wants to cover part of ${patientName}'s open shift`,
+      html: `
+        <div style="font-family:sans-serif;max-width:520px;padding:32px;color:#2F3E4E">
+          <h2 style="margin:0 0 4px;color:#2F3E4E">Partial Shift Request — Needs Approval</h2>
+          <p style="margin:0 0 24px;font-size:13px;color:#7A8F79">Coming Home Care Services, LLC</p>
+
+          <div style="background:#f4f6f8;border-radius:10px;padding:20px 24px;margin-bottom:24px">
+            <p style="margin:0 0 16px;font-size:14px">Hi <strong>${recipientName}</strong>,</p>
+            <p style="margin:0 0 12px;font-size:14px"><strong>${nurseName}</strong> wants to cover part of an open shift for <strong>${patientName}</strong>:</p>
+            <p style="margin:0 0 16px;font-size:14px;font-weight:700;color:#2F3E4E">${fmtRange(requestedStart, requestedEnd)}</p>
+            <p style="margin:0;font-size:13px;color:#7A8F79">Approve or deny it from this patient's schedule page.</p>
+          </div>
+
+          <a href="${PORTAL_URL}/patient/${patientId}/schedule" style="display:inline-block;background:#2F3E4E;color:#fff;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600">Review Request</a>
+
+          <hr style="border:none;border-top:1px solid #D9E1E8;margin:24px 0"/>
+          <p style="font-size:11px;color:#aab">Coming Home Care Services, LLC · Automated scheduling notification</p>
+        </div>
+      `,
+    })
+    return !error
+  } catch {
+    return false
+  }
+}
+
+// Approval-path only — sent to the requesting nurse when her request is
+// denied, or auto-rejected because the time is no longer available.
+export async function sendShiftPortionRejectedEmail({
+  toEmail,
+  recipientName,
+  patientName,
+  requestedStart,
+  requestedEnd,
+  reason,
+}: {
+  toEmail: string
+  recipientName: string
+  patientName: string
+  requestedStart: Date
+  requestedEnd: Date
+  reason?: string
+}): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) return false
+  const resend = createLoggedResend('alert', recipientName)
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to: toEmail,
+      replyTo: 'support@cominghomecare.com',
+      subject: `Your shift request for ${patientName} wasn't approved`,
+      html: `
+        <div style="font-family:sans-serif;max-width:520px;padding:32px;color:#2F3E4E">
+          <h2 style="margin:0 0 4px;color:#2F3E4E">Shift Request Not Approved</h2>
+          <p style="margin:0 0 24px;font-size:13px;color:#7A8F79">Coming Home Care Services, LLC</p>
+
+          <div style="background:#f4f6f8;border-radius:10px;padding:20px 24px;margin-bottom:24px">
+            <p style="margin:0 0 16px;font-size:14px">Hi <strong>${recipientName}</strong>,</p>
+            <p style="margin:0 0 12px;font-size:14px">Your request to cover part of a shift for <strong>${patientName}</strong> wasn't approved:</p>
+            <p style="margin:0 0 12px;font-size:14px;font-weight:700;color:#2F3E4E">${fmtRange(requestedStart, requestedEnd)}</p>
+            <p style="margin:0;font-size:13px;color:#7A8F79">${reason || 'Check the patient\'s schedule for what\'s still open.'}</p>
+          </div>
+
+          <hr style="border:none;border-top:1px solid #D9E1E8;margin:24px 0"/>
+          <p style="font-size:11px;color:#aab">Coming Home Care Services, LLC · Automated scheduling notification</p>
+        </div>
+      `,
+    })
+    return !error
+  } catch {
+    return false
+  }
+}

@@ -47,6 +47,11 @@ model User {
   // plain dot; see Message/MessageRecipient below).
   notifyNewMessage Boolean @default(true)
 
+  // Interim admin-testing toggle for the partial-shift-claim notification
+  // (lib/shiftClaimNotify.ts) — long-term plan is nurse+family only, with
+  // this admin cc removed once the feature is proven out.
+  notifyPartialShiftClaim Boolean @default(true)
+
   // Stored e-signature for non-nurse authors (currently: admin) on Progress
   // Notes and their addenda. Nurses keep using NurseProfile.signatureImageKey
   // — this is a deliberate asymmetry, not a duplicate, to avoid touching the
@@ -204,6 +209,7 @@ model NurseProfile {
   routedForms         RoutedForm[]
   medicaidPayWeekLogs MedicaidPayWeekLog[]
   quickAccessTokens   NurseQuickAccessToken[]
+  shiftClaimRequests  ShiftClaimRequest[]
 }
 
 // Admin-configurable matrix of which profile "cards" (Demographics, Billing
@@ -819,6 +825,49 @@ model EmailLog {
   @@index([recipientEmail])
 }
 
+// Mirrors EmailLog — sendSms() (lib/sendSms.ts) logs into this on every send
+// so texts show up in a sent-communications view the same way emails already
+// do (was previously an unlogged gap across every SMS this app sends).
+model SmsLog {
+  id             String   @id @default(uuid())
+  sentAt         DateTime @default(now())
+  recipientName  String?
+  recipientPhone String
+  category       String // 'shift-claim' | 'reminder' | 'alert' | 'misc'
+  message        String
+  status         String   @default("sent") // 'sent' | 'failed'
+
+  @@index([sentAt])
+  @@index([recipientPhone])
+}
+
+// A nurse's request to cover part (not all) of an open Shift, used only when
+// Patient.partialShiftClaimsRequireApproval is true — see lib/shiftSplit.ts.
+// When that toggle is off, a partial claim finalizes immediately and no
+// ShiftClaimRequest row is created at all.
+model ShiftClaimRequest {
+  id      String       @id @default(uuid())
+  shiftId String
+  shift   Shift        @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  nurseId String
+  nurse   NurseProfile @relation(fields: [nurseId], references: [id], onDelete: Cascade)
+  patientId String
+  patient   Patient    @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  requestedStart DateTime
+  requestedEnd   DateTime
+
+  status String @default("pending") // 'pending' | 'approved' | 'rejected'
+  resolvedAt       DateTime?
+  resolvedByUserId String?
+
+  createdAt DateTime @default(now())
+
+  @@index([shiftId])
+  @@index([nurseId])
+  @@index([status])
+}
+
 model LoginLog {
   id            String   @id @default(uuid())
   timestamp     DateTime @default(now())
@@ -968,6 +1017,15 @@ model Patient {
   documentRemindersEnabled Boolean @default(false) // alert before an uploaded document expires
   paRemindersEnabled       Boolean @default(false) // alert 3 weeks before the current PA end date
 
+  // Shift Coverage (patient-wide, but deliberately family-AND-admin-editable —
+  // not admin-only like the two toggles above). Default false = a partial
+  // open-shift claim finalizes immediately, same as claiming a full shift.
+  // true = it sits as a ShiftClaimRequest until a guardian/admin approves it —
+  // for families who manage their own schedule closely and want to prevent
+  // two nurses each covering a different portion of the same gap. Nurses only
+  // ever read this (lib/shiftSplit.ts), never write it.
+  partialShiftClaimsRequireApproval Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -979,6 +1037,7 @@ model Patient {
   documents     PatientDocument[]
   shifts        Shift[]
   shiftTemplates ShiftTemplate[]
+  shiftClaimRequests ShiftClaimRequest[]
   appointments  Appointment[]
   progressNotes ProgressNote[]
   pendingHours  PendingHour[]
@@ -1017,6 +1076,7 @@ model Shift {
 
   progressNotes ProgressNote[]
   pendingHours  PendingHour[]
+  claimRequests ShiftClaimRequest[]
 
   @@index([patientId])
   @@index([nurseId])

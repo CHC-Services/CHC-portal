@@ -13,6 +13,8 @@ export default function PatientNotifications({
   paRemindersEnabled,
   onToggleDocumentReminders,
   onTogglePaReminders,
+  partialShiftClaimsRequireApproval,
+  onTogglePartialShiftClaimsRequireApproval,
 }: {
   role: 'admin' | 'nurse' | 'family'
   medicationOptIn?: boolean
@@ -22,6 +24,8 @@ export default function PatientNotifications({
   paRemindersEnabled?: boolean
   onToggleDocumentReminders?: (val: boolean) => void
   onTogglePaReminders?: (val: boolean) => void
+  partialShiftClaimsRequireApproval?: boolean
+  onTogglePartialShiftClaimsRequireApproval?: (val: boolean) => void
 }) {
   return (
     <div className="bg-white rounded-2xl shadow-sm p-6 space-y-5">
@@ -75,6 +79,16 @@ export default function PatientNotifications({
           </div>
         </>
       )}
+
+      <div className="pt-4 border-t border-[#D9E1E8]">
+        <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E] mb-3">Shift Coverage</p>
+        <ToggleRow
+          label="Require approval before a partial shift claim is finalized"
+          desc="Off (default): a nurse picking up part of an open shift is assigned immediately, same as claiming the whole shift. On: it sits pending until you approve it — useful if you manage this schedule closely and want to prevent two nurses from both showing up because they each covered a different portion."
+          checked={!!partialShiftClaimsRequireApproval}
+          onChange={(role === 'admin' || role === 'family') ? onTogglePartialShiftClaimsRequireApproval : undefined}
+        />
+      </div>
     </div>
   )
 }

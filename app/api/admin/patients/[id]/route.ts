@@ -64,6 +64,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     'ins2SubscriberName', 'ins2SubscriberRelation',
     'ins2NetworkStatus', 'ins2HasCaseRate', 'ins2CaseRateAmount', 'ins2PolicyNotes',
     'documentRemindersEnabled', 'paRemindersEnabled',
+    'partialShiftClaimsRequireApproval',
   ]
   const data: Record<string, any> = {}
   for (const key of allowed) {

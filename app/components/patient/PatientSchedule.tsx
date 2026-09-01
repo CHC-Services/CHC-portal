@@ -22,6 +22,13 @@ function toLocalInputValue(iso: string) {
 
 type NurseOption = { id: string; displayName: string; firstName?: string; lastName?: string }
 
+type ClaimRequest = {
+  id: string
+  requestedStart: string
+  requestedEnd: string
+  nurse: { id: string; displayName: string; firstName?: string; lastName?: string }
+}
+
 function fmtDateTime(iso: string) {
   return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
@@ -82,6 +89,36 @@ export default function PatientSchedule({
   const [editEnd, setEditEnd] = useState('')
   const [editNotes, setEditNotes] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
+
+  // Pending partial-shift-claim requests — only ever non-empty when this
+  // patient has partialShiftClaimsRequireApproval on (see
+  // app/components/patient/PatientNotifications.tsx's "Shift Coverage"
+  // toggle and app/api/nurse/shifts/[id]/claim-portion/route.ts).
+  const [claimRequests, setClaimRequests] = useState<ClaimRequest[]>([])
+  const [resolvingRequestId, setResolvingRequestId] = useState<string | null>(null)
+
+  function loadClaimRequests() {
+    if (!canManage) return
+    fetch(`/api/patient/${patientId}/shift-claim-requests`, { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => setClaimRequests(d.requests || []))
+      .catch(() => {})
+  }
+
+  useEffect(() => { loadClaimRequests() }, [patientId, canManage])
+
+  async function resolveClaimRequest(id: string, action: 'approve' | 'reject') {
+    setResolvingRequestId(id)
+    await fetch(`/api/patient/${patientId}/shift-claim-requests/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ action }),
+    })
+    setResolvingRequestId(null)
+    loadClaimRequests()
+    load()
+  }
 
   function load() {
     setLoading(true)
@@ -201,6 +238,37 @@ export default function PatientSchedule({
 
   return (
     <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
+      {canManage && claimRequests.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
+          <p className="text-sm font-bold uppercase tracking-widest text-amber-700">Pending Shift Requests</p>
+          {claimRequests.map(r => (
+            <div key={r.id} className="flex items-center justify-between bg-white rounded-lg px-3 py-2">
+              <div>
+                <p className="text-sm text-[#2F3E4E] font-semibold">
+                  {nurseName([r.nurse], r.nurse.id)} wants {fmtDateTime(r.requestedStart)} – {fmtDateTime(r.requestedEnd)}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => resolveClaimRequest(r.id, 'approve')}
+                  disabled={resolvingRequestId === r.id}
+                  className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition disabled:opacity-50"
+                >
+                  Approve
+                </button>
+                <button
+                  onClick={() => resolveClaimRequest(r.id, 'reject')}
+                  disabled={resolvingRequestId === r.id}
+                  className="text-xs font-semibold text-red-500 hover:text-red-700 transition disabled:opacity-50"
+                >
+                  Deny
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">Shifts</p>
         {canManage && (

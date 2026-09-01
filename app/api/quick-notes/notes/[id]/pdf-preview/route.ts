@@ -3,6 +3,10 @@ import { prisma } from '../../../../../../lib/prisma'
 import { getQuickAccessIdentity } from '../../../../../../lib/nurseQuickAccess'
 import { generateDraftProgressNotePdf } from '../../../../../../lib/progressNotePdf'
 
+// Puppeteer launching headless Chromium + rendering can run past Vercel's
+// default serverless timeout — same reasoning as the signed-note pdf routes.
+export const maxDuration = 60
+
 // Lets a nurse print/preview her note before signing it, once there's
 // something worth reviewing — reuses the same HTML template as the final
 // signed export (lib/progressNoteHtml.ts) but renders on demand, uncached,
@@ -18,11 +22,16 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   if (!note || note.authorUserId !== identity.userId) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   if (note.signedAt) return NextResponse.json({ error: 'This note is already signed — log in normally to print the signed copy instead.' }, { status: 400 })
 
-  const pdfBuffer = await generateDraftProgressNotePdf(id)
-  return new NextResponse(new Uint8Array(pdfBuffer), {
-    headers: {
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': 'inline; filename="progress-note-draft.pdf"',
-    },
-  })
+  try {
+    const pdfBuffer = await generateDraftProgressNotePdf(id)
+    return new NextResponse(new Uint8Array(pdfBuffer), {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': 'inline; filename="progress-note-draft.pdf"',
+      },
+    })
+  } catch (err) {
+    console.error(`Failed to generate draft PDF preview for progress note ${id}:`, err)
+    return NextResponse.json({ error: 'Failed to generate preview. Please try again.' }, { status: 500 })
+  }
 }

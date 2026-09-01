@@ -1262,6 +1262,17 @@ model ProgressNote {
 
   pdfS3Key String? // cached rendered PDF (lib/progressNotePdf.ts) — cleared/regenerated on sign, addendum, or void
 
+  // Document-based note (lib/progressNoteDocument.ts) — a nurse uploads a
+  // file (e.g. a scanned paper note) instead of typing shiftNotes. Presence
+  // of documentStorageKey is what makes a note "document-based": it's
+  // signed immediately at creation (no separate sign step), and only these
+  // fields are editable afterward (Replace/Delete), never the note's own
+  // signed content.
+  documentStorageKey String?
+  documentFileName   String?
+  documentMimeType   String?
+  documentFileSize   Int?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

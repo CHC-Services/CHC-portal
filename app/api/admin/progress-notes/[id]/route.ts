@@ -33,6 +33,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     ? await getPresignedDownloadUrl(note.signatureImageKey, 900, { inline: true, contentType: 'image/png' })
     : null
 
+  const documentUrl = note.documentStorageKey
+    ? await getPresignedDownloadUrl(note.documentStorageKey, 900, { inline: true, contentType: note.documentMimeType || undefined, fileName: note.documentFileName || undefined })
+    : null
+
   const addenda = await Promise.all(note.addenda.map(async a => ({
     ...a,
     authorDisplayName: authorDisplayName(a),
@@ -43,6 +47,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     note: { ...note, authorDisplayName: authorDisplayName(note), addenda },
     isAuthor: note.authorUserId === session.id,
     signatureUrl,
+    documentUrl,
   })
 }
 
@@ -159,7 +164,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   })
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const s3Keys = [existing.signatureImageKey, existing.pdfS3Key, ...existing.addenda.map(a => a.signatureImageKey)]
+  const s3Keys = [existing.signatureImageKey, existing.pdfS3Key, existing.documentStorageKey, ...existing.addenda.map(a => a.signatureImageKey)]
     .filter((k): k is string => !!k)
   await Promise.all(s3Keys.map(k => deleteFromS3(k).catch(() => {})))
 

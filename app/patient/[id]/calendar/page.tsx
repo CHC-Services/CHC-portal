@@ -5,6 +5,8 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import CalendarGrid from '../../../components/calendar/CalendarGrid'
 import CalendarViewSwitcher from '../../../components/calendar/CalendarViewSwitcher'
+import { CalendarFilterBar, CalendarFilterSection } from '../../../components/calendar/CalendarFilterBar'
+import ProgressNoteDocumentUploadModal from '../../../components/patient/ProgressNoteDocumentUploadModal'
 import { computeViewRange, dateKey, type CalendarViewMode } from '../../../../lib/calendarViewRange'
 import type { CalendarItem as RawCalendarItem } from '../../../../lib/calendarFeed'
 
@@ -16,6 +18,7 @@ const CATEGORY_LABEL: Record<string, string> = {
   medication: 'Medication Refills',
   priorAuth: 'Prior Auth Expirations',
   document: 'Document Expirations',
+  progressNote: 'Progress Notes',
 }
 
 function fmtTime(d: Date) {
@@ -50,6 +53,20 @@ export default function PatientCalendarPage({ params }: { params: Promise<{ id: 
 
   const [selectedItem, setSelectedItem] = useState<CalendarItem | null>(null)
 
+  // Progress-note document upload — nurse/provider only, offered from Day
+  // view (see app/components/patient/ProgressNoteDocumentUploadModal.tsx).
+  // This page has no server-side role prop (fully client-rendered), so role
+  // is looked up the same way app/family/patients/[id]/page.tsx already does.
+  const [role, setRole] = useState<string | null>(null)
+  const [showUploadNote, setShowUploadNote] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/me', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.role) setRole(data.role) })
+      .catch(() => {})
+  }, [])
+
   // Keep the URL in sync with view/anchor so a "Manage" link out to
   // /patient/[id]/schedule|appointment can carry a ?from= back here to the
   // exact view/date the user came from.
@@ -67,12 +84,13 @@ export default function PatientCalendarPage({ params }: { params: Promise<{ id: 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key !== 'Escape') return
+      if (showUploadNote) { setShowUploadNote(false); return }
       if (selectedItem) { setSelectedItem(null); return }
       if (view !== 'month') setView('month')
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selectedItem, view])
+  }, [showUploadNote, selectedItem, view])
 
   const fromParam = useMemo(() => encodeURIComponent(`${pathname}?${searchParams.toString()}`), [pathname, searchParams])
 
@@ -116,22 +134,13 @@ export default function PatientCalendarPage({ params }: { params: Promise<{ id: 
     return true
   }
 
-  const byDay = useMemo(() => {
-    const map = new Map<string, CalendarItem[]>()
-    for (const item of items) {
-      const key = dateKey(item.date)
-      if (!map.has(key)) map.set(key, [])
-      map.get(key)!.push(item)
-    }
-    return map
-  }, [items])
+  const visibleItems = useMemo(() => items.filter(matchesFilters), [items, selectedTypes, selectedNurse, notesFilter])
 
   const filtersActive = (selectedTypes !== null) || selectedNurse !== null || notesFilter !== 'all'
-  function isGreyedOut(key: string) {
-    if (!filtersActive) return false
-    const dayItems = byDay.get(key)
-    if (!dayItems || dayItems.length === 0) return false
-    return !dayItems.some(matchesFilters)
+  function clearFilters() {
+    setSelectedTypes(null)
+    setSelectedNurse(null)
+    setNotesFilter('all')
   }
 
   function toggleType(cat: string) {
@@ -157,6 +166,67 @@ export default function PatientCalendarPage({ params }: { params: Promise<{ id: 
         </div>
       </div>
 
+      {presentTypes.length > 0 && (
+        <CalendarFilterBar
+          trailing={filtersActive && (
+            <button onClick={clearFilters} className="text-[11px] font-semibold text-[#7A8F79] hover:text-[#2F3E4E] underline">
+              Clear Filters
+            </button>
+          )}
+        >
+          <CalendarFilterSection label="Type">
+            {presentTypes.map(cat => {
+              const active = selectedTypes === null || selectedTypes.has(cat)
+              return (
+                <button
+                  key={cat}
+                  onClick={() => toggleType(cat)}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition border ${
+                    active ? 'bg-[#2F3E4E] text-white border-[#2F3E4E]' : 'bg-white text-[#7A8F79] border-[#D9E1E8] opacity-60'
+                  }`}
+                >
+                  {CATEGORY_LABEL[cat] || cat}
+                </button>
+              )
+            })}
+          </CalendarFilterSection>
+          {presentNurses.length > 1 && (
+            <CalendarFilterSection label="Nurse">
+              <button
+                onClick={() => setSelectedNurse(null)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition ${selectedNurse === null ? 'bg-[#7A8F79] text-white' : 'bg-[#F4F6F5] text-[#7A8F79] hover:bg-[#D9E1E8]'}`}
+              >
+                All
+              </button>
+              {presentNurses.map(n => (
+                <button
+                  key={n}
+                  onClick={() => setSelectedNurse(n)}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition ${selectedNurse === n ? 'bg-[#7A8F79] text-white' : 'bg-[#F4F6F5] text-[#7A8F79] hover:bg-[#D9E1E8]'}`}
+                >
+                  {n}
+                </button>
+              ))}
+            </CalendarFilterSection>
+          )}
+          {presentTypes.includes('shift') && (
+            <CalendarFilterSection label="Progress Notes">
+              {(['all', 'with', 'without'] as const).map(f => (
+                <button
+                  key={f}
+                  onClick={() => setNotesFilter(f)}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition ${
+                    notesFilter === f ? 'bg-[#7A8F79] text-white' : 'bg-[#F4F6F5] text-[#7A8F79] hover:bg-[#D9E1E8]'
+                  }`}
+                >
+                  {f === 'all' ? 'All Shifts' : f === 'with' ? 'Has Notes' : 'No Notes'}
+                </button>
+              ))}
+            </CalendarFilterSection>
+          )}
+        </CalendarFilterBar>
+      )}
+
       <CalendarViewSwitcher
         view={view}
         onViewChange={setView}
@@ -173,64 +243,15 @@ export default function PatientCalendarPage({ params }: { params: Promise<{ id: 
         }
       />
 
-      {presentTypes.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm p-3 mb-4 flex items-center gap-4 flex-wrap">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[10px] uppercase tracking-wide font-bold text-[#7A8F79] mr-1">Type</span>
-            {presentTypes.map(cat => {
-              const active = selectedTypes === null || selectedTypes.has(cat)
-              return (
-                <button
-                  key={cat}
-                  onClick={() => toggleType(cat)}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition border ${
-                    active ? 'bg-[#2F3E4E] text-white border-[#2F3E4E]' : 'bg-white text-[#7A8F79] border-[#D9E1E8] opacity-60'
-                  }`}
-                >
-                  {CATEGORY_LABEL[cat] || cat}
-                </button>
-              )
-            })}
-            {selectedTypes !== null && (
-              <button onClick={() => setSelectedTypes(null)} className="text-[11px] text-[#7A8F79] hover:text-[#2F3E4E] underline ml-1">Reset</button>
-            )}
-          </div>
-          {presentNurses.length > 1 && (
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[10px] uppercase tracking-wide font-bold text-[#7A8F79] mr-1">Nurse</span>
-              <button
-                onClick={() => setSelectedNurse(null)}
-                className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition ${selectedNurse === null ? 'bg-[#7A8F79] text-white' : 'bg-[#F4F6F5] text-[#7A8F79] hover:bg-[#D9E1E8]'}`}
-              >
-                All
-              </button>
-              {presentNurses.map(n => (
-                <button
-                  key={n}
-                  onClick={() => setSelectedNurse(n)}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition ${selectedNurse === n ? 'bg-[#7A8F79] text-white' : 'bg-[#F4F6F5] text-[#7A8F79] hover:bg-[#D9E1E8]'}`}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-          )}
-          {presentTypes.includes('shift') && (
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] uppercase tracking-wide font-bold text-[#7A8F79] mr-1">Progress Notes</span>
-              {(['all', 'with', 'without'] as const).map(f => (
-                <button
-                  key={f}
-                  onClick={() => setNotesFilter(f)}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition ${
-                    notesFilter === f ? 'bg-[#7A8F79] text-white' : 'bg-[#F4F6F5] text-[#7A8F79] hover:bg-[#D9E1E8]'
-                  }`}
-                >
-                  {f === 'all' ? 'All Shifts' : f === 'with' ? 'Has Notes' : 'No Notes'}
-                </button>
-              ))}
-            </div>
-          )}
+      {role === 'nurse' && view === 'day' && (
+        <div className="flex justify-end mb-4">
+          <button
+            type="button"
+            onClick={() => setShowUploadNote(true)}
+            className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition"
+          >
+            + Upload Progress Note
+          </button>
         </div>
       )}
 
@@ -239,11 +260,10 @@ export default function PatientCalendarPage({ params }: { params: Promise<{ id: 
       ) : (
         <div className="bg-white rounded-xl shadow-sm p-4">
           <CalendarGrid
-            items={items}
+            items={visibleItems}
             view={view}
             anchorDate={anchorDate}
             customRange={customRange}
-            isGreyedOut={isGreyedOut}
             onItemClick={(item) => setSelectedItem(item as CalendarItem)}
             onDayClick={(day) => { if (view === 'month') { setAnchorDate(day); setView('day') } }}
           />
@@ -275,6 +295,15 @@ export default function PatientCalendarPage({ params }: { params: Promise<{ id: 
             </div>
           </div>
         </div>
+      )}
+
+      {showUploadNote && (
+        <ProgressNoteDocumentUploadModal
+          patientId={patientId}
+          serviceDate={anchorDate}
+          onClose={() => setShowUploadNote(false)}
+          onUploaded={() => { setShowUploadNote(false); load() }}
+        />
       )}
     </div>
   )

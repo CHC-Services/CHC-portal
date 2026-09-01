@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import CalendarGrid from '../../components/calendar/CalendarGrid'
 import CalendarViewSwitcher from '../../components/calendar/CalendarViewSwitcher'
+import { CalendarFilterBar, CalendarFilterSection } from '../../components/calendar/CalendarFilterBar'
 import AppointmentForm from '../../components/patient/AppointmentForm'
-import { computeViewRange, dateKey, type CalendarViewMode } from '../../../lib/calendarViewRange'
+import { computeViewRange, type CalendarViewMode } from '../../../lib/calendarViewRange'
 import type { CalendarItem as RawCalendarItem } from '../../../lib/calendarFeed'
 
 type PatientOption = { id: string; firstName: string; lastName: string }
@@ -20,6 +21,7 @@ const CATEGORY_LABEL: Record<string, string> = {
   medication: 'Medication Refills',
   priorAuth: 'Prior Auth Expirations',
   document: 'Document Expirations',
+  progressNote: 'Progress Notes',
 }
 
 function fmtTime(d: Date) {
@@ -105,23 +107,9 @@ export default function FamilyCalendarPage() {
     return true
   }
 
-  const byDay = useMemo(() => {
-    const map = new Map<string, CalendarItem[]>()
-    for (const item of items) {
-      const key = dateKey(item.date)
-      if (!map.has(key)) map.set(key, [])
-      map.get(key)!.push(item)
-    }
-    return map
-  }, [items])
+  const visibleItems = useMemo(() => items.filter(matchesFilters), [items, selectedTypes, selectedPatientId])
 
   const filtersActive = selectedTypes !== null || selectedPatientId !== ''
-  function isGreyedOut(key: string) {
-    if (!filtersActive) return false
-    const dayItems = byDay.get(key)
-    if (!dayItems || dayItems.length === 0) return false
-    return !dayItems.some(matchesFilters)
-  }
 
   function toggleType(cat: string) {
     setSelectedTypes(prev => {
@@ -164,6 +152,47 @@ export default function FamilyCalendarPage() {
           </div>
         </div>
 
+        {presentTypes.length > 0 && (
+          <CalendarFilterBar
+            trailing={filtersActive && (
+              <button onClick={clearFilters} className="text-[11px] font-semibold text-[#7A8F79] hover:text-[#2F3E4E] underline">
+                Clear Filters
+              </button>
+            )}
+          >
+            {patients.length > 0 && (
+              <CalendarFilterSection label="Patient">
+                <select
+                  value={selectedPatientId}
+                  onChange={e => setSelectedPatientId(e.target.value)}
+                  className="h-[30px] border border-[#D9E1E8] rounded-lg px-2 text-xs text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                >
+                  <option value="">All Patients</option>
+                  {[...patients].sort((a, b) => a.lastName.localeCompare(b.lastName)).map(p => (
+                    <option key={p.id} value={p.id}>{p.firstName} {p.lastName}</option>
+                  ))}
+                </select>
+              </CalendarFilterSection>
+            )}
+            <CalendarFilterSection label="Type">
+              {presentTypes.map(cat => {
+                const active = selectedTypes === null || selectedTypes.has(cat)
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => toggleType(cat)}
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition border ${
+                      active ? 'bg-[#2F3E4E] text-white border-[#2F3E4E]' : 'bg-white text-[#7A8F79] border-[#D9E1E8] opacity-60'
+                    }`}
+                  >
+                    {CATEGORY_LABEL[cat] || cat}
+                  </button>
+                )
+              })}
+            </CalendarFilterSection>
+          </CalendarFilterBar>
+        )}
+
         <CalendarViewSwitcher
           view={view}
           onViewChange={setView}
@@ -180,58 +209,15 @@ export default function FamilyCalendarPage() {
           }
         />
 
-        {presentTypes.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm p-3 mb-4 flex items-center gap-4 flex-wrap">
-            {patients.length > 0 && (
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] uppercase tracking-wide font-bold text-[#7A8F79] mr-1">Patient</span>
-                <select
-                  value={selectedPatientId}
-                  onChange={e => setSelectedPatientId(e.target.value)}
-                  className="h-[30px] border border-[#D9E1E8] rounded-lg px-2 text-xs text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-                >
-                  <option value="">All Patients</option>
-                  {[...patients].sort((a, b) => a.lastName.localeCompare(b.lastName)).map(p => (
-                    <option key={p.id} value={p.id}>{p.firstName} {p.lastName}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[10px] uppercase tracking-wide font-bold text-[#7A8F79] mr-1">Type</span>
-              {presentTypes.map(cat => {
-                const active = selectedTypes === null || selectedTypes.has(cat)
-                return (
-                  <button
-                    key={cat}
-                    onClick={() => toggleType(cat)}
-                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition border ${
-                      active ? 'bg-[#2F3E4E] text-white border-[#2F3E4E]' : 'bg-white text-[#7A8F79] border-[#D9E1E8] opacity-60'
-                    }`}
-                  >
-                    {CATEGORY_LABEL[cat] || cat}
-                  </button>
-                )
-              })}
-            </div>
-            {filtersActive && (
-              <button onClick={clearFilters} className="ml-auto text-[11px] font-semibold text-[#7A8F79] hover:text-[#2F3E4E] underline">
-                Clear Filters
-              </button>
-            )}
-          </div>
-        )}
-
         {loading ? (
           <p className="text-[#7A8F79] text-sm">Loading your calendar…</p>
         ) : (
           <div className="bg-white rounded-xl shadow-sm p-4">
             <CalendarGrid
-              items={items}
+              items={visibleItems}
               view={view}
               anchorDate={anchorDate}
               customRange={customRange}
-              isGreyedOut={isGreyedOut}
               onItemClick={(item) => setSelectedItem(item as CalendarItem)}
               onDayClick={(day) => { if (view === 'month') { setAnchorDate(day); setView('day') } }}
             />

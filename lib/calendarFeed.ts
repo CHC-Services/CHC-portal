@@ -151,7 +151,7 @@ export async function getPatientCalendarFeed(patientId: string, range?: DateRang
   const startTimeFilter = dateFilter(range, null)
   const dueFilter = dateFilter(range, now)
 
-  const [shifts, appointments, meds, pas, documents] = await Promise.all([
+  const [shifts, appointments, meds, pas, documents, progressNotes] = await Promise.all([
     prisma.shift.findMany({
       where: { patientId, status: { not: 'cancelled' }, ...(startTimeFilter ? { startTime: startTimeFilter } : {}) },
       orderBy: { startTime: 'asc' },
@@ -161,6 +161,13 @@ export async function getPatientCalendarFeed(patientId: string, range?: DateRang
     prisma.patientMedication.findMany({ where: { patientId, active: true }, select: { id: true, patientId: true, medicationName: true, lastFillDate: true, daySupply: true, refillsRemaining: true, refillOrderedAt: true } }),
     prisma.patientPA.findMany({ where: { patientId, paEndDate: { not: null } } }),
     prisma.patientDocument.findMany({ where: { patientId, expiresAt: { not: null, ...dueFilter } } }),
+    // signedAt/voidedAt filter is "the checkmark logic" — identical whether
+    // the note was typed, voice-transcribed, or uploaded as a document (see
+    // lib/progressNoteDocument.ts). Was previously missing from this feed
+    // entirely (only getNurseCalendarFeed had it) — fixed here since this is
+    // exactly the feed the per-patient calendar's Day view (and, fanned out,
+    // family's calendar) reads from.
+    prisma.progressNote.findMany({ where: { patientId, signedAt: { not: null }, voidedAt: null, ...(startTimeFilter ? { serviceDate: startTimeFilter } : {}) } }),
   ])
 
   const items: CalendarItem[] = [
@@ -169,6 +176,7 @@ export async function getPatientCalendarFeed(patientId: string, range?: DateRang
     ...meds.map(m => ({ id: m.id, source: 'medication' as const, title: `Refill: ${m.medicationName}`, date: medicationDueDate(m.lastFillDate, m.daySupply), patientId, category: 'medication', status: effectiveRefillStatus(m.refillOrderedAt, m.lastFillDate, m.daySupply, m.refillsRemaining), editable: false, allDay: true })),
     ...pas.map(p => ({ id: p.id, source: 'priorAuth' as const, title: `PA Expiring: ${p.paNumber}`, date: new Date(p.paEndDate!), patientId, category: 'priorAuth', editable: false })),
     ...documents.map(d => ({ id: d.id, source: 'document' as const, title: `Expiring: ${d.title}`, date: d.expiresAt!, patientId, category: 'document', editable: false })),
+    ...progressNotes.map(n => ({ id: n.id, source: 'progressNote' as const, title: 'Progress Note', date: n.serviceDate, patientId, category: 'progressNote', editable: false })),
   ]
 
   return items.sort((a, b) => a.date.getTime() - b.date.getTime())

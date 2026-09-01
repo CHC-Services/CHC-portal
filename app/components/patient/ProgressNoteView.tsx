@@ -15,14 +15,19 @@ function fmtDateTime(iso: string) {
 // admin's view page, family's view page, and the nurse's own view of an
 // already-signed note.
 export default function ProgressNoteView({
-  note, basePath, signatureUrl, voidAction, addendumAction, deleteAction,
+  note, basePath, signatureUrl, documentUrl, voidAction, addendumAction, deleteAction, documentAction,
 }: {
   note: ProgressNoteDTO
   basePath: string // '/api/nurse', '/api/admin', or '/api/family'
   signatureUrl?: string | null
+  documentUrl?: string | null
   voidAction?: React.ReactNode
   addendumAction?: React.ReactNode
   deleteAction?: React.ReactNode
+  // Replace/Delete for a document-based note's attached file only (see
+  // lib/progressNoteDocument.ts) — rendered near the document link below,
+  // not lumped in with deleteAction (which is a different, note-wide action).
+  documentAction?: React.ReactNode
 }) {
   const [loadingPdf, setLoadingPdf] = useState(false)
   const [pdfError, setPdfError] = useState('')
@@ -61,9 +66,27 @@ export default function ProgressNoteView({
     }
   }
 
+  const isDocumentBased = !!note.documentStorageKey
+
   return (
     <div className="space-y-5">
-      {note.signedAt && (
+      {isDocumentBased ? (
+        <div className="bg-white rounded-2xl shadow-sm p-6 space-y-3">
+          <p className="text-sm font-bold uppercase tracking-widest text-[#2F3E4E]">Uploaded Document</p>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              {documentUrl ? (
+                <a href={documentUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-[#2F3E4E] hover:text-[#7A8F79] transition">
+                  📄 {note.documentFileName || 'View Uploaded Document'}
+                </a>
+              ) : (
+                <p className="text-sm text-[#7A8F79]">{note.documentFileName || 'Document'}</p>
+              )}
+            </div>
+            {documentAction}
+          </div>
+        </div>
+      ) : note.signedAt && (
         <div className="flex flex-col items-end gap-1.5">
           <button
             type="button"

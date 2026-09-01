@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import CalendarGrid from '../../components/calendar/CalendarGrid'
 import CalendarViewSwitcher from '../../components/calendar/CalendarViewSwitcher'
+import { CalendarFilterBar, CalendarFilterSection } from '../../components/calendar/CalendarFilterBar'
 import AppointmentForm from '../../components/patient/AppointmentForm'
-import { computeViewRange, dateKey, type CalendarViewMode } from '../../../lib/calendarViewRange'
+import ProgressNoteDocumentUploadModal from '../../components/patient/ProgressNoteDocumentUploadModal'
+import { computeViewRange, type CalendarViewMode } from '../../../lib/calendarViewRange'
 import type { CalendarItem as RawCalendarItem } from '../../../lib/calendarFeed'
 
 type PatientOption = { id: string; firstName: string; lastName: string }
@@ -62,6 +64,12 @@ export default function NurseCalendarPage() {
   const [showAddAppt, setShowAddAppt] = useState(false)
   const [apptPatientId, setApptPatientId] = useState('')
 
+  // Progress-note document upload — Day view only, patient picked up front
+  // (unlike the per-patient calendar's version of this button, this
+  // cross-patient calendar has no single patient already in scope).
+  const [showUploadNote, setShowUploadNote] = useState(false)
+  const [uploadPatientId, setUploadPatientId] = useState('')
+
   useEffect(() => {
     fetch('/api/nurse/patients', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
@@ -75,13 +83,14 @@ export default function NurseCalendarPage() {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key !== 'Escape') return
+      if (showUploadNote) { setShowUploadNote(false); setUploadPatientId(''); return }
       if (showAddAppt) { setShowAddAppt(false); setApptPatientId(''); return }
       if (selectedItem) { closeDetailModal(); setClaimResultMessage(''); return }
       if (view !== 'month') setView('month')
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [showAddAppt, selectedItem, view])
+  }, [showUploadNote, showAddAppt, selectedItem, view])
 
   const customRange = useMemo(() => {
     if (view !== 'custom' || !customStart || !customEnd) return undefined
@@ -128,23 +137,9 @@ export default function NurseCalendarPage() {
     return true
   }
 
-  const byDay = useMemo(() => {
-    const map = new Map<string, CalendarItem[]>()
-    for (const item of items) {
-      const key = dateKey(item.date)
-      if (!map.has(key)) map.set(key, [])
-      map.get(key)!.push(item)
-    }
-    return map
-  }, [items])
+  const visibleItems = useMemo(() => items.filter(matchesFilters), [items, selectedTypes, selectedPatientId, notesFilter])
 
   const filtersActive = (selectedTypes !== null) || notesFilter !== 'all' || selectedPatientId !== ''
-  function isGreyedOut(key: string) {
-    if (!filtersActive) return false
-    const dayItems = byDay.get(key)
-    if (!dayItems || dayItems.length === 0) return false
-    return !dayItems.some(matchesFilters)
-  }
 
   function toggleType(cat: string) {
     setSelectedTypes(prev => {
@@ -243,6 +238,63 @@ export default function NurseCalendarPage() {
           </div>
         </div>
 
+        {/* Filters */}
+        {presentTypes.length > 0 && (
+          <CalendarFilterBar
+            trailing={filtersActive && (
+              <button onClick={clearFilters} className="text-[11px] font-semibold text-[#7A8F79] hover:text-[#2F3E4E] underline">
+                Clear Filters
+              </button>
+            )}
+          >
+            {patients.length > 0 && (
+              <CalendarFilterSection label="Patient">
+                <select
+                  value={selectedPatientId}
+                  onChange={e => setSelectedPatientId(e.target.value)}
+                  className="h-[30px] border border-[#D9E1E8] rounded-lg px-2 text-xs text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                >
+                  <option value="">All Patients</option>
+                  {[...patients].sort((a, b) => a.lastName.localeCompare(b.lastName)).map(p => (
+                    <option key={p.id} value={p.id}>{p.firstName} {p.lastName}</option>
+                  ))}
+                </select>
+              </CalendarFilterSection>
+            )}
+            <CalendarFilterSection label="Type">
+              {presentTypes.map(cat => {
+                const active = selectedTypes === null || selectedTypes.has(cat)
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => toggleType(cat)}
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition border ${
+                      active ? 'bg-[#2F3E4E] text-white border-[#2F3E4E]' : 'bg-white text-[#7A8F79] border-[#D9E1E8] opacity-60'
+                    }`}
+                  >
+                    {CATEGORY_LABEL[cat] || cat}
+                  </button>
+                )
+              })}
+            </CalendarFilterSection>
+            {presentTypes.includes('shift') && (
+              <CalendarFilterSection label="Progress Notes">
+                {(['all', 'with', 'without'] as const).map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setNotesFilter(f)}
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition ${
+                      notesFilter === f ? 'bg-[#7A8F79] text-white' : 'bg-[#F4F6F5] text-[#7A8F79] hover:bg-[#D9E1E8]'
+                    }`}
+                  >
+                    {f === 'all' ? 'All Shifts' : f === 'with' ? 'Has Notes' : 'No Notes'}
+                  </button>
+                ))}
+              </CalendarFilterSection>
+            )}
+          </CalendarFilterBar>
+        )}
+
         {/* View mode switcher + navigation */}
         <CalendarViewSwitcher
           view={view}
@@ -260,62 +312,15 @@ export default function NurseCalendarPage() {
           }
         />
 
-        {/* Filters */}
-        {presentTypes.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm p-3 mb-4 flex items-center gap-4 flex-wrap">
-            {patients.length > 0 && (
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] uppercase tracking-wide font-bold text-[#7A8F79] mr-1">Patient</span>
-                <select
-                  value={selectedPatientId}
-                  onChange={e => setSelectedPatientId(e.target.value)}
-                  className="h-[30px] border border-[#D9E1E8] rounded-lg px-2 text-xs text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
-                >
-                  <option value="">All Patients</option>
-                  {[...patients].sort((a, b) => a.lastName.localeCompare(b.lastName)).map(p => (
-                    <option key={p.id} value={p.id}>{p.firstName} {p.lastName}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[10px] uppercase tracking-wide font-bold text-[#7A8F79] mr-1">Type</span>
-              {presentTypes.map(cat => {
-                const active = selectedTypes === null || selectedTypes.has(cat)
-                return (
-                  <button
-                    key={cat}
-                    onClick={() => toggleType(cat)}
-                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition border ${
-                      active ? 'bg-[#2F3E4E] text-white border-[#2F3E4E]' : 'bg-white text-[#7A8F79] border-[#D9E1E8] opacity-60'
-                    }`}
-                  >
-                    {CATEGORY_LABEL[cat] || cat}
-                  </button>
-                )
-              })}
-            </div>
-            {presentTypes.includes('shift') && (
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] uppercase tracking-wide font-bold text-[#7A8F79] mr-1">Progress Notes</span>
-                {(['all', 'with', 'without'] as const).map(f => (
-                  <button
-                    key={f}
-                    onClick={() => setNotesFilter(f)}
-                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition ${
-                      notesFilter === f ? 'bg-[#7A8F79] text-white' : 'bg-[#F4F6F5] text-[#7A8F79] hover:bg-[#D9E1E8]'
-                    }`}
-                  >
-                    {f === 'all' ? 'All Shifts' : f === 'with' ? 'Has Notes' : 'No Notes'}
-                  </button>
-                ))}
-              </div>
-            )}
-            {filtersActive && (
-              <button onClick={clearFilters} className="ml-auto text-[11px] font-semibold text-[#7A8F79] hover:text-[#2F3E4E] underline">
-                Clear Filters
-              </button>
-            )}
+        {view === 'day' && (
+          <div className="flex justify-end mb-4">
+            <button
+              type="button"
+              onClick={() => setShowUploadNote(true)}
+              className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition"
+            >
+              + Upload Progress Note
+            </button>
           </div>
         )}
 
@@ -324,11 +329,10 @@ export default function NurseCalendarPage() {
         ) : (
           <div className="bg-white rounded-xl shadow-sm p-4">
             <CalendarGrid
-              items={items}
+              items={visibleItems}
               view={view}
               anchorDate={anchorDate}
               customRange={customRange}
-              isGreyedOut={isGreyedOut}
               onItemClick={(item) => { setSelectedItem(item as CalendarItem); setPortionMode(false); setPortionError(''); setClaimResultMessage('') }}
               onDayClick={(day) => { if (view === 'month') { setAnchorDate(day); setView('day') } }}
             />
@@ -440,6 +444,37 @@ export default function NurseCalendarPage() {
             )}
           </div>
         </div>
+      )}
+
+      {/* Upload Progress Note — patient-picker step, then hands off to the
+          shared upload modal (not nested inside this one). */}
+      {showUploadNote && !uploadPatientId && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" onClick={() => setShowUploadNote(false)}>
+          <div className="bg-white rounded-2xl shadow-lg p-6 max-w-sm w-full" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-lg font-bold text-[#2F3E4E]">Upload Progress Note</p>
+              <button onClick={() => setShowUploadNote(false)} className="text-[#7A8F79] hover:text-[#2F3E4E] text-sm font-semibold transition">Close</button>
+            </div>
+            <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Patient</label>
+            <select
+              className="w-full border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+              value={uploadPatientId}
+              onChange={e => setUploadPatientId(e.target.value)}
+            >
+              <option value="">— Select a patient —</option>
+              {patients.map(p => <option key={p.id} value={p.id}>{p.firstName} {p.lastName}</option>)}
+            </select>
+          </div>
+        </div>
+      )}
+
+      {showUploadNote && uploadPatientId && (
+        <ProgressNoteDocumentUploadModal
+          patientId={uploadPatientId}
+          serviceDate={view === 'day' ? anchorDate : new Date()}
+          onClose={() => { setShowUploadNote(false); setUploadPatientId('') }}
+          onUploaded={() => { setShowUploadNote(false); setUploadPatientId(''); load() }}
+        />
       )}
     </div>
   )

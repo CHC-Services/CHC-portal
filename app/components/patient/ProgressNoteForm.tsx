@@ -58,6 +58,10 @@ export type ProgressNoteDTO = {
   voidedAt: string | null
   voidedByUserId: string | null
   voidReason: string | null
+  documentStorageKey: string | null
+  documentFileName: string | null
+  documentMimeType: string | null
+  documentFileSize: number | null
   vitals: ProgressNoteVitalRow[]
   intakeOutput: ProgressNoteIntakeOutputRow[]
   addenda: ProgressNoteAddendumDTO[]

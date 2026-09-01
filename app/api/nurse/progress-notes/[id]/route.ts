@@ -43,6 +43,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     ? await getPresignedDownloadUrl(note.signatureImageKey, 900, { inline: true, contentType: 'image/png' })
     : null
 
+  const documentUrl = note.documentStorageKey
+    ? await getPresignedDownloadUrl(note.documentStorageKey, 900, { inline: true, contentType: note.documentMimeType || undefined, fileName: note.documentFileName || undefined })
+    : null
+
   const addenda = await Promise.all(note.addenda.map(async a => ({
     ...a,
     authorDisplayName: authorDisplayName(a),
@@ -53,6 +57,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     note: { ...note, authorDisplayName: authorDisplayName(note), addenda },
     isAuthor: isOwnNote,
     signatureUrl,
+    documentUrl,
   })
 }
 

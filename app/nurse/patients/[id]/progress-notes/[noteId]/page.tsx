@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import ProgressNoteForm, { ProgressNoteDTO } from '../../../../../components/patient/ProgressNoteForm'
 import ProgressNoteView from '../../../../../components/patient/ProgressNoteView'
 import ProgressNoteAddendumForm from '../../../../../components/patient/ProgressNoteAddendumForm'
+import ProgressNoteDocumentActions from '../../../../../components/patient/ProgressNoteDocumentActions'
 
 function NurseProgressNoteInner({ id, noteId }: { id: string; noteId: string }) {
   const router = useRouter()
@@ -22,6 +23,7 @@ function NurseProgressNoteInner({ id, noteId }: { id: string; noteId: string }) 
   const [note, setNote] = useState<ProgressNoteDTO | null>(null)
   const [isAuthor, setIsAuthor] = useState(false)
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null)
+  const [documentUrl, setDocumentUrl] = useState<string | null>(null)
 
   function load() {
     setLoading(true)
@@ -32,6 +34,7 @@ function NurseProgressNoteInner({ id, noteId }: { id: string; noteId: string }) 
         setNote(body.note)
         setIsAuthor(body.isAuthor)
         setSignatureUrl(body.signatureUrl)
+        setDocumentUrl(body.documentUrl)
         setLoading(false)
       })
   }
@@ -77,6 +80,16 @@ function NurseProgressNoteInner({ id, noteId }: { id: string; noteId: string }) 
             note={note}
             basePath="/api/nurse"
             signatureUrl={signatureUrl}
+            documentUrl={documentUrl}
+            documentAction={isAuthor && note.documentStorageKey ? (
+              <ProgressNoteDocumentActions
+                basePath="/api/nurse"
+                patientId={id}
+                noteId={note.id}
+                onReplaced={() => load()}
+                onDeleted={() => router.push(backHref)}
+              />
+            ) : undefined}
             addendumAction={isAuthor && note.signedAt && !note.voidedAt ? (
               <ProgressNoteAddendumForm
                 basePath="/api/nurse"

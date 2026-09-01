@@ -107,6 +107,16 @@ function ProgressNoteBadge({ count, onClick }: { count: number; onClick?: () => 
   )
 }
 
+// All-day items (single-day ones — the multi-day spanning kind never reach
+// this list, see isSpanningAllDay below) lead each day's event-line list,
+// ahead of timed items. Doesn't apply to medication/progressNote items —
+// COMPACT_ONLY_CATEGORIES already pulls those out into a corner badge before
+// this ever runs, so they're never in the event-line list to begin with.
+// Stable sort, so same-allDay-ness items keep their existing relative order.
+function sortAllDayFirst(items: CalendarItem[]): CalendarItem[] {
+  return [...items].sort((a, b) => (a.allDay ? 0 : 1) - (b.allDay ? 0 : 1))
+}
+
 function groupByDay(items: CalendarItem[]): Map<string, CalendarItem[]> {
   const map = new Map<string, CalendarItem[]>()
   for (const item of items) {
@@ -153,7 +163,6 @@ export default function CalendarGrid({
   customRange,
   onItemClick,
   onDayClick,
-  isGreyedOut,
 }: {
   items: CalendarItem[]
   view: CalendarViewMode
@@ -161,7 +170,6 @@ export default function CalendarGrid({
   customRange?: { start: Date; end: Date }
   onItemClick?: (item: CalendarItem) => void
   onDayClick?: (day: Date) => void
-  isGreyedOut?: (key: string) => boolean
 }) {
   const byDay = groupByDay(items)
   const today = dateKey(new Date())
@@ -204,10 +212,9 @@ export default function CalendarGrid({
                 {week.map(day => {
                   const key = dateKey(day)
                   const dayItems = (byDay.get(key) || []).filter(item => !isSpanningAllDay(item))
-                  const visibleItems = dayItems.filter(item => !COMPACT_ONLY_CATEGORIES.has(item.category))
+                  const visibleItems = sortAllDayFirst(dayItems.filter(item => !COMPACT_ONLY_CATEGORIES.has(item.category)))
                   const meds = medicationFlags(dayItems)
                   const noteCount = progressNoteCount(dayItems)
-                  const greyed = isGreyedOut?.(key) ?? false
                   const inMonth = day.getMonth() === thisMonth
                   // Past days get a light fade instead of a strikethrough —
                   // a quieter, cell-level way to separate past from present.
@@ -218,7 +225,7 @@ export default function CalendarGrid({
                       key={key}
                       className={`relative min-h-[80px] border-2 rounded-lg p-1 space-y-0.5 transition ${
                         isToday ? 'border-[#D4AF37]' : 'border-[#D9E1E8]'
-                      } ${greyed ? 'opacity-30' : isPast ? 'opacity-60' : ''} ${inMonth ? 'bg-white' : 'bg-[#F4F6F5]'}`}
+                      } ${isPast ? 'opacity-60' : ''} ${inMonth ? 'bg-white' : 'bg-[#F4F6F5]'}`}
                     >
                       {meds.show && (
                         <span className="absolute top-0.5 right-0.5 text-xs">
@@ -270,12 +277,11 @@ export default function CalendarGrid({
       {days.map(day => {
         const key = dateKey(day)
         const dayItems = (byDay.get(key) || []).sort((a, b) => a.date.getTime() - b.date.getTime())
-        const visibleItems = isCompact ? dayItems.filter(item => !COMPACT_ONLY_CATEGORIES.has(item.category)) : dayItems
+        const visibleItems = sortAllDayFirst(isCompact ? dayItems.filter(item => !COMPACT_ONLY_CATEGORIES.has(item.category)) : dayItems)
         const meds = isCompact ? medicationFlags(dayItems) : { show: false, overdue: false }
         const noteCount = isCompact ? progressNoteCount(dayItems) : 0
-        const greyed = isGreyedOut?.(key) ?? false
         return (
-          <div key={key} className={`border border-[#D9E1E8] rounded-xl p-3 transition ${greyed ? 'opacity-30' : ''} ${key === today ? 'ring-2 ring-[#7A8F79]' : ''}`}>
+          <div key={key} className={`border border-[#D9E1E8] rounded-xl p-3 transition ${key === today ? 'ring-2 ring-[#7A8F79]' : ''}`}>
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs font-bold text-[#2F3E4E]">
                 {day.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import ProgressNoteForm, { ProgressNoteDTO } from '../../../../../components/patient/ProgressNoteForm'
 import ProgressNoteView from '../../../../../components/patient/ProgressNoteView'
 import ProgressNoteAddendumForm from '../../../../../components/patient/ProgressNoteAddendumForm'
+import ProgressNoteDocumentActions from '../../../../../components/patient/ProgressNoteDocumentActions'
 
 export default function AdminProgressNotePage({ params }: { params: Promise<{ id: string; noteId: string }> }) {
   const { id, noteId } = use(params)
@@ -16,6 +17,7 @@ export default function AdminProgressNotePage({ params }: { params: Promise<{ id
   const [note, setNote] = useState<ProgressNoteDTO | null>(null)
   const [isAuthor, setIsAuthor] = useState(false)
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null)
+  const [documentUrl, setDocumentUrl] = useState<string | null>(null)
   const [voiding, setVoiding] = useState(false)
   const [voidReason, setVoidReason] = useState('')
   const [showVoidForm, setShowVoidForm] = useState(false)
@@ -31,6 +33,7 @@ export default function AdminProgressNotePage({ params }: { params: Promise<{ id
         setNote(body.note)
         setIsAuthor(body.isAuthor)
         setSignatureUrl(body.signatureUrl)
+        setDocumentUrl(body.documentUrl)
         setLoading(false)
       })
   }
@@ -142,8 +145,18 @@ export default function AdminProgressNotePage({ params }: { params: Promise<{ id
             note={note}
             basePath="/api/admin"
             signatureUrl={signatureUrl}
+            documentUrl={documentUrl}
             voidAction={voidAction}
             deleteAction={deleteAction}
+            documentAction={note.documentStorageKey ? (
+              <ProgressNoteDocumentActions
+                basePath="/api/admin"
+                patientId={id}
+                noteId={note.id}
+                onReplaced={() => load()}
+                onDeleted={() => router.push(`/admin/patients/${id}`)}
+              />
+            ) : undefined}
             addendumAction={note.signedAt && !note.voidedAt ? (
               <ProgressNoteAddendumForm
                 basePath="/api/admin"

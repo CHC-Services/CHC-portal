@@ -145,3 +145,14 @@ export async function canAddAddendum(session: Session, note: { authorUserId: str
   if (session.role === 'admin') return true
   return note.authorUserId === session.id
 }
+
+// Replace/delete a document-based note's attached file (lib/progressNoteDocument.ts).
+// A document-based note is signed the instant it's created, so the usual
+// "edit only while unsigned" rule (canEditProgressNote) doesn't apply — this
+// is the narrow carve-out that lets a nurse fix "I picked the wrong file"
+// without reopening the note itself. Callers must additionally confirm
+// note.documentStorageKey is set before checking this.
+export async function canManageProgressNoteDocument(session: Session, note: { authorUserId: string | null }): Promise<boolean> {
+  if (session.role === 'admin') return true
+  return session.role === 'nurse' && note.authorUserId === session.id
+}

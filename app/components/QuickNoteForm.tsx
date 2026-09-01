@@ -289,8 +289,11 @@ export default function QuickNoteForm({
   }
 
   function acceptExtractedRows() {
-    if (extractedVitals.length) setVitals(rows => mergeRowsByTime(rows, extractedVitals))
-    if (extractedIO.length) setIntakeOutput(rows => mergeRowsByTime(rows, extractedIO))
+    // shiftStartTime anchors the merge so an overnight shift's early-morning
+    // entries (00:00–06:00) sort after its evening entries (19:00–23:59)
+    // instead of before them — see mergeRowsByTime's own comment.
+    if (extractedVitals.length) setVitals(rows => mergeRowsByTime(rows, extractedVitals, shiftStartTime))
+    if (extractedIO.length) setIntakeOutput(rows => mergeRowsByTime(rows, extractedIO, shiftStartTime))
     setExtractedVitals([]); setExtractedIO([])
   }
 

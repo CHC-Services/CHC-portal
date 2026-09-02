@@ -1042,6 +1042,8 @@ model Patient {
   priorAuths    PatientPA[]
   medications   PatientMedication[]
   medicationAdministrations MedicationAdministration[]
+  treatments    PatientTreatment[]
+  treatmentAdministrations TreatmentAdministration[]
   guardianLinks GuardianPatient[]
   documents     PatientDocument[]
   shifts        Shift[]
@@ -1570,6 +1572,64 @@ model MedicationAdministration {
   @@unique([medicationId, scheduledDate, scheduledTimeOfDay])
   @@index([patientId])
   @@index([medicationId, scheduledDate])
+}
+
+// A non-medication clinical task ordered for the patient — wound care, ROM
+// exercises, skin checks, etc. Metadata-only, same "order lives separately
+// from its administration log" split as PatientMedication/MedicationAdministration
+// above, just simpler: no dose/route/pharmacy/refill concepts, and the log
+// below is per-DAY (not per-scheduled-time) since a treatment is initialed
+// once for having been done that day, not dosed at fixed clock times.
+model PatientTreatment {
+  id        String  @id @default(cuid())
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  treatmentName String
+  instructions  String? // free-text order details, e.g. "Cleanse and redress left heel wound"
+  frequency     String? // descriptive only, e.g. "Daily", "Every shift" — not parsed/enforced, same convention as PatientMedication.frequency
+  active        Boolean @default(true)
+
+  createdByUserId String
+  createdByRole   String // 'nurse' | 'admin'
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  administrations TreatmentAdministration[]
+
+  @@index([patientId])
+}
+
+// The TAR itself — one row per treatment+day once it's been initialed. A
+// still-pending day is computed at read time (treatment exists, no row for
+// that day yet), never pre-materialized, same as MedicationAdministration.
+model TreatmentAdministration {
+  id          String           @id @default(uuid())
+  treatmentId String
+  treatment   PatientTreatment @relation(fields: [treatmentId], references: [id], onDelete: Cascade)
+  patientId   String
+  patient     Patient          @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  scheduledDate DateTime // UTC-midnight-of-day convention (date-only, like activeFrom/activeUntil)
+
+  status         String  @default("done") // 'done' | 'refused' | 'omitted'
+  omissionReason String? // required (enforced in the route, not the schema) when refused/omitted
+
+  // "Initialing" is an attribution, not the dual administered-by/documented-by
+  // split MAR has — treatments are clinical tasks a nurse performs and charts
+  // herself, not something a family member self-attests to.
+  initialedByUserId              String
+  initialedByRole                String // 'nurse' | 'admin'
+  initialedByDisplayNameSnapshot String // frozen at creation, same convention as ProgressNote.authorDisplayNameSnapshot
+
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([treatmentId, scheduledDate])
+  @@index([patientId])
+  @@index([treatmentId, scheduledDate])
 }
 
 // Shared pharmacy directory — grows as medications are entered. Referenced by

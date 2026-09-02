@@ -205,3 +205,28 @@ export async function canEditMedicationAdministration(
   if (session.role === 'admin') return true
   return entry.documentedByUserId === session.id
 }
+
+// Treatment Administration Record (TAR) — whole care team can see the log,
+// same as MAR/progress notes.
+export async function canViewTreatmentAdministration(session: Session, patientId: string): Promise<boolean> {
+  return isLinkedToPatient(session, patientId)
+}
+
+// Defining a treatment, or initialing one done. Nurse (actively linked) or
+// admin only — unlike MAR there's no self-attesting guardian case here:
+// treatments (wound care, ROM exercises, etc.) are clinical tasks a family
+// member doesn't typically perform or chart.
+export async function canDocumentTreatmentAdministration(session: Session, patientId: string): Promise<boolean> {
+  if (session.role === 'admin') return true
+  if (session.role !== 'nurse' || !session.nurseProfileId) return false
+  return isLinkedToPatient(session, patientId)
+}
+
+// Edit/delete an existing TAR entry — whoever initialed it, or admin.
+export async function canEditTreatmentAdministration(
+  session: Session,
+  entry: { initialedByUserId: string }
+): Promise<boolean> {
+  if (session.role === 'admin') return true
+  return entry.initialedByUserId === session.id
+}

@@ -7,6 +7,7 @@ import PatientDemographics from '../../../components/patient/PatientDemographics
 import PatientInsurance from '../../../components/patient/PatientInsurance'
 import PatientMedications from '../../../components/patient/PatientMedications'
 import PatientMedicationMAR, { MarRosterEntry } from '../../../components/patient/PatientMedicationMAR'
+import PatientTreatmentTAR from '../../../components/patient/PatientTreatmentTAR'
 import PatientDocuments from '../../../components/patient/PatientDocuments'
 import PatientOrders from '../../../components/patient/PatientOrders'
 import PatientCareTeam, { NurseLink, GuardianLink } from '../../../components/patient/PatientCareTeam'
@@ -431,6 +432,15 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
           currentUserRole="admin"
           canAttributeToOthers
           roster={marRoster}
+        />
+      ),
+    },
+    {
+      key: 'tar', label: 'TAR', content: (
+        <PatientTreatmentTAR
+          basePath={`/api/patient/${id}`}
+          currentUserId={adminUserId}
+          canManage
         />
       ),
     },

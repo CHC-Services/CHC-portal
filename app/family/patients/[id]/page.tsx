@@ -7,6 +7,7 @@ import PatientDemographics from '../../../components/patient/PatientDemographics
 import PatientInsurance from '../../../components/patient/PatientInsurance'
 import PatientMedications from '../../../components/patient/PatientMedications'
 import PatientMedicationMAR from '../../../components/patient/PatientMedicationMAR'
+import PatientTreatmentTAR from '../../../components/patient/PatientTreatmentTAR'
 import PatientDocuments from '../../../components/patient/PatientDocuments'
 import PatientOrders from '../../../components/patient/PatientOrders'
 import PatientNotifications from '../../../components/patient/PatientNotifications'
@@ -248,6 +249,15 @@ export default function FamilyPatientDetailPage({ params }: { params: Promise<{ 
           currentUserRole="guardian"
           canAttributeToOthers={false}
           roster={[]}
+        />
+      ),
+    },
+    {
+      key: 'tar', label: 'TAR', content: (
+        <PatientTreatmentTAR
+          basePath={`/api/patient/${id}`}
+          currentUserId={guardianUserId}
+          canManage={false}
         />
       ),
     },

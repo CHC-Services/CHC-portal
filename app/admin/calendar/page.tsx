@@ -73,12 +73,47 @@ export default function AdminCalendarPage() {
   const [deleting, setDeleting] = useState(false)
 
   const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
-    title: '', description: '', eventDate: '', category: 'general',
+    title: '', description: '', eventDate: '', allDay: true, eventTime: '',
+    category: 'general',
     audienceIndex: 3, // 'All Users'
     recurrence: '',
   })
+
+  function openNewEventForm() {
+    setEditingId(null)
+    setForm({ title: '', description: '', eventDate: '', allDay: true, eventTime: '', category: 'general', audienceIndex: 3, recurrence: '' })
+    setShowForm(true)
+  }
+
+  // Reads back a stored eventDate using the browser's own local getters —
+  // correct because eventDate is always stored as an Eastern-anchored
+  // instant (easternMidnightUtc/easternTimeOfDayUtc) and this app assumes
+  // an Eastern-local viewer, same as every other date/time convention here.
+  function openEditEventForm(item: CalendarItem) {
+    const d = item.date
+    const dateKeyStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+    const audienceIndex = EVENT_AUDIENCES.findIndex(a =>
+      a.targetRoles.length === (item.targetRoles || []).length &&
+      a.targetRoles.every(r => (item.targetRoles || []).includes(r))
+    )
+    setEditingId(item.id)
+    setForm({
+      title: item.title,
+      description: item.description || '',
+      eventDate: dateKeyStr,
+      allDay: item.allDay !== false,
+      eventTime: timeStr,
+      category: item.category,
+      audienceIndex: audienceIndex >= 0 ? audienceIndex : 3,
+      recurrence: item.recurrence || '',
+    })
+    setSelectedItem(null)
+    setShowForm(true)
+  }
 
   // Patient list is only needed once admin actually switches to Patient
   // View — no reason to pull every patient on a page load that's staying
@@ -169,14 +204,17 @@ export default function AdminCalendarPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
-    const res = await fetch('/api/admin/events', {
-      method: 'POST',
+    const url = editingId ? `/api/admin/events/${editingId}` : '/api/admin/events'
+    const res = await fetch(url, {
+      method: editingId ? 'PATCH' : 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({
         title: form.title,
         description: form.description,
         eventDate: form.eventDate,
+        allDay: form.allDay,
+        eventTime: form.eventTime,
         category: form.category,
         targetRoles: EVENT_AUDIENCES[form.audienceIndex].targetRoles,
         recurrence: form.recurrence || null,
@@ -184,7 +222,8 @@ export default function AdminCalendarPage() {
     })
     setSaving(false)
     if (res.ok) {
-      setForm({ title: '', description: '', eventDate: '', category: 'general', audienceIndex: 3, recurrence: '' })
+      setEditingId(null)
+      setForm({ title: '', description: '', eventDate: '', allDay: true, eventTime: '', category: 'general', audienceIndex: 3, recurrence: '' })
       setShowForm(false)
       load()
     }
@@ -228,7 +267,7 @@ export default function AdminCalendarPage() {
             </select>
             {calendarViewMode === 'global' && (
               <button
-                onClick={() => setShowForm(!showForm)}
+                onClick={() => { if (showForm) { setShowForm(false) } else { openNewEventForm() } }}
                 className="bg-[#2F3E4E] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#7A8F79] transition"
               >
                 {showForm ? 'Cancel' : '+ Add Event'}
@@ -239,7 +278,7 @@ export default function AdminCalendarPage() {
 
         {calendarViewMode === 'global' && showForm && (
           <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm p-6 mb-6 space-y-4">
-            <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79]">New Event</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-widest text-[#7A8F79]">{editingId ? 'Edit Event' : 'New Event'}</h2>
 
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Title</label>
@@ -259,6 +298,25 @@ export default function AdminCalendarPage() {
                   onChange={e => setForm({ ...form, eventDate: e.target.value })}
                   className="w-full border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
                 />
+                <label className="flex items-center gap-1.5 mt-2 text-xs font-semibold text-[#2F3E4E]">
+                  <input
+                    type="checkbox"
+                    checked={form.allDay}
+                    onChange={e => setForm({ ...form, allDay: e.target.checked })}
+                    className="rounded border-[#D9E1E8]"
+                  />
+                  All day event
+                </label>
+                {!form.allDay && (
+                  <div className="mt-2">
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Time</label>
+                    <input
+                      type="time" required={!form.allDay} value={form.eventTime}
+                      onChange={e => setForm({ ...form, eventTime: e.target.value })}
+                      className="w-full h-[34px] border border-[#D9E1E8] p-2 rounded-lg text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                    />
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Category</label>
@@ -318,7 +376,7 @@ export default function AdminCalendarPage() {
               type="submit" disabled={saving}
               className="w-full bg-[#7A8F79] text-white py-2 rounded-lg font-semibold text-sm hover:bg-[#657a64] transition disabled:opacity-50"
             >
-              {saving ? 'Saving…' : 'Save Event'}
+              {saving ? 'Saving…' : editingId ? 'Save Changes' : 'Save Event'}
             </button>
           </form>
         )}
@@ -423,6 +481,11 @@ export default function AdminCalendarPage() {
               <p className="text-[10px] uppercase tracking-wide font-semibold text-[#7A8F79] mt-2">{selectedItem.status.replace('_', ' ')}</p>
             )}
             <div className="flex items-center justify-end gap-2 mt-5">
+              {selectedItem.source === 'globalEvent' && (
+                <button onClick={() => openEditEventForm(selectedItem)} className="border border-[#D9E1E8] text-[#2F3E4E] text-sm font-semibold px-4 py-2 rounded-xl hover:border-[#7A8F79] transition">
+                  Edit
+                </button>
+              )}
               {selectedItem.source === 'globalEvent' && (
                 <button onClick={() => deleteEvent(selectedItem.id)} disabled={deleting} className="border border-red-300 text-red-500 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-red-50 transition disabled:opacity-50">
                   {deleting ? 'Deleting…' : 'Delete'}

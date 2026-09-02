@@ -17,6 +17,9 @@ export type CalendarItem = {
   // (app/api/admin/calendar/route.ts's no-patientId branch) — the raw
   // audience roles, for pre-filling the Audience dropdown on edit.
   targetRoles?: string[]
+  // globalEvent items only, same admin-management-view scoping as
+  // targetRoles above — pre-fills the Recurrence dropdown on edit.
+  recurrence?: string | null
   // shift items only — powers the nurse-name and has/hasn't-progress-notes
   // filters.
   nurseName?: string
@@ -26,9 +29,10 @@ export type CalendarItem = {
   // immediately or needs family/admin approval first (Patient.
   // partialShiftClaimsRequireApproval — see lib/shiftSplit.ts).
   partialClaimRequiresApproval?: boolean
-  // appointment items only — true means date/endDate are date boundaries
-  // (possibly spanning multiple days), not a same-day time range. Drives
-  // CalendarGrid's month-view spanning-bar rendering.
+  // appointment/globalEvent items — true means date/endDate are date
+  // boundaries (possibly spanning multiple days for appointments), not a
+  // real clock time. Drives CalendarGrid's month-view spanning-bar
+  // rendering and its all-day-only background-pill rule.
   allDay?: boolean
 }
 
@@ -98,7 +102,7 @@ export async function getNurseCalendarFeed(nurseProfileId: string, session: { id
   ])
 
   const items: CalendarItem[] = [
-    ...globalEvents.map(e => ({ id: e.id, source: 'globalEvent' as const, title: e.title, date: e.eventDate, category: e.category, description: e.description ?? undefined, editable: false })),
+    ...globalEvents.map(e => ({ id: e.id, source: 'globalEvent' as const, title: e.title, date: e.eventDate, category: e.category, description: e.description ?? undefined, editable: false, allDay: e.allDay })),
     ...personalReminders.map(r => ({ id: r.id, source: 'personalReminder' as const, title: r.title, date: r.dueDate, category: r.category, description: r.notes ?? undefined, editable: true })),
     ...[...myShifts, ...openShifts].map(s => ({ id: s.id, source: 'shift' as const, title: s.status === 'assigned' ? 'Shift' : s.status === 'coverage_needed' ? 'Coverage Needed' : 'Open Shift', date: s.startTime, endDate: s.endTime, patientId: s.patientId, patientName: patientName[s.patientId], category: 'shift', status: s.status, editable: s.nurseId === nurseProfileId, nurseName: s.nurseId === nurseProfileId ? session.displayName : undefined, hasProgressNotes: s._count.progressNotes > 0, partialClaimRequiresApproval: requiresApproval[s.patientId] })),
     ...appointments.map(a => ({ id: a.id, source: 'appointment' as const, title: a.title, date: a.startTime, endDate: a.endTime ?? undefined, patientId: a.patientId, patientName: patientName[a.patientId], category: 'appointment', status: a.status, editable: true, allDay: a.allDay })),
@@ -134,7 +138,7 @@ export async function getFamilyCalendarFeed(userId: string, session: { id: strin
   ])
 
   const items: CalendarItem[] = [
-    ...globalEvents.map(e => ({ id: e.id, source: 'globalEvent' as const, title: e.title, date: e.eventDate, category: e.category, description: e.description ?? undefined, editable: false })),
+    ...globalEvents.map(e => ({ id: e.id, source: 'globalEvent' as const, title: e.title, date: e.eventDate, category: e.category, description: e.description ?? undefined, editable: false, allDay: e.allDay })),
     ...perPatient.flat(),
   ]
 

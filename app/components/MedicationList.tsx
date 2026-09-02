@@ -959,11 +959,14 @@ function onHandOf(med: Pick<MedicationDTO, 'unitStrength' | 'unitType'>): string
 // PatientMedicationMAR.tsx's formatTimeLabel, duplicated rather than
 // imported since this component is deliberately kept portable/no
 // cross-component dependencies (see the file-level comment above).
+// On-the-hour drops the ":00" ("8 AM" not "8:00 AM") — a non-zero minute
+// still gets the normal spaced format, same convention as the calendar's
+// fmtTimeCompact.
 function formatScheduleTime(hhmm: string): string {
   const [h, m] = hhmm.split(':').map(Number)
   const period = h >= 12 ? 'PM' : 'AM'
   const hour12 = h % 12 === 0 ? 12 : h % 12
-  return `${hour12}:${String(m).padStart(2, '0')} ${period}`
+  return m === 0 ? `${hour12} ${period}` : `${hour12}:${String(m).padStart(2, '0')} ${period}`
 }
 
 // One line of the data sheet — plain read-only cells, no per-row action
@@ -997,7 +1000,7 @@ function StatusCell({ med }: { med: MedicationDTO }) {
         {meta.label}
       </span>
       <span
-        className="text-xs font-semibold whitespace-nowrap self-center"
+        className="text-xs font-normal whitespace-nowrap self-center"
         style={{ gridArea: '1 / 1', color: meta.text, animation: 'medStatusCrossfade 6s ease-in-out infinite', animationDelay: '3s' }}
       >
         {fmtDate(dueDate)}

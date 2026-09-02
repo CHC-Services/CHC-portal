@@ -43,6 +43,8 @@ export async function GET(req: Request) {
     description: e.description ?? undefined,
     editable: true,
     targetRoles: e.targetRoles,
+    allDay: e.allDay,
+    recurrence: e.recurrence,
   }))
   return NextResponse.json({ items })
 }

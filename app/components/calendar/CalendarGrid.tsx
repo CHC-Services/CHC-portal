@@ -83,10 +83,6 @@ function shiftChipLabel(item: CalendarItem): string {
   return `${fmtTimeCompact(item.date)} ${item.title}`
 }
 
-function isOpenShift(item: CalendarItem): boolean {
-  return item.category === 'shift' && item.status !== 'assigned' && item.status !== 'completed'
-}
-
 // Flat mode's text-only color — same red/green semantic split chipClass
 // uses for shift backgrounds, just without the pill behind it.
 function chipTextColorClass(item: CalendarItem): string {
@@ -96,13 +92,15 @@ function chipTextColorClass(item: CalendarItem): string {
   return 'text-[#2F3E4E]'
 }
 
-// flat=true drops the solid colored pill and just renders colored text —
-// used on the month view for open/coverage-needed shifts (Alex's request:
-// only genuinely all-day items should get a solid background block there).
-function ItemChip({ item, onClick, flat }: { item: CalendarItem; onClick?: (item: CalendarItem) => void; flat?: boolean }) {
+// Only a genuinely all-day item gets the solid colored-pill background
+// (chipClass) — every timed item (shift, open shift, appointment, reminder,
+// anything else with a real clock time) renders as plain colored text, no
+// background at all. This is the one rule, everywhere ItemChip is used —
+// not a per-category or per-status carve-out.
+function ItemChip({ item, onClick }: { item: CalendarItem; onClick?: (item: CalendarItem) => void }) {
   const label = item.category === 'shift' ? shiftChipLabel(item) : `${item.allDay ? '' : `${fmtTime(item.date)} `}${item.title}`
   const tooltip = `${item.allDay ? '' : `${fmtTime(item.date)} — `}${item.title}${item.patientName ? ` (${item.patientName})` : ''}`
-  if (flat) {
+  if (!item.allDay) {
     return (
       <button
         type="button"
@@ -348,7 +346,7 @@ function HourlyDay({ day, dayItems, onItemClick, onDayClick }: {
                   type="button"
                   onClick={() => onItemClick?.(item)}
                   title={`${fmtTime(item.date)} — ${item.title}${item.patientName ? ` (${item.patientName})` : ''}`}
-                  className={`absolute text-left text-[10px] leading-tight px-1.5 py-0.5 rounded truncate ${chipClass(item)} hover:opacity-80 transition border border-white/60`}
+                  className={`absolute text-left text-[10px] leading-tight px-1.5 py-0.5 rounded truncate bg-white font-normal ${chipTextColorClass(item)} hover:bg-[#F4F6F5] transition border border-[#D9E1E8]`}
                   style={{
                     top, height,
                     left: `calc(${placement.col * widthPct}% + 2px)`,
@@ -478,7 +476,7 @@ export default function CalendarGrid({
                         {day.getDate()}
                       </button>
                       <div className="space-y-0.5">
-                        {visibleItems.slice(0, 3).map(item => <ItemChip key={item.id} item={item} onClick={onItemClick} flat={isOpenShift(item)} />)}
+                        {visibleItems.slice(0, 3).map(item => <ItemChip key={item.id} item={item} onClick={onItemClick} />)}
                         {visibleItems.length > 3 && (
                           <button type="button" onClick={() => onDayClick?.(day)} className="text-[10px] text-[#7A8F79] hover:underline">
                             +{visibleItems.length - 3} more

@@ -279,6 +279,12 @@ model GlobalEvent {
   title       String
   description String?
   eventDate   DateTime
+  // Default true: every event before this field existed was created from a
+  // date-only picker with no real time intended, so "all day" is the
+  // correct reading of that existing data, not just a schema default.
+  // true  -> eventDate is Eastern midnight of the intended date (easternMidnightUtc).
+  // false -> eventDate is a real Eastern wall-clock instant (easternTimeOfDayUtc).
+  allDay      Boolean  @default(true)
   category    String   @default("general") // 'tax' | 'renewal' | 'compliance' | 'general'
   targetRoles String[] @default([]) // empty = visible to all; otherwise ['nurse','biller',...]
   recurrence  String? // 'quarterly' | 'annual' | null (one-time)

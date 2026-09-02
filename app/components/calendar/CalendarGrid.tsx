@@ -91,7 +91,7 @@ function isOpenShift(item: CalendarItem): boolean {
 // uses for shift backgrounds, just without the pill behind it.
 function chipTextColorClass(item: CalendarItem): string {
   if (item.category === 'shift') {
-    return item.status === 'assigned' || item.status === 'completed' ? 'text-green-700' : 'text-red-700'
+    return item.status === 'assigned' || item.status === 'completed' ? 'text-green-600' : 'text-red-500'
   }
   return 'text-[#2F3E4E]'
 }
@@ -107,7 +107,7 @@ function ItemChip({ item, onClick, flat }: { item: CalendarItem; onClick?: (item
       <button
         type="button"
         onClick={() => onClick?.(item)}
-        className={`w-full text-left text-[10px] leading-tight px-0.5 py-0.5 truncate font-semibold ${chipTextColorClass(item)} hover:opacity-70 transition`}
+        className={`w-full text-left text-[10px] leading-tight px-0.5 py-0.5 truncate font-normal ${chipTextColorClass(item)} hover:opacity-70 transition`}
         title={tooltip}
       >
         {label}

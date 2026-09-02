@@ -7,6 +7,10 @@ import { generatePdfFromHtml } from '../../../../../lib/generateInvoicePdf'
 import { buildNurseTaxReportHtml, TaxReportFilterKey } from '../../../../../lib/incomeReportHtml'
 import { aggregateClaimIncome, aggregateNurseInvoiceExpense } from '../../../../../lib/incomeReporting'
 
+// Puppeteer launching headless Chromium + rendering can run past Vercel's
+// default serverless timeout.
+export const maxDuration = 60
+
 async function requirePaidNurse(req: Request) {
   const cookie = req.headers.get('cookie') || ''
   const token = cookie.split('auth_token=').pop()?.split(';')[0]
@@ -50,30 +54,36 @@ export async function POST(req: Request) {
     claimIncome,
     expense,
   })
-  const pdfBuffer = await generatePdfFromHtml(html, { landscape: true })
 
   const periodLabel = q ? `Q${q}-${y}` : `${y}`
   const fileName = `Tax-Summary-${periodLabel}-${filter}.pdf`
   const storageKey = `nurse-documents/${nurseId}/tax-reports/${Date.now()}-${fileName}`
 
-  await uploadToS3(storageKey, pdfBuffer, 'application/pdf')
+  let url: string
+  try {
+    const pdfBuffer = await generatePdfFromHtml(html, { landscape: true })
+    await uploadToS3(storageKey, pdfBuffer, 'application/pdf')
 
-  await (prisma.nurseDocument.create as any)({
-    data: {
-      nurseId,
-      title: `Year-End Tax Summary — ${q ? `Q${q} ` : ''}${y}`,
-      fileName,
-      storageKey,
-      category: 'Tax',
-      mimeType: 'application/pdf',
-      fileSize: pdfBuffer.length,
-      uploadedBy: 'system',
-      visibleToNurse: true,
-      nurseUploaded: false,
-    },
-  })
+    await (prisma.nurseDocument.create as any)({
+      data: {
+        nurseId,
+        title: `Year-End Tax Summary — ${q ? `Q${q} ` : ''}${y}`,
+        fileName,
+        storageKey,
+        category: 'Tax',
+        mimeType: 'application/pdf',
+        fileSize: pdfBuffer.length,
+        uploadedBy: 'system',
+        visibleToNurse: true,
+        nurseUploaded: false,
+      },
+    })
 
-  const url = await getPresignedDownloadUrl(storageKey, 900, { contentType: 'application/pdf', fileName, inline: true })
+    url = await getPresignedDownloadUrl(storageKey, 900, { contentType: 'application/pdf', fileName, inline: true })
+  } catch (err) {
+    console.error('Tax report PDF generation failed:', err)
+    return NextResponse.json({ error: 'Failed to generate the tax report. Please try again.' }, { status: 500 })
+  }
 
   return NextResponse.json({ ok: true, url })
 }

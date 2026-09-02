@@ -307,6 +307,14 @@ function ClaimDetailModal({
     JSON.stringify(initCommercialForm(claim))
   )
 
+  // Date field refs for auto-advance across this edit form's date fields.
+  const cSubmitDateRef   = useRef<HTMLInputElement>(null)
+  const cDosStartRef     = useRef<HTMLInputElement>(null)
+  const cDosStopRef      = useRef<HTMLInputElement>(null)
+  const cPrimPaidDateRef = useRef<HTMLInputElement>(null)
+  const cSecPaidDateRef  = useRef<HTMLInputElement>(null)
+  const cFinalDateRef    = useRef<HTMLInputElement>(null)
+
   // Refs mirror the latest form state so an unmount cleanup (fired when the parent
   // swaps to a different claim without going through handleClose) can still save
   // whatever was typed, instead of silently discarding it.
@@ -560,15 +568,15 @@ function ClaimDetailModal({
                   </div>
                   <div>
                     <label className={lbl}>Submit Date</label>
-                    <DateInput className={dateInp} value={cForm.submitDate} onChange={e => setCForm(f => ({ ...f, submitDate: e.target.value }))} />
+                    <DateInput ref={cSubmitDateRef} nextRef={cDosStartRef} className={dateInp} value={cForm.submitDate} onChange={e => setCForm(f => ({ ...f, submitDate: e.target.value }))} />
                   </div>
                   <div>
                     <label className={lbl}>DOS Start</label>
-                    <DateInput className={dateInp} value={cForm.dosStart} onChange={e => setCForm(f => ({ ...f, dosStart: e.target.value }))} />
+                    <DateInput ref={cDosStartRef} nextRef={cDosStopRef} className={dateInp} value={cForm.dosStart} onChange={e => setCForm(f => ({ ...f, dosStart: e.target.value }))} />
                   </div>
                   <div>
                     <label className={lbl}>DOS Stop</label>
-                    <DateInput className={dateInp} value={cForm.dosStop} onChange={e => setCForm(f => ({ ...f, dosStop: e.target.value }))} />
+                    <DateInput ref={cDosStopRef} className={dateInp} value={cForm.dosStop} onChange={e => setCForm(f => ({ ...f, dosStop: e.target.value }))} />
                   </div>
                 </div>
               </div>
@@ -596,7 +604,7 @@ function ClaimDetailModal({
                   </div>
                   <div>
                     <label className={lbl}>Processed Date {isMed && <span className="text-[#7A8F79] font-normal normal-case text-[10px]">(auto-calcs pay cycle)</span>}</label>
-                    <DateInput className={dateInp} value={cForm.primaryPaidDate} onChange={e => setCForm(f => ({ ...f, primaryPaidDate: e.target.value }))} />
+                    <DateInput ref={cPrimPaidDateRef} nextRef={cSecPaidDateRef} className={dateInp} value={cForm.primaryPaidDate} onChange={e => setCForm(f => ({ ...f, primaryPaidDate: e.target.value }))} />
                     {isMed && cForm.primaryPaidDate && (() => {
                       const info = calcMedicaidCycleInfo(cForm.primaryPaidDate)
                       return info ? (
@@ -645,7 +653,7 @@ function ClaimDetailModal({
                   </div>
                   <div>
                     <label className={lbl}>Processed Date {isSecondaryMed && <span className="text-[#7A8F79] font-normal normal-case text-[10px]">(auto-calcs pay cycle)</span>}</label>
-                    <DateInput className={dateInp} value={cForm.secondaryPaidDate} onChange={e => setCForm(f => ({ ...f, secondaryPaidDate: e.target.value }))} />
+                    <DateInput ref={cSecPaidDateRef} nextRef={cFinalDateRef} className={dateInp} value={cForm.secondaryPaidDate} onChange={e => setCForm(f => ({ ...f, secondaryPaidDate: e.target.value }))} />
                     {isSecondaryMed && cForm.secondaryPaidDate && (() => {
                       const info = calcMedicaidCycleInfo(cForm.secondaryPaidDate)
                       return info ? (
@@ -690,7 +698,7 @@ function ClaimDetailModal({
                   </div>
                   <div>
                     <label className={lbl}>Finalized</label>
-                    <DateInput className={dateInp} value={cForm.dateFullyFinalized} onChange={e => setCForm(f => ({ ...f, dateFullyFinalized: e.target.value }))} />
+                    <DateInput ref={cFinalDateRef} className={dateInp} value={cForm.dateFullyFinalized} onChange={e => setCForm(f => ({ ...f, dateFullyFinalized: e.target.value }))} />
                   </div>
                   <div>
                     <label className={lbl}>Paid Date</label>

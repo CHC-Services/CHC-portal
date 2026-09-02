@@ -28,6 +28,11 @@ type Props = {
   // Focuses this ref once the year segment is filled — chains a run of date
   // fields (e.g. submit date -> DOS start -> DOS stop) into one continuous type.
   nextRef?: React.RefObject<HTMLInputElement | null>
+  // ISO "yyyy-mm-dd" bounds, same semantics as native <input type="date">
+  // min/max — a completed date outside the bound is treated the same as a
+  // structurally invalid one (rejected, onChange fires with '').
+  min?: string
+  max?: string
 }
 
 function parseIso(value: string): { mm: string; dd: string; yyyy: string } {
@@ -37,7 +42,7 @@ function parseIso(value: string): { mm: string; dd: string; yyyy: string } {
 }
 
 const DateInput = forwardRef<HTMLInputElement, Props>(function DateInput(
-  { value, onChange, required, disabled, className, style, id, title, autoFocus, onBlur, onKeyDown, nextRef },
+  { value, onChange, required, disabled, className, style, id, title, autoFocus, onBlur, onKeyDown, nextRef, min, max },
   forwardedRef
 ) {
   const [mm, setMm] = useState('')
@@ -78,8 +83,13 @@ const DateInput = forwardRef<HTMLInputElement, Props>(function DateInput(
       const monthNum = parseInt(nmm, 10)
       const dayNum = parseInt(ndd, 10)
       if (monthNum >= 1 && monthNum <= 12 && dayNum >= 1 && dayNum <= 31) {
-        onChange({ target: { value: `${nyyyy}-${nmm}-${ndd}` } })
-        return
+        const composed = `${nyyyy}-${nmm}-${ndd}`
+        // Lexical comparison is safe here since both sides are always
+        // zero-padded ISO "yyyy-mm-dd" strings.
+        if ((!min || composed >= min) && (!max || composed <= max)) {
+          onChange({ target: { value: composed } })
+          return
+        }
       }
     }
     onChange({ target: { value: '' } })

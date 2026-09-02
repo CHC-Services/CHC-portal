@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server'
 import { verifyToken } from '../../../../../lib/auth'
 import { getOrCreateCarcCodesPdf } from '../../../../../lib/carcPdf'
 
+// Puppeteer launching headless Chromium + rendering can run past Vercel's
+// default serverless timeout.
+export const maxDuration = 60
+
 function adminOnly(req: Request) {
   const cookie = req.headers.get('cookie') || ''
   const token = cookie.split('auth_token=').pop()?.split(';')[0]
@@ -16,8 +20,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  await getOrCreateCarcCodesPdf({ forceRegenerate: true })
-  return NextResponse.json({ ok: true, link: '/api/faq/resources/carc-codes' })
+  try {
+    await getOrCreateCarcCodesPdf({ forceRegenerate: true })
+    return NextResponse.json({ ok: true, link: '/api/faq/resources/carc-codes' })
+  } catch (err) {
+    console.error('CARC codes PDF generation failed:', err)
+    return NextResponse.json({ error: 'Failed to generate the CARC codes PDF. Please try again.' }, { status: 500 })
+  }
 }
 
 // GET — admin: same stable link, without forcing a regenerate (for the "copy

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import DateInput from '../DateInput'
 import { MEDICAL_SPECIALTIES, inp, lbl } from './types'
 
@@ -43,6 +43,7 @@ export default function PatientOrders({
   const [title, setTitle] = useState('')
   const [orderDate, setOrderDate] = useState('')
   const [orderEndDate, setOrderEndDate] = useState('')
+  const orderEndDateRef = useRef<HTMLInputElement>(null)
   const [providerName, setProviderName] = useState('')
   const [specialty, setSpecialty] = useState('')
   const [orderNotes, setOrderNotes] = useState('')
@@ -160,11 +161,11 @@ export default function PatientOrders({
             </div>
             <div>
               <label className={lbl}>Order Date *</label>
-              <DateInput value={orderDate} onChange={e => setOrderDate(e.target.value)} className={inp} required />
+              <DateInput value={orderDate} onChange={e => setOrderDate(e.target.value)} className={inp} required nextRef={orderEndDateRef} />
             </div>
             <div>
               <label className={lbl}>End Date</label>
-              <DateInput value={orderEndDate} onChange={e => setOrderEndDate(e.target.value)} className={inp} />
+              <DateInput ref={orderEndDateRef} value={orderEndDate} onChange={e => setOrderEndDate(e.target.value)} className={inp} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2">

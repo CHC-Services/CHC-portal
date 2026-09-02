@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { fmtPhoneInput } from '../../../lib/formatPhone'
 import DateInput from '../../components/DateInput'
@@ -164,6 +164,7 @@ export default function MyPatients() {
   // Step 2b — new patient form
   const [insType, setInsType] = useState<'Medicaid' | 'Commercial'>('Medicaid')
   const [newPt, setNewPt] = useState(blankNewPt())
+  const paEndDateRef = useRef<HTMLInputElement>(null)
 
   function setPt(field: string, value: any) {
     setNewPt(p => ({ ...p, [field]: value }))
@@ -585,11 +586,11 @@ export default function MyPatients() {
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className={lbl}>PA Start Date</label>
-                          <DateInput value={newPt.paStartDate} onChange={e => setPt('paStartDate', e.target.value)} className={inp} />
+                          <DateInput value={newPt.paStartDate} onChange={e => setPt('paStartDate', e.target.value)} className={inp} nextRef={paEndDateRef} />
                         </div>
                         <div>
                           <label className={lbl}>PA End Date</label>
-                          <DateInput value={newPt.paEndDate} onChange={e => setPt('paEndDate', e.target.value)} className={inp} />
+                          <DateInput ref={paEndDateRef} value={newPt.paEndDate} onChange={e => setPt('paEndDate', e.target.value)} className={inp} />
                         </div>
                       </div>
 

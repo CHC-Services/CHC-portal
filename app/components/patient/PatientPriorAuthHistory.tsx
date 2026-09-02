@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { inp, lbl } from './types'
 import DateInput from '../DateInput'
 
@@ -53,11 +53,13 @@ export default function PatientPriorAuthHistory({
 }) {
   const [showAddPA, setShowAddPA] = useState(false)
   const [newPA, setNewPA] = useState({ paNumber: '', paStartDate: '', paEndDate: '', highTech: false })
+  const newPaEndDateRef = useRef<HTMLInputElement>(null)
   const [savingPA, setSavingPA] = useState(false)
   const [paError, setPaError] = useState('')
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editPA, setEditPA] = useState({ paNumber: '', paStartDate: '', paEndDate: '', highTech: false })
+  const editPaEndDateRef = useRef<HTMLInputElement>(null)
   const [savingEdit, setSavingEdit] = useState(false)
   const [editError, setEditError] = useState('')
 
@@ -117,11 +119,11 @@ export default function PatientPriorAuthHistory({
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className={lbl}>Start Date</label>
-              <DateInput value={newPA.paStartDate} onChange={e => setNewPA(p => ({ ...p, paStartDate: e.target.value }))} className={inp} />
+              <DateInput value={newPA.paStartDate} onChange={e => setNewPA(p => ({ ...p, paStartDate: e.target.value }))} className={inp} nextRef={newPaEndDateRef} />
             </div>
             <div>
               <label className={lbl}>End Date</label>
-              <DateInput value={newPA.paEndDate} onChange={e => setNewPA(p => ({ ...p, paEndDate: e.target.value }))} className={inp} />
+              <DateInput ref={newPaEndDateRef} value={newPA.paEndDate} onChange={e => setNewPA(p => ({ ...p, paEndDate: e.target.value }))} className={inp} />
             </div>
           </div>
           <label className="flex items-center gap-2 cursor-pointer">
@@ -155,11 +157,11 @@ export default function PatientPriorAuthHistory({
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className={lbl}>Start Date</label>
-                      <DateInput value={editPA.paStartDate} onChange={e => setEditPA(p => ({ ...p, paStartDate: e.target.value }))} className={inp} />
+                      <DateInput value={editPA.paStartDate} onChange={e => setEditPA(p => ({ ...p, paStartDate: e.target.value }))} className={inp} nextRef={editPaEndDateRef} />
                     </div>
                     <div>
                       <label className={lbl}>End Date</label>
-                      <DateInput value={editPA.paEndDate} onChange={e => setEditPA(p => ({ ...p, paEndDate: e.target.value }))} className={inp} />
+                      <DateInput ref={editPaEndDateRef} value={editPA.paEndDate} onChange={e => setEditPA(p => ({ ...p, paEndDate: e.target.value }))} className={inp} />
                     </div>
                   </div>
                   <label className="flex items-center gap-2 cursor-pointer">

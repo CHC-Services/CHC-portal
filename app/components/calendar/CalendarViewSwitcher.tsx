@@ -1,6 +1,8 @@
 'use client'
 
+import { useRef } from 'react'
 import { shiftAnchor, type CalendarViewMode } from '../../../lib/calendarViewRange'
+import DateInput from '../DateInput'
 
 // View-mode tabs + prev/today/next navigation (or a custom date-range picker
 // when view === 'custom'), shared by every "myCalendar"-style page (nurse's
@@ -27,6 +29,7 @@ export default function CalendarViewSwitcher({
   onCustomEndChange: (v: string) => void
   rangeLabel: string
 }) {
+  const customEndRef = useRef<HTMLInputElement>(null)
   return (
     <div className="bg-white rounded-xl shadow-sm p-3 mb-4 flex items-center justify-between flex-wrap gap-3">
       <div className="flex gap-1 flex-wrap">
@@ -45,9 +48,9 @@ export default function CalendarViewSwitcher({
 
       {view === 'custom' ? (
         <div className="flex items-center gap-2 text-sm">
-          <input type="date" className="border border-[#D9E1E8] p-1.5 rounded-lg text-xs" value={customStart} onChange={e => onCustomStartChange(e.target.value)} />
+          <DateInput className="border border-[#D9E1E8] p-1.5 rounded-lg text-xs" value={customStart} onChange={e => onCustomStartChange(e.target.value)} nextRef={customEndRef} />
           <span className="text-[#7A8F79]">to</span>
-          <input type="date" className="border border-[#D9E1E8] p-1.5 rounded-lg text-xs" value={customEnd} onChange={e => onCustomEndChange(e.target.value)} />
+          <DateInput ref={customEndRef} className="border border-[#D9E1E8] p-1.5 rounded-lg text-xs" value={customEnd} onChange={e => onCustomEndChange(e.target.value)} />
         </div>
       ) : (
         <div className="flex items-center gap-2">

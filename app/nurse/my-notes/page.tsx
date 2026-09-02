@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { todayLocalDateString, formatServiceDate } from '../../../lib/localDate'
 import MicroChargingDevices from '../../components/nurse/MicroChargingDevices'
+import DateInput from '../../components/DateInput'
 
 // Same UTC-read approach as formatServiceDate (see lib/localDate.ts) — the
 // stored value is a calendar day, not an instant, so weekday must be read
@@ -74,6 +75,7 @@ export default function MyNotesPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const dateToRef = useRef<HTMLInputElement>(null)
 
   const patientOptions = useMemo(
     () => [...new Set(notes.map(n => n.patientName))].sort((a, b) => a.localeCompare(b)),
@@ -221,11 +223,11 @@ export default function MyNotesPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Service Date From</label>
-                <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className={selectClass} />
+                <DateInput value={dateFrom} onChange={e => setDateFrom(e.target.value)} className={selectClass} nextRef={dateToRef} />
               </div>
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A8F79] mb-1">Service Date To</label>
-                <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className={selectClass} />
+                <DateInput ref={dateToRef} value={dateTo} onChange={e => setDateTo(e.target.value)} className={selectClass} />
               </div>
             </div>
           </div>

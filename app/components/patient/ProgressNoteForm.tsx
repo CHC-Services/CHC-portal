@@ -7,6 +7,7 @@ import SpellCheckButton, { SpellcheckFlag } from '../SpellCheckButton'
 import { checkText } from '../../../lib/medicalSpellcheck'
 import { loadCustomTerms, addCustomTerm } from '../../../lib/spellcheckClient'
 import { O2_ROUTES, TX_NEEDED, INTAKE_ROUTES } from '../../../lib/clinicalOptions'
+import DateInput from '../DateInput'
 
 export type ProgressNoteVitalRow = {
   time: string | null
@@ -225,7 +226,7 @@ export default function ProgressNoteForm({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div>
             <label className={lbl}>Service Date</label>
-            <input type="date" className="w-full border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" value={serviceDate} onChange={e => setServiceDate(e.target.value)} />
+            <DateInput className="w-full border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" value={serviceDate} onChange={e => setServiceDate(e.target.value)} />
           </div>
           <div>
             <label className={lbl}>Shift Start</label>

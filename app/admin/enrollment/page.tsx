@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { formalName } from '../../../lib/formatName'
 import DateInput from '../../components/DateInput'
@@ -263,6 +263,7 @@ export default function EnrollmentPage() {
   const [showRates, setShowRates] = useState(false)
   const [showManual, setShowManual] = useState(false)
   const [manualForm, setManualForm] = useState({ ...BLANK_MANUAL })
+  const serviceEndDateRef = useRef<HTMLInputElement>(null)
   const [manualSaving, setManualSaving] = useState(false)
   const [manualError, setManualError] = useState('')
 
@@ -591,11 +592,13 @@ export default function EnrollmentPage() {
                       value={manualForm.serviceStartDate}
                       onChange={e => setManualForm(f => ({ ...f, serviceStartDate: e.target.value }))}
                       className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
+                      nextRef={serviceEndDateRef}
                     />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#7A8F79] uppercase tracking-widest mb-1">Service End</label>
                     <DateInput
+                      ref={serviceEndDateRef}
                       value={manualForm.serviceEndDate}
                       onChange={e => setManualForm(f => ({ ...f, serviceEndDate: e.target.value }))}
                       className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"

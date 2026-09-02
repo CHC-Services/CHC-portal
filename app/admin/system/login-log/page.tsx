@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import DateInput from '../../../components/DateInput'
 
@@ -61,6 +61,7 @@ export default function LoginLogPage() {
   const [filterResult, setFilterResult] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const dateToRef = useRef<HTMLInputElement>(null)
   const [page, setPage] = useState(1)
 
   // delete state
@@ -212,9 +213,11 @@ export default function LoginLogPage() {
               onChange={e => setDateFrom(e.target.value)}
               className="flex-1 border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"
               title="From date"
+              nextRef={dateToRef}
             />
             <span className="text-[#7A8F79] text-xs">–</span>
             <DateInput
+              ref={dateToRef}
               value={dateTo}
               onChange={e => setDateTo(e.target.value)}
               className="flex-1 border border-[#D9E1E8] p-2 rounded-lg text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]"

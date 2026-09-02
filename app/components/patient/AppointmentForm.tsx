@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { inp, lbl } from './types'
+import DateInput from '../DateInput'
 
 type Appointment = {
   id: string
@@ -78,6 +79,8 @@ export default function AppointmentForm({
   const [reminderChannel, setReminderChannel] = useState('both')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const endDateRef = useRef<HTMLInputElement>(null)
+  const startTimeRef = useRef<HTMLInputElement>(null)
 
   function load() {
     setLoading(true)
@@ -187,22 +190,22 @@ export default function AppointmentForm({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={lbl}>Start Date</label>
-                <input type="date" className={inp} value={apptDate} onChange={e => setApptDate(e.target.value)} required />
+                <DateInput className={inp} value={apptDate} onChange={e => setApptDate(e.target.value)} required nextRef={endDateRef} />
               </div>
               <div>
                 <label className={lbl}>End Date (optional — leave blank for a single day)</label>
-                <input type="date" className={inp} value={endDate} min={apptDate || undefined} onChange={e => setEndDate(e.target.value)} />
+                <DateInput ref={endDateRef} className={inp} value={endDate} min={apptDate || undefined} onChange={e => setEndDate(e.target.value)} />
               </div>
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className={lbl}>Date</label>
-                <input type="date" className={inp} value={apptDate} onChange={e => setApptDate(e.target.value)} required />
+                <DateInput className={inp} value={apptDate} onChange={e => setApptDate(e.target.value)} required nextRef={startTimeRef} />
               </div>
               <div>
                 <label className={lbl}>Start Time</label>
-                <input type="time" className={inp} value={startTime} onChange={e => setStartTime(e.target.value)} required />
+                <input ref={startTimeRef} type="time" className={inp} value={startTime} onChange={e => setStartTime(e.target.value)} required />
               </div>
               <div>
                 <label className={lbl}>End Time (optional)</label>

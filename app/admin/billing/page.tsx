@@ -635,6 +635,7 @@ function CampaignsTab() {
   const [percentOff, setPercentOff] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const endDateRef = useRef<HTMLInputElement>(null)
   const [promoSlug, setPromoSlug] = useState('')
   const [siteWide, setSiteWide] = useState(false)
   const [scopeMode, setScopeMode] = useState<'all' | 'specific'>('all')
@@ -815,12 +816,12 @@ function CampaignsTab() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-1">
               <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Start Date <span className="normal-case font-normal">(optional)</span></label>
-              <DateInput value={startDate} onChange={e => setStartDate(e.target.value)}
+              <DateInput value={startDate} onChange={e => setStartDate(e.target.value)} nextRef={endDateRef}
                 className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
             </div>
             <div className="space-y-1">
               <label className="text-xs font-semibold uppercase tracking-wide text-[#7A8F79]">Stop Date <span className="normal-case font-normal">(optional)</span></label>
-              <DateInput value={endDate} onChange={e => setEndDate(e.target.value)}
+              <DateInput ref={endDateRef} value={endDate} onChange={e => setEndDate(e.target.value)}
                 className="w-full border border-[#D9E1E8] rounded-lg px-3 py-2 text-sm text-[#2F3E4E] focus:outline-none focus:ring-2 focus:ring-[#7A8F79]" />
             </div>
             <div className="space-y-1">

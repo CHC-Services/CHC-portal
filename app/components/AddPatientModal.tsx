@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import DateInput from './DateInput'
 
 type SearchMatch = {
@@ -53,6 +53,7 @@ export default function AddPatientModal({
   const [linking, setLinking] = useState(false)
   const [insType, setInsType] = useState<'Medicaid' | 'Commercial'>('Medicaid')
   const [newPt, setNewPt] = useState(blankPt())
+  const paEndDateRef = useRef<HTMLInputElement>(null)
   const [creating, setCreating] = useState(false)
   const [formErr, setFormErr] = useState('')
 
@@ -299,11 +300,11 @@ export default function AddPatientModal({
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className={lbl}>PA Start</label>
-                    <DateInput className={inp} value={newPt.paStartDate} onChange={e => setPt('paStartDate', e.target.value)} />
+                    <DateInput className={inp} value={newPt.paStartDate} onChange={e => setPt('paStartDate', e.target.value)} nextRef={paEndDateRef} />
                   </div>
                   <div>
                     <label className={lbl}>PA End</label>
-                    <DateInput className={inp} value={newPt.paEndDate} onChange={e => setPt('paEndDate', e.target.value)} />
+                    <DateInput ref={paEndDateRef} className={inp} value={newPt.paEndDate} onChange={e => setPt('paEndDate', e.target.value)} />
                   </div>
                 </div>
               )}

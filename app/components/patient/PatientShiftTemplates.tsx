@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { inp, lbl } from './types'
+import DateInput from '../DateInput'
 
 type Template = {
   id: string
@@ -143,6 +144,7 @@ export default function PatientShiftTemplates({
   const [selectedMonth, setSelectedMonth] = useState('')
   const [activeFrom, setActiveFrom] = useState('')
   const [activeUntil, setActiveUntil] = useState('')
+  const activeUntilRef = useRef<HTMLInputElement>(null)
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -361,11 +363,11 @@ export default function PatientShiftTemplates({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={lbl}>Starts</label>
-                  <input type="date" className={inp} value={activeFrom} onChange={e => setActiveFrom(e.target.value)} required />
+                  <DateInput className={inp} value={activeFrom} onChange={e => setActiveFrom(e.target.value)} required nextRef={activeUntilRef} />
                 </div>
                 <div>
                   <label className={lbl}>Ends (optional)</label>
-                  <input type="date" className={inp} value={activeUntil} onChange={e => setActiveUntil(e.target.value)} />
+                  <DateInput ref={activeUntilRef} className={inp} value={activeUntil} onChange={e => setActiveUntil(e.target.value)} />
                   <p className="text-[10px] text-[#7A8F79] mt-1">Leave blank to auto-end after 4 months.</p>
                 </div>
               </div>

@@ -11,6 +11,10 @@ import {
   aggregateDiscountExpense,
 } from '../../../../../../lib/incomeReporting'
 
+// Puppeteer launching headless Chromium + rendering can run past Vercel's
+// default serverless timeout.
+export const maxDuration = 60
+
 function adminAuth(req: Request) {
   const cookie = req.headers.get('cookie') || ''
   const token = cookie.split('auth_token=').pop()?.split(';')[0]
@@ -38,25 +42,32 @@ export async function POST(req: Request) {
   ])
 
   const html = buildAdminIncomeReportHtml({ year: y, quarter: q, invoiceIncome, claimIncome, receivables, discountExpense })
-  const pdfBuffer = await generatePdfFromHtml(html, { landscape: true })
 
   const periodLabel = q ? `Q${q} ${y}` : `${y}`
   const fileName = `Income-Report-${periodLabel.replace(/\s+/g, '-')}.pdf`
   const storageKey = `admin-reports/income/${Date.now()}-${fileName}`
 
-  await uploadToS3(storageKey, pdfBuffer, 'application/pdf')
+  let report: { id: string; createdAt: Date }
+  let url: string
+  try {
+    const pdfBuffer = await generatePdfFromHtml(html, { landscape: true })
+    await uploadToS3(storageKey, pdfBuffer, 'application/pdf')
 
-  const report = await (prisma.adminReport.create as any)({
-    data: {
-      reportType: 'income_summary',
-      periodLabel,
-      storageKey,
-      fileName,
-      generatedByUserId: session.id,
-    },
-  })
+    report = await (prisma.adminReport.create as any)({
+      data: {
+        reportType: 'income_summary',
+        periodLabel,
+        storageKey,
+        fileName,
+        generatedByUserId: session.id,
+      },
+    })
 
-  const url = await getPresignedDownloadUrl(storageKey, 900, { contentType: 'application/pdf', fileName, inline: true })
+    url = await getPresignedDownloadUrl(storageKey, 900, { contentType: 'application/pdf', fileName, inline: true })
+  } catch (err) {
+    console.error('Income report PDF generation failed:', err)
+    return NextResponse.json({ error: 'Failed to generate the income report. Please try again.' }, { status: 500 })
+  }
 
   return NextResponse.json({ ok: true, report: { id: report.id, periodLabel, fileName, createdAt: report.createdAt }, url })
 }

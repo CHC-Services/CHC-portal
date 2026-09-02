@@ -4,10 +4,27 @@ import { verifyToken } from '../../../../../../lib/auth'
 import { getOrCreateInvoicePdf } from '../../../../../../lib/invoicePdf'
 import { sendInvoiceEmail } from '../../../../../../lib/sendEmail'
 
+// Puppeteer launching headless Chromium + rendering can run past Vercel's
+// default serverless timeout — see the matching comment in
+// app/api/admin/invoices/route.ts.
+export const maxDuration = 30
+
 function adminOnly(req: Request) {
   const cookie = req.headers.get('cookie') || ''
   const token = cookie.split('auth_token=').pop()?.split(';')[0]
   return token ? verifyToken(token) : null
+}
+
+// A genuinely missing invoice reports 404; any other failure (Chromium
+// timeout/crash, S3 hiccup) previously got flattened into the same "Not
+// found" response, which reads as "this invoice doesn't exist" when it
+// really does — misleading for what's usually a transient render failure.
+function errorResponse(err: unknown) {
+  if (err instanceof Error && err.message === 'Invoice not found') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+  console.error('Invoice PDF generation failed:', err)
+  return NextResponse.json({ error: 'Failed to generate the invoice PDF. Please try again.' }, { status: 500 })
 }
 
 // GET — redirects to the invoice's stored PDF (generating/storing it first if needed)
@@ -22,8 +39,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   try {
     const { url } = await getOrCreateInvoicePdf(invoiceId)
     return NextResponse.redirect(url)
-  } catch {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  } catch (err) {
+    return errorResponse(err)
   }
 }
 
@@ -55,7 +72,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!invoice) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   if (!process.env.RESEND_API_KEY) return NextResponse.json({ error: 'Email not configured' }, { status: 500 })
 
-  const { url: pdfUrl } = await getOrCreateInvoicePdf(invoiceId)
+  let pdfUrl: string
+  try {
+    ;({ url: pdfUrl } = await getOrCreateInvoicePdf(invoiceId))
+  } catch (err) {
+    return errorResponse(err)
+  }
   const nurseEmail = invoice.nurse?.user?.email || invoice.nurseEmail
 
   const sent = await sendInvoiceEmail({

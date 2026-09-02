@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { inp, lbl } from './types'
+import DateInput from '../DateInput'
 
 type Window = { start: string; end: string }
 
@@ -184,7 +185,7 @@ export default function PatientCoveragePlan({
 
           <div>
             <label className={lbl}>Starts</label>
-            <input type="date" className={`${inp} w-48`} value={startsOn} onChange={e => setStartsOn(e.target.value)} required />
+            <DateInput className={`${inp} w-48`} value={startsOn} onChange={e => setStartsOn(e.target.value)} required />
           </div>
 
           <div className="flex gap-2">

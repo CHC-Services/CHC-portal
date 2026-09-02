@@ -5,6 +5,14 @@ import { sendInvoiceEmail } from '../../../../lib/sendEmail'
 import { calcCampaignDiscount, campaignRuleLabel } from '../../../../lib/campaignDiscount'
 import { getOrCreateInvoicePdf } from '../../../../lib/invoicePdf'
 
+// Puppeteer launching headless Chromium + rendering can run past Vercel's
+// default serverless timeout. vercel.json already lists a maxDuration for
+// this route, but Next.js App Router's own documented mechanism is this
+// inline export — the progress-note pdf routes already rely on it instead
+// of vercel.json alone, and this route (invoice creation, same heavy
+// Chromium render) was missing it.
+export const maxDuration = 30
+
 function adminOnly(req: Request) {
   const cookie = req.headers.get('cookie') || ''
   const token = cookie.split('auth_token=').pop()?.split(';')[0]

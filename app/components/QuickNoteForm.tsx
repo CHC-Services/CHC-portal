@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { mergeRowsByTime, computeShiftHours, collapseSameTimeIntake } from '../../lib/parseClockTime'
 import { O2_ROUTES, TX_NEEDED, INTAKE_ROUTES, PLACES_OF_SERVICE } from '../../lib/clinicalOptions'
 import CaptureAudio from './CaptureAudio'
+import DateInput from './DateInput'
 
 function toDateInputValue(iso: string) {
   return iso ? iso.slice(0, 10) : ''
@@ -427,7 +428,7 @@ export default function QuickNoteForm({
         <div className="flex flex-wrap items-start gap-2">
           <div>
             <label className={lbl}>Service Date</label>
-            <input type="date" className={`${compactInp} w-[112px]`} value={serviceDate} onChange={e => setServiceDate(e.target.value)} />
+            <DateInput className={`${compactInp} w-[112px]`} value={serviceDate} onChange={e => setServiceDate(e.target.value)} />
           </div>
           <div>
             <label className={lbl}>Shift Start</label>

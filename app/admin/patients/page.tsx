@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { formalName } from '../../../lib/formatName'
 import { fmtPhoneInput } from '../../../lib/formatPhone'
@@ -60,6 +60,7 @@ export default function AdPatients() {
   const [createInsType, setCreateInsType] = useState<'Medicaid' | 'Commercial'>('Medicaid')
   const [createData, setCreateData] = useState(blankCreate())
   const [createPA, setCreatePA] = useState({ paNumber: '', paStartDate: '', paEndDate: '' })
+  const createPaEndDateRef = useRef<HTMLInputElement>(null)
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState('')
 
@@ -424,11 +425,11 @@ export default function AdPatients() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className={lbl}>PA Start Date</label>
-                    <DateInput value={createPA.paStartDate} onChange={e => setCreatePA(p => ({ ...p, paStartDate: e.target.value }))} className={inp} />
+                    <DateInput value={createPA.paStartDate} onChange={e => setCreatePA(p => ({ ...p, paStartDate: e.target.value }))} className={inp} nextRef={createPaEndDateRef} />
                   </div>
                   <div>
                     <label className={lbl}>PA End Date</label>
-                    <DateInput value={createPA.paEndDate} onChange={e => setCreatePA(p => ({ ...p, paEndDate: e.target.value }))} className={inp} />
+                    <DateInput ref={createPaEndDateRef} value={createPA.paEndDate} onChange={e => setCreatePA(p => ({ ...p, paEndDate: e.target.value }))} className={inp} />
                   </div>
                 </div>
 

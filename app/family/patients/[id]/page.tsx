@@ -241,7 +241,7 @@ export default function FamilyPatientDetailPage({ params }: { params: Promise<{ 
       ),
     },
     {
-      key: 'medicationLog', label: 'Medication Log', content: (
+      key: 'medicationLog', label: 'MAR', content: (
         <PatientMedicationMAR
           basePath={`/api/patient/${id}`}
           currentUserId={guardianUserId}

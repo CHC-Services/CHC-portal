@@ -42,6 +42,9 @@ export type MedicationDTO = {
   // Over-the-counter — exempt from refill reminders/notifications and always
   // reports refillStatus 'filled' (see lib/medicationReminders.ts).
   isOtc: boolean
+  // As-needed — same refill-reminder exemption as isOtc above, plus its own
+  // summary-chart badge.
+  isPrn: boolean
 }
 
 export type MedicationInput = {
@@ -66,6 +69,7 @@ export type MedicationInput = {
   // get logged ad-hoc on the MAR instead of against a fixed slot.
   scheduleTimes: string[]
   isOtc: boolean
+  isPrn: boolean
 }
 
 // Parses a leading numeric amount + optional unit off a free-typed string
@@ -129,7 +133,7 @@ type MedicationListProps = {
 
 const emptyForm: MedicationInput = {
   medicationName: '', rxcui: '', dose: '', doseUnit: '', unitStrength: '', unitType: '', frequency: '', route: '', duration: '', daySupply: '30',
-  lastFillDate: '', rxNumber: '', refillsRemaining: '', pharmacyName: '', pharmacyAddress: '', pharmacyPhone: '', scheduleTimes: [], isOtc: false,
+  lastFillDate: '', rxNumber: '', refillsRemaining: '', pharmacyName: '', pharmacyAddress: '', pharmacyPhone: '', scheduleTimes: [], isOtc: false, isPrn: false,
 }
 
 function todayStr(): string {
@@ -355,6 +359,7 @@ function toFormValues(m: MedicationDTO): MedicationInput {
     pharmacyPhone: m.pharmacyPhone || '',
     scheduleTimes: m.scheduleTimes || [],
     isOtc: m.isOtc,
+    isPrn: m.isPrn,
   }
 }
 
@@ -626,6 +631,16 @@ function MedicationForm({ initial, onSubmit, onCancel, submitLabel, pharmacies =
           className="w-4 h-4 rounded"
         />
         Over-the-counter (OTC) — no refill reminders or overdue alerts
+      </label>
+
+      <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer" style={{ color: theme.navy }}>
+        <input
+          type="checkbox"
+          checked={form.isPrn}
+          onChange={e => setForm(f => ({ ...f, isPrn: e.target.checked }))}
+          className="w-4 h-4 rounded"
+        />
+        As-needed (PRN) — no refill reminders or overdue alerts
       </label>
 
       <div className="flex gap-2">
@@ -911,25 +926,44 @@ function formatDoseText(dose: string | null, doseUnit: string | null): string | 
   return `${dose} ${unit}`
 }
 
-// The scaffold words ("Administer", "via", "for") stay normal weight; the
-// actual user-entered data points (dose/frequency, route, duration) are
-// bolded so they stand out from the sentence glue around them.
-function adminSentenceOf(med: Pick<MedicationDTO, 'medicationName' | 'dose' | 'doseUnit' | 'frequency' | 'route' | 'duration'>): React.ReactNode | null {
+// The scaffold words ("via", "for") stay normal weight; the actual
+// user-entered data points (dose/frequency, route, duration) are bolded so
+// they stand out from the sentence glue around them. No leading "Administer
+// {name}" — the column header ("Ordered to Administer") already says
+// Administer, and the medication name is its own column to the left, so
+// repeating either here would be redundant.
+function adminSentenceOf(med: Pick<MedicationDTO, 'dose' | 'doseUnit' | 'frequency' | 'route' | 'duration'>): React.ReactNode | null {
   const doseText = formatDoseText(med.dose, med.doseUnit)
   const doseFreq = [doseText, med.frequency].filter(Boolean).join(' ')
   if (!doseFreq && !med.route && !med.duration) return null
-  return (
-    <>
-      Administer {med.medicationName}
-      {doseFreq && <> <strong>{doseFreq}</strong></>}
-      {med.route && <> via <strong>{med.route}</strong></>}
-      {med.duration && <> for <strong>{med.duration}</strong></>}.
-    </>
-  )
+  const segs: React.ReactNode[] = []
+  let isFirst = true
+  if (doseFreq) { segs.push(<strong key="df">{doseFreq}</strong>); isFirst = false }
+  if (med.route) {
+    segs.push(isFirst ? 'Via ' : ' via ')
+    segs.push(<strong key="rt">{med.route}</strong>)
+    isFirst = false
+  }
+  if (med.duration) {
+    segs.push(isFirst ? 'For ' : ' for ')
+    segs.push(<strong key="du">{med.duration}</strong>)
+  }
+  return <>{segs}.</>
 }
 
 function onHandOf(med: Pick<MedicationDTO, 'unitStrength' | 'unitType'>): string {
   return [med.unitStrength, med.unitType].filter(Boolean).join(' ')
+}
+
+// "HH:MM" (24h) -> "H:MM AM/PM" — same format as
+// PatientMedicationMAR.tsx's formatTimeLabel, duplicated rather than
+// imported since this component is deliberately kept portable/no
+// cross-component dependencies (see the file-level comment above).
+function formatScheduleTime(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map(Number)
+  const period = h >= 12 ? 'PM' : 'AM'
+  const hour12 = h % 12 === 0 ? 12 : h % 12
+  return `${hour12}:${String(m).padStart(2, '0')} ${period}`
 }
 
 // One line of the data sheet — plain read-only cells, no per-row action
@@ -943,23 +977,55 @@ function needsRefillAttention(med: MedicationDTO): boolean {
   return med.active && (med.refillStatus === 'due' || med.refillStatus === 'overdue')
 }
 
-function MedicationRow({ med, onClick }: { med: MedicationDTO; onClick: () => void }) {
+// Status column: empty unless a refill is due/overdue. When it is, the cell
+// slow-fade-crossfades between the usual status badge and the due date (in
+// the same alert color, no background) — two CSS-animated layers stacked in
+// one grid cell (grid-area overlap, not position:absolute, so the cell sizes
+// itself to whichever layer is wider instead of needing a guessed width),
+// their animation-delay offset by half the cycle so exactly one is visible
+// at a time. Keyframes are defined once in MedicationTable, not per-row.
+function StatusCell({ med }: { med: MedicationDTO }) {
+  if (!needsRefillAttention(med)) return null
+  const meta = refillStatusMeta[med.refillStatus]
   const dueDate = addDaysStr(med.lastFillDate.slice(0, 10), med.daySupply)
+  return (
+    <div style={{ display: 'grid' }}>
+      <span
+        className="text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap"
+        style={{ gridArea: '1 / 1', background: meta.bg, color: meta.text, animation: 'medStatusCrossfade 6s ease-in-out infinite' }}
+      >
+        {meta.label}
+      </span>
+      <span
+        className="text-xs font-semibold whitespace-nowrap self-center"
+        style={{ gridArea: '1 / 1', color: meta.text, animation: 'medStatusCrossfade 6s ease-in-out infinite', animationDelay: '3s' }}
+      >
+        {fmtDate(dueDate)}
+      </span>
+    </div>
+  )
+}
+
+function MedicationRow({ med, onClick }: { med: MedicationDTO; onClick: () => void }) {
   const cellCls = 'px-3 py-2 align-top whitespace-nowrap'
   return (
     <tr onClick={onClick} className="cursor-pointer border-b last:border-b-0 hover:bg-black/[0.02]" style={{ borderColor: theme.bg }}>
-      <td className={cellCls}>{needsRefillAttention(med) && <RefillStatusBadge status={med.refillStatus} />}</td>
+      <td className={cellCls}><StatusCell med={med} /></td>
       <td className={cellCls}>
         <p className="font-semibold flex items-center gap-1.5" style={{ color: theme.navy }}>
           {med.medicationName}
           {med.isOtc && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: theme.offWhite, color: theme.sage }}>OTC</span>}
+          {med.isPrn && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: theme.offWhite, color: theme.sage }}>PRN</span>}
         </p>
+        {med.scheduleTimes.length > 0 && (
+          <p className="text-[10px] mt-0.5 leading-none" style={{ color: theme.sage }}>
+            {med.scheduleTimes.map(formatScheduleTime).join(', ')}
+          </p>
+        )}
       </td>
-      <td className={`${cellCls} text-xs`} style={{ color: theme.navy }}>{onHandOf(med) || '—'}</td>
       <td className={`${cellCls} text-xs whitespace-normal min-w-[14rem]`} style={{ color: theme.navy }}>{adminSentenceOf(med) ?? '—'}</td>
       <td className={`${cellCls} text-xs`} style={{ color: theme.navy }}>{med.daySupply}d</td>
       <td className={`${cellCls} text-xs`} style={{ color: theme.navy }}>{fmtDate(med.lastFillDate)}</td>
-      <td className={`${cellCls} text-xs`} style={{ color: theme.navy }}>{fmtDate(dueDate)}</td>
       <td className={`${cellCls} text-xs font-mono`} style={{ color: theme.navy }}>{med.rxNumber || '—'}</td>
       <td className={`${cellCls} text-xs`} style={{ color: theme.navy }}>{med.refillsRemaining ?? '—'}</td>
       <td className={`${cellCls} text-xs`} style={{ color: theme.navy }}>{med.pharmacyName || '—'}</td>
@@ -967,16 +1033,14 @@ function MedicationRow({ med, onClick }: { med: MedicationDTO; onClick: () => vo
   )
 }
 
-type SortKey = 'status' | 'medicationName' | 'onHand' | 'administration' | 'supply' | 'lastFill' | 'due' | 'rxNumber' | 'refills' | 'pharmacy'
+type SortKey = 'status' | 'medicationName' | 'administration' | 'supply' | 'lastFill' | 'rxNumber' | 'refills' | 'pharmacy'
 
 const TABLE_COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'status', label: 'Status' },
   { key: 'medicationName', label: 'Medication' },
-  { key: 'onHand', label: 'On Hand' },
-  { key: 'administration', label: 'Prescribed Administration' },
+  { key: 'administration', label: 'Ordered to Administer' },
   { key: 'supply', label: 'Supply' },
   { key: 'lastFill', label: 'Last Fill' },
-  { key: 'due', label: 'Due' },
   { key: 'rxNumber', label: 'RX #' },
   { key: 'refills', label: 'Refills' },
   { key: 'pharmacy', label: 'Pharmacy' },
@@ -985,16 +1049,16 @@ const TABLE_COLUMNS: { key: SortKey; label: string }[] = [
 // One value per column per row, used for both sort comparison and (for the
 // string columns) matching exactly what's actually printed in that cell —
 // e.g. status sorts by the same "" a hidden badge shows, not the raw
-// refillStatus, so the sort order never contradicts what's on screen.
+// refillStatus, so the sort order never contradicts what's on screen. Status
+// sorts by attention-needed label even though the column also displays the
+// due date — due/overdue urgency is the meaningful sort, not the date text.
 function sortValue(med: MedicationDTO, key: SortKey): string | number {
   switch (key) {
     case 'status': return needsRefillAttention(med) ? refillStatusMeta[med.refillStatus].label : ''
     case 'medicationName': return med.medicationName.toLowerCase()
-    case 'onHand': return onHandOf(med).toLowerCase()
     case 'administration': return [formatDoseText(med.dose, med.doseUnit), med.frequency, med.route, med.duration].filter(Boolean).join(' ').toLowerCase()
     case 'supply': return med.daySupply
     case 'lastFill': return med.lastFillDate
-    case 'due': return addDaysStr(med.lastFillDate.slice(0, 10), med.daySupply)
     case 'rxNumber': return med.rxNumber || ''
     case 'refills': return med.refillsRemaining ?? -1
     case 'pharmacy': return (med.pharmacyName || '').toLowerCase()
@@ -1027,6 +1091,13 @@ function MedicationTable({ medications, onSelect }: { medications: MedicationDTO
 
   return (
     <div className="overflow-x-auto rounded-xl border" style={{ borderColor: theme.bg }}>
+      <style>{`
+        @keyframes medStatusCrossfade {
+          0%, 42%  { opacity: 1; }
+          50%, 92% { opacity: 0; }
+          100%     { opacity: 1; }
+        }
+      `}</style>
       <table className="w-full border-collapse">
         <thead>
           <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
@@ -1109,7 +1180,8 @@ function MedicationDetailModal({ med, onAdd, onEdit, onConfirmRefill, onOrderRef
               <div className="flex items-center gap-2 flex-wrap">
                 <p className="font-bold text-lg" style={{ color: theme.navy }}>{med.medicationName}</p>
                 {med.isOtc && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: theme.offWhite, color: theme.sage }}>OTC</span>}
-                {!med.isOtc && <RefillStatusBadge status={med.refillStatus} />}
+                {med.isPrn && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: theme.offWhite, color: theme.sage }}>PRN</span>}
+                {!med.isOtc && !med.isPrn && <RefillStatusBadge status={med.refillStatus} />}
               </div>
               {!readOnly && (
                 <div className="flex gap-2 shrink-0">

@@ -42,20 +42,86 @@ function fmtTime(d: Date): string {
   return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 }
 
-function ItemChip({ item, onClick }: { item: CalendarItem; onClick?: (item: CalendarItem) => void }) {
-  // allDay items (e.g. medication refills) only ever have a due DATE, not a
-  // due time — their stored timestamp is midnight UTC, which renders as some
-  // arbitrary local-timezone hour (8 PM, say) that looks like a real
-  // deadline but isn't one. Skip the time for those instead of showing it.
-  const timePrefix = item.allDay ? '' : `${fmtTime(item.date)} `
+// "11:00 PM" -> "11PM" (no ":00", no space) when the shift starts on the
+// hour — an on-the-hour time is the common case and doesn't need the extra
+// characters; a non-zero minute still gets the normal spaced format.
+function fmtTimeCompact(d: Date): string {
+  const h = d.getHours()
+  const m = d.getMinutes()
+  const period = h >= 12 ? 'PM' : 'AM'
+  const hour12 = h % 12 === 0 ? 12 : h % 12
+  return m === 0 ? `${hour12}${period}` : `${hour12}:${String(m).padStart(2, '0')} ${period}`
+}
+
+// Same idea as fmtTimeCompact but a single-letter suffix and no space at
+// all, for the claimed-shift "7p-7a: Alex" range label — a tighter format
+// than fmtTimeCompact's "7PM" since two of these appear back to back.
+function fmtTimeTiny(d: Date): string {
+  const h = d.getHours()
+  const m = d.getMinutes()
+  const period = h >= 12 ? 'p' : 'a'
+  const hour12 = h % 12 === 0 ? 12 : h % 12
+  return m === 0 ? `${hour12}${period}` : `${hour12}:${String(m).padStart(2, '0')}${period}`
+}
+
+// Claimed shifts ('assigned'/'completed') read as a start-stop time range
+// plus the covering nurse's first name ("7p-7a: Alex") instead of a generic
+// "Shift" label — nurseName is only populated on feeds that show multiple
+// nurses' shifts (admin/family/patient-scoped calendars); the nurse's own
+// calendar never sets it, so this falls back to just the range there, which
+// is correct since every shift on that view is already known to be hers.
+// Open/coverage-needed shifts keep their category label, just with a
+// compact time prefix instead of the old "11:00 PM Open Shift".
+function shiftChipLabel(item: CalendarItem): string {
+  const isClaimed = item.status === 'assigned' || item.status === 'completed'
+  if (isClaimed) {
+    const start = fmtTimeTiny(item.date)
+    const range = item.endDate ? `${start}-${fmtTimeTiny(item.endDate)}` : start
+    const firstName = item.nurseName?.split(' ')[0]
+    return firstName ? `${range}: ${firstName}` : range
+  }
+  return `${fmtTimeCompact(item.date)} ${item.title}`
+}
+
+function isOpenShift(item: CalendarItem): boolean {
+  return item.category === 'shift' && item.status !== 'assigned' && item.status !== 'completed'
+}
+
+// Flat mode's text-only color — same red/green semantic split chipClass
+// uses for shift backgrounds, just without the pill behind it.
+function chipTextColorClass(item: CalendarItem): string {
+  if (item.category === 'shift') {
+    return item.status === 'assigned' || item.status === 'completed' ? 'text-green-700' : 'text-red-700'
+  }
+  return 'text-[#2F3E4E]'
+}
+
+// flat=true drops the solid colored pill and just renders colored text —
+// used on the month view for open/coverage-needed shifts (Alex's request:
+// only genuinely all-day items should get a solid background block there).
+function ItemChip({ item, onClick, flat }: { item: CalendarItem; onClick?: (item: CalendarItem) => void; flat?: boolean }) {
+  const label = item.category === 'shift' ? shiftChipLabel(item) : `${item.allDay ? '' : `${fmtTime(item.date)} `}${item.title}`
+  const tooltip = `${item.allDay ? '' : `${fmtTime(item.date)} — `}${item.title}${item.patientName ? ` (${item.patientName})` : ''}`
+  if (flat) {
+    return (
+      <button
+        type="button"
+        onClick={() => onClick?.(item)}
+        className={`w-full text-left text-[10px] leading-tight px-0.5 py-0.5 truncate font-semibold ${chipTextColorClass(item)} hover:opacity-70 transition`}
+        title={tooltip}
+      >
+        {label}
+      </button>
+    )
+  }
   return (
     <button
       type="button"
       onClick={() => onClick?.(item)}
       className={`w-full text-left text-[10px] leading-tight px-1.5 py-0.5 rounded truncate ${chipClass(item)} hover:opacity-80 transition`}
-      title={`${item.allDay ? '' : `${fmtTime(item.date)} — `}${item.title}${item.patientName ? ` (${item.patientName})` : ''}`}
+      title={tooltip}
     >
-      {timePrefix}{item.title}
+      {label}
     </button>
   )
 }
@@ -289,7 +355,7 @@ function HourlyDay({ day, dayItems, onItemClick, onDayClick }: {
                     width: `calc(${widthPct}% - 4px)`,
                   }}
                 >
-                  {fmtTime(item.date)} {item.title}
+                  {item.category === 'shift' ? shiftChipLabel(item) : `${fmtTime(item.date)} ${item.title}`}
                 </button>
               )
             })}
@@ -412,7 +478,7 @@ export default function CalendarGrid({
                         {day.getDate()}
                       </button>
                       <div className="space-y-0.5">
-                        {visibleItems.slice(0, 3).map(item => <ItemChip key={item.id} item={item} onClick={onItemClick} />)}
+                        {visibleItems.slice(0, 3).map(item => <ItemChip key={item.id} item={item} onClick={onItemClick} flat={isOpenShift(item)} />)}
                         {visibleItems.length > 3 && (
                           <button type="button" onClick={() => onDayClick?.(day)} className="text-[10px] text-[#7A8F79] hover:underline">
                             +{visibleItems.length - 3} more

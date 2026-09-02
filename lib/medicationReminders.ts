@@ -42,19 +42,21 @@ export type RefillStatus = 'due' | 'overdue' | 'ordered' | 'filled'
 // sticky through the due date, so an order in flight (waiting on the pharmacy)
 // doesn't flip back to due/overdue.
 //
-// An OTC medication always reports "filled" regardless of the date math —
-// it's never tracked for refills, so nothing should ever read as due/overdue
-// for it (matches the reminder cron in lib/runMedicationReminders.ts, which
-// excludes isOtc medications from consideration entirely).
+// An OTC or PRN medication always reports "filled" regardless of the date
+// math — neither is ever tracked for refills, so nothing should ever read as
+// due/overdue for either one (matches the reminder cron in
+// lib/runMedicationReminders.ts, which excludes both from consideration
+// entirely).
 export function effectiveRefillStatus(
   refillOrderedAt: Date | null | undefined,
   lastFillDate: Date,
   daySupply: number,
   refillsRemaining: number | null | undefined,
   today: Date = new Date(),
-  isOtc?: boolean | null
+  isOtc?: boolean | null,
+  isPrn?: boolean | null
 ): RefillStatus {
-  if (isOtc) return 'filled'
+  if (isOtc || isPrn) return 'filled'
   if (refillOrderedAt) return 'ordered'
   if (today.getTime() >= medicationDueDate(lastFillDate, daySupply).getTime()) return 'overdue'
   if (isReminderDue(lastFillDate, daySupply, refillsRemaining, today)) return 'due'

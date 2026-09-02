@@ -424,7 +424,7 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
       ),
     },
     {
-      key: 'medicationLog', label: 'Medication Log', content: (
+      key: 'medicationLog', label: 'MAR', content: (
         <PatientMedicationMAR
           basePath={`/api/patient/${id}`}
           currentUserId={adminUserId}

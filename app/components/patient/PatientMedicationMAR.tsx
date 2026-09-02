@@ -172,7 +172,14 @@ export default function PatientMedicationMAR({
       // re-selects "Family/Caregiver" rather than silently falling back to self.
       administeredByUserId: existing?.administeredByUserId
         || (existing?.administeredByRole === 'guardian' ? FAMILY_GENERIC_ID : currentUserId),
-      administeredTimeOfDay: existing?.administeredAt ? isoToTimeOfDay(existing.administeredAt) : nowTimeOfDay(),
+      // Defaults to this slot's scheduled time, not the current wall-clock
+      // time — a dose given on schedule but charted later (the normal case)
+      // shouldn't have to be manually corrected away from "right now" every
+      // time. Only a PRN entry (scheduledTimeOfDay null — no prescribed time
+      // to default to) or a still-blank scheduled slot falls back to now.
+      administeredTimeOfDay: existing?.administeredAt
+        ? isoToTimeOfDay(existing.administeredAt)
+        : (scheduledTimeOfDay || nowTimeOfDay()),
       omissionReason: existing?.omissionReason || '',
       notes: existing?.notes || '',
       administeredByDisplayNameSnapshot: existing?.administeredByDisplayNameSnapshot || null,

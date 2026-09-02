@@ -1469,6 +1469,11 @@ model PatientMedication {
   // in lib/medicationReminders.ts always reports "filled") and from the
   // reminder cron's SMS notifications (lib/runMedicationReminders.ts).
   isOtc  Boolean @default(false)
+  // As-needed — same refill-reminder/cron exemption as isOtc above, plus its
+  // own summary-chart badge. Independent of MedicationScheduleTime (zero
+  // scheduled times already means "no fixed administration time" for MAR
+  // purposes) — this flag is specifically what drives refill tracking.
+  isPrn  Boolean @default(false)
 
   createdByUserId String // primary reminder recipient
   createdByRole   String // 'nurse' | 'guardian' | 'admin' — display attribution only

@@ -18,7 +18,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params
 
   const body = await req.json()
-  const { medicationName, rxcui, dose, doseUnit, unitStrength, unitType, frequency, route, duration, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone, scheduleTimes, isOtc } = body
+  const { medicationName, rxcui, dose, doseUnit, unitStrength, unitType, frequency, route, duration, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone, scheduleTimes, isOtc, isPrn } = body
   if (!medicationName?.trim()) return NextResponse.json({ error: 'Medication name required' }, { status: 400 })
   if (!lastFillDate) return NextResponse.json({ error: 'Last fill date required' }, { status: 400 })
 
@@ -42,6 +42,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       refillsRemaining: refillsRemaining != null && refillsRemaining !== '' ? parseInt(refillsRemaining, 10) : null,
       pharmacyId,
       isOtc: !!isOtc,
+      isPrn: !!isPrn,
       createdByUserId: session.id,
       createdByRole: session.role,
       scheduleTimes: scheduleTimesCreateData(scheduleTimes),
@@ -57,7 +58,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!adminAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await params
 
-  const { medId, medicationName, rxcui, dose, doseUnit, unitStrength, unitType, frequency, route, duration, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone, active, scheduleTimes, isOtc } = await req.json()
+  const { medId, medicationName, rxcui, dose, doseUnit, unitStrength, unitType, frequency, route, duration, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone, active, scheduleTimes, isOtc, isPrn } = await req.json()
   if (!medId) return NextResponse.json({ error: 'medId required' }, { status: 400 })
 
   const data: Record<string, any> = {}
@@ -77,6 +78,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (pharmacyName !== undefined) data.pharmacyId = await resolvePharmacy({ name: pharmacyName, address: pharmacyAddress, phone: pharmacyPhone })
   if (active !== undefined) data.active = !!active
   if (isOtc !== undefined) data.isOtc = !!isOtc
+  if (isPrn !== undefined) data.isPrn = !!isPrn
 
   const { count } = await (prisma.patientMedication.updateMany as any)({
     where: { id: medId, patientId: id },

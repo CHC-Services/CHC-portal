@@ -41,7 +41,7 @@ export function patientInitialsLabel(firstName: string | null | undefined, lastN
 
 export async function runMedicationReminders(): Promise<{ sent: number; total: number }> {
   const meds = await (prisma.patientMedication.findMany as any)({
-    where: { active: true, isOtc: false, reminderSentAt: null },
+    where: { active: true, isOtc: false, isPrn: false, reminderSentAt: null },
     include: {
       patient: { select: { firstName: true, lastName: true } },
       pharmacy: { select: { name: true } },

@@ -9,6 +9,17 @@ import { signedName } from './formatName'
 
 type Session = { id: string; role: string; name?: string; displayName?: string; firstName?: string; lastName?: string }
 
+// Sentinel administeredByUserId meaning "some family member gave it, not
+// tied to a specific linked guardian account" — e.g. a relative who isn't a
+// registered portal user. Never a real user id, never persisted as-is (the
+// route resolving it stores administeredByUserId: null instead, with role
+// 'guardian' and this display name) — server-only modules import this
+// constant; PatientMedicationMAR.tsx (a client component) can't import from
+// here since this file pulls in prisma, so it duplicates the literal string
+// with a comment tying it back to this constant. Keep both in sync.
+export const FAMILY_GENERIC_ID = 'family'
+export const FAMILY_GENERIC_DISPLAY_NAME = 'Family/Caregiver'
+
 /** Display name for the calling session itself — used for documentedBy*. */
 export function sessionDisplayName(session: Session): string {
   if (session.role === 'nurse') {

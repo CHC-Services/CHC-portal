@@ -1,4 +1,5 @@
 import { prisma } from './prisma'
+import { FAMILY_GENERIC_ID } from './medicationAdministrationActor'
 
 type Session = {
   id: string
@@ -178,6 +179,10 @@ export async function canDocumentMedicationAdministration(
   if (!(await isLinkedToPatient(session, patientId))) return false
   if (!administeredByUserId || administeredByUserId === session.id) return true
   if (session.role !== 'nurse' && session.role !== 'admin') return false
+  // "Some family member gave it" without naming a specific linked guardian —
+  // nurse/admin only (same restriction as attributing to a specific named
+  // person), but there's no real user to verify against.
+  if (administeredByUserId === FAMILY_GENERIC_ID) return true
 
   const [nurseLink, guardianLink] = await Promise.all([
     prisma.nurseProfile.findFirst({

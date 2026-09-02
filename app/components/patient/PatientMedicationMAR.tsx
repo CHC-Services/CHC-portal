@@ -49,6 +49,19 @@ const STATUS_STYLE: Record<MarStatus, { bg: string; text: string }> = {
   omitted: { bg: '#FEF3C7', text: '#92400E' },
 }
 
+// Mirrors lib/medicationAdministrationActor.ts's FAMILY_GENERIC_ID — kept as
+// a literal here since that module pulls in prisma and can't be imported
+// into a client component. Keep both in sync.
+const FAMILY_GENERIC_ID = 'family'
+
+// Any guardian-attributed given dose — a specifically named linked guardian
+// or the generic "some family member" option — renders as a plain orange
+// "fam" badge on the grid instead of that person's initials, so family-
+// administered doses read distinctly from nurse-administered ones at a glance.
+function isFamilyGiven(entry: MarEntry | undefined): boolean {
+  return !!entry && entry.status === 'given' && entry.administeredByRole === 'guardian'
+}
+
 function initialsOf(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)
   if (parts.length === 0) return '?'
@@ -154,7 +167,11 @@ export default function PatientMedicationMAR({
       scheduledTimeOfDay,
       entryId: existing?.id || null,
       status: (existing?.status as MarStatus) || 'given',
-      administeredByUserId: existing?.administeredByUserId || currentUserId,
+      // A generic-family entry has no real administeredByUserId in the DB
+      // (see FAMILY_GENERIC_ID) — detect it via role instead so reopening it
+      // re-selects "Family/Caregiver" rather than silently falling back to self.
+      administeredByUserId: existing?.administeredByUserId
+        || (existing?.administeredByRole === 'guardian' ? FAMILY_GENERIC_ID : currentUserId),
       administeredTimeOfDay: existing?.administeredAt ? isoToTimeOfDay(existing.administeredAt) : nowTimeOfDay(),
       omissionReason: existing?.omissionReason || '',
       notes: existing?.notes || '',
@@ -269,17 +286,20 @@ export default function PatientMedicationMAR({
                         {days.map(d => (
                           <td key={d} className="p-1 align-top text-center">
                             <div className="flex flex-col items-center gap-1">
-                              {(med.prnEntries[d] || []).map(entry => (
-                                <button
-                                  key={entry.id}
-                                  onClick={() => openSlot(med, d, null, entry)}
-                                  title={entry.administeredByDisplayNameSnapshot || ''}
-                                  className="w-7 h-7 rounded-full text-[10px] font-bold"
-                                  style={{ background: STATUS_STYLE[entry.status as MarStatus].bg, color: STATUS_STYLE[entry.status as MarStatus].text }}
-                                >
-                                  {entry.status === 'given' ? initialsOf(entry.administeredByDisplayNameSnapshot || '') : '!'}
-                                </button>
-                              ))}
+                              {(med.prnEntries[d] || []).map(entry => {
+                                const family = isFamilyGiven(entry)
+                                return (
+                                  <button
+                                    key={entry.id}
+                                    onClick={() => openSlot(med, d, null, entry)}
+                                    title={entry.administeredByDisplayNameSnapshot || ''}
+                                    className={`w-7 h-7 rounded-full text-[10px] font-bold ${family ? 'border-2 border-orange-500 text-orange-500 bg-transparent' : ''}`}
+                                    style={!family ? { background: STATUS_STYLE[entry.status as MarStatus].bg, color: STATUS_STYLE[entry.status as MarStatus].text } : undefined}
+                                  >
+                                    {entry.status !== 'given' ? '!' : family ? 'fam' : initialsOf(entry.administeredByDisplayNameSnapshot || '')}
+                                  </button>
+                                )
+                              })}
                               <button
                                 onClick={() => openSlot(med, d, null)}
                                 className="w-7 h-7 rounded-full border border-dashed border-[#D9E1E8] text-[#7A8F79] text-xs hover:bg-[#F4F6F5]"
@@ -302,15 +322,16 @@ export default function PatientMedicationMAR({
                         {days.map(d => {
                           const entry = med.slots[d]?.[st.timeOfDay]
                           const pending = !entry || entry.status === 'pending'
+                          const family = isFamilyGiven(entry)
                           return (
                             <td key={d} className="p-1 text-center">
                               <button
                                 onClick={() => openSlot(med, d, st.timeOfDay, entry)}
                                 title={!pending ? (entry!.administeredByDisplayNameSnapshot || '') : 'Pending'}
-                                className={`w-9 h-9 rounded-lg text-[10px] font-bold ${pending ? 'border border-dashed border-[#D9E1E8] text-[#D9E1E8] hover:border-[#7A8F79] hover:text-[#7A8F79]' : ''}`}
-                                style={!pending ? { background: STATUS_STYLE[entry!.status as MarStatus].bg, color: STATUS_STYLE[entry!.status as MarStatus].text } : undefined}
+                                className={`w-9 h-9 text-[10px] font-bold ${family ? 'rounded-full border-2 border-orange-500 text-orange-500 bg-transparent' : 'rounded-lg'} ${pending ? 'border border-dashed border-[#D9E1E8] text-[#D9E1E8] hover:border-[#7A8F79] hover:text-[#7A8F79]' : ''}`}
+                                style={!pending && !family ? { background: STATUS_STYLE[entry!.status as MarStatus].bg, color: STATUS_STYLE[entry!.status as MarStatus].text } : undefined}
                               >
-                                {pending ? '—' : (entry!.status === 'given' ? initialsOf(entry!.administeredByDisplayNameSnapshot || '') : '!')}
+                                {pending ? '—' : entry!.status !== 'given' ? '!' : family ? 'fam' : initialsOf(entry!.administeredByDisplayNameSnapshot || '')}
                               </button>
                             </td>
                           )
@@ -367,6 +388,7 @@ export default function PatientMedicationMAR({
                   onChange={e => setDraft(d => d && { ...d, administeredByUserId: e.target.value })}
                 >
                   <option value={currentUserId}>Myself</option>
+                  <option value={FAMILY_GENERIC_ID}>Family/Caregiver (unspecified)</option>
                   {roster.filter(r => r.userId !== currentUserId).map(r => (
                     <option key={r.userId} value={r.userId}>{r.name} ({r.role === 'nurse' ? 'Nurse' : 'Family'})</option>
                   ))}

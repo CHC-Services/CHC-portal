@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../lib/prisma'
 import { verifyToken } from '../../../../../lib/auth'
 import { canViewMedicationAdministration, canDocumentMedicationAdministration } from '../../../../../lib/permissions'
-import { sessionDisplayName, resolveAdministeredByActor } from '../../../../../lib/medicationAdministrationActor'
+import { sessionDisplayName, resolveAdministeredByActor, FAMILY_GENERIC_ID, FAMILY_GENERIC_DISPLAY_NAME } from '../../../../../lib/medicationAdministrationActor'
 import { dateKeyToUtcMidnight, nyDateKeyOf, nextNyDateKey, easternTimeOfDayUtc } from '../../../../../lib/easternTime'
 
 function getSession(req: Request) {
@@ -194,7 +194,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   let administeredByRole: string
   let administeredByDisplayNameSnapshot: string
-  if (administeredByUserId === session.id) {
+  // A dose given by "some family member" without picking a specific linked
+  // guardian account — e.g. a relative who isn't a registered portal user.
+  // Never stored as a real user id (FAMILY_GENERIC_ID isn't one); the grid
+  // renders any guardian-role entry with no administeredByUserId the same
+  // generic way regardless.
+  let storedAdministeredByUserId: string | null = administeredByUserId
+  if (administeredByUserId === FAMILY_GENERIC_ID) {
+    administeredByRole = 'guardian'
+    administeredByDisplayNameSnapshot = FAMILY_GENERIC_DISPLAY_NAME
+    storedAdministeredByUserId = null
+  } else if (administeredByUserId === session.id) {
     administeredByRole = session.role
     administeredByDisplayNameSnapshot = sessionDisplayName(session)
   } else {
@@ -207,7 +217,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const data = {
     status,
     omissionReason: status === 'given' ? null : omissionReason.trim(),
-    administeredByUserId,
+    administeredByUserId: storedAdministeredByUserId,
     administeredByRole,
     administeredByDisplayNameSnapshot,
     administeredAt: resolveAdministeredAt(scheduledDate, administeredTimeOfDay),

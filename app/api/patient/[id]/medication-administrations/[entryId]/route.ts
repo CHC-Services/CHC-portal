@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../../lib/prisma'
 import { verifyToken } from '../../../../../../lib/auth'
 import { canEditMedicationAdministration, canDocumentMedicationAdministration } from '../../../../../../lib/permissions'
-import { sessionDisplayName, resolveAdministeredByActor } from '../../../../../../lib/medicationAdministrationActor'
+import { sessionDisplayName, resolveAdministeredByActor, FAMILY_GENERIC_ID, FAMILY_GENERIC_DISPLAY_NAME } from '../../../../../../lib/medicationAdministrationActor'
 import { easternTimeOfDayUtc } from '../../../../../../lib/easternTime'
 
 const TIME_OF_DAY_RE = /^([01]\d|2[0-3]):([0-5]\d)$/
@@ -83,7 +83,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (!(await canDocumentMedicationAdministration(session, patientId, administeredByUserId))) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    if (administeredByUserId === session.id) {
+    if (administeredByUserId === FAMILY_GENERIC_ID) {
+      data.administeredByUserId = null
+      data.administeredByRole = 'guardian'
+      data.administeredByDisplayNameSnapshot = FAMILY_GENERIC_DISPLAY_NAME
+    } else if (administeredByUserId === session.id) {
       data.administeredByUserId = administeredByUserId
       data.administeredByRole = session.role
       data.administeredByDisplayNameSnapshot = sessionDisplayName(session)

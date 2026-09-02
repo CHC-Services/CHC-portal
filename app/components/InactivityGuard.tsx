@@ -2,12 +2,12 @@
 
 import { useEffect, useRef } from 'react'
 
-const INACTIVITY_MS = 10 * 60 * 1000
+const INACTIVITY_MS = 20 * 60 * 1000
 const TOUCH_INTERVAL_MS = 60 * 1000 // don't ping the server more than once a minute
 const CHECK_INTERVAL_MS = 15 * 1000
 const ACTIVITY_EVENTS = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'wheel'] as const
 
-// PHI protection: logs the user out after 10 minutes with no mouse/keyboard/scroll
+// PHI protection: logs the user out after 20 minutes with no mouse/keyboard/scroll
 // activity, independent of the server-side idle check in middleware.ts (which only
 // fires on navigation/API calls — this catches someone idling mid-page).
 export default function InactivityGuard({ active }: { active: boolean }) {

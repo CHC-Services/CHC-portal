@@ -129,8 +129,10 @@ export async function POST(req: Request) {
   const res = NextResponse.json({ ok: true, role: user.role, portalAgreementSigned, needsOnboarding })
 
   // use a consistent cookie name that the middleware already expects
-  // Session-only cookie (no maxAge): dies on full browser close; the 10-min
-  // idle timeout is separately enforced via the lastActivityAt claim in middleware.ts
+  // Session-only cookie (no maxAge): dies on full browser close; the idle
+  // timeout is separately enforced via the lastActivityAt claim in
+  // middleware.ts (lib/auth.ts's INACTIVITY_MS), plus a faster client-side
+  // check in InactivityGuard.tsx that catches someone idling mid-page.
   res.cookies.set('auth_token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',

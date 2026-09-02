@@ -932,21 +932,51 @@ function formatDoseText(dose: string | null, doseUnit: string | null): string | 
 // {name}" — the column header ("Ordered to Administer") already says
 // Administer, and the medication name is its own column to the left, so
 // repeating either here would be redundant.
-function adminSentenceOf(med: Pick<MedicationDTO, 'dose' | 'doseUnit' | 'frequency' | 'route' | 'duration'>): React.ReactNode | null {
+// Maps a FREQUENCY_OPTIONS value down to the bare interval "every [x]" wants
+// (e.g. "Twice daily" -> "12 hours", "Every 4 hours" -> "4 hours") — only
+// for frequencies that actually describe an interval. A frequency that
+// doesn't (PRN, "Before meals", a free-typed "Other" value, ...) has no
+// sensible "every ___" form, so it's left for the caller to render plain.
+const FREQUENCY_INTERVAL: Record<string, string> = {
+  'Once daily': 'day',
+  'Twice daily': '12 hours',
+  'Three times daily': '8 hours',
+  'Four times daily': '6 hours',
+  'Every other day': 'other day',
+  'Every 4 hours': '4 hours',
+  'Every 6 hours': '6 hours',
+  'Every 8 hours': '8 hours',
+  'Every 12 hours': '12 hours',
+  'Every morning': 'morning',
+  'Weekly': 'week',
+  'Monthly': 'month',
+}
+
+// Standard SIG phrasing: "[volume] by [route] every [frequency]." — only
+// volume and the frequency interval are bolded, matching Alex's formula
+// exactly; "by"/"every"/the route name stay normal weight. Deliberately
+// never mentions duration/end date ("until discontinued" and the like) — an
+// ongoing order says nothing extra, so the rare medication that actually
+// does have an end date can get a separate, visually distinct callout later
+// instead of blending into routine wording every other row also has.
+function adminSentenceOf(med: Pick<MedicationDTO, 'dose' | 'doseUnit' | 'frequency' | 'route'>): React.ReactNode | null {
   const doseText = formatDoseText(med.dose, med.doseUnit)
-  const doseFreq = [doseText, med.frequency].filter(Boolean).join(' ')
-  if (!doseFreq && !med.route && !med.duration) return null
+  if (!doseText && !med.route && !med.frequency) return null
   const segs: React.ReactNode[] = []
-  let isFirst = true
-  if (doseFreq) { segs.push(<strong key="df">{doseFreq}</strong>); isFirst = false }
+  if (doseText) segs.push(<strong key="vol">{doseText}</strong>)
   if (med.route) {
-    segs.push(isFirst ? 'Via ' : ' via ')
-    segs.push(<strong key="rt">{med.route}</strong>)
-    isFirst = false
+    segs.push(segs.length ? ' by ' : 'By ')
+    segs.push(med.route)
   }
-  if (med.duration) {
-    segs.push(isFirst ? 'For ' : ' for ')
-    segs.push(<strong key="du">{med.duration}</strong>)
+  if (med.frequency) {
+    const interval = FREQUENCY_INTERVAL[med.frequency]
+    if (interval) {
+      segs.push(segs.length ? ' every ' : 'Every ')
+      segs.push(<strong key="freq">{interval}</strong>)
+    } else {
+      segs.push(segs.length ? ' ' : '')
+      segs.push(<strong key="freq">{med.frequency}</strong>)
+    }
   }
   return <>{segs}.</>
 }
@@ -1059,7 +1089,7 @@ function sortValue(med: MedicationDTO, key: SortKey): string | number {
   switch (key) {
     case 'status': return needsRefillAttention(med) ? refillStatusMeta[med.refillStatus].label : ''
     case 'medicationName': return med.medicationName.toLowerCase()
-    case 'administration': return [formatDoseText(med.dose, med.doseUnit), med.frequency, med.route, med.duration].filter(Boolean).join(' ').toLowerCase()
+    case 'administration': return [formatDoseText(med.dose, med.doseUnit), med.route, med.frequency].filter(Boolean).join(' ').toLowerCase()
     case 'supply': return med.daySupply
     case 'lastFill': return med.lastFillDate
     case 'rxNumber': return med.rxNumber || ''

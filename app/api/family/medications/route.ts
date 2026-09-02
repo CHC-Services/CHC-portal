@@ -46,7 +46,7 @@ export async function POST(req: Request) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { patientId, medicationName, rxcui, dose, doseUnit, unitStrength, unitType, frequency, route, duration, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone, scheduleTimes } = body
+  const { patientId, medicationName, rxcui, dose, doseUnit, unitStrength, unitType, frequency, route, duration, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone, scheduleTimes, isOtc } = body
   if (!patientId) return NextResponse.json({ error: 'patientId required' }, { status: 400 })
   if (!await verifyGuardianLinked(session.id, patientId)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -73,6 +73,7 @@ export async function POST(req: Request) {
       rxNumber: rxNumber || null,
       refillsRemaining: refillsRemaining != null && refillsRemaining !== '' ? parseInt(refillsRemaining, 10) : null,
       pharmacyId,
+      isOtc: !!isOtc,
       createdByUserId: session.id,
       createdByRole: session.role,
       scheduleTimes: scheduleTimesCreateData(scheduleTimes),
@@ -88,7 +89,7 @@ export async function PATCH(req: Request) {
   const session = auth(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { medId, medicationName, rxcui, dose, doseUnit, unitStrength, unitType, frequency, route, duration, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone, active, scheduleTimes } = await req.json()
+  const { medId, medicationName, rxcui, dose, doseUnit, unitStrength, unitType, frequency, route, duration, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone, active, scheduleTimes, isOtc } = await req.json()
   if (!medId) return NextResponse.json({ error: 'medId required' }, { status: 400 })
 
   const existing = await (prisma.patientMedication.findUnique as any)({ where: { id: medId }, select: { patientId: true } })
@@ -112,6 +113,7 @@ export async function PATCH(req: Request) {
   if (refillsRemaining !== undefined) data.refillsRemaining = refillsRemaining != null && refillsRemaining !== '' ? parseInt(refillsRemaining, 10) : null
   if (pharmacyName !== undefined) data.pharmacyId = await resolvePharmacy({ name: pharmacyName, address: pharmacyAddress, phone: pharmacyPhone })
   if (active !== undefined) data.active = !!active
+  if (isOtc !== undefined) data.isOtc = !!isOtc
 
   if (scheduleTimes !== undefined) await replaceScheduleTimes(medId, scheduleTimes)
 

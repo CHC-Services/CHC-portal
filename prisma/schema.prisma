@@ -1465,6 +1465,10 @@ model PatientMedication {
   pharmacy         Pharmacy? @relation(fields: [pharmacyId], references: [id], onDelete: SetNull)
 
   active Boolean @default(true)
+  // Over-the-counter — exempt from refill-reminder date math (effectiveRefillStatus
+  // in lib/medicationReminders.ts always reports "filled") and from the
+  // reminder cron's SMS notifications (lib/runMedicationReminders.ts).
+  isOtc  Boolean @default(false)
 
   createdByUserId String // primary reminder recipient
   createdByRole   String // 'nurse' | 'guardian' | 'admin' — display attribution only

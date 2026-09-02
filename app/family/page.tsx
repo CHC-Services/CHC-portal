@@ -15,6 +15,7 @@ type FamilyMedication = {
   daySupply: number
   refillsRemaining: number | null
   active: boolean
+  isOtc: boolean
 }
 
 type FamilyPatient = {
@@ -41,7 +42,7 @@ function urgentReasons(p: FamilyPatient, today: Date): string[] {
   const reasons: string[] = []
 
   for (const m of p.medications) {
-    if (!m.active) continue
+    if (!m.active || m.isOtc) continue
     const reminderDate = medicationReminderDate(new Date(m.lastFillDate), m.daySupply, m.refillsRemaining)
     if (reminderDate.getTime() <= horizon) reasons.push(`${m.medicationName} refill due`)
   }
@@ -230,7 +231,7 @@ export default function FamilyDashboardPage() {
 
   const reminders: ReminderRow[] = patients
     .flatMap(p => p.medications
-      .filter(m => m.active)
+      .filter(m => m.active && !m.isOtc)
       .map(m => ({
         medId: m.id,
         medicationName: m.medicationName,

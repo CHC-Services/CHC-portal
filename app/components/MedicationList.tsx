@@ -39,6 +39,9 @@ export type MedicationDTO = {
   refillStatus: RefillStatus
   refillOrderedAt: string | null // ISO date string, set while refillStatus === 'ordered'
   scheduleTimes: string[] // fixed daily clock times ("HH:MM"), empty for PRN — see MedicationInput
+  // Over-the-counter — exempt from refill reminders/notifications and always
+  // reports refillStatus 'filled' (see lib/medicationReminders.ts).
+  isOtc: boolean
 }
 
 export type MedicationInput = {
@@ -62,6 +65,7 @@ export type MedicationInput = {
   // descriptive `frequency` label above. Empty for PRN/as-needed meds, which
   // get logged ad-hoc on the MAR instead of against a fixed slot.
   scheduleTimes: string[]
+  isOtc: boolean
 }
 
 // Parses a leading numeric amount + optional unit off a free-typed string
@@ -125,7 +129,7 @@ type MedicationListProps = {
 
 const emptyForm: MedicationInput = {
   medicationName: '', rxcui: '', dose: '', doseUnit: '', unitStrength: '', unitType: '', frequency: '', route: '', duration: '', daySupply: '30',
-  lastFillDate: '', rxNumber: '', refillsRemaining: '', pharmacyName: '', pharmacyAddress: '', pharmacyPhone: '', scheduleTimes: [],
+  lastFillDate: '', rxNumber: '', refillsRemaining: '', pharmacyName: '', pharmacyAddress: '', pharmacyPhone: '', scheduleTimes: [], isOtc: false,
 }
 
 function todayStr(): string {
@@ -350,6 +354,7 @@ function toFormValues(m: MedicationDTO): MedicationInput {
     pharmacyAddress: m.pharmacyAddress || '',
     pharmacyPhone: m.pharmacyPhone || '',
     scheduleTimes: m.scheduleTimes || [],
+    isOtc: m.isOtc,
   }
 }
 
@@ -612,6 +617,16 @@ function MedicationForm({ initial, onSubmit, onCancel, submitLabel, pharmacies =
       )}
 
       <SectionDivider label="Fill Details" />
+
+      <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer" style={{ color: theme.navy }}>
+        <input
+          type="checkbox"
+          checked={form.isOtc}
+          onChange={e => setForm(f => ({ ...f, isOtc: e.target.checked }))}
+          className="w-4 h-4 rounded"
+        />
+        Over-the-counter (OTC) — no refill reminders or overdue alerts
+      </label>
 
       <div className="flex gap-2">
         <div>
@@ -920,14 +935,25 @@ function onHandOf(med: Pick<MedicationDTO, 'unitStrength' | 'unitType'>): string
 // One line of the data sheet — plain read-only cells, no per-row action
 // controls. Clicking anywhere on the row opens MedicationDetailModal, which
 // owns editing/refill/delete/drug-facts so the sheet itself stays dense and scannable.
+// Only Due/Overdue is worth a nurse's attention — Ordered and Filled just
+// mean "nothing to do right now," so showing a badge for every single row
+// regardless of state reads as noise. Also skip it entirely for an inactive
+// (discontinued) medication, which isn't being tracked for refills at all.
+function needsRefillAttention(med: MedicationDTO): boolean {
+  return med.active && (med.refillStatus === 'due' || med.refillStatus === 'overdue')
+}
+
 function MedicationRow({ med, onClick }: { med: MedicationDTO; onClick: () => void }) {
   const dueDate = addDaysStr(med.lastFillDate.slice(0, 10), med.daySupply)
   const cellCls = 'px-3 py-2 align-top whitespace-nowrap'
   return (
     <tr onClick={onClick} className="cursor-pointer border-b last:border-b-0 hover:bg-black/[0.02]" style={{ borderColor: theme.bg }}>
-      <td className={cellCls}><RefillStatusBadge status={med.refillStatus} /></td>
+      <td className={cellCls}>{needsRefillAttention(med) && <RefillStatusBadge status={med.refillStatus} />}</td>
       <td className={cellCls}>
-        <p className="font-semibold" style={{ color: theme.navy }}>{med.medicationName}</p>
+        <p className="font-semibold flex items-center gap-1.5" style={{ color: theme.navy }}>
+          {med.medicationName}
+          {med.isOtc && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: theme.offWhite, color: theme.sage }}>OTC</span>}
+        </p>
       </td>
       <td className={`${cellCls} text-xs`} style={{ color: theme.navy }}>{onHandOf(med) || '—'}</td>
       <td className={`${cellCls} text-xs whitespace-normal min-w-[14rem]`} style={{ color: theme.navy }}>{adminSentenceOf(med) ?? '—'}</td>
@@ -941,23 +967,85 @@ function MedicationRow({ med, onClick }: { med: MedicationDTO; onClick: () => vo
   )
 }
 
-const tableHeaders = ['Status', 'Medication', 'On Hand', 'Prescribed Administration', 'Supply', 'Last Fill', 'Due', 'RX #', 'Refills', 'Pharmacy']
+type SortKey = 'status' | 'medicationName' | 'onHand' | 'administration' | 'supply' | 'lastFill' | 'due' | 'rxNumber' | 'refills' | 'pharmacy'
+
+const TABLE_COLUMNS: { key: SortKey; label: string }[] = [
+  { key: 'status', label: 'Status' },
+  { key: 'medicationName', label: 'Medication' },
+  { key: 'onHand', label: 'On Hand' },
+  { key: 'administration', label: 'Prescribed Administration' },
+  { key: 'supply', label: 'Supply' },
+  { key: 'lastFill', label: 'Last Fill' },
+  { key: 'due', label: 'Due' },
+  { key: 'rxNumber', label: 'RX #' },
+  { key: 'refills', label: 'Refills' },
+  { key: 'pharmacy', label: 'Pharmacy' },
+]
+
+// One value per column per row, used for both sort comparison and (for the
+// string columns) matching exactly what's actually printed in that cell —
+// e.g. status sorts by the same "" a hidden badge shows, not the raw
+// refillStatus, so the sort order never contradicts what's on screen.
+function sortValue(med: MedicationDTO, key: SortKey): string | number {
+  switch (key) {
+    case 'status': return needsRefillAttention(med) ? refillStatusMeta[med.refillStatus].label : ''
+    case 'medicationName': return med.medicationName.toLowerCase()
+    case 'onHand': return onHandOf(med).toLowerCase()
+    case 'administration': return [formatDoseText(med.dose, med.doseUnit), med.frequency, med.route, med.duration].filter(Boolean).join(' ').toLowerCase()
+    case 'supply': return med.daySupply
+    case 'lastFill': return med.lastFillDate
+    case 'due': return addDaysStr(med.lastFillDate.slice(0, 10), med.daySupply)
+    case 'rxNumber': return med.rxNumber || ''
+    case 'refills': return med.refillsRemaining ?? -1
+    case 'pharmacy': return (med.pharmacyName || '').toLowerCase()
+  }
+}
+
+function compareMeds(a: MedicationDTO, b: MedicationDTO, key: SortKey, dir: 'asc' | 'desc'): number {
+  const av = sortValue(a, key)
+  const bv = sortValue(b, key)
+  const cmp = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv))
+  return dir === 'asc' ? cmp : -cmp
+}
+
+function SortArrow({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }) {
+  return <span className={`ml-1 inline-block text-[9px] ${active ? '' : 'opacity-0'}`}>{dir === 'asc' ? '▲' : '▼'}</span>
+}
 
 function MedicationTable({ medications, onSelect }: { medications: MedicationDTO[]; onSelect: (med: MedicationDTO) => void }) {
+  // Defaults to Medication A-Z — every other column is available with a
+  // click, toggling asc/desc on repeat clicks of the same column.
+  const [sortKey, setSortKey] = useState<SortKey>('medicationName')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  function handleSort(key: SortKey) {
+    if (key === sortKey) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortKey(key); setSortDir('asc') }
+  }
+
+  const sorted = [...medications].sort((a, b) => compareMeds(a, b, sortKey, sortDir))
+
   return (
     <div className="overflow-x-auto rounded-xl border" style={{ borderColor: theme.bg }}>
       <table className="w-full border-collapse">
         <thead>
           <tr className="text-[#7A8F79] text-xs uppercase tracking-wide border-b border-[#D9E1E8]">
-            {tableHeaders.map(h => (
-              <th key={h} className="px-3 py-2 text-left whitespace-nowrap">
-                {h}
+            {TABLE_COLUMNS.map(col => (
+              <th key={col.key} className="px-3 py-2 text-left whitespace-nowrap">
+                <button
+                  type="button"
+                  onClick={() => handleSort(col.key)}
+                  className="flex items-center hover:text-[#2F3E4E] transition uppercase tracking-wide text-xs font-semibold"
+                >
+                  {col.label}
+                  <SortArrow active={sortKey === col.key} dir={sortDir} />
+                </button>
               </th>
             ))}
           </tr>
         </thead>
         <tbody className="bg-white">
-          {medications.map(med => (
+          {sorted.map(med => (
             <MedicationRow key={med.id} med={med} onClick={() => onSelect(med)} />
           ))}
         </tbody>
@@ -1020,7 +1108,8 @@ function MedicationDetailModal({ med, onAdd, onEdit, onConfirmRefill, onOrderRef
             <div className="flex items-start justify-between gap-2 mb-3">
               <div className="flex items-center gap-2 flex-wrap">
                 <p className="font-bold text-lg" style={{ color: theme.navy }}>{med.medicationName}</p>
-                <RefillStatusBadge status={med.refillStatus} />
+                {med.isOtc && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: theme.offWhite, color: theme.sage }}>OTC</span>}
+                {!med.isOtc && <RefillStatusBadge status={med.refillStatus} />}
               </div>
               {!readOnly && (
                 <div className="flex gap-2 shrink-0">

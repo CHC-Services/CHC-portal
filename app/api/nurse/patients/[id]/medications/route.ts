@@ -53,7 +53,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (canonical?.isLocked) return NextResponse.json({ error: 'Record locked by admin' }, { status: 403 })
 
   const body = await req.json()
-  const { medicationName, rxcui, dose, doseUnit, unitStrength, unitType, frequency, route, duration, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone, scheduleTimes } = body
+  const { medicationName, rxcui, dose, doseUnit, unitStrength, unitType, frequency, route, duration, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone, scheduleTimes, isOtc } = body
   if (!medicationName?.trim()) return NextResponse.json({ error: 'Medication name required' }, { status: 400 })
   if (!lastFillDate) return NextResponse.json({ error: 'Last fill date required' }, { status: 400 })
 
@@ -76,6 +76,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       rxNumber: rxNumber || null,
       refillsRemaining: refillsRemaining != null && refillsRemaining !== '' ? parseInt(refillsRemaining, 10) : null,
       pharmacyId,
+      isOtc: !!isOtc,
       createdByUserId: session.id,
       createdByRole: session.role,
       scheduleTimes: scheduleTimesCreateData(scheduleTimes),
@@ -99,7 +100,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const canonical = await (prisma.patient.findUnique as any)({ where: { id }, select: { isLocked: true } })
   if (canonical?.isLocked) return NextResponse.json({ error: 'Record locked by admin' }, { status: 403 })
 
-  const { medId, medicationName, rxcui, dose, doseUnit, unitStrength, unitType, frequency, route, duration, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone, active, scheduleTimes } = await req.json()
+  const { medId, medicationName, rxcui, dose, doseUnit, unitStrength, unitType, frequency, route, duration, daySupply, lastFillDate, rxNumber, refillsRemaining, pharmacyName, pharmacyAddress, pharmacyPhone, active, scheduleTimes, isOtc } = await req.json()
   if (!medId) return NextResponse.json({ error: 'medId required' }, { status: 400 })
 
   const data: Record<string, any> = {}
@@ -118,6 +119,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (refillsRemaining !== undefined) data.refillsRemaining = refillsRemaining != null && refillsRemaining !== '' ? parseInt(refillsRemaining, 10) : null
   if (pharmacyName !== undefined) data.pharmacyId = await resolvePharmacy({ name: pharmacyName, address: pharmacyAddress, phone: pharmacyPhone })
   if (active !== undefined) data.active = !!active
+  if (isOtc !== undefined) data.isOtc = !!isOtc
 
   // Scope the update to (medId AND patientId) so a nurse can't touch a medication
   // belonging to a different patient just by guessing its id.

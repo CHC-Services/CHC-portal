@@ -56,7 +56,7 @@ export function flattenMedication(med: any) {
     pharmacyName: pharmacy?.name ?? null,
     pharmacyAddress: pharmacy?.address ?? null,
     pharmacyPhone: pharmacy?.phone ?? null,
-    refillStatus: effectiveRefillStatus(med.refillOrderedAt, med.lastFillDate, med.daySupply, med.refillsRemaining),
+    refillStatus: effectiveRefillStatus(med.refillOrderedAt, med.lastFillDate, med.daySupply, med.refillsRemaining, undefined, med.isOtc),
     scheduleTimes: Array.isArray(scheduleTimes)
       ? [...scheduleTimes].sort((a: any, b: any) => a.sortOrder - b.sortOrder).map((t: any) => t.timeOfDay)
       : [],

@@ -91,7 +91,7 @@ export async function getNurseCalendarFeed(nurseProfileId: string, session: { id
     prisma.shift.findMany({ where: { nurseId: nurseProfileId, status: { not: 'cancelled' }, ...(startTimeFilter ? { startTime: startTimeFilter } : {}) }, orderBy: { startTime: 'asc' }, include: { _count: { select: { progressNotes: true } } } }),
     patientIds.length ? prisma.shift.findMany({ where: { patientId: { in: patientIds }, status: { in: ['open', 'coverage_needed'] }, ...(startTimeFilter ? { startTime: startTimeFilter } : {}) }, orderBy: { startTime: 'asc' }, include: { _count: { select: { progressNotes: true } } } }) : [],
     patientIds.length ? prisma.appointment.findMany({ where: { patientId: { in: patientIds }, status: { not: 'cancelled' }, ...(startTimeFilter ? { startTime: startTimeFilter } : {}) }, orderBy: { startTime: 'asc' } }) : [],
-    patientIds.length ? prisma.patientMedication.findMany({ where: { patientId: { in: patientIds }, active: true }, select: { id: true, patientId: true, medicationName: true, lastFillDate: true, daySupply: true, refillsRemaining: true, refillOrderedAt: true } }) : [],
+    patientIds.length ? prisma.patientMedication.findMany({ where: { patientId: { in: patientIds }, active: true, isOtc: false }, select: { id: true, patientId: true, medicationName: true, lastFillDate: true, daySupply: true, refillsRemaining: true, refillOrderedAt: true } }) : [],
     patientIds.length ? prisma.patientPA.findMany({ where: { patientId: { in: patientIds }, paEndDate: { not: null } } }) : [],
     patientIds.length ? prisma.patientDocument.findMany({ where: { patientId: { in: patientIds }, expiresAt: { not: null, ...dueFilter } } }) : [],
     patientIds.length ? prisma.progressNote.findMany({ where: { patientId: { in: patientIds }, signedAt: { not: null }, voidedAt: null, ...(startTimeFilter ? { serviceDate: startTimeFilter } : {}) } }) : [],
@@ -158,7 +158,7 @@ export async function getPatientCalendarFeed(patientId: string, range?: DateRang
       include: { nurse: { select: { displayName: true } }, _count: { select: { progressNotes: true } } },
     }),
     prisma.appointment.findMany({ where: { patientId, status: { not: 'cancelled' }, ...(startTimeFilter ? { startTime: startTimeFilter } : {}) }, orderBy: { startTime: 'asc' } }),
-    prisma.patientMedication.findMany({ where: { patientId, active: true }, select: { id: true, patientId: true, medicationName: true, lastFillDate: true, daySupply: true, refillsRemaining: true, refillOrderedAt: true } }),
+    prisma.patientMedication.findMany({ where: { patientId, active: true, isOtc: false }, select: { id: true, patientId: true, medicationName: true, lastFillDate: true, daySupply: true, refillsRemaining: true, refillOrderedAt: true } }),
     prisma.patientPA.findMany({ where: { patientId, paEndDate: { not: null } } }),
     prisma.patientDocument.findMany({ where: { patientId, expiresAt: { not: null, ...dueFilter } } }),
     // signedAt/voidedAt filter is "the checkmark logic" — identical whether

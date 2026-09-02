@@ -63,7 +63,7 @@ type Nurse = {
   totalPaid: number
   isDemo: boolean
   signupRole: string | null
-  user: { id: string; email: string; name: string; role: string; createdAt: string }
+  user: { id: string; email: string; name: string; role: string; createdAt: string; deactivatedAt: string | null }
   timeEntries: TimeEntry[]
 }
 
@@ -165,10 +165,23 @@ function NurseRow({ nurse, onDeleted }: { nurse: Nurse; onDeleted: () => void })
   const [open, setOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [togglingActive, setTogglingActive] = useState(false)
 
   async function handleDelete() {
     setDeleting(true)
     await fetch(`/api/admin/nurses/${nurse.id}`, { method: 'DELETE', credentials: 'include' })
+    onDeleted()
+  }
+
+  async function handleToggleActive() {
+    setTogglingActive(true)
+    await fetch(`/api/admin/accounts/${nurse.user.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ deactivate: !nurse.user.deactivatedAt }),
+    })
+    setTogglingActive(false)
     onDeleted()
   }
 
@@ -215,6 +228,9 @@ function NurseRow({ nurse, onDeleted }: { nurse: Nurse; onDeleted: () => void })
               )}
               {nurse.isDemo && (
                 <span className="text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-700 border border-amber-300 px-1.5 py-0.5 rounded-full">Demo</span>
+              )}
+              {nurse.user.deactivatedAt && (
+                <span className="text-[10px] font-bold uppercase tracking-wide bg-red-100 text-red-700 border border-red-300 px-1.5 py-0.5 rounded-full">Inactive</span>
               )}
             </div>
             <p className="text-xs text-[#7A8F79] leading-tight">{nurse.user.email}</p>
@@ -324,8 +340,21 @@ function NurseRow({ nurse, onDeleted }: { nurse: Nurse; onDeleted: () => void })
             )}
           </div>
 
+          {/* Deactivate / reactivate nurse */}
+          <div className="mt-5 pt-4 border-t border-[#D9E1E8] flex items-center gap-4">
+            <button
+              onClick={handleToggleActive}
+              disabled={togglingActive}
+              className={`text-xs font-semibold underline underline-offset-2 disabled:opacity-50 ${
+                nurse.user.deactivatedAt ? 'text-[#7A8F79] hover:text-[#2F3E4E]' : 'text-amber-700 hover:text-amber-900'
+              }`}
+            >
+              {togglingActive ? '…' : nurse.user.deactivatedAt ? 'Reactivate this account' : 'Deactivate this account'}
+            </button>
+          </div>
+
           {/* Delete nurse */}
-          <div className="mt-5 pt-4 border-t border-[#D9E1E8]">
+          <div className="mt-3 pt-4 border-t border-[#D9E1E8]">
             {confirmDelete ? (
               <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2 max-w-sm">
                 <p className="text-sm text-red-700 font-semibold">Permanently delete {displayName}? This cannot be undone.</p>
@@ -380,12 +409,14 @@ export default function AdminDashboard() {
 
   useEffect(() => { loadNurses() }, [])
 
-  useEffect(() => {
+  function loadAccounts() {
     fetch('/api/admin/accounts', { credentials: 'include' })
       .then(r => r.json())
       .then(data => { if (Array.isArray(data.accounts)) setAccounts(data.accounts) })
       .finally(() => setLoadingAccounts(false))
-  }, [])
+  }
+
+  useEffect(() => { loadAccounts() }, [])
 
   async function createNurse(e: React.FormEvent) {
     e.preventDefault()
@@ -557,10 +588,10 @@ export default function AdminDashboard() {
         <Tabs tabs={ACCOUNTS_TABS} active={accountsTab} onChange={k => setAccountsTab(k as AccountsTab)} />
       </div>
 
-      {accountsTab === 'all' && <AccountsTable accounts={accounts} loading={loadingAccounts} />}
-      {accountsTab === 'guardians' && <AccountsTable accounts={accounts.filter(a => a.role === 'guardian')} loading={loadingAccounts} />}
-      {accountsTab === 'admin' && <AccountsTable accounts={accounts.filter(a => a.role === 'admin')} loading={loadingAccounts} />}
-      {accountsTab === 'test' && <AccountsTable accounts={accounts.filter(a => a.isDemo)} loading={loadingAccounts} />}
+      {accountsTab === 'all' && <AccountsTable accounts={accounts} loading={loadingAccounts} onChanged={loadAccounts} />}
+      {accountsTab === 'guardians' && <AccountsTable accounts={accounts.filter(a => a.role === 'guardian')} loading={loadingAccounts} onChanged={loadAccounts} />}
+      {accountsTab === 'admin' && <AccountsTable accounts={accounts.filter(a => a.role === 'admin')} loading={loadingAccounts} onChanged={loadAccounts} />}
+      {accountsTab === 'test' && <AccountsTable accounts={accounts.filter(a => a.isDemo)} loading={loadingAccounts} onChanged={loadAccounts} />}
 
       {accountsTab === 'providers' && (<>
       {/* Create nurse form (collapsible) */}

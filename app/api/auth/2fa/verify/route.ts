@@ -19,6 +19,12 @@ export async function POST(req: Request) {
   })
   if (!user) return NextResponse.json({ error: 'Invalid session' }, { status: 401 })
 
+  // Covers the (small) window where an account gets deactivated after the
+  // password step but before 2FA completes — same block as login/route.ts.
+  if ((user as any).deactivatedAt) {
+    return NextResponse.json({ error: 'This account has been deactivated. Contact your administrator to reactivate it.' }, { status: 403 })
+  }
+
   type NurseProfile = {
     id?: string
     displayName?: string | null

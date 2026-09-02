@@ -14,6 +14,7 @@ export type Account = {
   accountNumber: string | null
   nurseProfileId: string | null
   isDemo: boolean
+  deactivatedAt: string | null
 }
 
 type SortKey = 'name' | 'role' | 'createdAt' | 'lastLoginAt'
@@ -41,10 +42,23 @@ function accountHref(a: Account): string | null {
   return null
 }
 
-export default function AccountsTable({ accounts, loading }: { accounts: Account[]; loading: boolean }) {
+export default function AccountsTable({ accounts, loading, onChanged }: { accounts: Account[]; loading: boolean; onChanged?: () => void }) {
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('createdAt')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+  const [togglingId, setTogglingId] = useState<string | null>(null)
+
+  async function toggleDeactivate(a: Account) {
+    setTogglingId(a.id)
+    await fetch(`/api/admin/accounts/${a.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ deactivate: !a.deactivatedAt }),
+    })
+    setTogglingId(null)
+    onChanged?.()
+  }
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -114,6 +128,7 @@ export default function AccountsTable({ accounts, loading }: { accounts: Account
                 {th('role', 'Role')}
                 {th('createdAt', 'Created')}
                 {th('lastLoginAt', 'Last Login')}
+                <th className="text-left px-3 py-2">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -137,6 +152,22 @@ export default function AccountsTable({ accounts, loading }: { accounts: Account
                   </td>
                   <td className="px-3 py-2 text-xs text-[#7A8F79]">{fmtDate(a.createdAt)}</td>
                   <td className="px-3 py-2 text-xs text-[#7A8F79]">{fmtDate(a.lastLoginAt)}</td>
+                  <td className="px-3 py-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      {a.deactivatedAt && (
+                        <span className="text-[10px] font-bold uppercase tracking-wide bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full">Inactive</span>
+                      )}
+                      <button
+                        onClick={() => toggleDeactivate(a)}
+                        disabled={togglingId === a.id}
+                        className={`text-[11px] font-semibold underline underline-offset-2 transition disabled:opacity-50 ${
+                          a.deactivatedAt ? 'text-[#7A8F79] hover:text-[#2F3E4E]' : 'text-amber-700 hover:text-amber-900'
+                        }`}
+                      >
+                        {togglingId === a.id ? '…' : a.deactivatedAt ? 'Reactivate' : 'Deactivate'}
+                      </button>
+                    </div>
+                  </td>
                 </tr>
                 )
               })}

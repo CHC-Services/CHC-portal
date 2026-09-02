@@ -45,6 +45,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
   }
 
+  // Checked after the password, not before — an attacker guessing against a
+  // deactivated account's email should see the same generic "Invalid
+  // credentials" a wrong password gets, not a message that confirms this
+  // email belongs to a real (deactivated) account.
+  if ((user as any).deactivatedAt) {
+    logLogin({
+      accountType: user.role,
+      email,
+      firstName: user.nurseProfile?.firstName ?? null,
+      lastName: user.nurseProfile?.lastName ?? null,
+      accountNumber: user.nurseProfile?.accountNumber ?? null,
+      result: 'Failed - Account deactivated',
+      ip,
+    })
+    return NextResponse.json({ error: 'This account has been deactivated. Contact your administrator to reactivate it.' }, { status: 403 })
+  }
+
   // Effective phone: User.phone takes priority, fall back to NurseProfile.phone
   const effectivePhone = (user as any).phone || user.nurseProfile?.phone || null
 

@@ -22,7 +22,9 @@ export default function AdminAccountDetailPage({ params }: { params: Promise<{ i
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [loadError, setLoadError] = useState('')
-  const [account, setAccount] = useState<{ id: string; name: string; email: string; role: string } | null>(null)
+  const [account, setAccount] = useState<{ id: string; name: string; email: string; role: string; deactivatedAt: string | null } | null>(null)
+  const [deactivating, setDeactivating] = useState(false)
+  const [deactivateError, setDeactivateError] = useState('')
   const [profile, setProfile] = useState<any>({})
   const [visibleCards, setVisibleCards] = useState<string[]>([])
   const [editing, setEditing] = useState(false)
@@ -71,6 +73,24 @@ export default function AdminAccountDetailPage({ params }: { params: Promise<{ i
 
   const setField = (k: string, v: any) => setProfile((p: any) => ({ ...p, [k]: v }))
 
+  async function handleToggleDeactivate() {
+    setDeactivating(true)
+    setDeactivateError('')
+    const res = await fetch(`/api/admin/accounts/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ deactivate: !account?.deactivatedAt }),
+    })
+    if (res.ok) {
+      load()
+    } else {
+      const data = await res.json().catch(() => null)
+      setDeactivateError(data?.error || 'Failed to update account status.')
+    }
+    setDeactivating(false)
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setMessage('')
@@ -107,10 +127,48 @@ export default function AdminAccountDetailPage({ params }: { params: Promise<{ i
         <span className="text-xs font-bold uppercase tracking-widest text-[#7A8F79] bg-white px-3 py-1 rounded-full shadow-sm">
           {ROLE_LABEL[account.role] || account.role}
         </span>
+        {account.deactivatedAt && (
+          <span className="text-xs font-bold uppercase tracking-widest text-red-700 bg-red-100 px-3 py-1 rounded-full shadow-sm">
+            Inactive
+          </span>
+        )}
       </div>
       <p className="text-sm text-[#7A8F79] mb-6">{account.email}</p>
 
       <div className="max-w-xl space-y-5">
+        {/* Account Status */}
+        <div className="bg-white rounded-xl shadow p-6">
+          <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E] mb-3 pb-1 border-b border-[#D9E1E8]">Account Status</p>
+          {account.deactivatedAt ? (
+            <>
+              <p className="text-sm text-[#7A8F79] mb-3">
+                This account is <strong className="text-red-700">inactive</strong> — the person can&apos;t log in until it&apos;s reactivated. Their role and all account data are untouched.
+              </p>
+              <button
+                onClick={handleToggleDeactivate}
+                disabled={deactivating}
+                className="text-sm font-semibold bg-[#2F3E4E] text-white px-4 py-2 rounded-lg hover:bg-[#7A8F79] transition disabled:opacity-50"
+              >
+                {deactivating ? 'Reactivating…' : 'Reactivate Account'}
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-[#7A8F79] mb-3">
+                Deactivating blocks this person from logging in until an admin reactivates them — their role and all account data stay exactly as-is.
+              </p>
+              <button
+                onClick={handleToggleDeactivate}
+                disabled={deactivating}
+                className="text-sm font-semibold border border-amber-400 text-amber-700 bg-amber-50 px-4 py-2 rounded-lg hover:bg-amber-100 transition disabled:opacity-50"
+              >
+                {deactivating ? 'Deactivating…' : 'Deactivate Account'}
+              </button>
+            </>
+          )}
+          {deactivateError && <p className="text-xs text-red-600 mt-2">{deactivateError}</p>}
+        </div>
+
         {visibleCards.includes('demographics') && (
           !editing ? (
             <>

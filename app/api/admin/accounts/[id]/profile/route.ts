@@ -20,7 +20,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   const targetUser = await (prisma.user.findUnique as any)({
     where: { id },
-    select: { id: true, name: true, email: true, role: true },
+    select: { id: true, name: true, email: true, role: true, deactivatedAt: true },
   })
   if (!targetUser) return NextResponse.json({ error: 'Account not found' }, { status: 404 })
 
@@ -28,7 +28,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const visibleCards = await getVisibleCards(targetUser.role)
 
   return NextResponse.json({
-    user: { id: targetUser.id, name: targetUser.name, email: targetUser.email, role: targetUser.role },
+    user: { id: targetUser.id, name: targetUser.name, email: targetUser.email, role: targetUser.role, deactivatedAt: targetUser.deactivatedAt },
     profile: decryptProfileCardData(profile),
     visibleCards,
   })

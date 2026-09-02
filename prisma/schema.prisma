@@ -42,6 +42,14 @@ model User {
   passwordResetExpiry DateTime?
   lastLoginAt         DateTime?
 
+  // Blocks login without touching `role` — an admin can deactivate any
+  // account (nurse who's left, guardian no longer needing access, etc.) and
+  // reactivate it later without losing anything about who they were. Not the
+  // same as deleting: everything about the account stays exactly intact,
+  // just login-gated (see app/api/auth/login/route.ts and 2fa/verify/route.ts).
+  deactivatedAt       DateTime?
+  deactivatedByUserId String?
+
   // Peer-to-peer messaging — email alert on new message (receiving itself
   // can't be opted out of, only whether the nav badge shows a count or a
   // plain dot; see Message/MessageRecipient below).

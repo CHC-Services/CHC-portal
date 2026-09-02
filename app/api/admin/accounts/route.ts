@@ -21,6 +21,7 @@ export async function GET(req: Request) {
       role: true,
       createdAt: true,
       lastLoginAt: true,
+      deactivatedAt: true,
       nurseProfile: {
         select: { id: true, displayName: true, accountNumber: true, isDemo: true },
       },
@@ -35,6 +36,7 @@ export async function GET(req: Request) {
     role: u.role,
     createdAt: u.createdAt,
     lastLoginAt: u.lastLoginAt,
+    deactivatedAt: u.deactivatedAt,
     displayName: u.nurseProfile?.displayName ?? null,
     accountNumber: u.nurseProfile?.accountNumber ?? null,
     nurseProfileId: u.nurseProfile?.id ?? null,

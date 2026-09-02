@@ -13,7 +13,7 @@ export async function GET(req: Request) {
 
   const nurses = await prisma.nurseProfile.findMany({
     include: {
-      user: { select: { id: true, email: true, name: true, role: true, createdAt: true } },
+      user: { select: { id: true, email: true, name: true, role: true, createdAt: true, deactivatedAt: true } },
       timeEntries: { orderBy: { workDate: 'desc' } },
       invoices: { select: { totalAmount: true, paidAmount: true, status: true } },
     },

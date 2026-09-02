@@ -50,3 +50,50 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
 
   return NextResponse.json({ ok: true })
 }
+
+// PATCH — deactivate or reactivate an account (body: { deactivate: boolean }).
+// Blocks login without touching role or any other data — see the User model
+// comment in schema.prisma. Same id resolution (User.id or NurseProfile.id)
+// as DELETE above.
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = adminAuth(req)
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { id } = await params
+  const { deactivate } = await req.json()
+
+  let targetUser = await (prisma.user.findUnique as any)({
+    where: { id },
+    select: { id: true, role: true },
+  })
+
+  if (!targetUser) {
+    const profile = await (prisma.nurseProfile.findUnique as any)({
+      where: { id },
+      select: { userId: true, user: { select: { id: true, role: true } } },
+    })
+    targetUser = profile?.user || null
+  }
+
+  if (!targetUser) return NextResponse.json({ error: 'Account not found' }, { status: 404 })
+
+  if (targetUser.id === session.id) {
+    return NextResponse.json({ error: "You can't deactivate the account you're currently logged in as." }, { status: 400 })
+  }
+
+  if (deactivate && targetUser.role === 'admin') {
+    const activeAdminCount = await (prisma.user.count as any)({ where: { role: 'admin', deactivatedAt: null } })
+    if (activeAdminCount <= 1) {
+      return NextResponse.json({ error: 'Cannot deactivate the last active admin account.' }, { status: 400 })
+    }
+  }
+
+  await (prisma.user.update as any)({
+    where: { id: targetUser.id },
+    data: deactivate
+      ? { deactivatedAt: new Date(), deactivatedByUserId: session.id }
+      : { deactivatedAt: null, deactivatedByUserId: null },
+  })
+
+  return NextResponse.json({ ok: true })
+}

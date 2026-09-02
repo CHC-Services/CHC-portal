@@ -69,10 +69,19 @@ export async function generatePdfFromHtml(html: string, options: {
   } else {
     const chromium = (await import('@sparticuz/chromium')).default
     const puppeteer = await import('puppeteer-core')
+    // @sparticuz/chromium's bundled binary IS chrome-headless-shell (its own
+    // chromium.args already bakes in --headless='shell') — puppeteer-core's
+    // `headless: true` means the *new* headless mode instead, meant for a
+    // full Chrome binary. That mismatch is silent locally (isLocal above
+    // uses a real downloaded Chrome via the full `puppeteer` package, which
+    // supports new headless fine) and only breaks on the actual Lambda
+    // binary, which is why this only ever failed in production. `headless:
+    // 'shell'` + puppeteer.defaultArgs (not the raw chromium.args) is the
+    // exact invocation @sparticuz/chromium's own README documents.
     browser = await puppeteer.launch({
-      args: chromium.args,
+      args: await puppeteer.defaultArgs({ args: chromium.args, headless: 'shell' }),
       executablePath: await chromium.executablePath(),
-      headless: true,
+      headless: 'shell',
     })
   }
 

@@ -3,14 +3,14 @@
     "app/api/admin/invoices/route.ts": { "maxDuration": 30, "memory": 1024 },
     "app/api/admin/invoices/[id]/html/route.ts": { "maxDuration": 30, "memory": 1024 },
     "app/api/admin/invoices/[id]/s3/route.ts": { "maxDuration": 30, "memory": 1024 },
-    "app/api/nurse/progress-notes/[id]/pdf/route.ts": { "maxDuration": 60, "memory": 1024 },
-    "app/api/family/progress-notes/[id]/pdf/route.ts": { "maxDuration": 60, "memory": 1024 },
-    "app/api/admin/progress-notes/[id]/pdf/route.ts": { "maxDuration": 60, "memory": 1024 },
-    "app/api/quick-notes/notes/[id]/pdf-preview/route.ts": { "maxDuration": 60, "memory": 1024 },
-    "app/api/nurse/tax-report/export/route.ts": { "maxDuration": 60, "memory": 1024 },
-    "app/api/admin/reports/income/export/route.ts": { "maxDuration": 60, "memory": 1024 },
-    "app/api/admin/carc-codes/pdf/route.ts": { "maxDuration": 60, "memory": 1024 },
-    "app/api/faq/resources/carc-codes/route.ts": { "maxDuration": 60, "memory": 1024 }
+    "app/api/nurse/progress-notes/[id]/pdf/route.ts": { "maxDuration": 60, "memory": 3009 },
+    "app/api/family/progress-notes/[id]/pdf/route.ts": { "maxDuration": 60, "memory": 3009 },
+    "app/api/admin/progress-notes/[id]/pdf/route.ts": { "maxDuration": 60, "memory": 3009 },
+    "app/api/quick-notes/notes/[id]/pdf-preview/route.ts": { "maxDuration": 60, "memory": 3009 },
+    "app/api/nurse/tax-report/export/route.ts": { "maxDuration": 60, "memory": 3009 },
+    "app/api/admin/reports/income/export/route.ts": { "maxDuration": 60, "memory": 3009 },
+    "app/api/admin/carc-codes/pdf/route.ts": { "maxDuration": 60, "memory": 3009 },
+    "app/api/faq/resources/carc-codes/route.ts": { "maxDuration": 60, "memory": 3009 }
   },
   "crons": [
     {

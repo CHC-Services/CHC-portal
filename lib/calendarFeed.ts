@@ -125,8 +125,13 @@ export async function getNurseCalendarFeed(nurseProfileId: string, session: { id
 export async function getFamilyCalendarFeed(userId: string, session: { id: string; role: string }, range?: DateRange): Promise<CalendarItem[]> {
   const now = new Date()
 
+  // approvedAt: null means a self-service signup matched a patient that
+  // already has another approved guardian — that link is pending until the
+  // existing guardian approves it, and must not leak calendar data (shift
+  // times, medication names, appointment details) in the meantime. See the
+  // same gate already applied to /api/family/patients and /api/family/medications.
   const links = await prisma.guardianPatient.findMany({
-    where: { userId },
+    where: { userId, approvedAt: { not: null } },
     select: { patientId: true, patient: { select: { firstName: true, lastName: true } } },
   })
   const patientIds = links.map(l => l.patientId)

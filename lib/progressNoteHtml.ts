@@ -101,12 +101,20 @@ export function buildProgressNoteFooterTemplate(patientName: string): string {
     </div>`
 }
 
+// Column widths as percentages of the table — Time/Temp/HR/RR/O2 Flow/O2 %
+// only ever hold a short fixed-format value (a clock time, a 2-3 digit
+// number), so they're kept narrow; Skin and Lung Sounds are the two
+// genuinely free-text columns and get the room those short ones give up.
+const VITALS_COL_WIDTHS = [7, 6, 5, 5, 17, 6, 9, 6, 19, 14, 6] // Time Temp HR RR Skin O2Flow O2Route O2% LungSounds TxNeeded Suction
+
 function vitalsTable(rows: ProgressNoteHtmlVital[]): string {
   if (rows.length === 0) return `<p style="font-size:11px;color:${SAGE};font-style:italic">No vitals recorded.</p>`
-  const th = (label: string) => `<th style="text-align:left;padding:4px 6px;font-size:8px;text-transform:uppercase;letter-spacing:0.03em;color:${SAGE};border-bottom:1px solid ${BG}">${label}</th>`
-  const td = (v: string | null) => `<td style="padding:4px 6px;font-size:10px;color:${NAVY};border-bottom:1px solid ${OFFWHITE}">${cell(v)}</td>`
+  const colgroup = `<colgroup>${VITALS_COL_WIDTHS.map(w => `<col style="width:${w}%">`).join('')}</colgroup>`
+  const th = (label: string) => `<th style="text-align:center;padding:4px 6px;font-size:8px;text-transform:uppercase;letter-spacing:0.03em;color:${SAGE};border-bottom:1px solid ${BG}">${label}</th>`
+  const td = (v: string | null) => `<td style="padding:4px 6px;font-size:10px;color:${NAVY};text-align:center;border-bottom:1px solid ${OFFWHITE}">${cell(v)}</td>`
   return `
-    <table style="width:100%;border-collapse:collapse">
+    <table style="width:100%;border-collapse:collapse;table-layout:fixed">
+      ${colgroup}
       <thead><tr>
         ${th('Time')}${th('Temp')}${th('HR')}${th('RR')}${th('Skin')}${th('O2 Flow')}${th('O2 Route')}${th('O2 %')}${th('Lung Sounds')}${th('Tx Needed')}${th('Suction')}
       </tr></thead>
@@ -116,17 +124,40 @@ function vitalsTable(rows: ProgressNoteHtmlVital[]): string {
     </table>`
 }
 
+// Time and Intake Amt only ever hold a short fixed-format value (a clock
+// time; a number with maybe a unit abbreviation like "30 mL") so they stay
+// narrow — the freed-up room goes to Type/Route/the Output columns instead.
+const IO_COL_WIDTHS = [10, 20, 12, 16, 14, 14, 14] // Time Type Amt Route Urine BM Emesis
+// Divider between the Intake group and the Output group — applied to every
+// row (both header rows and every body row) so it reads as one continuous
+// rule down the table, not just a header underline.
+const IO_DIVIDER = `border-left:2px solid ${BG}`
+
 function ioTable(rows: ProgressNoteHtmlIO[]): string {
   if (rows.length === 0) return `<p style="font-size:11px;color:${SAGE};font-style:italic">No intake/output recorded.</p>`
-  const th = (label: string) => `<th style="text-align:left;padding:4px 6px;font-size:8px;text-transform:uppercase;letter-spacing:0.03em;color:${SAGE};border-bottom:1px solid ${BG}">${label}</th>`
-  const td = (v: string | null) => `<td style="padding:4px 6px;font-size:10px;color:${NAVY};border-bottom:1px solid ${OFFWHITE}">${cell(v)}</td>`
+  const colgroup = `<colgroup>${IO_COL_WIDTHS.map(w => `<col style="width:${w}%">`).join('')}</colgroup>`
+  const groupTh = (label: string, divider?: boolean) =>
+    `<th colspan="3" style="text-align:center;padding:3px 6px;font-size:8px;text-transform:uppercase;letter-spacing:0.05em;color:${NAVY};font-weight:700;border-bottom:1px solid ${BG};${divider ? IO_DIVIDER : ''}">${label}</th>`
+  const th = (label: string, divider?: boolean) =>
+    `<th style="text-align:center;padding:4px 6px;font-size:8px;text-transform:uppercase;letter-spacing:0.03em;color:${SAGE};border-bottom:1px solid ${BG};${divider ? IO_DIVIDER : ''}">${label}</th>`
+  const td = (v: string | null, divider?: boolean) =>
+    `<td style="padding:4px 6px;font-size:10px;color:${NAVY};text-align:center;border-bottom:1px solid ${OFFWHITE};${divider ? IO_DIVIDER : ''}">${cell(v)}</td>`
   return `
-    <table style="width:100%;border-collapse:collapse">
-      <thead><tr>
-        ${th('Time')}${th('Intake Type')}${th('Intake Amt')}${th('Intake Route')}${th('Output Urine')}${th('Output BM')}${th('Output Emesis')}
-      </tr></thead>
+    <table style="width:100%;border-collapse:collapse;table-layout:fixed">
+      ${colgroup}
+      <thead>
+        <tr>
+          <th rowspan="2" style="text-align:center;padding:4px 6px;font-size:8px;text-transform:uppercase;letter-spacing:0.03em;color:${SAGE};border-bottom:1px solid ${BG}">Time</th>
+          ${groupTh('Intake')}
+          ${groupTh('Output', true)}
+        </tr>
+        <tr>
+          ${th('Type')}${th('Amt')}${th('Route')}
+          ${th('Urine', true)}${th('BM')}${th('Emesis')}
+        </tr>
+      </thead>
       <tbody>
-        ${rows.map(r => `<tr>${td(r.time)}${td(r.intakeType)}${td(r.intakeAmt)}${td(r.intakeRoute)}${td(r.outputUrine)}${td(r.outputBM)}${td(r.outputEmesis)}</tr>`).join('')}
+        ${rows.map(r => `<tr>${td(r.time)}${td(r.intakeType)}${td(r.intakeAmt)}${td(r.intakeRoute)}${td(r.outputUrine, true)}${td(r.outputBM)}${td(r.outputEmesis)}</tr>`).join('')}
       </tbody>
     </table>`
 }

@@ -67,21 +67,20 @@ export async function generatePdfFromHtml(html: string, options: {
       ...(systemChrome ? { executablePath: systemChrome } : {}),
     }) as unknown as Browser
   } else {
+    // This exact invocation (raw chromium.args, headless: true, no
+    // defaultArgs wrapping) is what actually generated invoices/receipts
+    // successfully in production for months before the progress-note PDF
+    // feature was added — reverted back to it after a documentation-based
+    // "headless: 'shell'" change didn't fix progress notes and broke
+    // invoices too. Don't "improve" this again without confirmed evidence
+    // (real Vercel function logs) that a specific change fixes a specific
+    // observed production error — not just docs/type-definition reasoning.
     const chromium = (await import('@sparticuz/chromium')).default
     const puppeteer = await import('puppeteer-core')
-    // @sparticuz/chromium's bundled binary IS chrome-headless-shell (its own
-    // chromium.args already bakes in --headless='shell') — puppeteer-core's
-    // `headless: true` means the *new* headless mode instead, meant for a
-    // full Chrome binary. That mismatch is silent locally (isLocal above
-    // uses a real downloaded Chrome via the full `puppeteer` package, which
-    // supports new headless fine) and only breaks on the actual Lambda
-    // binary, which is why this only ever failed in production. `headless:
-    // 'shell'` + puppeteer.defaultArgs (not the raw chromium.args) is the
-    // exact invocation @sparticuz/chromium's own README documents.
     browser = await puppeteer.launch({
-      args: await puppeteer.defaultArgs({ args: chromium.args, headless: 'shell' }),
+      args: chromium.args,
       executablePath: await chromium.executablePath(),
-      headless: 'shell',
+      headless: true,
     })
   }
 

@@ -181,7 +181,7 @@ export default function AdminProfilePage() {
           {initialsLoading ? (
             <p className="text-sm text-[#7A8F79]">Loading…</p>
           ) : (
-            <SignatureCapture existingImageUrl={initialsUrl} onSave={saveInitials} saving={initialsSaving} label="Initials" />
+            <SignatureCapture existingImageUrl={initialsUrl} onSave={saveInitials} saving={initialsSaving} label="Initials" square />
           )}
         </div>
 

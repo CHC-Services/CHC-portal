@@ -9,7 +9,7 @@ import SignaturePad from 'signature_pad'
 // what the caller does with it (save it as the nurse's reusable signature,
 // embed it into a specific signed document, etc.) is the caller's concern.
 export default function SignatureCapture({
-  existingImageUrl, onSave, saving, label = 'Signature',
+  existingImageUrl, onSave, saving, label = 'Signature', square = false,
 }: {
   existingImageUrl?: string | null
   onSave: (dataUrl: string) => void
@@ -17,6 +17,10 @@ export default function SignatureCapture({
   // Lets this same component back the e-initial capture UI too ("Save
   // Initials"/"Redraw Initials") without a second copy of the canvas logic.
   label?: string
+  // Initials only need a couple of characters and get used in tight spots
+  // (MAR/TAR grid cells) — a small fixed square instead of the wide
+  // full-width strip a real signature needs room to be legible in.
+  square?: boolean
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const padRef = useRef<SignaturePad | null>(null)
@@ -93,9 +97,9 @@ export default function SignatureCapture({
   if (!redrawing && existingImageUrl) {
     return (
       <div className="space-y-3">
-        <div className="border border-[#D9E1E8] rounded-lg bg-[#F4F6F5] p-4 flex items-center justify-center">
+        <div className={`border border-[#D9E1E8] rounded-lg bg-[#F4F6F5] flex items-center justify-center ${square ? 'w-24 h-24 p-2' : 'p-4'}`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={existingImageUrl} alt={`Your ${label.toLowerCase()}`} className="max-h-24" />
+          <img src={existingImageUrl} alt={`Your ${label.toLowerCase()}`} className={square ? 'max-h-full max-w-full' : 'max-h-24'} />
         </div>
         <button
           type="button"
@@ -112,7 +116,7 @@ export default function SignatureCapture({
     <div className="space-y-3">
       <canvas
         ref={canvasRef}
-        className="w-full h-32 border border-[#D9E1E8] rounded-lg bg-white touch-none"
+        className={`border border-[#D9E1E8] rounded-lg bg-white touch-none ${square ? 'w-24 h-24' : 'w-full h-32'}`}
       />
       <div className="flex items-center gap-3">
         <button

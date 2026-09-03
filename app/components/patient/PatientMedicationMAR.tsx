@@ -22,6 +22,10 @@ type MarEntry = {
   administeredByRole: string | null
   administeredByDisplayNameSnapshot: string | null
   administeredAt: string | null
+  // The administering person's saved e-initial (app/nurse|admin/profile),
+  // presigned server-side — when present, the grid shows this drawn mark
+  // instead of the computed two-letter fallback (initialsOf below).
+  initialsImageUrl: string | null
   documentedByUserId?: string
   documentedByRole?: string
   documentedByDisplayNameSnapshot?: string
@@ -67,6 +71,20 @@ function initialsOf(name: string): string {
   if (parts.length === 0) return '?'
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
+
+// A "given" entry's mark — the administering person's saved drawn e-initial
+// (entry.initialsImageUrl) when they have one on file, falling back to the
+// computed two-letter initials otherwise. Caller still handles pending/
+// refused/omitted/family states, which never show this mark.
+function InitialsMark({ entry }: { entry: MarEntry }) {
+  if (entry.initialsImageUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={entry.initialsImageUrl} alt={entry.administeredByDisplayNameSnapshot || 'Initials'} className="w-5 h-5 object-contain mx-auto" />
+    )
+  }
+  return <>{initialsOf(entry.administeredByDisplayNameSnapshot || '')}</>
 }
 
 function formatTimeLabel(hhmm: string): string {
@@ -303,7 +321,7 @@ export default function PatientMedicationMAR({
                                     className={`w-7 h-7 rounded-full text-[10px] font-bold ${family ? 'border-2 border-orange-500 text-orange-500 bg-transparent' : ''}`}
                                     style={!family ? { background: STATUS_STYLE[entry.status as MarStatus].bg, color: STATUS_STYLE[entry.status as MarStatus].text } : undefined}
                                   >
-                                    {entry.status !== 'given' ? '!' : family ? 'fam' : initialsOf(entry.administeredByDisplayNameSnapshot || '')}
+                                    {entry.status !== 'given' ? '!' : family ? 'fam' : <InitialsMark entry={entry} />}
                                   </button>
                                 )
                               })}
@@ -338,7 +356,7 @@ export default function PatientMedicationMAR({
                                 className={`w-9 h-9 text-[10px] font-bold ${family ? 'rounded-full border-2 border-orange-500 text-orange-500 bg-transparent' : 'rounded-lg'} ${pending ? 'border border-dashed border-[#D9E1E8] text-[#D9E1E8] hover:border-[#7A8F79] hover:text-[#7A8F79]' : ''}`}
                                 style={!pending && !family ? { background: STATUS_STYLE[entry!.status as MarStatus].bg, color: STATUS_STYLE[entry!.status as MarStatus].text } : undefined}
                               >
-                                {pending ? '—' : entry!.status !== 'given' ? '!' : family ? 'fam' : initialsOf(entry!.administeredByDisplayNameSnapshot || '')}
+                                {pending ? '—' : entry!.status !== 'given' ? '!' : family ? 'fam' : <InitialsMark entry={entry!} />}
                               </button>
                             </td>
                           )

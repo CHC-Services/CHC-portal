@@ -67,6 +67,13 @@ model User {
   signatureImageKey String?
   signatureSavedAt  DateTime?
 
+  // Same idea as signatureImageKey above, but a short drawn initial rather
+  // than a full signature — used anywhere a quick per-dose/per-task mark is
+  // wanted instead of a full signature (MAR/TAR grid cells). Same admin-only
+  // asymmetry: nurses keep using NurseProfile.initialsImageKey.
+  initialsImageKey String?
+  initialsSavedAt  DateTime?
+
   // Guardian/admin-facing demographic fields, collected in the shared
   // post-signup "Your Information" step. Nurses keep using NurseProfile's
   // own copies of these same concepts as authoritative — same deliberate
@@ -154,6 +161,12 @@ model NurseProfile {
   // this field is "the nurse's current signature," not a historical record.
   signatureImageKey String?
   signatureSavedAt  DateTime?
+
+  // Same idea as signatureImageKey above, but a short drawn initial rather
+  // than a full signature — used anywhere a quick per-dose/per-task mark is
+  // wanted instead of a full signature (MAR/TAR grid cells).
+  initialsImageKey String?
+  initialsSavedAt  DateTime?
 
   // Legacy
   billingInfo String?

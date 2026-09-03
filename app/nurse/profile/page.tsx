@@ -75,6 +75,38 @@ export default function ProfilePage() {
     setSignatureUrl(null)
   }
 
+  // My Initials — same reusable-drawn-mark pattern as Signature above, just
+  // a short initial for MAR/TAR grid cells instead of a full signature.
+  const [initialsUrl, setInitialsUrl] = useState<string | null>(null)
+  const [initialsLoading, setInitialsLoading] = useState(true)
+  const [initialsSaving, setInitialsSaving] = useState(false)
+
+  function loadInitials() {
+    fetch('/api/nurse/initials', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => setInitialsUrl(d.initialsUrl || null))
+      .finally(() => setInitialsLoading(false))
+  }
+
+  useEffect(() => { loadInitials() }, [])
+
+  async function saveInitials(dataUrl: string) {
+    setInitialsSaving(true)
+    const res = await fetch('/api/nurse/initials', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ imageDataUrl: dataUrl }),
+    })
+    setInitialsSaving(false)
+    if (res.ok) loadInitials()
+  }
+
+  async function removeInitials() {
+    await fetch('/api/nurse/initials', { method: 'DELETE', credentials: 'include' })
+    setInitialsUrl(null)
+  }
+
   useEffect(() => {
     fetch('/api/nurse/profile')
       .then((r) => {
@@ -279,6 +311,24 @@ export default function ProfilePage() {
               <p className="text-sm text-[#7A8F79]">Loading…</p>
             ) : (
               <SignatureCapture existingImageUrl={signatureUrl} onSave={saveSignature} saving={signatureSaving} />
+            )}
+          </div>
+
+          {/* My Initials — short drawn mark for MAR/TAR grid cells */}
+          <div className="bg-white rounded-xl shadow p-6 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold uppercase tracking-widest text-[#2F3E4E]">My Initials</p>
+              {initialsUrl && (
+                <button type="button" onClick={removeInitials} className="text-xs font-semibold text-red-500 hover:text-red-700 transition">
+                  Remove
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-[#7A8F79] -mt-1">Used for quick per-dose/per-task marks, like on the MAR and TAR.</p>
+            {initialsLoading ? (
+              <p className="text-sm text-[#7A8F79]">Loading…</p>
+            ) : (
+              <SignatureCapture existingImageUrl={initialsUrl} onSave={saveInitials} saving={initialsSaving} label="Initials" />
             )}
           </div>
 

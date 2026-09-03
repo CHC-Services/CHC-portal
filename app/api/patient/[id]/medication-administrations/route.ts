@@ -4,6 +4,7 @@ import { verifyToken } from '../../../../../lib/auth'
 import { canViewMedicationAdministration, canDocumentMedicationAdministration } from '../../../../../lib/permissions'
 import { sessionDisplayName, resolveAdministeredByActor, FAMILY_GENERIC_ID, FAMILY_GENERIC_DISPLAY_NAME } from '../../../../../lib/medicationAdministrationActor'
 import { dateKeyToUtcMidnight, nyDateKeyOf, nextNyDateKey, easternTimeOfDayUtc } from '../../../../../lib/easternTime'
+import { resolveInitialsImages } from '../../../../../lib/initialsImage'
 
 function getSession(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -46,7 +47,11 @@ function resolveAdministeredAt(scheduledDate: string, administeredTimeOfDay: str
   return easternTimeOfDayUtc(scheduledDate, Number(match[1]), Number(match[2]))
 }
 
-function serializeEntry(row: any) {
+// initialsImages: userId -> presigned e-initial image URL (see
+// lib/initialsImage.ts) — resolved once per request across every entry in
+// the grid, not per entry, so a caller with saved e-initials shows their
+// actual drawn mark instead of the computed two-letter fallback.
+function serializeEntry(row: any, initialsImages?: Map<string, string>) {
   return {
     id: row.id,
     scheduledDate: row.scheduledDate.toISOString().slice(0, 10),
@@ -57,6 +62,7 @@ function serializeEntry(row: any) {
     administeredByRole: row.administeredByRole,
     administeredByDisplayNameSnapshot: row.administeredByDisplayNameSnapshot,
     administeredAt: row.administeredAt,
+    initialsImageUrl: row.administeredByUserId ? initialsImages?.get(row.administeredByUserId) || null : null,
     documentedByUserId: row.documentedByUserId,
     documentedByRole: row.documentedByRole,
     documentedByDisplayNameSnapshot: row.documentedByDisplayNameSnapshot,
@@ -109,6 +115,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }),
   ])
 
+  const initialsImages = await resolveInitialsImages(administrations.map((row: any) => row.administeredByUserId))
+
   const scheduledLookup = new Map<string, any>()
   const prnLookup = new Map<string, any[]>()
   for (const row of administrations) {
@@ -133,13 +141,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         slots[dateKey] = {}
         for (const st of med.scheduleTimes) {
           const row = scheduledLookup.get(`${med.id}|${dateKey}|${st.timeOfDay}`)
-          slots[dateKey][st.timeOfDay] = row ? serializeEntry(row) : { status: 'pending', scheduledDate: dateKey, scheduledTimeOfDay: st.timeOfDay }
+          slots[dateKey][st.timeOfDay] = row ? serializeEntry(row, initialsImages) : { status: 'pending', scheduledDate: dateKey, scheduledTimeOfDay: st.timeOfDay }
         }
       }
     } else {
       for (const dateKey of days) {
         const rows = prnLookup.get(`${med.id}|${dateKey}`) || []
-        prnEntries[dateKey] = rows.map(serializeEntry)
+        prnEntries[dateKey] = rows.map((row: any) => serializeEntry(row, initialsImages))
       }
     }
 

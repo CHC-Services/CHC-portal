@@ -9,11 +9,14 @@ import SignaturePad from 'signature_pad'
 // what the caller does with it (save it as the nurse's reusable signature,
 // embed it into a specific signed document, etc.) is the caller's concern.
 export default function SignatureCapture({
-  existingImageUrl, onSave, saving,
+  existingImageUrl, onSave, saving, label = 'Signature',
 }: {
   existingImageUrl?: string | null
   onSave: (dataUrl: string) => void
   saving?: boolean
+  // Lets this same component back the e-initial capture UI too ("Save
+  // Initials"/"Redraw Initials") without a second copy of the canvas logic.
+  label?: string
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const padRef = useRef<SignaturePad | null>(null)
@@ -92,14 +95,14 @@ export default function SignatureCapture({
       <div className="space-y-3">
         <div className="border border-[#D9E1E8] rounded-lg bg-[#F4F6F5] p-4 flex items-center justify-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={existingImageUrl} alt="Your signature" className="max-h-24" />
+          <img src={existingImageUrl} alt={`Your ${label.toLowerCase()}`} className="max-h-24" />
         </div>
         <button
           type="button"
           onClick={() => setRedrawing(true)}
           className="text-xs font-semibold text-[#7A8F79] hover:text-[#2F3E4E] transition"
         >
-          Redraw Signature
+          Redraw {label}
         </button>
       </div>
     )
@@ -118,7 +121,7 @@ export default function SignatureCapture({
           disabled={empty || saving}
           className="bg-[#2F3E4E] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#7A8F79] transition disabled:opacity-50"
         >
-          {saving ? 'Saving…' : 'Save Signature'}
+          {saving ? 'Saving…' : `Save ${label}`}
         </button>
         <button
           type="button"

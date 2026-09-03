@@ -19,6 +19,10 @@ type TarEntry = {
   initialedByUserId: string | null
   initialedByRole: string | null
   initialedByDisplayNameSnapshot: string | null
+  // The initialing person's saved e-initial (app/nurse|admin/profile),
+  // presigned server-side — when present, the grid shows this drawn mark
+  // instead of the computed two-letter fallback (initialsOf below).
+  initialsImageUrl: string | null
   notes: string | null
 }
 
@@ -41,6 +45,19 @@ function initialsOf(name: string): string {
   if (parts.length === 0) return '?'
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
+
+// A "done" entry's mark — the initialing person's saved drawn e-initial
+// (entry.initialsImageUrl) when they have one on file, falling back to the
+// computed two-letter initials otherwise.
+function InitialsMark({ entry }: { entry: TarEntry }) {
+  if (entry.initialsImageUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={entry.initialsImageUrl} alt={entry.initialedByDisplayNameSnapshot || 'Initials'} className="w-5 h-5 object-contain mx-auto" />
+    )
+  }
+  return <>{initialsOf(entry.initialedByDisplayNameSnapshot || '')}</>
 }
 
 function dayHeaderParts(dateKeyStr: string): { weekday: string; day: string } {
@@ -282,7 +299,7 @@ export default function PatientTreatmentTAR({
                                 className={`w-9 h-9 rounded-lg text-[10px] font-bold ${pending ? 'border border-dashed border-[#D9E1E8] text-[#D9E1E8] hover:border-[#7A8F79] hover:text-[#7A8F79]' : ''} ${!canManage ? 'cursor-default' : ''}`}
                                 style={!pending ? { background: STATUS_STYLE[entry!.status as TarStatus].bg, color: STATUS_STYLE[entry!.status as TarStatus].text } : undefined}
                               >
-                                {pending ? '—' : entry!.status !== 'done' ? '!' : initialsOf(entry!.initialedByDisplayNameSnapshot || '')}
+                                {pending ? '—' : entry!.status !== 'done' ? '!' : <InitialsMark entry={entry!} />}
                               </button>
                             </td>
                           )

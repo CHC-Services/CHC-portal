@@ -4,6 +4,7 @@ import { verifyToken } from '../../../../../lib/auth'
 import { canViewTreatmentAdministration, canDocumentTreatmentAdministration } from '../../../../../lib/permissions'
 import { sessionDisplayName } from '../../../../../lib/medicationAdministrationActor'
 import { dateKeyToUtcMidnight, nyDateKeyOf, nextNyDateKey } from '../../../../../lib/easternTime'
+import { resolveInitialsImages } from '../../../../../lib/initialsImage'
 
 function getSession(req: Request) {
   const cookie = req.headers.get('cookie') || ''
@@ -30,7 +31,9 @@ function daysInRange(startKey: string, endKey: string): string[] {
   return days
 }
 
-function serializeEntry(row: any) {
+// initialsImages: userId -> presigned e-initial image URL, resolved once
+// per request across every entry in the grid — see lib/initialsImage.ts.
+function serializeEntry(row: any, initialsImages?: Map<string, string>) {
   return {
     id: row.id,
     scheduledDate: row.scheduledDate.toISOString().slice(0, 10),
@@ -39,6 +42,7 @@ function serializeEntry(row: any) {
     initialedByUserId: row.initialedByUserId,
     initialedByRole: row.initialedByRole,
     initialedByDisplayNameSnapshot: row.initialedByDisplayNameSnapshot,
+    initialsImageUrl: row.initialedByUserId ? initialsImages?.get(row.initialedByUserId) || null : null,
     notes: row.notes,
   }
 }
@@ -85,6 +89,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }),
   ])
 
+  const initialsImages = await resolveInitialsImages(administrations.map((row: any) => row.initialedByUserId))
+
   const lookup = new Map<string, any>()
   for (const row of administrations) {
     const dateKey = row.scheduledDate.toISOString().slice(0, 10)
@@ -95,7 +101,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const slots: Record<string, any> = {}
     for (const dateKey of days) {
       const row = lookup.get(`${t.id}|${dateKey}`)
-      slots[dateKey] = row ? serializeEntry(row) : { status: 'pending', scheduledDate: dateKey }
+      slots[dateKey] = row ? serializeEntry(row, initialsImages) : { status: 'pending', scheduledDate: dateKey }
     }
     return {
       id: t.id,

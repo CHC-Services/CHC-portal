@@ -32,9 +32,9 @@ const GROUP_ORDER: TabGroup[] = ['record', 'coordination', 'visit']
 // convention used for category badges elsewhere in the app (e.g. the
 // insurance-type pill), not just a small dot next to a plain button.
 const GROUP_META: Record<TabGroup, { label: string; idleBg: string; idleText: string; idleHover: string; activeBg: string }> = {
-  record: { label: 'Patient Record', idleBg: 'bg-slate-100', idleText: 'text-[#2F3E4E]', idleHover: 'hover:bg-slate-200', activeBg: 'bg-[#2F3E4E]' },
-  coordination: { label: 'Scheduling & Office', idleBg: 'bg-[#7A8F79]/10', idleText: 'text-[#5f7160]', idleHover: 'hover:bg-[#7A8F79]/20', activeBg: 'bg-[#7A8F79]' },
-  visit: { label: 'Visit Documentation', idleBg: 'bg-teal-50', idleText: 'text-teal-800', idleHover: 'hover:bg-teal-100', activeBg: 'bg-teal-600' },
+  record: { label: 'Records:', idleBg: 'bg-slate-100', idleText: 'text-[#2F3E4E]', idleHover: 'hover:bg-slate-200', activeBg: 'bg-[#2F3E4E]' },
+  coordination: { label: 'Scheduling:', idleBg: 'bg-[#7A8F79]/10', idleText: 'text-[#5f7160]', idleHover: 'hover:bg-[#7A8F79]/20', activeBg: 'bg-[#7A8F79]' },
+  visit: { label: 'Charting:', idleBg: 'bg-teal-50', idleText: 'text-teal-800', idleHover: 'hover:bg-teal-100', activeBg: 'bg-teal-600' },
 }
 
 // The standard 4 tabs every role gets. Roles that need more (e.g. admin/nurse
